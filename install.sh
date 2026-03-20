@@ -258,7 +258,7 @@ copy_rules() {
 }
 
 generate_claude_md() {
-  local target="${REPO_ROOT}/CLAUDE.md"
+  local target="${REPO_ROOT}/.claude/CLAUDE.md"
 
   if [[ -f "$target" ]]; then
     log_skip "CLAUDE.md は既存のためスキップ"
