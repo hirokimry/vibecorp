@@ -1,0 +1,48 @@
+# CodeRabbit Configuration
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: ja-JP
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+
+  request_changes_workflow: false
+
+  auto_resolve:
+    enabled: true
+
+  path_filters:
+    - "!**/*.lock"
+
+  path_instructions:
+    - path: "**"
+      instructions: |
+        PRが対応するIssueの要件を全て満たしているかを必ずチェックすること。
+        PRの説明やブランチ名からIssue番号を特定し、そのIssueの「やること」に記載された全項目が実装されているか確認する。
+        未対応の要件がある場合は明確に指摘すること。
+    - path: "templates/claude/hooks/**"
+      instructions: |
+        シェルスクリプトのレビュー。以下をチェック:
+        - set -euo pipefail が設定されているか
+        - jq による JSON パースが正しいか
+        - エッジケース（空入力、ファイル不在）が考慮されているか
+        - セキュリティ上の問題（インジェクション等）がないか
+    - path: "templates/claude/skills/**"
+      instructions: |
+        スキル定義のレビュー。以下をチェック:
+        - YAML frontmatter の name / description が内容と一致しているか
+        - 参照しているスキル（/xxx）がminimalプリセット内に存在するか
+        - コードブロックに言語指定があるか
+    - path: "docs/**"
+      instructions: |
+        ドキュメントのレビュー。以下をチェック:
+        - コードの実装と矛盾していないか
+        - 日本語で記述されているか（README.md を除く）
+
+chat:
+  auto_reply: true
