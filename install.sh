@@ -43,9 +43,9 @@ parse_args() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --name)     [[ $# -ge 2 ]] || { log_error "--name に値が必要です"; usage; }; PROJECT_NAME="$2"; shift 2 ;;
-      --preset)   [[ $# -ge 2 ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; shift 2 ;;
-      --language) [[ $# -ge 2 ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; shift 2 ;;
+      --name)     [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--name に値が必要です"; usage; }; PROJECT_NAME="$2"; shift 2 ;;
+      --preset)   [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; shift 2 ;;
+      --language) [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; shift 2 ;;
       -h|--help)  usage 0 ;;
       *)          log_error "不明なオプション: $1"; usage ;;
     esac
@@ -150,7 +150,11 @@ update_gitignore() {
   if [[ -f "$gitignore" ]] && grep -qxF "$entry" "$gitignore"; then
     log_skip ".gitignore に ${entry} は追記済み"
   else
-    echo "$entry" >> "$gitignore"
+    # 末尾改行がない場合に行が連結されるのを防止
+    if [[ -f "$gitignore" ]] && [[ -s "$gitignore" ]] && [[ -n "$(tail -c 1 "$gitignore")" ]]; then
+      printf '\n' >> "$gitignore"
+    fi
+    printf '%s\n' "$entry" >> "$gitignore"
     log_info ".gitignore に ${entry} を追記"
   fi
 }
