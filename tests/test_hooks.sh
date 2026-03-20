@@ -180,10 +180,19 @@ assert_blocked "複数保護ファイル — POLICY.md ブロック" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"README.md"}}' | run_hook protect-files.sh)
 assert_allowed "複数保護ファイル — 対象外は許可" "$OUTPUT"
 
-# 10. protected_files が空リスト
+# 10a. protected_files が null（値なし）
 cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
 protected_files:
+YAML
+
+OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh)
+assert_allowed "protected_files が null → 許可" "$OUTPUT"
+
+# 10b. protected_files が空リスト
+cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
+name: test-project
+protected_files: []
 YAML
 
 OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh)
