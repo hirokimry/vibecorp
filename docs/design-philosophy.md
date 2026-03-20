@@ -39,9 +39,11 @@ docs/（Source of Truth・仕様書群）
 
 アイデンティティや持続的な知識蓄積が不要なタスク実行:
 
-- **CLI実行型**: CodeRabbit CLI、カスタムレビューコマンド等 → スキル内のステップとして直接実行
-- **タスク実行型**: 計画に基づくコード修正 → スキル内のステップとして実行
-- **判断するがアイデンティティ不要**: レビュー妥当性判定、修正計画策定 → スキル内のステップとして実行（共通基準は `.claude/rules/review-criteria.md` に定義）
+- **CLI実行型**: CodeRabbit CLI、カスタムレビューコマンド等
+- **タスク実行型**: 計画に基づくコード修正
+- **判断するがアイデンティティ不要**: レビュー妥当性判定、修正計画策定（共通基準は `.claude/rules/review-criteria.md` に定義）
+
+いずれもスキル内のステップとして直接実行する。
 
 ### 判断フローチャート
 
@@ -60,32 +62,62 @@ docs/（Source of Truth・仕様書群）
    → Yes → agents/ に定義する
 ```
 
-## プラグイン配布方式: gitignore展開（node_modulesパターン）
+## プラグイン配布方式: Claude Code 規約パスへの直接配置
 
 ```text
 導入先リポジトリ:
-├── .claude/vibecorp/    ← プラグイン実体（.gitignore対象、git管理外）
-├── .claude/vibecorp.yml ← プロジェクト設定（git管理）
-├── .claude/vibecorp.lock← バージョン固定（git管理）
-├── .claude/rules/       ← 共通ルール（git管理）
-├── .claude/settings.json← フック設定（git管理、マージ管理）
-├── CLAUDE.md            ← プロジェクト指示（git管理）
-└── MVV.md               ← 最上位方針（git管理）
+├── .claude/
+│   ├── hooks/           ← フック（ファイル保護等）
+│   ├── skills/          ← スキル（Claude Code の /コマンド）
+│   ├── rules/           ← コーディング規約
+│   ├── vibecorp.yml     ← プロジェクト設定
+│   ├── vibecorp.lock    ← バージョン固定 + マニフェスト
+│   ├── settings.json    ← フック設定（マージ管理）
+│   └── CLAUDE.md        ← プロジェクト指示
+└── MVV.md               ← 最上位方針
 ```
 
 設計上の重要な判断:
-- プラグイン実体はgit管理外 → 導入先リポジトリが汚れない
-- lockfile でバージョン固定 → チーム全員が同じバージョンを使える
-- settings.json はマージ管理 → vibecorp由来フック（パスに `vibecorp/hooks/` を含む）のみ操作、ユーザー独自フックは保持
-- vibecorp リポジトリ自体は **Public前提** で設計（テンプレートのみ、実データなし）
+
+- **独自名前空間を持たない**
+  `.claude/vibecorp/` のような独自ディレクトリは作らない。全ファイルを Claude Code の規約パス（`.claude/hooks/`, `.claude/skills/`, `.claude/rules/`）に直接配置する。Claude Code が認識しないパスにファイルを置くことは、プラグインとして意味がない
+
+- **lock をマニフェストとして使う**
+  `vibecorp.lock` に vibecorp が管理するファイルの一覧を記録する。lock に載っている = vibecorp 管理、載っていない = ユーザー作成。更新時は lock を参照して vibecorp 管理ファイルのみ差し替える
+
+- **.gitignore の判断はユーザーに委ねる**
+  vibecorp は `.gitignore` を操作しない。`.claude` を gitignore するか git 管理するかは導入先プロジェクトの判断。生成物を一括 gitignore する案（node_modules パターン）は却下した。vibecorp の生成物は rules, skills, CLAUDE.md 等のチームがレビュー・カスタマイズする人間可読な設定であり、node_modules のような第三者コードとは性質が異なる。PR でのレビューを可能にするため、git 管理を推奨する
+
+- **settings.json はマージ管理**
+  vibecorp 由来フック（パスに `.claude/hooks/` を含む）のみ操作し、ユーザー独自フックは保持
+
+- **Public 前提**
+  vibecorp リポジトリ自体はテンプレートのみで実データを含まない公開前提の設計
+
+### 生成物をフックで保護しない理由
+
+vibecorp が生成した skills, rules, hooks を protect-files フックで保護する案は却下した。
+
+- **生成物はユーザーのもの**
+  プラグインが生成したファイルであっても、ユーザーが自由に編集できるべき。npm が `node_modules/` を保護しないのと同じ原則
+- **復元は再実行で可能**
+  ユーザーが誤って壊しても `install.sh` を再実行すれば元に戻る
+- **保護はビジネスルールに限定**
+  protect-files が守るのは MVV.md のような「ファウンダーの方針」であり、「vibecorp が生成したから」という理由でファイルを保護するのはプラグインの越権行為
 
 ## 3つの組織規模プリセット
 
-| プリセット | agents | skills | hooks | ユースケース |
-|---|---|---|---|---|
-| **minimal** | なし | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit | protect-files | 個人〜小規模 |
-| **standard** | CTO, CPO | +/review-to-rules, /sync-check | +review-to-rules-gate, sync-gate | チーム開発 |
-| **full** | C-suite全員 + 分析員 | +/sync-edit | +role-gate | AI企業・コンプライアンス重視 |
+| プリセット | agents | hooks | ユースケース |
+|---|---|---|---|
+| **minimal** | なし | protect-files | 個人〜小規模 |
+| **standard** | CTO, CPO | + review-to-rules-gate, sync-gate | チーム開発 |
+| **full** | C-suite全員 + 分析員 | + role-gate | AI企業・コンプライアンス重視 |
+
+各プリセットに含まれるスキル:
+
+- **minimal**: /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit
+- **standard**: 上記 + /review-to-rules, /sync-check
+- **full**: 上記 + /sync-edit
 
 ## フック設計パターン
 

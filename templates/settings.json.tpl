@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/vibecorp/hooks/protect-files.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh"
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/vibecorp/hooks/review-to-rules-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-to-rules-gate.sh"
           }
         ]
       }

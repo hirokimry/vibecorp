@@ -276,34 +276,37 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# E1. .claude/vibecorp/ 存在
-assert_dir_exists ".claude/vibecorp/ 存在" "$R/.claude/vibecorp"
+# E1. hooks ディレクトリ存在
+assert_dir_exists "hooks ディレクトリ存在" "$R/.claude/hooks"
 
 # E2. protect-files.sh 存在
-assert_file_exists "protect-files.sh 存在" "$R/.claude/vibecorp/hooks/protect-files.sh"
+assert_file_exists "protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
 
 # E3. hooks に実行権限
-assert_file_executable "hooks に実行権限" "$R/.claude/vibecorp/hooks/protect-files.sh"
+assert_file_executable "hooks に実行権限" "$R/.claude/hooks/protect-files.sh"
 
 # E4. skills ディレクトリ存在
-assert_dir_exists "skills ディレクトリ存在" "$R/.claude/vibecorp/skills"
+assert_dir_exists "skills ディレクトリ存在" "$R/.claude/skills"
 
-# E5. VERSION = 0.1.0
-assert_file_contains "VERSION = 0.1.0" "$R/.claude/vibecorp/VERSION" "0.1.0"
-
-# E6. vibecorp.yml に name/preset/language
+# E5. vibecorp.yml に name/preset/language
 assert_file_contains "vibecorp.yml に name" "$R/.claude/vibecorp.yml" "name: test-proj"
 assert_file_contains "vibecorp.yml に preset" "$R/.claude/vibecorp.yml" "preset: minimal"
 assert_file_contains "vibecorp.yml に language" "$R/.claude/vibecorp.yml" "language: ja"
 
-# E7. vibecorp.lock に version
+# E6. vibecorp.lock に version
 assert_file_contains "vibecorp.lock に version" "$R/.claude/vibecorp.lock" "version: 0.1.0"
+
+# E7. vibecorp.lock にマニフェスト
+assert_file_contains "vibecorp.lock に hooks マニフェスト" "$R/.claude/vibecorp.lock" "protect-files.sh"
+assert_file_contains "vibecorp.lock に skills マニフェスト" "$R/.claude/vibecorp.lock" "review"
+assert_file_contains "vibecorp.lock に rules マニフェスト" "$R/.claude/vibecorp.lock" "comments.md"
 
 # E8. settings.json に hooks 構造
 assert_file_contains "settings.json に hooks 構造" "$R/.claude/settings.json" "PreToolUse"
 
-# E9. .gitignore に .claude/vibecorp/
-assert_file_contains ".gitignore に .claude/vibecorp/" "$R/.gitignore" '.claude/vibecorp/'
+# E9. settings.json のフックパスが .claude/hooks/ を参照
+assert_file_contains "settings.json のフックパス" "$R/.claude/settings.json" '.claude/hooks/'
+assert_file_not_contains "settings.json に旧パスなし" "$R/.claude/settings.json" '.claude/vibecorp/'
 
 # E10. .claude/rules/ にファイル存在
 RULES_COUNT=$(find "$R/.claude/rules" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
@@ -321,6 +324,13 @@ assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.clau
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
+# E13. .claude/vibecorp/ ディレクトリが存在しない
+if [ ! -d "$R/.claude/vibecorp" ]; then
+  pass ".claude/vibecorp/ が存在しない"
+else
+  fail ".claude/vibecorp/ が存在しない (ディレクトリが残っている)"
+fi
+
 cleanup
 
 # ============================================
@@ -333,10 +343,10 @@ bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # F1. review-to-rules-gate.sh が削除されている
-assert_file_not_exists "review-to-rules-gate.sh が削除されている" "$R/.claude/vibecorp/hooks/review-to-rules-gate.sh"
+assert_file_not_exists "review-to-rules-gate.sh が削除されている" "$R/.claude/hooks/review-to-rules-gate.sh"
 
 # F2. review-to-rules スキルが削除されている
-if [ ! -d "$R/.claude/vibecorp/skills/review-to-rules" ]; then
+if [ ! -d "$R/.claude/skills/review-to-rules" ]; then
   pass "review-to-rules スキルが削除されている"
 else
   fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
@@ -388,55 +398,14 @@ else
   fail "MVV.md スキップ（内容が変わった）"
 fi
 
-# G5. .gitignore 重複なし
-IGNORE_COUNT=$(grep -c '.claude/vibecorp/' "$R/.gitignore")
-if [ "$IGNORE_COUNT" = "1" ]; then
-  pass ".gitignore 重複なし"
-else
-  fail ".gitignore 重複なし (${IGNORE_COUNT}行ある)"
-fi
-
 cleanup
 
 # ============================================
 echo ""
-echo "=== H. .gitignore エッジケース ==="
+echo "=== H. settings.json マージ ==="
 # ============================================
 
-# H1. .gitignore がない → 新規作成
-create_test_repo
-rm -f "$TMPDIR_ROOT/.gitignore"
-bash "$INSTALL_SH" --name test-proj 2>/dev/null
-assert_file_exists ".gitignore がない → 新規作成" "$TMPDIR_ROOT/.gitignore"
-assert_file_contains ".gitignore に .claude/vibecorp/" "$TMPDIR_ROOT/.gitignore" '.claude/vibecorp/'
-cleanup
-
-# H2. 末尾改行なし → 前行と連結しない
-create_test_repo
-printf 'node_modules/' > "$TMPDIR_ROOT/.gitignore"
-bash "$INSTALL_SH" --name test-proj 2>/dev/null
-# node_modules/ と .claude/vibecorp/ が別々の行にあるか
-LINE_COUNT=$(grep -c '.' "$TMPDIR_ROOT/.gitignore")
-if [ "$LINE_COUNT" -ge 2 ]; then
-  pass "末尾改行なし → 前行と連結しない"
-else
-  fail "末尾改行なし → 前行と連結した (行数: $LINE_COUNT)"
-fi
-cleanup
-
-# H3. 空ファイル → 正常追記
-create_test_repo
-: > "$TMPDIR_ROOT/.gitignore"
-bash "$INSTALL_SH" --name test-proj 2>/dev/null
-assert_file_contains "空ファイル → 正常追記" "$TMPDIR_ROOT/.gitignore" '.claude/vibecorp/'
-cleanup
-
-# ============================================
-echo ""
-echo "=== I. settings.json マージ ==="
-# ============================================
-
-# I1. 既存あり → ユーザーフック保持 + vibecorp フック追加
+# H1. 既存あり → ユーザーフック保持 + vibecorp フック追加
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude"
 cat > "$TMPDIR_ROOT/.claude/settings.json" <<'JSON'
@@ -459,13 +428,13 @@ JSON
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# I2. ユーザー独自フックが残る
+# H2. ユーザー独自フックが残る
 assert_file_contains "ユーザー独自フックが残る" "$R/.claude/settings.json" 'my-custom-hook.sh'
 
 # vibecorp フックも追加されている
 assert_file_contains "vibecorp フック追加" "$R/.claude/settings.json" 'protect-files.sh'
 
-# I3. 再実行で vibecorp フック重複なし
+# H3. 再実行で vibecorp フック重複なし
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 PROTECT_COUNT=$(grep -c 'protect-files.sh' "$R/.claude/settings.json")
 if [ "$PROTECT_COUNT" = "1" ]; then
@@ -474,7 +443,7 @@ else
   fail "再実行で vibecorp フック重複なし (${PROTECT_COUNT}件)"
 fi
 
-# I4. 非vibecorpフックが不変であること（同名matcher内でも操作対象外）
+# H4. 非vibecorpフックが不変であること（同名matcher内でも操作対象外）
 CUSTOM_HOOK_COUNT=$(grep -c 'my-custom-hook.sh' "$R/.claude/settings.json")
 if [ "$CUSTOM_HOOK_COUNT" = "1" ]; then
   pass "非vibecorpフックが不変"
@@ -486,30 +455,30 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== J. テンプレート置換 ==="
+echo "=== I. テンプレート置換 ==="
 # ============================================
 
 create_test_repo
 bash "$INSTALL_SH" --name my-cool-app --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# J1. CLAUDE.md にプロジェクト名置換済み
+# I1. CLAUDE.md にプロジェクト名置換済み
 assert_file_contains "CLAUDE.md にプロジェクト名置換済み" "$R/.claude/CLAUDE.md" 'my-cool-app'
 
-# J2. CLAUDE.md に言語(日本語)置換済み
+# I2. CLAUDE.md に言語(日本語)置換済み
 assert_file_contains "CLAUDE.md に言語(日本語)置換済み" "$R/.claude/CLAUDE.md" '日本語'
 
-# J3. MVV.md にプロジェクト名置換済み
+# I3. MVV.md にプロジェクト名置換済み
 assert_file_contains "MVV.md にプロジェクト名置換済み" "$R/MVV.md" 'my-cool-app'
 
 cleanup
 
 # ============================================
 echo ""
-echo "=== K. rules コピー ==="
+echo "=== J. rules コピー ==="
 # ============================================
 
-# K1. 既存同名ルールはスキップ
+# J1. 既存同名ルールはスキップ
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/rules"
 echo "# カスタムルール" > "$TMPDIR_ROOT/.claude/rules/comments.md"
@@ -521,7 +490,7 @@ else
   fail "既存同名ルールはスキップ (内容が上書きされた)"
 fi
 
-# K2. 新規ルールはコピーされる
+# J2. 新規ルールはコピーされる
 assert_file_exists "新規ルールはコピーされる" "$TMPDIR_ROOT/.claude/rules/mvv.md"
 
 cleanup

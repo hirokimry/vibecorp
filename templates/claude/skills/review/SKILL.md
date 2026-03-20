@@ -23,7 +23,7 @@ git diff --name-only --cached
 ### CodeRabbit CLI（常に実行）
 
 ```bash
-cr review
+cr review --plain
 ```
 
 `cr` が利用できない場合はスキップし、レポートにその旨を記載する。

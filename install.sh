@@ -100,63 +100,46 @@ detect_repo_root() {
   fi
 }
 
-create_vibecorp_dir() {
-  mkdir -p "${REPO_ROOT}/.claude/vibecorp"
-  log_info ".claude/vibecorp/ を作成"
-}
-
 copy_templates() {
-  # hooks と skills をコピー（rules は copy_rules() で .claude/rules/ へ直接コピー）
-  # 再実行時のネスト防止: 既存ディレクトリを削除してからコピー
-  rm -rf "${REPO_ROOT}/.claude/vibecorp/hooks" "${REPO_ROOT}/.claude/vibecorp/skills"
-  cp -R "${SCRIPT_DIR}/templates/claude/hooks" "${REPO_ROOT}/.claude/vibecorp/"
-  cp -R "${SCRIPT_DIR}/templates/claude/skills" "${REPO_ROOT}/.claude/vibecorp/"
+  # hooks, skills を Claude Code の規約パスにコピー
+  # rules は copy_rules() で .claude/rules/ へ個別コピー（既存スキップのため）
+  local hooks_dir="${REPO_ROOT}/.claude/hooks"
+  local skills_dir="${REPO_ROOT}/.claude/skills"
 
-  # プレースホルダー置換（現テンプレートには該当なし、将来用に仕組みだけ入れる）
+  mkdir -p "${REPO_ROOT}/.claude"
+
+  # 再実行時のネスト防止: 既存ディレクトリを削除してからコピー
+  rm -rf "$hooks_dir" "$skills_dir"
+  cp -R "${SCRIPT_DIR}/templates/claude/hooks" "$hooks_dir"
+  cp -R "${SCRIPT_DIR}/templates/claude/skills" "$skills_dir"
+
+  # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
-  find "${REPO_ROOT}/.claude/vibecorp" -type f \( -name '*.sh' -o -name '*.md' \) | while IFS= read -r f; do
-    if grep -q '{{' "$f" 2>/dev/null; then
-      sed \
-        -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
-        -e "s|{{PRESET}}|${PRESET}|g" \
-        -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
-        "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
-    fi
+  local target_dirs=("$hooks_dir" "$skills_dir")
+  for dir in "${target_dirs[@]}"; do
+    find "$dir" -type f \( -name '*.sh' -o -name '*.md' \) | while IFS= read -r f; do
+      if grep -q '{{' "$f" 2>/dev/null; then
+        sed \
+          -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+          -e "s|{{PRESET}}|${PRESET}|g" \
+          -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+          "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+      fi
+    done
   done
 
   # hooks に実行権限を付与
-  chmod +x "${REPO_ROOT}/.claude/vibecorp/hooks/"*.sh
+  chmod +x "${hooks_dir}/"*.sh
 
   # プリセット別削除（引き算方式）
   case "$PRESET" in
     minimal)
-      rm -f "${REPO_ROOT}/.claude/vibecorp/hooks/review-to-rules-gate.sh"
-      rm -rf "${REPO_ROOT}/.claude/vibecorp/skills/review-to-rules"
+      rm -f "${hooks_dir}/review-to-rules-gate.sh"
+      rm -rf "${skills_dir}/review-to-rules"
       ;;
   esac
 
   log_info "テンプレートをコピー (preset: ${PRESET})"
-}
-
-generate_version() {
-  echo "${VIBECORP_VERSION}" > "${REPO_ROOT}/.claude/vibecorp/VERSION"
-  log_info "VERSION を生成 (${VIBECORP_VERSION})"
-}
-
-update_gitignore() {
-  local gitignore="${REPO_ROOT}/.gitignore"
-  local entry=".claude/vibecorp/"
-
-  if [[ -f "$gitignore" ]] && grep -qxF "$entry" "$gitignore"; then
-    log_skip ".gitignore に ${entry} は追記済み"
-  else
-    # 末尾改行がない場合に行が連結されるのを防止
-    if [[ -f "$gitignore" ]] && [[ -s "$gitignore" ]] && [[ -n "$(tail -c 1 "$gitignore")" ]]; then
-      printf '\n' >> "$gitignore"
-    fi
-    printf '%s\n' "$entry" >> "$gitignore"
-    log_info ".gitignore に ${entry} を追記"
-  fi
 }
 
 generate_vibecorp_yml() {
@@ -186,12 +169,30 @@ generate_vibecorp_lock() {
   local vibecorp_commit
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
+  # インストール済みファイルのマニフェストを生成
+  local hooks_list="" skills_list="" rules_list=""
+
+  for f in "${REPO_ROOT}/.claude/hooks/"*.sh; do
+    [[ -f "$f" ]] && hooks_list="${hooks_list}  - $(basename "$f")"$'\n'
+  done
+  for d in "${REPO_ROOT}/.claude/skills/"*/; do
+    [[ -d "$d" ]] && skills_list="${skills_list}  - $(basename "$d")"$'\n'
+  done
+  for f in "${SCRIPT_DIR}/templates/claude/rules/"*.md; do
+    [[ -f "$f" ]] && rules_list="${rules_list}  - $(basename "$f")"$'\n'
+  done
+
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
 version: ${VIBECORP_VERSION}
 installed_at: ${installed_at}
 preset: ${PRESET}
 vibecorp_commit: ${vibecorp_commit}
+files:
+  hooks:
+${hooks_list}  skills:
+${skills_list}  rules:
+${rules_list}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -227,7 +228,7 @@ generate_settings_json() {
 
     jq --argjson new "$new_hooks" '
       def strip_vibecorp_hooks:
-        .hooks |= map(select(.command | contains(".claude/vibecorp/hooks/") | not));
+        .hooks |= map(select(.command | contains(".claude/hooks/") | not));
       # 既存から vibecorp フックを除去し、新規と結合後、同一 matcher をマージ
       .hooks.PreToolUse = (
         [(.hooks.PreToolUse // [])[] | strip_vibecorp_hooks | select((.hooks | length) > 0)]
@@ -311,10 +312,7 @@ main() {
   validate_language
   check_prerequisites
   detect_repo_root
-  create_vibecorp_dir
   copy_templates
-  generate_version
-  update_gitignore
   generate_vibecorp_yml
   generate_vibecorp_lock
   generate_settings_json
