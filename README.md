@@ -51,20 +51,17 @@ path/to/vibecorp/install.sh --name your-project
 ```text
 your-project/
 ├── .claude/
-│   ├── vibecorp/          # プラグイン実体（.gitignore 対象）
-│   │   ├── hooks/         # フック（ファイル保護等）
-│   │   ├── skills/        # スキル定義
-│   │   └── VERSION
-│   ├── vibecorp.yml       # プロジェクト設定（git 管理）
-│   ├── vibecorp.lock      # バージョン固定（git 管理）
-│   ├── rules/             # コーディング規約（git 管理）
-│   └── settings.json      # フック設定（git 管理）
-├── CLAUDE.md              # プロジェクト指示（git 管理）
-└── MVV.md                 # Mission / Vision / Values（git 管理）
+│   ├── hooks/             # フック（ファイル保護等）
+│   ├── skills/            # スキル（Claude Code の /コマンド）
+│   ├── rules/             # コーディング規約
+│   ├── vibecorp.yml       # プロジェクト設定
+│   ├── vibecorp.lock      # バージョン固定 + マニフェスト
+│   ├── settings.json      # フック設定
+│   └── CLAUDE.md          # プロジェクト指示
+└── MVV.md                 # Mission / Vision / Values
 ```
 
-- `install.sh` が導入先の `.gitignore` に `.claude/vibecorp/` を追加する。プラグイン実体のみ git 管理外となり、設定ファイルはチームで共有できる
-- `vibecorp.lock` でチーム全員が同じバージョンを使える
+- `vibecorp.lock` がマニフェストとして機能し、vibecorp が管理するファイルを追跡する
 - `settings.json` はマージ管理：vibecorp 由来フックのみ操作し、ユーザー独自フックは保持
 
 ## 設定リファレンス
