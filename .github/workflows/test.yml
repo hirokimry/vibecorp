@@ -6,14 +6,27 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
 
+      - name: jq の確認
+        run: jq --version
+
       - name: 全テスト実行
         run: |
+          shopt -s nullglob
+          files=(tests/test_*.sh)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "テストファイルが見つかりません"
+            exit 1
+          fi
           failed=0
-          for f in tests/test_*.sh; do
+          for f in "${files[@]}"; do
             echo "=== $f ==="
             bash "$f" || failed=1
           done
