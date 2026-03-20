@@ -77,7 +77,7 @@ echo "$CR_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
   '[.[] | select(. as $id | $replied | index($id) | not)]'
 ```
 
-- CI パス + 未解決0件 → **2.5 へ進む**
+- CI パス + 未解決0件 → **ループ終了、ステップ2.5 へ**
 - それ以外 → 2.4 へ
 
 #### 2.4 レビュー指摘の修正
@@ -86,10 +86,16 @@ echo "$CR_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
 
 #### 2.5 レビュー指摘の規約・ナレッジ反映
 
-`/review-to-rules` を実行する。
+vibecorp.yml の `gates.review_to_rules` を確認する:
 
-- **変更なし** → **ループ終了、ステップ3へ**
-- **変更あり** → `/commit` でコミットし `git push` する。push により CodeRabbit が再レビューするため、**ループ先頭（2.1）に戻る。** rules/knowledge の変更もレビュー対象とし、品質を担保する
+```bash
+yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
+```
+
+- `false` → スキップしてステップ3へ
+- `true` → `/review-to-rules` を実行し、結果を確認する:
+  - **変更なし** → **ステップ3へ**（スタンプファイルが発行され、ゲートを通過可能になる）
+  - **変更あり** → `/commit` でコミットし `git push` する。push により CodeRabbit が再レビューするため、**ループ先頭（2.1）に戻る。** rules/knowledge の変更もレビュー対象とし、品質を担保する
 
 ### 3. マージ
 
@@ -111,7 +117,7 @@ git checkout {baseRefName} && git pull
 - PR: #{pr_number}
 - ループ回数: {n}回
 - レビュー修正: {n}件
-- 規約・ナレッジ反映: {n}件
+- 規約・ナレッジ反映: {n}件（gates.review_to_rules が true の場合のみ）
 - マージ: 完了
 ```
 

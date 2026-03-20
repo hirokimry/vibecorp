@@ -83,8 +83,8 @@ docs/（Source of Truth・仕様書群）
 
 | プリセット | agents | skills | hooks | ユースケース |
 |---|---|---|---|---|
-| **minimal** | なし | /review, /review-loop, /review-to-rules, /pr-merge-loop, /pr-review-fix, /pr, /commit | protect-files, review-to-rules-gate | 個人〜小規模 |
-| **standard** | CTO, CPO | +/sync-check | +sync-gate | チーム開発 |
+| **minimal** | なし | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit | protect-files | 個人〜小規模 |
+| **standard** | CTO, CPO | +/review-to-rules, /sync-check | +review-to-rules-gate, sync-gate | チーム開発 |
 | **full** | C-suite全員 + 分析員 | +/sync-edit | +role-gate | AI企業・コンプライアンス重視 |
 
 ## フック設計パターン
