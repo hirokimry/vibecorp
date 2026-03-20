@@ -58,8 +58,8 @@ your-project/
 │   ├── vibecorp.yml       # プロジェクト設定（git 管理）
 │   ├── vibecorp.lock      # バージョン固定（git 管理）
 │   ├── rules/             # コーディング規約（git 管理）
-│   └── settings.json      # フック設定（git 管理）
-├── CLAUDE.md              # プロジェクト指示（git 管理）
+│   ├── settings.json      # フック設定（git 管理）
+│   └── CLAUDE.md          # プロジェクト指示（git 管理）
 └── MVV.md                 # Mission / Vision / Values（git 管理）
 ```
 
