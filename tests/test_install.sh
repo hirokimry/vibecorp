@@ -314,8 +314,8 @@ else
 fi
 
 # E11. CLAUDE.md 存在 + プレースホルダーなし
-assert_file_exists "CLAUDE.md 存在" "$R/CLAUDE.md"
-assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/CLAUDE.md" '{{.*}}'
+assert_file_exists "CLAUDE.md 存在" "$R/.claude/CLAUDE.md"
+assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.claude/CLAUDE.md" '{{.*}}'
 
 # E12. MVV.md 存在 + プレースホルダーなし
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
@@ -355,7 +355,7 @@ R="$TMPDIR_ROOT"
 
 # 1回目の内容を保存
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
-CLAUDE_MD_BEFORE=$(cat "$R/CLAUDE.md")
+CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
 
 # 2回目実行
@@ -373,7 +373,7 @@ else
 fi
 
 # G3. CLAUDE.md スキップ（内容保持）
-CLAUDE_MD_AFTER=$(cat "$R/CLAUDE.md")
+CLAUDE_MD_AFTER=$(cat "$R/.claude/CLAUDE.md")
 if [ "$CLAUDE_MD_BEFORE" = "$CLAUDE_MD_AFTER" ]; then
   pass "CLAUDE.md スキップ（内容保持）"
 else
@@ -494,10 +494,10 @@ bash "$INSTALL_SH" --name my-cool-app --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # J1. CLAUDE.md にプロジェクト名置換済み
-assert_file_contains "CLAUDE.md にプロジェクト名置換済み" "$R/CLAUDE.md" 'my-cool-app'
+assert_file_contains "CLAUDE.md にプロジェクト名置換済み" "$R/.claude/CLAUDE.md" 'my-cool-app'
 
 # J2. CLAUDE.md に言語(日本語)置換済み
-assert_file_contains "CLAUDE.md に言語(日本語)置換済み" "$R/CLAUDE.md" '日本語'
+assert_file_contains "CLAUDE.md に言語(日本語)置換済み" "$R/.claude/CLAUDE.md" '日本語'
 
 # J3. MVV.md にプロジェクト名置換済み
 assert_file_contains "MVV.md にプロジェクト名置換済み" "$R/MVV.md" 'my-cool-app'
