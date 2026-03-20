@@ -13,6 +13,7 @@ log_error() { printf '\033[31m[ERROR]\033[0m %s\n' "$*" >&2; }
 log_skip()  { printf '\033[33m[SKIP]\033[0m  %s\n' "$*" >&2; }
 
 usage() {
+  local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
 Usage: install.sh --name <project-name> [--preset minimal] [--language ja]
 
@@ -22,7 +23,7 @@ Options:
   --language  回答言語: ja, en, または任意（デフォルト: ja）
   -h, --help  このヘルプを表示
 USAGE
-  exit 1
+  exit "$exit_code"
 }
 
 resolve_language() {
@@ -45,7 +46,7 @@ parse_args() {
       --name)     [[ $# -ge 2 ]] || { log_error "--name に値が必要です"; usage; }; PROJECT_NAME="$2"; shift 2 ;;
       --preset)   [[ $# -ge 2 ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; shift 2 ;;
       --language) [[ $# -ge 2 ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; shift 2 ;;
-      -h|--help)  usage ;;
+      -h|--help)  usage 0 ;;
       *)          log_error "不明なオプション: $1"; usage ;;
     esac
   done
@@ -61,6 +62,16 @@ validate_name() {
     log_error "プロジェクト名が不正です（英数字とハイフンのみ、1-50文字）"
     exit 1
   fi
+}
+
+validate_preset() {
+  case "$PRESET" in
+    minimal) ;;
+    *)
+      log_error "--preset は現在 minimal のみ対応です"
+      exit 1
+      ;;
+  esac
 }
 
 validate_language() {
@@ -292,6 +303,7 @@ DONE
 main() {
   parse_args "$@"
   validate_name
+  validate_preset
   validate_language
   check_prerequisites
   detect_repo_root
