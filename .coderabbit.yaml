@@ -13,6 +13,9 @@ reviews:
 
   request_changes_workflow: false
 
+  auto_resolve:
+    enabled: true
+
   path_filters:
     - "!**/*.lock"
 
