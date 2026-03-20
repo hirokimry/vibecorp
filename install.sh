@@ -213,9 +213,12 @@ generate_settings_json() {
     jq --argjson new "$new_hooks" '
       def strip_vibecorp_hooks:
         .hooks |= map(select(.command | contains(".claude/vibecorp/hooks/") | not));
+      # 既存から vibecorp フックを除去し、新規と結合後、同一 matcher をマージ
       .hooks.PreToolUse = (
         [(.hooks.PreToolUse // [])[] | strip_vibecorp_hooks | select((.hooks | length) > 0)]
         + $new
+        | group_by(.matcher)
+        | map({matcher: .[0].matcher, hooks: [.[].hooks[]]})
       )
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
     log_info "settings.json をマージ（ユーザーフック保持）"
