@@ -113,7 +113,10 @@ cleanup() {
   rm -f /tmp/.test-project-review-to-rules-ok
   rm -f /tmp/.vibecorp-project-review-to-rules-ok
   rm -f /tmp/.my-project-review-to-rules-ok
-  rm -f /tmp/.hello__world-review-to-rules-ok
+  # サニタイズロジックと同じ方法で生成した名前を削除
+  local sanitized
+  sanitized=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
+  rm -f "/tmp/.${sanitized}-review-to-rules-ok"
 }
 trap cleanup EXIT
 
@@ -221,7 +224,11 @@ assert_blocked "ファイル名にスペース含む → deny" "$OUTPUT"
 # 14. CLAUDE_PROJECT_DIR 未設定（デフォルト "."）→ 許可（カレントに yml なし）
 unset CLAUDE_PROJECT_DIR
 # カレントディレクトリに .claude/vibecorp.yml がないことを前提
-OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh 2>/dev/null || true)
+set +e
+OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh 2>/dev/null)
+EXIT_CODE=$?
+set -e
+assert_exit_code "CLAUDE_PROJECT_DIR 未設定時に異常終了しない" "0" "$EXIT_CODE"
 assert_allowed "CLAUDE_PROJECT_DIR 未設定 → 許可" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"
 

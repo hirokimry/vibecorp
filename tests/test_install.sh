@@ -104,6 +104,8 @@ create_test_repo() {
   TMPDIR_ROOT=$(mktemp -d)
   cd "$TMPDIR_ROOT"
   git init -q
+  git config user.name "vibecorp-test"
+  git config user.email "vibecorp-test@example.com"
   git commit --allow-empty -m "initial" -q
 }
 
@@ -470,6 +472,14 @@ if [ "$PROTECT_COUNT" = "1" ]; then
   pass "再実行で vibecorp フック重複なし"
 else
   fail "再実行で vibecorp フック重複なし (${PROTECT_COUNT}件)"
+fi
+
+# I4. 非vibecorpフックが不変であること（同名matcher内でも操作対象外）
+CUSTOM_HOOK_COUNT=$(grep -c 'my-custom-hook.sh' "$R/.claude/settings.json")
+if [ "$CUSTOM_HOOK_COUNT" = "1" ]; then
+  pass "非vibecorpフックが不変"
+else
+  fail "非vibecorpフックが不変 (${CUSTOM_HOOK_COUNT}件)"
 fi
 
 cleanup
