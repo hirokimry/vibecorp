@@ -46,6 +46,8 @@ path/to/vibecorp/install.sh --name your-project
 
 ## インストールされるもの
 
+`install.sh` を実行すると、導入先リポジトリに以下の構造が生成される。
+
 ```text
 your-project/
 ├── .claude/
@@ -61,7 +63,7 @@ your-project/
 └── MVV.md                 # Mission / Vision / Values（git 管理）
 ```
 
-- `.claude/vibecorp/` は `.gitignore` に追加され、リポジトリを汚さない
+- `install.sh` が導入先の `.gitignore` に `.claude/vibecorp/` を追加する。プラグイン実体のみ git 管理外となり、設定ファイルはチームで共有できる
 - `vibecorp.lock` でチーム全員が同じバージョンを使える
 - `settings.json` はマージ管理：vibecorp 由来フックのみ操作し、ユーザー独自フックは保持
 
