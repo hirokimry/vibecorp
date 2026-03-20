@@ -33,7 +33,8 @@ PRが見つからない場合はエラー。
 ```bash
 # PRレビューコメントを取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --jq '.[] | select(.user.login | test("coderabbit"; "i")) | {id: .id, path: .path, line: .line, body: .body, user: .user.login}'
+  --paginate \
+  --jq '.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | {id: .id, path: .path, line: .line, body: .body, user: .user.login}'
 ```
 
 ```bash

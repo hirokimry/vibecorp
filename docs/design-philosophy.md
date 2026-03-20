@@ -7,7 +7,7 @@ vibecorp は「AIエージェントを組織化してプロダクト開発を回
 
 ## 3層アーキテクチャ
 
-```
+```text
 MVV.md（最上位方針・ファウンダーのみ編集）
   ↓ 全エージェント・スキルの判断基準
 docs/（Source of Truth・仕様書群）
@@ -45,7 +45,7 @@ docs/（Source of Truth・仕様書群）
 
 ### 判断フローチャート
 
-```
+```text
 そのエンティティは...
 
 1. 持続的なアイデンティティがある？（「私はCTOです」）
@@ -62,7 +62,7 @@ docs/（Source of Truth・仕様書群）
 
 ## プラグイン配布方式: gitignore展開（node_modulesパターン）
 
-```
+```text
 導入先リポジトリ:
 ├── .claude/vibecorp/    ← プラグイン実体（.gitignore対象、git管理外）
 ├── .claude/vibecorp.yml ← プロジェクト設定（git管理）

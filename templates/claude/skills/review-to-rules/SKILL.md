@@ -24,20 +24,24 @@ PRのレビューコメントから、返信済み（＝修正済み）の指摘
 ```bash
 # 全トップレベルコメントのID
 ALL_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.in_reply_to_id == null) | .id]')
 
 # 返信済みID一覧
 REPLY_TO_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.in_reply_to_id != null) | .in_reply_to_id] | unique')
 
 # CodeRabbitの返信済み指摘を抽出
 CR_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | .id]')
 echo "$CR_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
   '[.[] | select(. as $id | $replied | index($id))]'
 
 # 人間レビュアーの返信済み指摘を抽出
 HUMAN_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i") | not) | select(.in_reply_to_id == null) | .id]')
 echo "$HUMAN_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
   '[.[] | select(. as $id | $replied | index($id))]'

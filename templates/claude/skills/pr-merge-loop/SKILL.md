@@ -43,6 +43,7 @@ gh pr view --json number,url,headRefName,baseRefName --jq '{number, url, headRef
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length'
 ```
 
@@ -63,10 +64,12 @@ gh pr checks {pr_number} --json name,state --jq '.[] | {name, state}'
 ```bash
 # CodeRabbitのトップレベルコメントID
 CR_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | .id]')
 
 # 返信済みID一覧
 REPLY_TO_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --paginate \
   --jq '[.[] | select(.in_reply_to_id != null) | .in_reply_to_id] | unique')
 
 # 未返信 = 未解決

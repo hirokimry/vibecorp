@@ -17,7 +17,7 @@ if [ ! -f "$VIBECORP_YML" ]; then
   exit 0
 fi
 
-# protected_files 配列を1行ずつ取得（YAMLパース: grep + sed で軽量に）
+# protected_files 配列を1行ずつ取得（YAMLパース: awk でブロック単位抽出）
 while IFS= read -r protected; do
   # 末尾が一致するかチェック（パス末尾比較で /MVV.md も MVV.md も対応）
   if [[ "$FILE_PATH" == *"$protected" ]]; then
@@ -30,6 +30,16 @@ while IFS= read -r protected; do
     }'
     exit 0
   fi
-done < <(grep -A 100 '^protected_files:' "$VIBECORP_YML" | tail -n +2 | grep '^ *- ' | sed 's/^ *- *//' | sed 's/ *$//')
+done < <(
+  awk '
+    /^protected_files:[[:space:]]*$/ { in_list = 1; next }
+    in_list && /^[^[:space:]-]/ { exit }
+    in_list && /^[[:space:]]*-[[:space:]]*/ {
+      sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+    }
+  ' "$VIBECORP_YML"
+)
 
 exit 0
