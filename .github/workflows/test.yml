@@ -1,0 +1,19 @@
+name: test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: hooks テスト
+        run: bash tests/test_hooks.sh
+
+      - name: install テスト
+        run: bash tests/test_install.sh
