@@ -497,6 +497,164 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== K. 既存フック保持（独自フック + vibecorp フック共存） ==="
+# ============================================
+
+# K1. ユーザー独自フックが install 後も残る
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/hooks"
+echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/hooks/my-guard.sh"
+echo 'echo "ユーザー独自ガード"' >> "$TMPDIR_ROOT/.claude/hooks/my-guard.sh"
+chmod +x "$TMPDIR_ROOT/.claude/hooks/my-guard.sh"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists "ユーザー独自フック(my-guard.sh)が残る" "$R/.claude/hooks/my-guard.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-guard.sh" "ユーザー独自ガード"
+
+# K2. vibecorp フックも同時に存在する
+assert_file_exists "vibecorp フック(protect-files.sh)も存在" "$R/.claude/hooks/protect-files.sh"
+
+# K3. 再実行でもユーザー独自フックは消えない
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+assert_file_exists "再実行後もユーザー独自フックが残る" "$R/.claude/hooks/my-guard.sh"
+assert_file_contains "再実行後もユーザー独自フックの内容が保持" "$R/.claude/hooks/my-guard.sh" "ユーザー独自ガード"
+
+# K4. lock にユーザー独自フックが含まれない
+assert_file_not_contains "lock にユーザー独自フックなし" "$R/.claude/vibecorp.lock" "my-guard.sh"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== L. 既存スキル保持（同名スキルスキップ） ==="
+# ============================================
+
+# L1. ユーザーがカスタマイズした同名スキルはスキップ
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/skills/review"
+echo "# カスタムレビュースキル" > "$TMPDIR_ROOT/.claude/skills/review/SKILL.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+REVIEW_CONTENT=$(cat "$R/.claude/skills/review/SKILL.md")
+if [ "$REVIEW_CONTENT" = "# カスタムレビュースキル" ]; then
+  pass "同名スキル(review)はユーザー版を保持"
+else
+  fail "同名スキル(review)はユーザー版を保持 (上書きされた)"
+fi
+
+# L2. ユーザー独自スキルも保持
+mkdir -p "$TMPDIR_ROOT/.claude/skills/my-deploy"
+echo "# デプロイスキル" > "$TMPDIR_ROOT/.claude/skills/my-deploy/SKILL.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+assert_file_exists "ユーザー独自スキルが残る" "$R/.claude/skills/my-deploy/SKILL.md"
+assert_file_contains "ユーザー独自スキルの内容が保持" "$R/.claude/skills/my-deploy/SKILL.md" "デプロイスキル"
+
+# L3. lock にユーザー独自スキルが含まれない
+assert_file_not_contains "lock にユーザー独自スキルなし" "$R/.claude/vibecorp.lock" "my-deploy"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== M. lock ベース再インストール（管理ファイルのみ差し替え） ==="
+# ============================================
+
+# M1. vibecorp 管理フックは差し替えられる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# protect-files.sh の内容を変更（古いバージョンを模擬）
+echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
+# ユーザー独自フックを追加
+echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
+echo 'echo "ユーザー独自同期ゲート"' >> "$R/.claude/hooks/sync-gate.sh"
+
+# 再実行で管理ファイルは差し替え、ユーザーファイルは保持
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+
+assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
+assert_file_exists "ユーザー独自フック(sync-gate.sh)が残る" "$R/.claude/hooks/sync-gate.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/sync-gate.sh" "ユーザー独自同期ゲート"
+
+# M2. vibecorp 管理スキルも差し替えられる
+echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
+mkdir -p "$R/.claude/skills/my-custom"
+echo "# カスタム" > "$R/.claude/skills/my-custom/SKILL.md"
+
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+
+assert_file_not_contains "管理スキルが差し替え済み" "$R/.claude/skills/review/SKILL.md" "古いレビュー"
+assert_file_exists "ユーザー独自スキルが残る" "$R/.claude/skills/my-custom/SKILL.md"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== N. 同名ファイル初回移行（スキップ動作） ==="
+# ============================================
+
+# N1. 初回（lock なし）で同名フックが既存ならスキップ
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/hooks"
+echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/hooks/protect-files.sh"
+echo 'echo "ユーザーカスタム版 protect-files"' >> "$TMPDIR_ROOT/.claude/hooks/protect-files.sh"
+
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "初回で同名フックはスキップ（ユーザー版保持）" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版 protect-files"
+
+# N2. 初回（lock なし）で同名スキルが既存ならスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/skills/commit"
+echo "# ユーザーカスタム commit" > "$TMPDIR_ROOT/.claude/skills/commit/SKILL.md"
+
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+COMMIT_CONTENT=$(cat "$R/.claude/skills/commit/SKILL.md")
+if [ "$COMMIT_CONTENT" = "# ユーザーカスタム commit" ]; then
+  pass "初回で同名スキルはスキップ（ユーザー版保持）"
+else
+  fail "初回で同名スキルはスキップ（ユーザー版保持） (上書きされた)"
+fi
+
+# N3. settings.json のユーザー独自フック参照も保持（lock なし初回）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude"
+cat > "$TMPDIR_ROOT/.claude/settings.json" <<'JSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+JSON
+
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "sync-gate.sh"
+assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
+
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

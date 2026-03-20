@@ -100,18 +100,79 @@ detect_repo_root() {
   fi
 }
 
-copy_templates() {
-  # hooks, skills を Claude Code の規約パスにコピー
-  # rules は copy_rules() で .claude/rules/ へ個別コピー（既存スキップのため）
+read_lock_list() {
+  # lock ファイルから指定セクションのファイル一覧を取得
+  # 使い方: read_lock_list <lock_file> <section_name>
+  # awk でブロック単位に抽出（grep -A N はセクション境界を越えるため使わない）
+  local lock_file="$1"
+  local section="$2"
+
+  [[ -f "$lock_file" ]] || return 0
+
+  awk -v section="$section" '
+    /^  [a-z]+:/ {
+      current = $1
+      gsub(/:$/, "", current)
+      next
+    }
+    current == section && /^    - / {
+      sub(/^    - /, "")
+      print
+    }
+  ' "$lock_file"
+}
+
+remove_managed_files() {
+  # lock に記載された vibecorp 管理ファイルのみ削除
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local hooks_dir="${REPO_ROOT}/.claude/hooks"
   local skills_dir="${REPO_ROOT}/.claude/skills"
 
-  mkdir -p "${REPO_ROOT}/.claude"
+  [[ -f "$lock" ]] || return 0
 
-  # 再実行時のネスト防止: 既存ディレクトリを削除してからコピー
-  rm -rf "$hooks_dir" "$skills_dir"
-  cp -R "${SCRIPT_DIR}/templates/claude/hooks" "$hooks_dir"
-  cp -R "${SCRIPT_DIR}/templates/claude/skills" "$skills_dir"
+  # lock 記載の hooks を削除
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && rm -f "${hooks_dir}/${name}"
+  done < <(read_lock_list "$lock" "hooks")
+
+  # lock 記載の skills を削除
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && rm -rf "${skills_dir}/${name}"
+  done < <(read_lock_list "$lock" "skills")
+
+  log_info "管理ファイルを削除（lock ベース）"
+}
+
+copy_managed_files() {
+  # テンプレートをコピー（既存ユーザーファイルはスキップ）
+  local hooks_dir="${REPO_ROOT}/.claude/hooks"
+  local skills_dir="${REPO_ROOT}/.claude/skills"
+
+  mkdir -p "$hooks_dir" "$skills_dir"
+
+  # hooks: 同名ファイルが既存ならスキップ
+  for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
+    [[ -f "$src" ]] || continue
+    local name
+    name=$(basename "$src")
+    if [[ -f "${hooks_dir}/${name}" ]]; then
+      log_skip "hooks/${name} は既存のためスキップ"
+    else
+      cp "$src" "${hooks_dir}/${name}"
+    fi
+  done
+
+  # skills: 同名ディレクトリが既存ならスキップ
+  for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+    [[ -d "$src_dir" ]] || continue
+    local name
+    name=$(basename "$src_dir")
+    if [[ -d "${skills_dir}/${name}" ]]; then
+      log_skip "skills/${name} は既存のためスキップ"
+    else
+      cp -R "$src_dir" "${skills_dir}/${name}"
+    fi
+  done
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
@@ -129,7 +190,9 @@ copy_templates() {
   done
 
   # hooks に実行権限を付与
-  chmod +x "${hooks_dir}/"*.sh
+  for f in "${hooks_dir}/"*.sh; do
+    [[ -f "$f" ]] && chmod +x "$f"
+  done
 
   # プリセット別削除（引き算方式）
   case "$PRESET" in
@@ -169,17 +232,28 @@ generate_vibecorp_lock() {
   local vibecorp_commit
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-  # インストール済みファイルのマニフェストを生成
+  # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
   local hooks_list="" skills_list="" rules_list=""
 
-  for f in "${REPO_ROOT}/.claude/hooks/"*.sh; do
-    [[ -f "$f" ]] && hooks_list="${hooks_list}  - $(basename "$f")"$'\n'
+  # テンプレートに存在し、プリセット削除後も残っているファイルを記録
+  for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    # 実際に配置先に存在するもののみ記録（プリセット削除分を除外）
+    [[ -f "${REPO_ROOT}/.claude/hooks/${name}" ]] && hooks_list="${hooks_list}    - ${name}"$'\n'
   done
-  for d in "${REPO_ROOT}/.claude/skills/"*/; do
-    [[ -d "$d" ]] && skills_list="${skills_list}  - $(basename "$d")"$'\n'
+  for d in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+    [[ -d "$d" ]] || continue
+    local name
+    name=$(basename "$d")
+    [[ -d "${REPO_ROOT}/.claude/skills/${name}" ]] && skills_list="${skills_list}    - ${name}"$'\n'
   done
   for f in "${SCRIPT_DIR}/templates/claude/rules/"*.md; do
-    [[ -f "$f" ]] && rules_list="${rules_list}  - $(basename "$f")"$'\n'
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    [[ -f "${REPO_ROOT}/.claude/rules/${name}" ]] && rules_list="${rules_list}    - ${name}"$'\n'
   done
 
   cat > "$lock" <<YAML
@@ -200,6 +274,7 @@ YAML
 generate_settings_json() {
   local settings="${REPO_ROOT}/.claude/settings.json"
   local template="${SCRIPT_DIR}/templates/settings.json.tpl"
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
 
   # テンプレートにプリセットフィルタを適用
   local new_settings
@@ -222,16 +297,25 @@ generate_settings_json() {
     echo "$new_settings" | jq '.' > "$settings"
     log_info "settings.json を生成"
   else
-    # 既存: ユーザーフックを保持し、vibecorp フックのみ差し替え
+    # 既存: lock のフック名リストで vibecorp 管理判定（パス文字列判定をやめる）
+    local managed_hooks_json="[]"
+    if [[ -f "$lock" ]]; then
+      # lock 記載のフック名から jq フィルタ用の JSON 配列を生成
+      managed_hooks_json=$(read_lock_list "$lock" "hooks" | jq -R -s 'split("\n") | map(select(length > 0))')
+    fi
+
     local new_hooks
     new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
 
-    jq --argjson new "$new_hooks" '
-      def strip_vibecorp_hooks:
-        .hooks |= map(select(.command | contains(".claude/hooks/") | not));
-      # 既存から vibecorp フックを除去し、新規と結合後、同一 matcher をマージ
+    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" '
+      def is_managed_hook:
+        (.command | split("/") | last) as $basename |
+        any($managed[]; . == $basename);
+      def strip_managed_hooks:
+        .hooks |= map(select(is_managed_hook | not));
+      # 既存から vibecorp 管理フックを除去し、新規と結合後、同一 matcher をマージ
       .hooks.PreToolUse = (
-        [(.hooks.PreToolUse // [])[] | strip_vibecorp_hooks | select((.hooks | length) > 0)]
+        [(.hooks.PreToolUse // [])[] | strip_managed_hooks | select((.hooks | length) > 0)]
         + $new
         | group_by(.matcher)
         | map({matcher: .[0].matcher, hooks: [.[].hooks[]]})
@@ -312,13 +396,14 @@ main() {
   validate_language
   check_prerequisites
   detect_repo_root
-  copy_templates
+  remove_managed_files
+  copy_managed_files
   generate_vibecorp_yml
-  generate_vibecorp_lock
   generate_settings_json
   copy_rules
   generate_claude_md
   generate_mvv_md
+  generate_vibecorp_lock
   print_completion
 }
 
