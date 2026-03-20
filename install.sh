@@ -192,7 +192,11 @@ generate_settings_json() {
   case "$PRESET" in
     minimal)
       new_settings=$(echo "$new_settings" | jq '
-        .hooks.PreToolUse |= [.[] | select(.hooks | all(.command | contains("review-to-rules-gate") | not))]
+        .hooks.PreToolUse |= [
+          .[]
+          | .hooks |= [.[] | select(.command | contains("review-to-rules-gate") | not)]
+          | select((.hooks | length) > 0)
+        ]
       ')
       ;;
   esac
@@ -207,8 +211,10 @@ generate_settings_json() {
     new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
 
     jq --argjson new "$new_hooks" '
+      def strip_vibecorp_hooks:
+        .hooks |= map(select(.command | contains(".claude/vibecorp/hooks/") | not));
       .hooks.PreToolUse = (
-        [(.hooks.PreToolUse // [])[] | select(.hooks | all(.command | contains(".claude/vibecorp/hooks/") | not))]
+        [(.hooks.PreToolUse // [])[] | strip_vibecorp_hooks | select((.hooks | length) > 0)]
         + $new
       )
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
