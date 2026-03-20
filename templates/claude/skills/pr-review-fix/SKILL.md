@@ -97,18 +97,23 @@ git push
 
 ### 7. 各コメントに返信
 
-**重要: 全てのコメント返信には必ずコミットリンクを含めること。**
-
-まず `git rev-parse HEAD` でコミットSHAを取得し、**SHAを直接埋め込んだコマンド**を実行する:
+まず `git rev-parse HEAD` でコミットSHAを取得する:
 
 ```bash
 git rev-parse HEAD
 ```
 
+各コメントに対して、以下の内容で返信する:
+
+- **修正した指摘**: コミットリンク + markdown での可読性の高い修正内容の説明
+- **却下した指摘**: markdown での可読性の高い却下理由の説明（判定基準に基づく根拠を含める）
+
+返信コマンド（SHAを直接埋め込む）:
+
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   -X POST \
-  -f body="修正内容の説明 (https://github.com/{owner}/{repo}/pull/{pr_number}/commits/{SHA})" \
+  -f body="{markdown}" \
   -F in_reply_to={comment_id}
 ```
 
