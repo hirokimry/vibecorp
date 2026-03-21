@@ -626,11 +626,12 @@ generate_settings_json() {
       def strip_managed_hooks:
         .hooks |= map(select(is_managed_hook | not));
       # 既存から vibecorp 管理フックを除去し、新規と結合後、同一 matcher をマージ
+      # 結合後に同一 command の重複を排除（lock 未登録フックとテンプレートの衝突防止）
       .hooks.PreToolUse = (
         [(.hooks.PreToolUse // [])[] | strip_managed_hooks | select((.hooks | length) > 0)]
         + $new
         | group_by(.matcher)
-        | map({matcher: .[0].matcher, hooks: [.[].hooks[]]})
+        | map({matcher: .[0].matcher, hooks: ([.[].hooks[]] | unique_by(.command))})
       )
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
     log_info "settings.json をマージ（ユーザーフック保持）"

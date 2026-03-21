@@ -1255,9 +1255,6 @@ assert_file_not_contains "minimal の lock に cto.md なし" "$R/.claude/vibeco
 
 cleanup
 
-# 以下のテストは validate_preset が standard を受け付けないため、
-# minimal でコピー後に削除される前の状態を直接テストする
-
 # W4. テンプレートにエージェントファイルが存在する
 AGENTS_TPL="${SCRIPT_DIR}/templates/claude/agents"
 assert_file_exists "テンプレートに cto.md 存在" "$AGENTS_TPL/cto.md"
@@ -1399,6 +1396,124 @@ cleanup
 create_test_repo
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "standard → 成功" "0" "$EXIT_CODE"
+cleanup
+
+# ============================================
+echo ""
+echo "=== Z. standard プリセット統合テスト ==="
+# ============================================
+
+# Z1. standard 新規インストール: agents が配置される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists "standard: agents ディレクトリ存在" "$R/.claude/agents"
+assert_file_exists "standard: cto.md が配置される" "$R/.claude/agents/cto.md"
+assert_file_exists "standard: cpo.md が配置される" "$R/.claude/agents/cpo.md"
+
+# Z2. standard 新規インストール: standard 専用 hooks が配置される
+assert_file_exists "standard: sync-gate.sh が配置される" "$R/.claude/hooks/sync-gate.sh"
+assert_file_exists "standard: review-to-rules-gate.sh が配置される" "$R/.claude/hooks/review-to-rules-gate.sh"
+assert_file_executable "standard: sync-gate.sh に実行権限" "$R/.claude/hooks/sync-gate.sh"
+assert_file_executable "standard: review-to-rules-gate.sh に実行権限" "$R/.claude/hooks/review-to-rules-gate.sh"
+
+# Z3. standard 新規インストール: standard 専用 skills が配置される
+assert_dir_exists "standard: sync-check スキル存在" "$R/.claude/skills/sync-check"
+assert_dir_exists "standard: sync-edit スキル存在" "$R/.claude/skills/sync-edit"
+assert_dir_exists "standard: review-to-rules スキル存在" "$R/.claude/skills/review-to-rules"
+
+# Z4. standard lock: agents/hooks/skills が lock に記録される
+assert_file_contains "standard lock: cto.md 記録" "$R/.claude/vibecorp.lock" "cto.md"
+assert_file_contains "standard lock: cpo.md 記録" "$R/.claude/vibecorp.lock" "cpo.md"
+assert_file_contains "standard lock: sync-gate.sh 記録" "$R/.claude/vibecorp.lock" "sync-gate.sh"
+assert_file_contains "standard lock: review-to-rules-gate.sh 記録" "$R/.claude/vibecorp.lock" "review-to-rules-gate.sh"
+
+# Z5. standard settings.json: standard 用フックが含まれる
+assert_file_contains "standard settings: sync-gate フック存在" "$R/.claude/settings.json" "sync-gate"
+assert_file_contains "standard settings: review-to-rules-gate フック存在" "$R/.claude/settings.json" "review-to-rules-gate"
+
+# Z6. standard vibecorp.yml: preset が standard
+assert_file_contains "standard vibecorp.yml: preset が standard" "$R/.claude/vibecorp.yml" "preset: standard"
+
+cleanup
+
+# Z7. minimal → standard アップグレード: 不足ファイルが追加される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# minimal 状態を確認
+assert_file_not_exists "アップグレード前: agents なし" "$R/.claude/agents/cto.md"
+assert_file_not_exists "アップグレード前: sync-gate なし" "$R/.claude/hooks/sync-gate.sh"
+
+# standard にアップグレード
+bash "$INSTALL_SH" --update --preset standard 2>/dev/null
+
+# agents が追加される
+assert_file_exists "アップグレード後: cto.md 追加" "$R/.claude/agents/cto.md"
+assert_file_exists "アップグレード後: cpo.md 追加" "$R/.claude/agents/cpo.md"
+
+# standard 専用 hooks が追加される
+assert_file_exists "アップグレード後: sync-gate.sh 追加" "$R/.claude/hooks/sync-gate.sh"
+assert_file_exists "アップグレード後: review-to-rules-gate.sh 追加" "$R/.claude/hooks/review-to-rules-gate.sh"
+
+# standard 専用 skills が追加される
+assert_dir_exists "アップグレード後: sync-check 追加" "$R/.claude/skills/sync-check"
+assert_dir_exists "アップグレード後: sync-edit 追加" "$R/.claude/skills/sync-edit"
+assert_dir_exists "アップグレード後: review-to-rules 追加" "$R/.claude/skills/review-to-rules"
+
+# knowledge が追加される
+assert_file_exists "アップグレード後: knowledge 追加" "$R/.claude/knowledge/cto/tech-principles.md"
+
+# Z8. minimal → standard アップグレード: vibecorp.yml が更新される
+assert_file_contains "アップグレード後: preset が standard" "$R/.claude/vibecorp.yml" "preset: standard"
+
+# Z9. minimal → standard アップグレード: settings.json に standard 用フックが追加される
+assert_file_contains "アップグレード後: settings に sync-gate" "$R/.claude/settings.json" "sync-gate"
+assert_file_contains "アップグレード後: settings に review-to-rules-gate" "$R/.claude/settings.json" "review-to-rules-gate"
+
+# Z10. minimal → standard アップグレード: lock が standard 構成に更新される
+assert_file_contains "アップグレード後: lock に cto.md" "$R/.claude/vibecorp.lock" "cto.md"
+assert_file_contains "アップグレード後: lock に sync-gate.sh" "$R/.claude/vibecorp.lock" "sync-gate.sh"
+
+cleanup
+
+# Z11. minimal → standard アップグレード: settings.json でフックが重複しない
+# lock に未登録のフック（block-api-bypass.sh 等）がテンプレートと衝突して重複するバグの防止
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+bash "$INSTALL_SH" --update --preset standard 2>/dev/null
+
+BYPASS_COUNT=$(grep -c 'block-api-bypass.sh' "$R/.claude/settings.json")
+if [ "$BYPASS_COUNT" = "1" ]; then
+  pass "アップグレード後: block-api-bypass.sh 重複なし"
+else
+  fail "アップグレード後: block-api-bypass.sh 重複なし (${BYPASS_COUNT}件)"
+fi
+
+PROTECT_COUNT=$(grep -c 'protect-files.sh' "$R/.claude/settings.json")
+if [ "$PROTECT_COUNT" = "1" ]; then
+  pass "アップグレード後: protect-files.sh 重複なし"
+else
+  fail "アップグレード後: protect-files.sh 重複なし (${PROTECT_COUNT}件)"
+fi
+
+cleanup
+
+# Z12. standard → standard 更新: 正常に更新できる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+EXIT_CODE=0; bash "$INSTALL_SH" --update --preset standard 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "standard → standard 更新成功" "0" "$EXIT_CODE"
+
+# 更新後もファイルが維持される
+assert_file_exists "standard 更新後: agents 維持" "$R/.claude/agents/cto.md"
+assert_file_exists "standard 更新後: sync-gate 維持" "$R/.claude/hooks/sync-gate.sh"
+assert_dir_exists "standard 更新後: sync-check 維持" "$R/.claude/skills/sync-check"
+
 cleanup
 
 # ============================================
