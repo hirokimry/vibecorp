@@ -981,6 +981,59 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== S. PR テンプレート・ワークフロー ==="
+# ============================================
+
+# S1. PR テンプレートが生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists "PR テンプレートが生成される" "$R/.github/pull_request_template.md"
+
+# S2. PR テンプレートに Issue リンクセクションが含まれる
+assert_file_contains "PR テンプレートに関連 Issue セクション" "$R/.github/pull_request_template.md" "関連 Issue"
+assert_file_contains "PR テンプレートに close/ref の説明" "$R/.github/pull_request_template.md" "close"
+
+# S3. auto-assign ワークフローが生成される
+assert_file_exists "auto-assign ワークフローが生成される" "$R/.github/workflows/auto-assign.yml"
+assert_file_contains "auto-assign に pull_request トリガー" "$R/.github/workflows/auto-assign.yml" "pull_request"
+assert_file_contains "auto-assign に add-assignee" "$R/.github/workflows/auto-assign.yml" "add-assignee"
+
+# S4. 既存 PR テンプレートはスキップ（冪等性）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github"
+echo "# カスタム PR テンプレート" > "$TMPDIR_ROOT/.github/pull_request_template.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 PR テンプレートはスキップ" "$R/.github/pull_request_template.md" "カスタム PR テンプレート"
+
+# S5. 既存ワークフローはスキップ（冪等性）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/workflows"
+echo "# カスタム auto-assign" > "$TMPDIR_ROOT/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存ワークフローはスキップ" "$R/.github/workflows/auto-assign.yml" "カスタム auto-assign"
+
+# S6. 再実行時に上書きされない
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+echo "# ユーザー編集済み" > "$R/.github/pull_request_template.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+
+assert_file_contains "再実行時に PR テンプレートが上書きされない" "$R/.github/pull_request_template.md" "ユーザー編集済み"
+
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

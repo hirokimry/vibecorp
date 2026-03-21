@@ -532,6 +532,43 @@ copy_issue_templates() {
   log_info "Issue テンプレートをコピー"
 }
 
+copy_pr_template() {
+  local src="${SCRIPT_DIR}/templates/.github/pull_request_template.md"
+  local dest="${REPO_ROOT}/.github/pull_request_template.md"
+
+  [[ -f "$src" ]] || return 0
+
+  mkdir -p "${REPO_ROOT}/.github"
+
+  if [[ -f "$dest" ]]; then
+    log_skip "pull_request_template.md は既存のためスキップ"
+  else
+    cp "$src" "$dest"
+    log_info "PR テンプレートをコピー"
+  fi
+}
+
+copy_workflows() {
+  local src="${SCRIPT_DIR}/templates/.github/workflows"
+  local dest="${REPO_ROOT}/.github/workflows"
+
+  [[ -d "$src" ]] || return 0
+  mkdir -p "$dest"
+
+  for f in "${src}"/*; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    if [[ -f "${dest}/${name}" ]]; then
+      log_skip "workflows/${name} は既存のためスキップ"
+    else
+      cp "$f" "${dest}/${name}"
+    fi
+  done
+
+  log_info "ワークフローをコピー"
+}
+
 create_labels() {
   # gh 未インストール or リポジトリ未接続ならスキップ
   if ! command -v gh >/dev/null 2>&1; then
@@ -658,6 +695,8 @@ main() {
   generate_settings_json
   copy_rules
   copy_issue_templates
+  copy_pr_template
+  copy_workflows
   generate_claude_md
   generate_mvv_md
   create_labels

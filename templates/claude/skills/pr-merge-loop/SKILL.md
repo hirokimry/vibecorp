@@ -97,19 +97,45 @@ yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
   - **変更なし** → **ステップ3へ**（スタンプファイルが発行され、ゲートを通過可能になる）
   - **変更あり** → `/commit` でコミットし `git push` する。push により CodeRabbit が再レビューするため、**ループ先頭（2.1）に戻る。** rules/knowledge の変更もレビュー対象とし、品質を担保する
 
-### 3. マージ
+### 3. CodeRabbit approve 確認
+
+マージ前に CodeRabbit の approve レビューが存在するか確認する。
+`request_changes_workflow: true` 環境では指摘なしで自動 approve されるはずだが、差分が小さい場合等に approve が発行されないケースがある。
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
+  --paginate \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.state == "APPROVED")] | length'
+```
+
+- approve あり（1以上） → ステップ4へ
+- approve なし → 以下のフォールバックを実行:
+
+#### フォールバック: approve 依頼
+
+CodeRabbit ステータスが `SUCCESS` かつ未解決スレッドが0件なのに approve がない場合、`@coderabbitai approve` を投稿して approve を促す。
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  -X POST \
+  -f body="@coderabbitai approve"
+```
+
+投稿後、30秒間隔で最大3分間 approve を待つ。approve が出たらステップ4へ進む。タイムアウトした場合はユーザーに報告する。
+
+### 4. マージ
 
 ```bash
 gh pr merge {pr_number} --squash --delete-branch
 ```
 
-### 4. ベースブランチに切り替え
+### 5. ベースブランチに切り替え
 
 ```bash
 git checkout {baseRefName} && git pull
 ```
 
-### 5. 結果報告
+### 6. 結果報告
 
 ```text
 ## PR自動マージ完了
@@ -126,6 +152,7 @@ git checkout {baseRefName} && git pull
 | 状況 | 対応 |
 |------|------|
 | CodeRabbitレビュータイムアウト | コメント0件ならそのまま進行、あれば現状で修正 |
+| CodeRabbit approve 未発行 | `@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
 | CI失敗 | 失敗内容を報告してユーザーに判断を委ねる |
 | マージコンフリクト | ユーザーに報告して停止 |
 
