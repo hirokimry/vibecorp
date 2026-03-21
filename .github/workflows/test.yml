@@ -4,8 +4,12 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: test-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  test-matrix:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -31,3 +35,16 @@ jobs:
             bash "$f" || failed=1
           done
           exit "$failed"
+
+  # matrix ジョブの結果を集約し、Branch Protection の required check として機能する
+  test:
+    needs: test-matrix
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 全 matrix ジョブの成功を確認
+        run: |
+          if [ "${{ needs.test-matrix.result }}" != "success" ]; then
+            echo "test-matrix が失敗しました: ${{ needs.test-matrix.result }}"
+            exit 1
+          fi
