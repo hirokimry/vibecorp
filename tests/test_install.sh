@@ -1334,6 +1334,56 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== Y. knowledge テンプレート ==="
+# ============================================
+
+# Y1. standard プリセットで knowledge ファイルが配置される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists "standard: cto/tech-principles.md が配置される" "$R/.claude/knowledge/cto/tech-principles.md"
+assert_file_exists "standard: cto/decisions.md が配置される" "$R/.claude/knowledge/cto/decisions.md"
+assert_file_exists "standard: cpo/product-principles.md が配置される" "$R/.claude/knowledge/cpo/product-principles.md"
+assert_file_exists "standard: cpo/decisions.md が配置される" "$R/.claude/knowledge/cpo/decisions.md"
+cleanup
+
+# Y2. minimal プリセットでは knowledge が配置されない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_not_exists "minimal: knowledge が配置されない" "$R/.claude/knowledge/cto/tech-principles.md"
+cleanup
+
+# Y3. 既存 knowledge ファイルはスキップされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+echo "# カスタム技術原則" > "$R/.claude/knowledge/cto/tech-principles.md"
+bash "$INSTALL_SH" --update --preset standard 2>/dev/null
+
+assert_file_contains "既存 knowledge はスキップ（ユーザー版保持）" "$R/.claude/knowledge/cto/tech-principles.md" "カスタム技術原則"
+cleanup
+
+# Y4. lock に knowledge セクションが含まれる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "lock に knowledge セクション" "$R/.claude/vibecorp.lock" "knowledge:"
+assert_file_contains "lock に tech-principles.md" "$R/.claude/vibecorp.lock" "tech-principles.md"
+assert_file_contains "lock に decisions.md" "$R/.claude/vibecorp.lock" "decisions.md"
+cleanup
+
+# Y5. standard プリセットバリデーション
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "standard → 成功" "0" "$EXIT_CODE"
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
