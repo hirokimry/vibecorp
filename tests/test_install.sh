@@ -324,7 +324,22 @@ assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.clau
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
-# E13. .claude/vibecorp/ ディレクトリが存在しない
+# E13. .coderabbit.yaml 存在
+assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
+
+# E14. .coderabbit.yaml に request_changes_workflow: true
+assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
+
+# E15. .coderabbit.yaml に auto_resolve
+assert_file_contains ".coderabbit.yaml に auto_resolve" "$R/.coderabbit.yaml" "auto_resolve"
+
+# E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
+assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
+
+# E17. .coderabbit.yaml にプレースホルダーなし
+assert_file_not_contains ".coderabbit.yaml にプレースホルダーなし" "$R/.coderabbit.yaml" '{{.*}}'
+
+# E18. .claude/vibecorp/ ディレクトリが存在しない
 if [ ! -d "$R/.claude/vibecorp" ]; then
   pass ".claude/vibecorp/ が存在しない"
 else
@@ -367,6 +382,7 @@ R="$TMPDIR_ROOT"
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
+CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
 
 # 2回目実行
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
@@ -396,6 +412,14 @@ if [ "$MVV_MD_BEFORE" = "$MVV_MD_AFTER" ]; then
   pass "MVV.md スキップ（内容保持）"
 else
   fail "MVV.md スキップ（内容が変わった）"
+fi
+
+# G5. .coderabbit.yaml スキップ（内容保持）
+CODERABBIT_AFTER=$(cat "$R/.coderabbit.yaml")
+if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
+  pass ".coderabbit.yaml スキップ（内容保持）"
+else
+  fail ".coderabbit.yaml スキップ（内容が変わった）"
 fi
 
 cleanup
@@ -650,6 +674,29 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "sync-gate.sh"
 assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== O. .coderabbit.yaml スキップ動作 ==="
+# ============================================
+
+# O1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+create_test_repo
+echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
+
+# O2. --language en で language: en-US になる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains ".coderabbit.yaml に language: en-US" "$R/.coderabbit.yaml" "language: en-US"
 
 cleanup
 
