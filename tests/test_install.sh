@@ -324,7 +324,22 @@ assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.clau
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
-# E13. .claude/vibecorp/ ディレクトリが存在しない
+# E13. .coderabbit.yaml 存在
+assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
+
+# E14. .coderabbit.yaml に request_changes_workflow: true
+assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
+
+# E15. .coderabbit.yaml に auto_resolve
+assert_file_contains ".coderabbit.yaml に auto_resolve" "$R/.coderabbit.yaml" "auto_resolve"
+
+# E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
+assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
+
+# E17. .coderabbit.yaml にプレースホルダーなし
+assert_file_not_contains ".coderabbit.yaml にプレースホルダーなし" "$R/.coderabbit.yaml" '{{.*}}'
+
+# E18. .claude/vibecorp/ ディレクトリが存在しない
 if [ ! -d "$R/.claude/vibecorp" ]; then
   pass ".claude/vibecorp/ が存在しない"
 else
@@ -367,6 +382,7 @@ R="$TMPDIR_ROOT"
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
+CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
 
 # 2回目実行
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
@@ -396,6 +412,14 @@ if [ "$MVV_MD_BEFORE" = "$MVV_MD_AFTER" ]; then
   pass "MVV.md スキップ（内容保持）"
 else
   fail "MVV.md スキップ（内容が変わった）"
+fi
+
+# G5. .coderabbit.yaml スキップ（内容保持）
+CODERABBIT_AFTER=$(cat "$R/.coderabbit.yaml")
+if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
+  pass ".coderabbit.yaml スキップ（内容保持）"
+else
+  fail ".coderabbit.yaml スキップ（内容が変わった）"
 fi
 
 cleanup
@@ -655,26 +679,49 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== O. Issue テンプレート・ラベル・/issue スキル ==="
+echo "=== O. .coderabbit.yaml スキップ動作 ==="
 # ============================================
 
-# O1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
+# O1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+create_test_repo
+echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
+
+# O2. --language en で language: en-US になる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains ".coderabbit.yaml に language: en-US" "$R/.coderabbit.yaml" "language: en-US"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== P. Issue テンプレート・ラベル・/issue スキル ==="
+# ============================================
+
+# P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_dir_exists ".github/ISSUE_TEMPLATE/ 存在" "$R/.github/ISSUE_TEMPLATE"
 
-# O2. bug_report.md 存在
+# P2. bug_report.md 存在
 assert_file_exists "bug_report.md 存在" "$R/.github/ISSUE_TEMPLATE/bug_report.md"
 
-# O3. feature_request.md 存在
+# P3. feature_request.md 存在
 assert_file_exists "feature_request.md 存在" "$R/.github/ISSUE_TEMPLATE/feature_request.md"
 
-# O4. config.yml 存在
+# P4. config.yml 存在
 assert_file_exists "config.yml 存在" "$R/.github/ISSUE_TEMPLATE/config.yml"
 
-# O5. 既存同名テンプレートはスキップ
+# P5. 既存同名テンプレートはスキップ
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE"
@@ -688,18 +735,18 @@ else
   fail "既存同名テンプレートはスキップ (内容が上書きされた)"
 fi
 
-# O6. vibecorp.lock に issue_templates セクション含む
+# P6. vibecorp.lock に issue_templates セクション含む
 assert_file_contains "lock に issue_templates セクション" "$R/.claude/vibecorp.lock" "issue_templates:"
 assert_file_contains "lock に bug_report.md" "$R/.claude/vibecorp.lock" "bug_report.md"
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 
-# O7. /issue スキルが配置されている
+# P7. /issue スキルが配置されている
 assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
 assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
 assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
 
-# O8. gh が repo view に失敗する場合のラベル作成スキップ動作
+# P8. gh が repo view に失敗する場合のラベル作成スキップ動作
 # ダミー gh を PATH の先頭に配置し、常に失敗させる
 cleanup
 create_test_repo
