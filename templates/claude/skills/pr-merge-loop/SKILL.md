@@ -59,22 +59,31 @@ gh pr checks {pr_number} --json name,state --jq '.[] | {name, state}'
 
 #### 2.3 終了条件の判定
 
-未解決のCodeRabbitコメントを数える:
+GraphQL API で未解決の CodeRabbit レビュースレッド数を取得する:
 
 ```bash
-# CodeRabbitのトップレベルコメントID
-CR_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --paginate \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | .id]')
-
-# 返信済みID一覧
-REPLY_TO_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --paginate \
-  --jq '[.[] | select(.in_reply_to_id != null) | .in_reply_to_id] | unique')
-
-# 未返信 = 未解決
-echo "$CR_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
-  '[.[] | select(. as $id | $replied | index($id) | not)]'
+gh api graphql -f query='
+  query {
+    repository(owner: "{owner}", name: "{repo}") {
+      pullRequest(number: {pr_number}) {
+        reviewThreads(first: 100) {
+          nodes {
+            isResolved
+            comments(first: 1) {
+              nodes {
+                author { login }
+                body
+              }
+            }
+          }
+        }
+      }
+    }
+  }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes
+    | [.[] | select(.isResolved == false)
+    | select(.comments.nodes[0].author.login | test("coderabbit"; "i"))]
+    | length'
 ```
 
 - CI パス + 未解決0件 → **ループ終了、ステップ2.5 へ**
@@ -97,19 +106,65 @@ yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
   - **変更なし** → **ステップ3へ**（スタンプファイルが発行され、ゲートを通過可能になる）
   - **変更あり** → `/commit` でコミットし `git push` する。push により CodeRabbit が再レビューするため、**ループ先頭（2.1）に戻る。** rules/knowledge の変更もレビュー対象とし、品質を担保する
 
-### 3. マージ
+### 3. CodeRabbit approve 確認
+
+マージ前に CodeRabbit の approve レビューが存在するか確認する。
+`request_changes_workflow: true` 環境では指摘なしで自動 approve されるはずだが、差分が小さい場合等に approve が発行されないケースがある。
+
+#### 3.1 rate limit チェック（フォールバック前の必須ガード）
+
+**approve 確認の前に**、CodeRabbit が rate limit 状態でないことを確認する。rate limit 中は CodeRabbit がレビューを実行できていないため、「approve がない」を「レビュー済みで問題なし」と解釈してはならない。
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  --paginate \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.body | test("[Rr]ate limit"))] | length'
+```
+
+- **1以上（rate limit コメントあり）** → **フォールバック禁止**。ユーザーに「CodeRabbit が rate limit 中のためマージを保留しています。rate limit 解除後に再実行してください」と報告して**停止する**
+- **0（rate limit なし）** → 3.2 へ進む
+
+#### 3.2 approve 確認
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
+  --paginate \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.state == "APPROVED")] | length'
+```
+
+- approve あり（1以上） → ステップ4へ
+- approve なし → 以下のフォールバックを実行:
+
+#### 3.3 フォールバック: approve 依頼
+
+**発動条件（全て満たす場合のみ）:**
+1. 3.1 の rate limit チェックを通過している（rate limit コメントなし）
+2. CodeRabbit ステータスが `SUCCESS`
+3. 未解決スレッドが0件
+
+上記を全て満たす場合のみ、`@coderabbitai approve` を投稿して approve を促す。
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  -X POST \
+  -f body="@coderabbitai approve"
+```
+
+投稿後、30秒間隔で最大3分間 approve を待つ。approve が出たらステップ4へ進む。タイムアウトした場合はユーザーに報告する。
+
+### 4. マージ
 
 ```bash
 gh pr merge {pr_number} --squash --delete-branch
 ```
 
-### 4. ベースブランチに切り替え
+### 5. ベースブランチに切り替え
 
 ```bash
 git checkout {baseRefName} && git pull
 ```
 
-### 5. 結果報告
+### 6. 結果報告
 
 ```text
 ## PR自動マージ完了
@@ -126,6 +181,8 @@ git checkout {baseRefName} && git pull
 | 状況 | 対応 |
 |------|------|
 | CodeRabbitレビュータイムアウト | コメント0件ならそのまま進行、あれば現状で修正 |
+| CodeRabbit rate limit | rate limit コメントを検出したらフォールバック禁止。ユーザーに報告して停止 |
+| CodeRabbit approve 未発行 | rate limit チェック通過後、`@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
 | CI失敗 | 失敗内容を報告してユーザーに判断を委ねる |
 | マージコンフリクト | ユーザーに報告して停止 |
 
