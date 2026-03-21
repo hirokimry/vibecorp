@@ -688,10 +688,139 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== O. .coderabbit.yaml スキップ動作 ==="
+echo "=== O. --update 引数パース ==="
 # ============================================
 
-# O1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+# O1. --update で vibecorp.yml から設定を読み取って成功
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update で成功" "0" "$EXIT_CODE"
+cleanup
+
+# O2. --update で vibecorp.yml が無い場合はエラー
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update で vibecorp.yml 無しはエラー" "1" "$EXIT_CODE"
+cleanup
+
+# O3. --update + --name 同時指定はエラー
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+EXIT_CODE=0; bash "$INSTALL_SH" --update --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update + --name 同時指定はエラー" "1" "$EXIT_CODE"
+cleanup
+
+# O4. --update で vibecorp.yml の設定が正しく読み取られる
+create_test_repo
+bash "$INSTALL_SH" --name my-app --preset minimal --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+# CLAUDE.md を削除して --update で再生成されるか確認
+rm -f "$R/.claude/CLAUDE.md"
+bash "$INSTALL_SH" --update 2>/dev/null
+# CLAUDE.md が yml の name/language で再生成されているか
+assert_file_exists "--update で CLAUDE.md 再生成" "$R/.claude/CLAUDE.md"
+assert_file_contains "--update で yml の name を使用" "$R/.claude/CLAUDE.md" "my-app"
+assert_file_contains "--update で yml の language を使用" "$R/.claude/CLAUDE.md" "English"
+cleanup
+
+# ============================================
+echo ""
+echo "=== P. --update での管理ファイル強制差し替え ==="
+# ============================================
+
+# P1. --update で管理フックが強制上書きされる（スキップしない）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# protect-files.sh をカスタム内容に変更
+echo "# ユーザーカスタム版" > "$R/.claude/hooks/protect-files.sh"
+# ユーザー独自フックも追加
+echo '#!/bin/bash' > "$R/.claude/hooks/my-guard.sh"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# 管理フックは強制上書き
+assert_file_not_contains "--update で管理フックが上書き" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版"
+# ユーザー独自フックは残る
+assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
+cleanup
+
+# P2. --update で管理スキルが強制上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# 古い review" > "$R/.claude/skills/review/SKILL.md"
+mkdir -p "$R/.claude/skills/my-deploy"
+echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_contains "--update で管理スキルが上書き" "$R/.claude/skills/review/SKILL.md" "古い review"
+assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
+cleanup
+
+# P3. --update で管理ルールが強制上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# 古いルール" > "$R/.claude/rules/comments.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_contains "--update で管理ルールが上書き" "$R/.claude/rules/comments.md" "古いルール"
+cleanup
+
+# ============================================
+echo ""
+echo "=== Q. --update でのプリセット変更 ==="
+# ============================================
+
+# Q1. --update --preset で vibecorp.yml の preset が更新される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "初回は minimal" "$R/.claude/vibecorp.yml" "preset: minimal"
+
+# 注: 現在 minimal のみ対応のため、preset 変更テストは validate_preset を一時回避
+# ここでは yml の更新ロジック自体をテスト（同じ preset での --update）
+bash "$INSTALL_SH" --update --preset minimal 2>/dev/null
+assert_file_contains "--update --preset で yml 保持" "$R/.claude/vibecorp.yml" "preset: minimal"
+cleanup
+
+# Q2. --update で全既存テスト後のファイル整合性
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ユーザーファイルを配置
+echo '#!/bin/bash' > "$R/.claude/hooks/custom.sh"
+mkdir -p "$R/.claude/skills/custom-skill"
+echo "# custom" > "$R/.claude/skills/custom-skill/SKILL.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# vibecorp 管理ファイルが存在
+assert_file_exists "--update 後に protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
+assert_dir_exists "--update 後に review スキル存在" "$R/.claude/skills/review"
+# ユーザーファイルが保持
+assert_file_exists "--update 後にユーザーフック保持" "$R/.claude/hooks/custom.sh"
+assert_file_exists "--update 後にユーザースキル保持" "$R/.claude/skills/custom-skill/SKILL.md"
+# lock にユーザーファイルなし
+assert_file_not_contains "--update 後の lock にユーザーフックなし" "$R/.claude/vibecorp.lock" "custom.sh"
+assert_file_not_contains "--update 後の lock にユーザースキルなし" "$R/.claude/vibecorp.lock" "custom-skill"
+cleanup
+
+# ============================================
+echo ""
+echo "=== R. .coderabbit.yaml スキップ動作 ==="
+# ============================================
+
+# R1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
 create_test_repo
 echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
@@ -699,7 +828,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
 
-# O2. --language en で language: en-US になる
+# R2. --language en で language: en-US になる
 cleanup
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
@@ -711,7 +840,7 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== P. Issue テンプレート・ラベル・/issue スキル ==="
+echo "=== S. Issue テンプレート・ラベル・/issue スキル ==="
 # ============================================
 
 # P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
@@ -797,26 +926,26 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== Q. CI ワークフロー生成 ==="
+echo "=== T. CI ワークフロー生成 ==="
 # ============================================
 
-# Q1. .github/workflows/test.yml が生成される
+# T1. .github/workflows/test.yml が生成される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists ".github/workflows/test.yml 存在" "$R/.github/workflows/test.yml"
 
-# Q2. name: test が含まれる
+# T2. name: test が含まれる
 assert_file_contains "CI ワークフロー名が test" "$R/.github/workflows/test.yml" "name: test"
 
-# Q3. 集約ジョブ test: が含まれる
+# T3. 集約ジョブ test: が含まれる
 assert_file_contains "集約ジョブ test 存在" "$R/.github/workflows/test.yml" "needs: test-matrix"
 
-# Q4. concurrency 設定が含まれる
+# T4. concurrency 設定が含まれる
 assert_file_contains "concurrency 設定" "$R/.github/workflows/test.yml" "cancel-in-progress: true"
 
-# Q5. 既存ファイルがある場合はスキップ
+# T5. 既存ファイルがある場合はスキップ
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github/workflows"
@@ -830,10 +959,10 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== R. リポジトリ設定（gh 未インストール時フォールバック） ==="
+echo "=== U. リポジトリ設定（gh 未インストール時フォールバック） ==="
 # ============================================
 
-# R1. gh が利用できない環境でもインストール成功
+# U1. gh が利用できない環境でもインストール成功
 create_test_repo
 # PATH から gh を含むディレクトリを除外して gh を見つけられなくする
 GH_REAL=$(command -v gh 2>/dev/null || true)
@@ -846,7 +975,7 @@ EXIT_CODE=0
 PATH="$NO_GH_PATH" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "gh 未インストールでもインストール成功" "0" "$EXIT_CODE"
 
-# R2. gh 利用可能だが repo view 失敗時もインストール成功
+# U2. gh 利用可能だが repo view 失敗時もインストール成功
 cleanup
 create_test_repo
 FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
@@ -867,7 +996,7 @@ assert_exit_code "gh repo view 失敗でもインストール成功" "0" "$EXIT_
 
 cleanup
 
-# R3. 既存 contexts が保持される（マージ動作）
+# U3. 既存 contexts が保持される（マージ動作）
 create_test_repo
 FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
 mkdir -p "$FAKE_BIN"
@@ -909,7 +1038,7 @@ fi
 
 cleanup
 
-# R4. 既存 Branch Protection なし（GET 404）でも正常動作
+# U4. 既存 Branch Protection なし（GET 404）でも正常動作
 create_test_repo
 FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
 mkdir -p "$FAKE_BIN"
@@ -945,7 +1074,7 @@ fi
 
 cleanup
 
-# R5. Branch Protection PUT 失敗時にフォールバック（推奨設定表示）
+# U5. Branch Protection PUT 失敗時にフォールバック（推奨設定表示）
 create_test_repo
 FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
 mkdir -p "$FAKE_BIN"
@@ -985,26 +1114,26 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== S. PR テンプレート・ワークフロー ==="
+echo "=== V. PR テンプレート・ワークフロー ==="
 # ============================================
 
-# S1. PR テンプレートが生成される
+# V1. PR テンプレートが生成される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists "PR テンプレートが生成される" "$R/.github/pull_request_template.md"
 
-# S2. PR テンプレートに Issue リンクセクションが含まれる
+# V2. PR テンプレートに Issue リンクセクションが含まれる
 assert_file_contains "PR テンプレートに関連 Issue セクション" "$R/.github/pull_request_template.md" "関連 Issue"
 assert_file_contains "PR テンプレートに close/ref の説明" "$R/.github/pull_request_template.md" "close"
 
-# S3. auto-assign ワークフローが生成される
+# V3. auto-assign ワークフローが生成される
 assert_file_exists "auto-assign ワークフローが生成される" "$R/.github/workflows/auto-assign.yml"
 assert_file_contains "auto-assign に pull_request トリガー" "$R/.github/workflows/auto-assign.yml" "pull_request"
 assert_file_contains "auto-assign に add-assignee" "$R/.github/workflows/auto-assign.yml" "add-assignee"
 
-# S4. 既存 PR テンプレートはスキップ（冪等性）
+# V4. 既存 PR テンプレートはスキップ（冪等性）
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github"
@@ -1014,7 +1143,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存 PR テンプレートはスキップ" "$R/.github/pull_request_template.md" "カスタム PR テンプレート"
 
-# S5. 既存ワークフローはスキップ（冪等性）
+# V5. 既存ワークフローはスキップ（冪等性）
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github/workflows"
@@ -1024,7 +1153,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存ワークフローはスキップ" "$R/.github/workflows/auto-assign.yml" "カスタム auto-assign"
 
-# S6. 再実行時に上書きされない
+# V6. 再実行時に上書きされない
 cleanup
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
@@ -1036,7 +1165,7 @@ assert_file_contains "再実行時に PR テンプレートが上書きされな
 
 cleanup
 
-# R6. required_status_checks GET が 403（権限不足）の場合、PUT をスキップして手動ガイダンス表示
+# U6. required_status_checks GET が 403（権限不足）の場合、PUT をスキップして手動ガイダンス表示
 create_test_repo
 FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
 mkdir -p "$FAKE_BIN"
@@ -1081,10 +1210,10 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== T. エージェントテンプレート ==="
+echo "=== W. エージェントテンプレート ==="
 # ============================================
 
-# T1. minimal プリセット（デフォルト）ではエージェントが削除される
+# W1. minimal プリセット（デフォルト）ではエージェントが削除される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -1095,11 +1224,11 @@ else
   fail "minimal プリセットでエージェントディレクトリが削除される (ディレクトリが残っている)"
 fi
 
-# T2. minimal の lock にエージェントが含まれない
+# W2. minimal の lock にエージェントが含まれない
 assert_file_contains "lock に agents セクション" "$R/.claude/vibecorp.lock" "agents:"
 assert_file_not_contains "minimal の lock に cto.md なし" "$R/.claude/vibecorp.lock" "cto.md"
 
-# T3. 既存エージェントは minimal でも残る（ユーザーファイルは削除しない）
+# W3. 既存エージェントは minimal でも残る（ユーザーファイルは削除しない）
 # → minimal は rm -rf agents_dir するため、ユーザーファイルも消える
 # → これは意図した動作（standard 以上で有効化される機能のため）
 
@@ -1108,7 +1237,7 @@ cleanup
 # 以下のテストは validate_preset が standard を受け付けないため、
 # minimal でコピー後に削除される前の状態を直接テストする
 
-# T4. テンプレートにエージェントファイルが存在する
+# W4. テンプレートにエージェントファイルが存在する
 AGENTS_TPL="${SCRIPT_DIR}/templates/claude/agents"
 assert_file_exists "テンプレートに cto.md 存在" "$AGENTS_TPL/cto.md"
 assert_file_contains "cto.md に name: cto" "$AGENTS_TPL/cto.md" "name: cto"

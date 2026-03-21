@@ -812,6 +812,11 @@ main() {
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml
+
+  if [[ "$UPDATE_MODE" == true ]]; then
+    update_vibecorp_yml
+  fi
+
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
