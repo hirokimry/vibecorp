@@ -1527,9 +1527,9 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists ".claude/.gitignore が生成される" "$R/.claude/.gitignore"
-assert_file_contains ".gitignore に memory/" "$R/.claude/.gitignore" "memory/"
 assert_file_contains ".gitignore に plans/" "$R/.claude/.gitignore" "plans/"
-assert_file_contains ".gitignore に tickets/" "$R/.claude/.gitignore" "tickets/"
+assert_file_not_contains ".gitignore に memory/ なし" "$R/.claude/.gitignore" "memory/"
+assert_file_not_contains ".gitignore に tickets/ なし" "$R/.claude/.gitignore" "tickets/"
 
 cleanup
 
@@ -1544,9 +1544,7 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_contains "ユーザー独自エントリが保持される" "$R/.claude/.gitignore" "my-local-stuff/"
-assert_file_contains "memory/ が追記される" "$R/.claude/.gitignore" "memory/"
 assert_file_contains "plans/ が追記される" "$R/.claude/.gitignore" "plans/"
-assert_file_contains "tickets/ が追記される" "$R/.claude/.gitignore" "tickets/"
 
 cleanup
 
@@ -1555,13 +1553,6 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 bash "$INSTALL_SH" --update 2>/dev/null
-
-MEMORY_COUNT=$(grep -cxF "memory/" "$R/.claude/.gitignore")
-if [ "$MEMORY_COUNT" = "1" ]; then
-  pass "--update で memory/ が重複しない"
-else
-  fail "--update で memory/ が重複しない (${MEMORY_COUNT}件)"
-fi
 
 PLANS_COUNT=$(grep -cxF "plans/" "$R/.claude/.gitignore")
 if [ "$PLANS_COUNT" = "1" ]; then

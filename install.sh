@@ -832,8 +832,8 @@ copy_knowledge() {
 generate_claude_gitignore() {
   local target="${REPO_ROOT}/.claude/.gitignore"
 
-  # vibecorp が管理する除外エントリ（個人の作業状態）
-  local entries=("memory/" "plans/" "tickets/")
+  # vibecorp が管理する除外エントリ（会話中の一時的な実装計画）
+  local entries=("plans/")
 
   if [[ -f "$target" ]]; then
     # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
@@ -851,10 +851,8 @@ generate_claude_gitignore() {
   fi
 
   cat > "$target" <<'GITIGNORE'
-# 個人の作業状態（git 追跡しない）
-memory/
+# 会話中の一時的な実装計画（git 追跡しない）
 plans/
-tickets/
 GITIGNORE
   log_info ".claude/.gitignore を生成"
 }
