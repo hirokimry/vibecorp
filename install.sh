@@ -354,12 +354,19 @@ configure_github_repo() {
 
   # 既存の required status checks を取得してマージ（既存 contexts を保持）
   local existing_contexts="[]"
+  local get_error
   local existing_raw
   if existing_raw=$(gh api "repos/${name_with_owner}/branches/${base_branch}/protection/required_status_checks" \
-    --jq '.contexts' 2>/dev/null); then
+    --jq '.contexts' 2>&1); then
     # 有効な JSON 配列かどうか検証（-e: false/null で非ゼロ終了）
     if [[ -n "$existing_raw" ]] && echo "$existing_raw" | jq -e 'type == "array"' >/dev/null 2>&1; then
       existing_contexts="$existing_raw"
+    fi
+  else
+    get_error="$existing_raw"
+    # 404 = Branch Protection 未設定（正常）、それ以外 = 権限不足等で既存 contexts 不明
+    if ! echo "$get_error" | grep -qi "404\|not found"; then
+      log_skip "既存の required status checks を取得できません。vibecorp の設定のみ適用します"
     fi
   fi
 
@@ -367,6 +374,10 @@ configure_github_repo() {
   local merged_contexts
   merged_contexts=$(jq -n --argjson existing "$existing_contexts" --argjson new "$vibecorp_checks" \
     '($existing + $new) | unique')
+
+  # 手動ガイダンス用にマージ済み contexts を文字列化
+  local merged_checks_display
+  merged_checks_display=$(echo "$merged_contexts" | jq -r 'join(", ")')
 
   local protection_json
   protection_json=$(jq -n \
@@ -395,12 +406,8 @@ configure_github_repo() {
     -X PUT --input - 2>&1 >/dev/null); then
     log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve必須）"
   else
-    if echo "$put_error" | grep -qi "403\|forbidden"; then
-      log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です。Free Organization では Branch Protection API は使用できません）"
-    else
-      log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）"
-    fi
-    print_manual_guidance "$base_branch" "$checks_display"
+    log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）: ${put_error}"
+    print_manual_guidance "$base_branch" "$merged_checks_display"
   fi
 }
 

@@ -881,9 +881,9 @@ if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
 fi
 # api 呼び出しの振り分け
 if [[ "\$1" == "api" ]]; then
-  # required_status_checks GET → 既存 contexts を返す
+  # required_status_checks GET → 既存 contexts を返す（"test" を含めず UNION を検証）
   if echo "\$*" | grep -q "required_status_checks"; then
-    echo '["test","custom-ci"]'
+    echo '["custom-ci"]'
     exit 0
   fi
   # Branch Protection PUT → payload をログに保存
@@ -899,10 +899,12 @@ exit 0
 FAKESH
 chmod +x "$FAKE_BIN/gh"
 PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null
-if [[ -f "$PUT_LOG" ]] && jq -e '.required_status_checks.contexts | index("custom-ci")' "$PUT_LOG" >/dev/null 2>&1; then
-  pass "R3: 既存 contexts (custom-ci) がマージされて保持される"
+if [[ -f "$PUT_LOG" ]] \
+  && jq -e '.required_status_checks.contexts | index("custom-ci")' "$PUT_LOG" >/dev/null 2>&1 \
+  && jq -e '.required_status_checks.contexts | index("test")' "$PUT_LOG" >/dev/null 2>&1; then
+  pass "R3: 既存 contexts (custom-ci) と vibecorp contexts (test) が UNION される"
 else
-  fail "R3: 既存 contexts (custom-ci) がマージされて保持される"
+  fail "R3: 既存 contexts (custom-ci) と vibecorp contexts (test) が UNION される"
 fi
 
 cleanup
@@ -921,6 +923,7 @@ fi
 if [[ "\$1" == "api" ]]; then
   # required_status_checks GET → 404（未設定）
   if echo "\$*" | grep -q "required_status_checks"; then
+    echo "HTTP 404 - Not Found" >&2
     exit 1
   fi
   # Branch Protection PUT → payload をログに保存
