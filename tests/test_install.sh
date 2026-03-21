@@ -367,6 +367,19 @@ else
   fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
 fi
 
+# F3. sync-gate.sh が削除されている
+assert_file_not_exists "sync-gate.sh が削除されている" "$R/.claude/hooks/sync-gate.sh"
+
+# F4. sync-check スキルが削除されている
+if [ ! -d "$R/.claude/skills/sync-check" ]; then
+  pass "sync-check スキルが削除されている"
+else
+  fail "sync-check スキルが削除されている (ディレクトリが存在)"
+fi
+
+# F5. settings.json に sync-gate のエントリがない
+assert_file_not_contains "settings.json に sync-gate なし" "$R/.claude/settings.json" "sync-gate"
+
 cleanup
 
 # ============================================
