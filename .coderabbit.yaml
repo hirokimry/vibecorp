@@ -11,7 +11,8 @@ reviews:
       - main
       - develop
 
-  request_changes_workflow: false
+  # 指摘0件 → approve、指摘あり → request changes、全 resolve 後 → approve に切替
+  request_changes_workflow: true
 
   auto_resolve:
     enabled: true
