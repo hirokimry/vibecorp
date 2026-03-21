@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_hooks.sh — protect-files.sh / review-to-rules-gate.sh のユニットテスト
+# test_hooks.sh — protect-files.sh / review-to-rules-gate.sh / sync-gate.sh のユニットテスト
 # 使い方: bash tests/test_hooks.sh
 
 set -euo pipefail
@@ -113,10 +113,14 @@ cleanup() {
   rm -f /tmp/.test-project-review-to-rules-ok
   rm -f /tmp/.vibecorp-project-review-to-rules-ok
   rm -f /tmp/.my-project-review-to-rules-ok
+  rm -f /tmp/.test-project-sync-ok
+  rm -f /tmp/.vibecorp-project-sync-ok
+  rm -f /tmp/.my-project-sync-ok
   # サニタイズロジックと同じ方法で生成した名前を削除
   local sanitized
   sanitized=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
   rm -f "/tmp/.${sanitized}-review-to-rules-ok"
+  rm -f "/tmp/.${sanitized}-sync-ok"
 }
 trap cleanup EXIT
 
@@ -344,6 +348,134 @@ rm -f "/tmp/.${SANITIZED_NAME}-review-to-rules-ok"
 write_vibecorp_yml
 rm -f /tmp/.test-project-review-to-rules-ok
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
+VALID=true
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecisionReason' >/dev/null 2>&1 || VALID=false
+if [ "$VALID" = true ]; then
+  pass "deny 出力の JSON 構造検証"
+else
+  fail "deny 出力の JSON 構造検証 (構造が不正)"
+fi
+
+# ============================================
+echo ""
+echo "=== sync-gate.sh ==="
+# ============================================
+
+write_vibecorp_yml
+
+# 1. スタンプなしで git push → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "スタンプなしで git push → deny" "$OUTPUT"
+
+# 2. スタンプありで git push → 許可
+touch /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_allowed "スタンプありで git push → 許可" "$OUTPUT"
+
+# 3. 許可後にスタンプ削除確認
+assert_file_not_exists "許可後にスタンプ削除確認" "/tmp/.test-project-sync-ok"
+
+# 4. git push（引数なし） → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push"}}' | run_hook sync-gate.sh)
+assert_blocked "git push（引数なし） → deny" "$OUTPUT"
+
+# 5. git push --delete → スタンプなしでも許可
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push --delete origin feature-branch"}}' | run_hook sync-gate.sh)
+assert_allowed "git push --delete → スタンプなしでも許可" "$OUTPUT"
+
+# 6. git push -d → スタンプなしでも許可
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push -d origin feature-branch"}}' | run_hook sync-gate.sh)
+assert_allowed "git push -d → スタンプなしでも許可" "$OUTPUT"
+
+# 7. 先頭スペース付き push → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"  git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "先頭スペース付き push → deny" "$OUTPUT"
+
+# 8. 環境変数プレフィックス付き → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"GIT_SSH_COMMAND=ssh git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
+
+# 9. 複数環境変数プレフィックス → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
+
+# 10. env ラッパー付き → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "env ラッパー付き → deny" "$OUTPUT"
+
+# 11. command ラッパー付き → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"command git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "command ラッパー付き → deny" "$OUTPUT"
+
+# 12. 絶対パス(/usr/bin/git) → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "絶対パス(/usr/bin/git) → deny" "$OUTPUT"
+
+# 13. 相対パス(./bin/git) → deny
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"./bin/git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "相対パス(./bin/git) → deny" "$OUTPUT"
+
+# 14. 対象外コマンド(gh pr merge) → 許可
+OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash"}}' | run_hook sync-gate.sh)
+assert_allowed "対象外コマンド(gh pr merge) → 許可" "$OUTPUT"
+
+# 15. 対象外コマンド(git commit) → 許可
+OUTPUT=$(echo '{"tool_input":{"command":"git commit -m \"test\""}}' | run_hook sync-gate.sh)
+assert_allowed "対象外コマンド(git commit) → 許可" "$OUTPUT"
+
+# 16. 対象外コマンド(git pull) → 許可
+OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | run_hook sync-gate.sh)
+assert_allowed "対象外コマンド(git pull) → 許可" "$OUTPUT"
+
+# 17. vibecorp.yml なし — デフォルト名
+mv "${TMPDIR_ROOT}/.claude/vibecorp.yml" "${TMPDIR_ROOT}/.claude/vibecorp.yml.bak"
+rm -f /tmp/.vibecorp-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_blocked "vibecorp.yml なし — デフォルト名で deny" "$OUTPUT"
+touch /tmp/.vibecorp-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_allowed "vibecorp.yml なし — デフォルト名スタンプで許可" "$OUTPUT"
+mv "${TMPDIR_ROOT}/.claude/vibecorp.yml.bak" "${TMPDIR_ROOT}/.claude/vibecorp.yml"
+
+# 18. vibecorp.yml からプロジェクト名取得
+cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
+name: my-project
+preset: minimal
+YAML
+rm -f /tmp/.my-project-sync-ok
+touch /tmp/.my-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_allowed "vibecorp.yml からプロジェクト名取得 → スタンプ名一致" "$OUTPUT"
+
+# 19. プロジェクト名のサニタイズ
+cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
+name: hello world!@#
+preset: minimal
+YAML
+SANITIZED_NAME=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
+rm -f "/tmp/.${SANITIZED_NAME}-sync-ok"
+touch "/tmp/.${SANITIZED_NAME}-sync-ok"
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
+assert_allowed "プロジェクト名のサニタイズ → スタンプ名に不正文字なし" "$OUTPUT"
+rm -f "/tmp/.${SANITIZED_NAME}-sync-ok"
+
+# 20. deny 出力の JSON 構造検証
+write_vibecorp_yml
+rm -f /tmp/.test-project-sync-ok
+OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 VALID=true
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1 || VALID=false
