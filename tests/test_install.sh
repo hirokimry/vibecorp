@@ -352,6 +352,19 @@ else
   fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
 fi
 
+# F3. sync-gate.sh が削除されている
+assert_file_not_exists "sync-gate.sh が削除されている" "$R/.claude/hooks/sync-gate.sh"
+
+# F4. sync-check スキルが削除されている
+if [ ! -d "$R/.claude/skills/sync-check" ]; then
+  pass "sync-check スキルが削除されている"
+else
+  fail "sync-check スキルが削除されている (ディレクトリが存在)"
+fi
+
+# F5. settings.json に sync-gate のエントリがない
+assert_file_not_contains "settings.json に sync-gate なし" "$R/.claude/settings.json" "sync-gate"
+
 cleanup
 
 # ============================================
@@ -569,15 +582,15 @@ R="$TMPDIR_ROOT"
 # protect-files.sh の内容を変更（古いバージョンを模擬）
 echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
 # ユーザー独自フックを追加
-echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
-echo 'echo "ユーザー独自同期ゲート"' >> "$R/.claude/hooks/sync-gate.sh"
+echo '#!/bin/bash' > "$R/.claude/hooks/my-sync-hook.sh"
+echo 'echo "ユーザー独自同期フック"' >> "$R/.claude/hooks/my-sync-hook.sh"
 
 # 再実行で管理ファイルは差し替え、ユーザーファイルは保持
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
 assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
-assert_file_exists "ユーザー独自フック(sync-gate.sh)が残る" "$R/.claude/hooks/sync-gate.sh"
-assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/sync-gate.sh" "ユーザー独自同期ゲート"
+assert_file_exists "ユーザー独自フック(my-sync-hook.sh)が残る" "$R/.claude/hooks/my-sync-hook.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-sync-hook.sh" "ユーザー独自同期フック"
 
 # M2. vibecorp 管理スキルも差し替えられる
 echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
