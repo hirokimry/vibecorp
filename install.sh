@@ -303,6 +303,7 @@ copy_managed_files() {
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
+      rm -rf "${skills_dir}/sync-check"
       rm -rf "${agents_dir}"
       ;;
   esac
