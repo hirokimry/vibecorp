@@ -1,7 +1,7 @@
 #!/bin/bash
 # install.sh — vibecorp プラグインインストーラー
-# Usage: install.sh --name <project-name> [--preset minimal] [--language ja|en|...]
-#        install.sh --update [--preset minimal]
+# Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja|en|...]
+#        install.sh --update [--preset minimal|standard]
 set -euo pipefail
 
 VIBECORP_VERSION="0.1.0"
@@ -16,13 +16,13 @@ log_skip()  { printf '\033[33m[SKIP]\033[0m  %s\n' "$*" >&2; }
 usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
-Usage: install.sh --name <project-name> [--preset minimal] [--language ja]
-       install.sh --update [--preset minimal]
+Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja]
+       install.sh --update [--preset minimal|standard]
 
 Options:
   --name      プロジェクト名（初回インストール時に必須）
   --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
-  --preset    組織プリセット: minimal（デフォルト: minimal）
+  --preset    組織プリセット: minimal または standard（デフォルト: minimal）
   --language  回答言語: ja, en, または任意（デフォルト: ja）
   -h, --help  このヘルプを表示
 
@@ -815,22 +815,14 @@ copy_knowledge() {
     if [[ -f "$dest_file" ]]; then
       log_skip "knowledge/${rel} は既存のためスキップ"
     else
-      cp "$f" "$dest_file"
+      # コピー時にプレースホルダー置換（既存ファイルは対象外）
+      sed \
+        -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+        -e "s|{{PRESET}}|${PRESET}|g" \
+        -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+        "$f" > "$dest_file"
     fi
   done
-
-  # プレースホルダー置換
-  if [[ -d "$dest" ]]; then
-    find "$dest" -type f -name '*.md' | while IFS= read -r f; do
-      if grep -q '{{' "$f" 2>/dev/null; then
-        sed \
-          -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
-          -e "s|{{PRESET}}|${PRESET}|g" \
-          -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
-          "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
-      fi
-    done
-  fi
 
   log_info "knowledge テンプレートをコピー"
 }
