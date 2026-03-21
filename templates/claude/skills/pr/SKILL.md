@@ -87,6 +87,12 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH"
 ```
 
+**auto-merge の有効化（新規作成時のみ）:**
+
+```bash
+gh pr merge --squash --auto
+```
+
 **更新:**
 
 ```bash
