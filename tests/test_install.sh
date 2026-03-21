@@ -702,6 +702,92 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== P. Issue テンプレート・ラベル・/issue スキル ==="
+# ============================================
+
+# P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists ".github/ISSUE_TEMPLATE/ 存在" "$R/.github/ISSUE_TEMPLATE"
+
+# P2. bug_report.md 存在
+assert_file_exists "bug_report.md 存在" "$R/.github/ISSUE_TEMPLATE/bug_report.md"
+
+# P3. feature_request.md 存在
+assert_file_exists "feature_request.md 存在" "$R/.github/ISSUE_TEMPLATE/feature_request.md"
+
+# P4. config.yml 存在
+assert_file_exists "config.yml 存在" "$R/.github/ISSUE_TEMPLATE/config.yml"
+
+# P5. 既存同名テンプレートはスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE"
+echo "# カスタムバグ報告" > "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE/bug_report.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+CONTENT=$(cat "$R/.github/ISSUE_TEMPLATE/bug_report.md")
+if [ "$CONTENT" = "# カスタムバグ報告" ]; then
+  pass "既存同名テンプレートはスキップ"
+else
+  fail "既存同名テンプレートはスキップ (内容が上書きされた)"
+fi
+
+# P6. vibecorp.lock に issue_templates セクション含む
+assert_file_contains "lock に issue_templates セクション" "$R/.claude/vibecorp.lock" "issue_templates:"
+assert_file_contains "lock に bug_report.md" "$R/.claude/vibecorp.lock" "bug_report.md"
+assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
+assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
+
+# P7. /issue スキルが配置されている
+assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
+assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
+assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
+
+# P8. gh が repo view に失敗する場合のラベル作成スキップ動作
+# ダミー gh を PATH の先頭に配置し、常に失敗させる
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+# ダミー gh: 常に失敗を返す
+exit 1
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+# gh が使えなくてもインストール自体は成功する
+assert_exit_code "gh 失敗時でもインストール成功" "0" "$EXIT_CODE"
+
+# P9. gh 正常時は期待ラベル作成コマンドが発行される
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+GH_LOG="$TMPDIR_ROOT/gh_calls.log"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# ダミー gh: 引数をログに記録して成功を返す
+echo "\$*" >> "$GH_LOG"
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 正常時インストール成功" "0" "$EXIT_CODE"
+assert_file_contains "bug ラベル作成呼び出し" "$GH_LOG" "label create bug"
+assert_file_contains "enhancement ラベル作成呼び出し" "$GH_LOG" "label create enhancement"
+assert_file_contains "documentation ラベル作成呼び出し" "$GH_LOG" "label create documentation"
+assert_file_contains "good first issue ラベル作成呼び出し" "$GH_LOG" "label create good first issue"
+
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
