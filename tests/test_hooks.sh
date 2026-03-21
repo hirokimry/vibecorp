@@ -395,6 +395,34 @@ else
   fail "deny 出力の JSON 構造検証 (構造が不正)"
 fi
 
+# 8. @coderabbitai approve の投稿 → deny
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/123/comments -X POST -f body=\"@coderabbitai approve\""}}' | run_hook block-api-bypass.sh)
+assert_blocked "@coderabbitai approve の投稿 → deny" "$OUTPUT"
+
+# 9. @coderabbitai approve（大文字混在） → deny
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/45/comments -X POST -f body=\"@CodeRabbitAI approve\""}}' | run_hook block-api-bypass.sh)
+assert_blocked "@coderabbitai approve（大文字混在） → deny" "$OUTPUT"
+
+# 10. 環境変数プレフィックス付き approve → deny
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=abc gh api repos/owner/repo/issues/10/comments -X POST -f body=\"@coderabbitai approve\""}}' | run_hook block-api-bypass.sh)
+assert_blocked "環境変数プレフィックス付き approve → deny" "$OUTPUT"
+
+# 11. approve 以外の @coderabbitai コマンド → 許可
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/123/comments -X POST -f body=\"@coderabbitai review\""}}' | run_hook block-api-bypass.sh)
+assert_allowed "@coderabbitai review（approve以外） → 許可" "$OUTPUT"
+
+# 12. approve ブロックの JSON 構造検証
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/1/comments -X POST -f body=\"@coderabbitai approve\""}}' | run_hook block-api-bypass.sh)
+VALID=true
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecisionReason' >/dev/null 2>&1 || VALID=false
+if [ "$VALID" = true ]; then
+  pass "approve ブロックの JSON 構造検証"
+else
+  fail "approve ブロックの JSON 構造検証 (構造が不正)"
+fi
+
 # ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
