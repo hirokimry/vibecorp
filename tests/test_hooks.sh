@@ -488,6 +488,47 @@ fi
 
 # ============================================
 echo ""
+echo "=== block-api-bypass.sh ==="
+# ============================================
+
+# 1. gh api による直接マージ → deny
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/pulls/123/merge -X PUT -f merge_method=squash"}}' | run_hook block-api-bypass.sh)
+assert_blocked "gh api による直接マージ → deny" "$OUTPUT"
+
+# 2. 通常の gh pr merge → 許可
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 123 --squash --delete-branch"}}' | run_hook block-api-bypass.sh)
+assert_allowed "通常の gh pr merge → 許可" "$OUTPUT"
+
+# 3. 通常の gh api（マージ以外） → 許可
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/pulls/123/reviews --paginate"}}' | run_hook block-api-bypass.sh)
+assert_allowed "gh api（マージ以外） → 許可" "$OUTPUT"
+
+# 4. 環境変数プレフィックス付き直接マージ → deny
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=abc gh api repos/owner/repo/pulls/99/merge -X PUT"}}' | run_hook block-api-bypass.sh)
+assert_blocked "環境変数プレフィックス付き直接マージ → deny" "$OUTPUT"
+
+# 5. Bash 以外のツール → 許可（スキップ）
+OUTPUT=$(echo '{"tool_name":"Read","tool_input":{"command":"gh api repos/owner/repo/pulls/123/merge"}}' | run_hook block-api-bypass.sh)
+assert_allowed "Bash 以外のツール → 許可" "$OUTPUT"
+
+# 6. command が空 → 許可
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":""}}' | run_hook block-api-bypass.sh)
+assert_allowed "command が空 → 許可" "$OUTPUT"
+
+# 7. deny 出力の JSON 構造検証
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/pulls/1/merge -X PUT"}}' | run_hook block-api-bypass.sh)
+VALID=true
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1 || VALID=false
+echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecisionReason' >/dev/null 2>&1 || VALID=false
+if [ "$VALID" = true ]; then
+  pass "deny 出力の JSON 構造検証"
+else
+  fail "deny 出力の JSON 構造検証 (構造が不正)"
+fi
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

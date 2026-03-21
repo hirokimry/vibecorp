@@ -7,11 +7,12 @@ set -euo pipefail
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
-# コマンドの先頭トークンを正規化
+# コマンド正規化
 # 1. 先頭空白除去
 # 2. 環境変数プレフィックス (KEY=VALUE ...) を除去
 # 3. ラッパーコマンド (env, command) を除去
 # 4. 絶対パス/相対パスを basename に正規化
+# 5. 先頭2トークン抽出 → "git push" と比較
 CMD_NORMALIZED=$(echo "$COMMAND" | sed 's/^[[:space:]]*//' | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^ ]* +)*//')
 # ラッパー除去ループ
 while true; do
@@ -34,7 +35,8 @@ if [ "$CMD_HEAD" != "git push" ]; then
 fi
 
 # ブランチ削除（--delete / -d）はチェック不要
-if echo "$CMD_NORMALIZED" | grep -qE 'git push .*(--delete|-d )'; then
+REST=$(echo "$CMD_NORMALIZED" | awk '{$1=""; $2=""; print}' | sed 's/^ *//')
+if echo "$REST" | grep -qE '(^| )(--delete|-d)( |$)'; then
   exit 0
 fi
 

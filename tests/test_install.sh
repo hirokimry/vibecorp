@@ -324,7 +324,22 @@ assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.clau
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
-# E13. .claude/vibecorp/ ディレクトリが存在しない
+# E13. .coderabbit.yaml 存在
+assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
+
+# E14. .coderabbit.yaml に request_changes_workflow: true
+assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
+
+# E15. .coderabbit.yaml に auto_resolve
+assert_file_contains ".coderabbit.yaml に auto_resolve" "$R/.coderabbit.yaml" "auto_resolve"
+
+# E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
+assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
+
+# E17. .coderabbit.yaml にプレースホルダーなし
+assert_file_not_contains ".coderabbit.yaml にプレースホルダーなし" "$R/.coderabbit.yaml" '{{.*}}'
+
+# E18. .claude/vibecorp/ ディレクトリが存在しない
 if [ ! -d "$R/.claude/vibecorp" ]; then
   pass ".claude/vibecorp/ が存在しない"
 else
@@ -380,6 +395,8 @@ R="$TMPDIR_ROOT"
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
+CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
+CI_WORKFLOW_BEFORE=$(cat "$R/.github/workflows/test.yml")
 
 # 2回目実行
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
@@ -409,6 +426,22 @@ if [ "$MVV_MD_BEFORE" = "$MVV_MD_AFTER" ]; then
   pass "MVV.md スキップ（内容保持）"
 else
   fail "MVV.md スキップ（内容が変わった）"
+fi
+
+# G5. .coderabbit.yaml スキップ（内容保持）
+CODERABBIT_AFTER=$(cat "$R/.coderabbit.yaml")
+if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
+  pass ".coderabbit.yaml スキップ（内容保持）"
+else
+  fail ".coderabbit.yaml スキップ（内容が変わった）"
+fi
+
+# G6. .github/workflows/test.yml スキップ（内容保持）
+CI_WORKFLOW_AFTER=$(cat "$R/.github/workflows/test.yml")
+if [ "$CI_WORKFLOW_BEFORE" = "$CI_WORKFLOW_AFTER" ]; then
+  pass ".github/workflows/test.yml スキップ（内容保持）"
+else
+  fail ".github/workflows/test.yml スキップ（内容が変わった）"
 fi
 
 cleanup
@@ -582,15 +615,15 @@ R="$TMPDIR_ROOT"
 # protect-files.sh の内容を変更（古いバージョンを模擬）
 echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
 # ユーザー独自フックを追加
-echo '#!/bin/bash' > "$R/.claude/hooks/my-sync-hook.sh"
-echo 'echo "ユーザー独自同期フック"' >> "$R/.claude/hooks/my-sync-hook.sh"
+echo '#!/bin/bash' > "$R/.claude/hooks/my-custom-gate.sh"
+echo 'echo "ユーザー独自カスタムゲート"' >> "$R/.claude/hooks/my-custom-gate.sh"
 
 # 再実行で管理ファイルは差し替え、ユーザーファイルは保持
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
 assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
-assert_file_exists "ユーザー独自フック(my-sync-hook.sh)が残る" "$R/.claude/hooks/my-sync-hook.sh"
-assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-sync-hook.sh" "ユーザー独自同期フック"
+assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
 # M2. vibecorp 管理スキルも差し替えられる
 echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
@@ -649,7 +682,7 @@ cat > "$TMPDIR_ROOT/.claude/settings.json" <<'JSON'
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/my-custom-gate.sh"
           }
         ]
       }
@@ -661,7 +694,7 @@ JSON
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "sync-gate.sh"
+assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "my-custom-gate.sh"
 assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
 
 cleanup
@@ -793,6 +826,437 @@ assert_file_exists "--update 後にユーザースキル保持" "$R/.claude/skil
 # lock にユーザーファイルなし
 assert_file_not_contains "--update 後の lock にユーザーフックなし" "$R/.claude/vibecorp.lock" "custom.sh"
 assert_file_not_contains "--update 後の lock にユーザースキルなし" "$R/.claude/vibecorp.lock" "custom-skill"
+cleanup
+
+# ============================================
+echo ""
+echo "=== R. .coderabbit.yaml スキップ動作 ==="
+# ============================================
+
+# R1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+create_test_repo
+echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
+
+# R2. --language en で language: en-US になる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains ".coderabbit.yaml に language: en-US" "$R/.coderabbit.yaml" "language: en-US"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== S. Issue テンプレート・ラベル・/issue スキル ==="
+# ============================================
+
+# P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists ".github/ISSUE_TEMPLATE/ 存在" "$R/.github/ISSUE_TEMPLATE"
+
+# P2. bug_report.md 存在
+assert_file_exists "bug_report.md 存在" "$R/.github/ISSUE_TEMPLATE/bug_report.md"
+
+# P3. feature_request.md 存在
+assert_file_exists "feature_request.md 存在" "$R/.github/ISSUE_TEMPLATE/feature_request.md"
+
+# P4. config.yml 存在
+assert_file_exists "config.yml 存在" "$R/.github/ISSUE_TEMPLATE/config.yml"
+
+# P5. 既存同名テンプレートはスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE"
+echo "# カスタムバグ報告" > "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE/bug_report.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+CONTENT=$(cat "$R/.github/ISSUE_TEMPLATE/bug_report.md")
+if [ "$CONTENT" = "# カスタムバグ報告" ]; then
+  pass "既存同名テンプレートはスキップ"
+else
+  fail "既存同名テンプレートはスキップ (内容が上書きされた)"
+fi
+
+# P6. vibecorp.lock に issue_templates セクション含む
+assert_file_contains "lock に issue_templates セクション" "$R/.claude/vibecorp.lock" "issue_templates:"
+assert_file_contains "lock に bug_report.md" "$R/.claude/vibecorp.lock" "bug_report.md"
+assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
+assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
+
+# P7. /issue スキルが配置されている
+assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
+assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
+assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
+
+# P8. gh が repo view に失敗する場合のラベル作成スキップ動作
+# ダミー gh を PATH の先頭に配置し、常に失敗させる
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+# ダミー gh: 常に失敗を返す
+exit 1
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+# gh が使えなくてもインストール自体は成功する
+assert_exit_code "gh 失敗時でもインストール成功" "0" "$EXIT_CODE"
+
+# P9. gh 正常時は期待ラベル作成コマンドが発行される
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+GH_LOG="$TMPDIR_ROOT/gh_calls.log"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# ダミー gh: 引数をログに記録して成功を返す
+echo "\$*" >> "$GH_LOG"
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 正常時インストール成功" "0" "$EXIT_CODE"
+assert_file_contains "bug ラベル作成呼び出し" "$GH_LOG" "label create bug"
+assert_file_contains "enhancement ラベル作成呼び出し" "$GH_LOG" "label create enhancement"
+assert_file_contains "documentation ラベル作成呼び出し" "$GH_LOG" "label create documentation"
+assert_file_contains "good first issue ラベル作成呼び出し" "$GH_LOG" "label create good first issue"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== T. CI ワークフロー生成 ==="
+# ============================================
+
+# T1. .github/workflows/test.yml が生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists ".github/workflows/test.yml 存在" "$R/.github/workflows/test.yml"
+
+# T2. name: test が含まれる
+assert_file_contains "CI ワークフロー名が test" "$R/.github/workflows/test.yml" "name: test"
+
+# T3. 集約ジョブ test: が含まれる
+assert_file_contains "集約ジョブ test 存在" "$R/.github/workflows/test.yml" "needs: test-matrix"
+
+# T4. concurrency 設定が含まれる
+assert_file_contains "concurrency 設定" "$R/.github/workflows/test.yml" "cancel-in-progress: true"
+
+# T5. 既存ファイルがある場合はスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/workflows"
+echo "# カスタム CI" > "$TMPDIR_ROOT/.github/workflows/test.yml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 CI ワークフローはスキップ" "$R/.github/workflows/test.yml" "カスタム CI"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== U. リポジトリ設定（gh 未インストール時フォールバック） ==="
+# ============================================
+
+# U1. gh が利用できない環境でもインストール成功
+create_test_repo
+# PATH から gh を含むディレクトリを除外して gh を見つけられなくする
+GH_REAL=$(command -v gh 2>/dev/null || true)
+NO_GH_PATH="$PATH"
+if [[ -n "$GH_REAL" ]]; then
+  GH_DIR=$(dirname "$GH_REAL")
+  NO_GH_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "^${GH_DIR}$" | tr '\n' ':' | sed 's/:$//')
+fi
+EXIT_CODE=0
+PATH="$NO_GH_PATH" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 未インストールでもインストール成功" "0" "$EXIT_CODE"
+
+# U2. gh 利用可能だが repo view 失敗時もインストール成功
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+# repo view は失敗、それ以外（label 等）は成功
+if [[ "$1" == "repo" && "$2" == "view" ]]; then
+  exit 1
+fi
+echo "$*" >> /dev/null
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh repo view 失敗でもインストール成功" "0" "$EXIT_CODE"
+
+cleanup
+
+# U3. 既存 contexts が保持される（マージ動作）
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# repo view → nameWithOwner を返す
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+# api 呼び出しの振り分け
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 既存 contexts を返す（"test" を含めず UNION を検証）
+  if echo "\$*" | grep -q "required_status_checks"; then
+    echo '["custom-ci"]'
+    exit 0
+  fi
+  # Branch Protection PUT → payload をログに保存
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  # それ以外の API（PATCH 等）は成功
+  exit 0
+fi
+# label 等
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null
+if [[ -f "$PUT_LOG" ]] \
+  && jq -e '.required_status_checks.contexts | index("custom-ci")' "$PUT_LOG" >/dev/null 2>&1 \
+  && jq -e '.required_status_checks.contexts | index("test")' "$PUT_LOG" >/dev/null 2>&1; then
+  pass "R3: 既存 contexts (custom-ci) と vibecorp contexts (test) が UNION される"
+else
+  fail "R3: 既存 contexts (custom-ci) と vibecorp contexts (test) が UNION される"
+fi
+
+cleanup
+
+# U4. 既存 Branch Protection なし（GET 404）でも正常動作
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 404（未設定）
+  if echo "\$*" | grep -q "required_status_checks"; then
+    echo "HTTP 404 - Not Found" >&2
+    exit 1
+  fi
+  # Branch Protection PUT → payload をログに保存
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null
+if [[ -f "$PUT_LOG" ]] && jq -e '.required_status_checks.contexts | index("test")' "$PUT_LOG" >/dev/null 2>&1; then
+  pass "R4: Branch Protection 未設定でも vibecorp contexts のみで動作"
+else
+  fail "R4: Branch Protection 未設定でも vibecorp contexts のみで動作"
+fi
+
+cleanup
+
+# U5. Branch Protection PUT 失敗時にフォールバック（推奨設定表示）
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+if [[ "$1" == "repo" && "$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "$1" == "api" ]]; then
+  # required_status_checks GET → 404（未設定）
+  if echo "$*" | grep -q "required_status_checks"; then
+    echo "HTTP 404 - Not Found" >&2
+    exit 1
+  fi
+  # Branch Protection PUT → 403 エラー
+  if echo "$*" | grep -q "protection" && echo "$*" | grep -q "PUT"; then
+    echo "HTTP 403 - Resource not accessible" >&2
+    exit 1
+  fi
+  # PATCH（マージ戦略）は成功
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+STDERR_OUTPUT=$(PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>&1 >/dev/null) || EXIT_CODE=$?
+assert_exit_code "R5: PUT 失敗でもインストール成功" "0" "$EXIT_CODE"
+if echo "$STDERR_OUTPUT" | grep -q "推奨設定"; then
+  pass "R5: PUT 失敗時にフォールバック（推奨設定）が表示される"
+else
+  fail "R5: PUT 失敗時にフォールバック（推奨設定）が表示される"
+fi
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== V. PR テンプレート・ワークフロー ==="
+# ============================================
+
+# V1. PR テンプレートが生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists "PR テンプレートが生成される" "$R/.github/pull_request_template.md"
+
+# V2. PR テンプレートに Issue リンクセクションが含まれる
+assert_file_contains "PR テンプレートに関連 Issue セクション" "$R/.github/pull_request_template.md" "関連 Issue"
+assert_file_contains "PR テンプレートに close/ref の説明" "$R/.github/pull_request_template.md" "close"
+
+# V3. auto-assign ワークフローが生成される
+assert_file_exists "auto-assign ワークフローが生成される" "$R/.github/workflows/auto-assign.yml"
+assert_file_contains "auto-assign に pull_request トリガー" "$R/.github/workflows/auto-assign.yml" "pull_request"
+assert_file_contains "auto-assign に add-assignee" "$R/.github/workflows/auto-assign.yml" "add-assignee"
+
+# V4. 既存 PR テンプレートはスキップ（冪等性）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github"
+echo "# カスタム PR テンプレート" > "$TMPDIR_ROOT/.github/pull_request_template.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 PR テンプレートはスキップ" "$R/.github/pull_request_template.md" "カスタム PR テンプレート"
+
+# V5. 既存ワークフローはスキップ（冪等性）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/workflows"
+echo "# カスタム auto-assign" > "$TMPDIR_ROOT/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存ワークフローはスキップ" "$R/.github/workflows/auto-assign.yml" "カスタム auto-assign"
+
+# V6. 再実行時に上書きされない
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+echo "# ユーザー編集済み" > "$R/.github/pull_request_template.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+
+assert_file_contains "再実行時に PR テンプレートが上書きされない" "$R/.github/pull_request_template.md" "ユーザー編集済み"
+
+cleanup
+
+# U6. required_status_checks GET が 403（権限不足）の場合、PUT をスキップして手動ガイダンス表示
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 403（権限不足）
+  if echo "\$*" | grep -q "required_status_checks"; then
+    echo "HTTP 403 - Forbidden" >&2
+    exit 1
+  fi
+  # Branch Protection PUT → payload をログに保存（到達しないはず）
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+STDERR_OUTPUT=$(PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>&1 >/dev/null) || EXIT_CODE=$?
+assert_exit_code "R6: GET 403 でもインストール成功" "0" "$EXIT_CODE"
+if [[ ! -f "$PUT_LOG" ]]; then
+  pass "R6: GET 403 時は PUT をスキップ（既存 contexts 上書き回避）"
+else
+  fail "R6: GET 403 時は PUT をスキップ（既存 contexts 上書き回避）"
+fi
+if echo "$STDERR_OUTPUT" | grep -q "推奨設定"; then
+  pass "R6: GET 403 時にフォールバック（推奨設定）が表示される"
+else
+  fail "R6: GET 403 時にフォールバック（推奨設定）が表示される"
+fi
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== W. エージェントテンプレート ==="
+# ============================================
+
+# W1. minimal プリセット（デフォルト）ではエージェントが削除される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+if [ ! -d "$R/.claude/agents" ]; then
+  pass "minimal プリセットでエージェントディレクトリが削除される"
+else
+  fail "minimal プリセットでエージェントディレクトリが削除される (ディレクトリが残っている)"
+fi
+
+# W2. minimal の lock にエージェントが含まれない
+assert_file_contains "lock に agents セクション" "$R/.claude/vibecorp.lock" "agents:"
+assert_file_not_contains "minimal の lock に cto.md なし" "$R/.claude/vibecorp.lock" "cto.md"
+
+# W3. 既存エージェントは minimal でも残る（ユーザーファイルは削除しない）
+# → minimal は rm -rf agents_dir するため、ユーザーファイルも消える
+# → これは意図した動作（standard 以上で有効化される機能のため）
+
+cleanup
+
+# 以下のテストは validate_preset が standard を受け付けないため、
+# minimal でコピー後に削除される前の状態を直接テストする
+
+# W4. テンプレートにエージェントファイルが存在する
+AGENTS_TPL="${SCRIPT_DIR}/templates/claude/agents"
+assert_file_exists "テンプレートに cto.md 存在" "$AGENTS_TPL/cto.md"
+assert_file_contains "cto.md に name: cto" "$AGENTS_TPL/cto.md" "name: cto"
+assert_file_exists "テンプレートに cpo.md 存在" "$AGENTS_TPL/cpo.md"
+assert_file_contains "cpo.md に name: cpo" "$AGENTS_TPL/cpo.md" "name: cpo"
+
 cleanup
 
 # ============================================

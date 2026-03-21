@@ -38,7 +38,7 @@ path/to/vibecorp/install.sh --name your-project
 
 | プリセット | スキル | フック | ユースケース |
 |---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit | protect-files | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit, /issue | protect-files | 個人〜小規模 |
 | **standard** | +/review-to-rules, /sync-check, /sync-edit | +review-to-rules-gate, sync-gate | チーム開発 |
 | **full** | （スキル追加なし） | +role-gate | AI企業・コンプライアンス重視 |
 
@@ -58,6 +58,14 @@ your-project/
 │   ├── vibecorp.lock      # バージョン固定 + マニフェスト
 │   ├── settings.json      # フック設定
 │   └── CLAUDE.md          # プロジェクト指示
+├── .github/
+│   ├── ISSUE_TEMPLATE/    # Issue テンプレート
+│   │   ├── bug_report.md
+│   │   ├── feature_request.md
+│   │   └── config.yml
+│   └── workflows/
+│       └── test.yml       # CI ワークフロー
+├── .coderabbit.yaml       # CodeRabbit 設定
 └── MVV.md                 # Mission / Vision / Values
 ```
 
@@ -106,27 +114,40 @@ review:
 | `/pr-review-fix` | PR のレビューコメントを取得し修正 |
 | `/pr-merge-loop` | レビュー修正 → Approve → マージまで自動ループ |
 | `/commit` | Conventional Commits 形式で自動コミット |
+| `/issue` | ラベル自動判定 + Assignees 設定で Issue 起票 |
 
-## 推奨リポジトリ設定
+## リポジトリインフラ設定
 
-以下の設定は vibecorp 側から制御できないため、GitHub リポジトリ側で手動設定を推奨する。
+vibecorp はスキル・フックに加えて、開発ワークフローを支える以下の設定もテンプレートとして提供する。
 
-### マージ戦略
+### CI ワークフロー（`.github/workflows/test.yml`）
 
-**Settings > General > Pull Requests** で以下を推奨:
+- `tests/test_*.sh` を macOS / Ubuntu で自動実行
+- matrix ジョブの結果を `test` ジョブに集約（Branch Protection の required check として機能）
+- `push` + `pull_request` でトリガー、`concurrency` で重複実行を防止
 
-- **Allow squash merging** のみ有効化（merge commit, rebase merge は無効化）
-- Default commit message: **Pull request title**
+### CodeRabbit 設定（`.coderabbit.yaml`）
 
-squash merge によりブランチ単位で1コミットにまとまり、履歴がクリーンに保たれる。
+- `request_changes_workflow: true` — 指摘0件なら approve、全 resolve 後に approve へ切替
+- `auto_resolve: true` — push 時に修正済みコメントを自動 resolve
+- `/pr-merge-loop` の自動マージループに必要な設定
 
-### ブランチ保護
+### GitHub リポジトリ設定
 
-**Settings > Branches > Branch protection rules** で `main` ブランチに以下を推奨:
+以下は `install.sh` が `gh api` で自動設定を試みる（権限不足時は推奨設定を表示）:
+
+#### Branch Protection（`main` ブランチ）
 
 - **Require a pull request before merging**
 - **Require approvals** (1以上)
-- **Require status checks to pass before merging**（CI がある場合）
+- **Dismiss stale approvals when new commits are pushed**
+- **Required status checks**: `test`
+
+#### マージ戦略
+
+- **Allow squash merging** のみ有効化（merge commit, rebase merge は無効化）
+- **Allow auto-merge** 有効化 — required checks + approve 後に自動マージ
+- Default commit message: **Pull request title**
 
 ## 設計思想
 
