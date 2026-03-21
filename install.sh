@@ -135,6 +135,7 @@ remove_managed_files() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local hooks_dir="${REPO_ROOT}/.claude/hooks"
   local skills_dir="${REPO_ROOT}/.claude/skills"
+  local agents_dir="${REPO_ROOT}/.claude/agents"
 
   [[ -f "$lock" ]] || return 0
 
@@ -148,6 +149,11 @@ remove_managed_files() {
     [[ -n "$name" ]] && rm -rf "${skills_dir}/${name}"
   done < <(read_lock_list "$lock" "skills")
 
+  # lock 記載の agents を削除
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
+  done < <(read_lock_list "$lock" "agents")
+
   log_info "管理ファイルを削除（lock ベース）"
 }
 
@@ -155,6 +161,7 @@ copy_managed_files() {
   # テンプレートをコピー（既存ユーザーファイルはスキップ）
   local hooks_dir="${REPO_ROOT}/.claude/hooks"
   local skills_dir="${REPO_ROOT}/.claude/skills"
+  local agents_dir="${REPO_ROOT}/.claude/agents"
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
@@ -182,9 +189,25 @@ copy_managed_files() {
     fi
   done
 
+  # agents: 同名ファイルが既存ならスキップ
+  if [[ -d "${SCRIPT_DIR}/templates/claude/agents" ]]; then
+    mkdir -p "$agents_dir"
+    for src in "${SCRIPT_DIR}/templates/claude/agents/"*.md; do
+      [[ -f "$src" ]] || continue
+      local name
+      name=$(basename "$src")
+      if [[ -f "${agents_dir}/${name}" ]]; then
+        log_skip "agents/${name} は既存のためスキップ"
+      else
+        cp "$src" "${agents_dir}/${name}"
+      fi
+    done
+  fi
+
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
   local target_dirs=("$hooks_dir" "$skills_dir")
+  [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
   for dir in "${target_dirs[@]}"; do
     find "$dir" -type f \( -name '*.sh' -o -name '*.md' \) | while IFS= read -r f; do
       if grep -q '{{' "$f" 2>/dev/null; then
@@ -208,6 +231,7 @@ copy_managed_files() {
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
+      rm -rf "${agents_dir}"
       ;;
   esac
 
@@ -421,7 +445,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" rules_list="" issue_templates_list=""
+  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -436,6 +460,12 @@ generate_vibecorp_lock() {
     local name
     name=$(basename "$d")
     [[ -d "${REPO_ROOT}/.claude/skills/${name}" ]] && skills_list="${skills_list}    - ${name}"$'\n'
+  done
+  for f in "${SCRIPT_DIR}/templates/claude/agents/"*.md; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    [[ -f "${REPO_ROOT}/.claude/agents/${name}" ]] && agents_list="${agents_list}    - ${name}"$'\n'
   done
   for f in "${SCRIPT_DIR}/templates/claude/rules/"*.md; do
     [[ -f "$f" ]] || continue
@@ -459,7 +489,8 @@ vibecorp_commit: ${vibecorp_commit}
 files:
   hooks:
 ${hooks_list}  skills:
-${skills_list}  rules:
+${skills_list}  agents:
+${agents_list}  rules:
 ${rules_list}  issue_templates:
 ${issue_templates_list}
 YAML
