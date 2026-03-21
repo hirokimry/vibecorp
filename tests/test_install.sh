@@ -894,8 +894,9 @@ else
 fi
 
 # P6. vibecorp.lock に issue_templates セクション含む
+# bug_report.md はスキップされたため lock に載らない（COPIED_* 方式）
 assert_file_contains "lock に issue_templates セクション" "$R/.claude/vibecorp.lock" "issue_templates:"
-assert_file_contains "lock に bug_report.md" "$R/.claude/vibecorp.lock" "bug_report.md"
+assert_file_not_contains "スキップされた bug_report.md は lock に載らない" "$R/.claude/vibecorp.lock" "bug_report.md"
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 

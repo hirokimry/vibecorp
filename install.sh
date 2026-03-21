@@ -10,6 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # コピー済みファイル追跡用（lock 生成で使用）
 COPIED_DOCS=""
 COPIED_KNOWLEDGE=""
+COPIED_RULES=""
+COPIED_ISSUE_TEMPLATES=""
 
 # ── ユーティリティ ─────────────────────────────────────
 
@@ -547,18 +549,13 @@ generate_vibecorp_lock() {
     name=$(basename "$f")
     [[ -f "${REPO_ROOT}/.claude/agents/${name}" ]] && agents_list="${agents_list}    - ${name}"$'\n'
   done
-  for f in "${SCRIPT_DIR}/templates/claude/rules/"*.md; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    [[ -f "${REPO_ROOT}/.claude/rules/${name}" ]] && rules_list="${rules_list}    - ${name}"$'\n'
-  done
-  for f in "${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE/"*; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    [[ -f "${REPO_ROOT}/.github/ISSUE_TEMPLATE/${name}" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
-  done
+  # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && rules_list="${rules_list}    - ${name}"$'\n'
+  done <<< "$COPIED_RULES"
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
+  done <<< "$COPIED_ISSUE_TEMPLATES"
   # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
   while IFS= read -r name; do
     [[ -n "$name" ]] && docs_list="${docs_list}    - ${name}"$'\n'
@@ -655,6 +652,7 @@ copy_issue_templates() {
       log_skip "ISSUE_TEMPLATE/${name} は既存のためスキップ"
     else
       cp "$f" "${dest}/${name}"
+      COPIED_ISSUE_TEMPLATES="${COPIED_ISSUE_TEMPLATES}${name}"$'\n'
     fi
   done
 
@@ -754,11 +752,13 @@ copy_rules() {
     basename=$(basename "$rule")
     if [[ "$UPDATE_MODE" == true ]]; then
       cp "$rule" "${dest}/${basename}"
+      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
       log_info "rules/${basename} を更新"
     elif [[ -f "${dest}/${basename}" ]]; then
       log_skip "rules/${basename} は既存のためスキップ"
     else
       cp "$rule" "${dest}/${basename}"
+      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
       log_info "rules/${basename} をコピー"
     fi
   done

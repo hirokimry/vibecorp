@@ -1,11 +1,11 @@
 ---
 name: review-to-rules
-description: "PRレビュー指摘から規約・ナレッジへの反映を自動化。修正した指摘を分析し、CTO/CPOエージェントが管轄の rules/ / knowledge/ に反映すべきか判断・実行する。「/review-to-rules」「指摘を規約化して」と言った時に使用。"
+description: "PRレビュー指摘から規約・ナレッジ・仕様への反映を自動化。修正した指摘を分析し、CTO/CPOエージェントが管轄の rules/ / knowledge/ / docs/ に反映すべきか判断・実行する。「/review-to-rules」「指摘を規約化して」と言った時に使用。"
 ---
 
 # レビュー指摘 → 規約・ナレッジ自動反映
 
-PRレビュー（CodeRabbit / 人間）で修正した指摘を分析し、再発防止のために CTO/CPO エージェントが各自の管轄で rules/ / knowledge/ に反映する。
+PRレビュー（CodeRabbit / 人間）で修正した指摘を分析し、再発防止のために CTO/CPO エージェントが各自の管轄で rules/ / knowledge/ / docs/ に反映する。
 
 ## 使用方法
 

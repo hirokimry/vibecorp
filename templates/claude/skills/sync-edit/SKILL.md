@@ -32,16 +32,16 @@ description: >
 
 | エージェント | 管轄ファイル | 編集権限 |
 |-------------|------------|---------|
-| CTO | `docs/` 内の技術設計ドキュメント、`knowledge/cto/` | 管轄のみ |
-| CPO | `docs/specification.md`、`knowledge/cpo/` | 管轄のみ |
+| CTO | `docs/specification.md`（技術スタック部分）、`.claude/rules/`、`.claude/knowledge/cto/` | 管轄のみ |
+| CPO | `docs/specification.md`（プロダクト仕様部分）、`.claude/knowledge/cpo/` | 管轄のみ |
 
 **拡張時（上記に加えて追加可能）:**
 
 | エージェント | 管轄ファイル | 編集権限 |
 |-------------|------------|---------|
-| 法務 | `docs/POLICY.md`、`knowledge/legal/` | 管轄のみ |
-| 経理 | `docs/cost-analysis.md`、`knowledge/accounting/` | 管轄のみ |
-| COO | `docs/ai-organization.md`、`knowledge/coo/` | 管轄のみ |
+| 法務 | `docs/POLICY.md`、`.claude/knowledge/legal/` | 管轄のみ |
+| 経理 | `docs/cost-analysis.md`、`.claude/knowledge/accounting/` | 管轄のみ |
+| COO | `docs/ai-organization.md`、`.claude/knowledge/coo/` | 管轄のみ |
 
 **knowledge/ の記事** は、内容の領域に応じて該当する職種エージェントが編集する。
 
@@ -97,7 +97,7 @@ rm -f /tmp/.{{PROJECT_NAME}}-agent-role
 
 #### CTO（技術設計）
 - docs/design-philosophy.md: {変更の要約}
-- knowledge/cto/decisions.md: {変更の要約}
+- .claude/knowledge/cto/decisions.md: {変更の要約}
 
 #### CPO（プロダクト）
 - docs/specification.md: {変更の要約}
