@@ -1,11 +1,11 @@
 ---
 name: pr-review-fix
-description: "PRレビュー指摘の修正と返信を自動化。CodeRabbitのレビューコメントを取得し、指摘内容を分析・修正、コミット作成・push後、各コメントに修正コミットへのリンクを返信する。ユーザーが「/pr-review-fix」「レビュー対応して」と言った時に使用。"
+description: "PRレビュー指摘の修正と返信を自動化。CodeRabbitの未解決レビュースレッドを取得し、指摘内容を分析・修正してpush（auto-resolve待ち）、却下した指摘には理由を返信してresolveする。ユーザーが「/pr-review-fix」「レビュー対応して」と言った時に使用。"
 ---
 
 # PRレビュー指摘修正
 
-PRのレビューコメントを取得し、指摘を修正してコメントに返信する。
+PRの未解決レビュースレッドを取得し、指摘を修正・却下して対応する。修正した指摘は push 時の auto-resolve に委ね、却下した指摘には理由を返信して resolve する。
 
 ## 使用方法
 
@@ -28,19 +28,39 @@ gh pr view --json number,url,headRefName --jq '.number'
 
 PRが見つからない場合はエラー。
 
-取得したPR情報からレビューコメントを取得:
+GraphQL API で未解決の CodeRabbit レビュースレッドのみを取得する:
 
 ```bash
-# PRレビューコメントを取得
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --paginate \
-  --jq '.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | {id: .id, path: .path, line: .line, body: .body, user: .user.login}'
+gh api graphql -f query='
+  query {
+    repository(owner: "{owner}", name: "{repo}") {
+      pullRequest(number: {pr_number}) {
+        reviewThreads(first: 100) {
+          nodes {
+            isResolved
+            id
+            comments(first: 10) {
+              nodes {
+                id
+                databaseId
+                author { login }
+                body
+                path
+                line
+              }
+            }
+          }
+        }
+      }
+    }
+  }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes
+    | [.[] | select(.isResolved == false)
+    | select(.comments.nodes[0].author.login | test("coderabbit"; "i"))]'
 ```
 
-```bash
-# PR全体のレビューも取得
-gh pr view {pr_number} --repo {owner}/{repo} --json reviews,comments
-```
+- `isResolved == false` かつ先頭コメントが CodeRabbit のスレッドのみ抽出
+- 各スレッドの `id`（thread node ID）は却下時の resolve mutation で使用する
 
 ### 2. 妥当性検証
 
@@ -87,42 +107,48 @@ gh pr view {pr_number} --repo {owner}/{repo} --json reviews,comments
 git push
 ```
 
-### 7. 各コメントに返信
+### 7. 却下した指摘に返信・resolve
 
-まず `git rev-parse HEAD` でコミットSHAを取得する:
+**修正した指摘**: 返信不要。push 時に CodeRabbit の auto-resolve で自動的に resolved になる。
 
-```bash
-git rev-parse HEAD
-```
+**却下した指摘**: 却下理由を返信した後、GraphQL mutation でスレッドを resolve する。
 
-各コメントに対して、以下の内容で返信する:
-
-- **修正した指摘**: コミットリンク + markdown での可読性の高い修正内容の説明
-- **却下した指摘**: markdown での可読性の高い却下理由の説明（判定基準に基づく根拠を含める）
-
-返信コマンド（SHAを直接埋め込む）:
+却下理由の返信:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   -X POST \
-  -f body="{markdown}" \
-  -F in_reply_to={comment_id}
+  -f body="{却下理由の markdown}" \
+  -F in_reply_to={comment_database_id}
 ```
 
-**重要**: `${COMMIT_SHA}` 等の変数展開は使わない。SHAは事前に取得し、コマンド文字列に直接埋め込むこと。
+- `{comment_database_id}` はステップ1で取得した先頭コメントの `databaseId`（REST API 整数ID）
+
+返信後、即座にスレッドを resolve する:
+
+```bash
+gh api graphql -f query='
+  mutation {
+    resolveReviewThread(input: { threadId: "{thread_node_id}" }) {
+      thread { isResolved }
+    }
+  }'
+```
+
+- `{thread_node_id}` はステップ1で取得した各スレッドの `id` フィールド（例: `PRRT_xxx`）
+- 返信 → resolve の順序で実行する（resolve 済みスレッドには CodeRabbit は再反応しない）
 
 ### 8. 結果報告
 
 修正内容とコメント返信の結果をユーザーに報告:
 
-| ファイル | コメントID | 対応 |
+| ファイル | スレッドID | 対応 |
 |---------|-----------|------|
-| example.ts | 123456 | 修正済み・返信完了 |
-| example.ts | 234567 | 却下・理由 |
+| example.ts | PRRT_xxx | 修正済み（auto-resolve待ち） |
+| example.ts | PRRT_yyy | 却下・返信+resolve済み |
 
 ## 制約
 
 - `--force`、`--hard`、`--no-verify` は使用しない
 - 判断に迷う指摘はユーザーに確認する
 - 修正前に必ず関連ファイルを読み込む
-- **コメント返信には必ずコミットリンクを含める**
