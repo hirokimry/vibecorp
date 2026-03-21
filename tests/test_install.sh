@@ -383,6 +383,7 @@ YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
 CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
+CI_WORKFLOW_BEFORE=$(cat "$R/.github/workflows/test.yml")
 
 # 2回目実行
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
@@ -420,6 +421,14 @@ if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
   pass ".coderabbit.yaml スキップ（内容保持）"
 else
   fail ".coderabbit.yaml スキップ（内容が変わった）"
+fi
+
+# G6. .github/workflows/test.yml スキップ（内容保持）
+CI_WORKFLOW_AFTER=$(cat "$R/.github/workflows/test.yml")
+if [ "$CI_WORKFLOW_BEFORE" = "$CI_WORKFLOW_AFTER" ]; then
+  pass ".github/workflows/test.yml スキップ（内容保持）"
+else
+  fail ".github/workflows/test.yml スキップ（内容が変わった）"
 fi
 
 cleanup
@@ -788,26 +797,98 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== Q. PR テンプレート・ワークフロー ==="
+echo "=== Q. CI ワークフロー生成 ==="
 # ============================================
 
-# Q1. PR テンプレートが生成される
+# Q1. .github/workflows/test.yml が生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_exists ".github/workflows/test.yml 存在" "$R/.github/workflows/test.yml"
+
+# Q2. name: test が含まれる
+assert_file_contains "CI ワークフロー名が test" "$R/.github/workflows/test.yml" "name: test"
+
+# Q3. 集約ジョブ test: が含まれる
+assert_file_contains "集約ジョブ test 存在" "$R/.github/workflows/test.yml" "needs: test-matrix"
+
+# Q4. concurrency 設定が含まれる
+assert_file_contains "concurrency 設定" "$R/.github/workflows/test.yml" "cancel-in-progress: true"
+
+# Q5. 既存ファイルがある場合はスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/workflows"
+echo "# カスタム CI" > "$TMPDIR_ROOT/.github/workflows/test.yml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 CI ワークフローはスキップ" "$R/.github/workflows/test.yml" "カスタム CI"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== R. リポジトリ設定（gh 未インストール時フォールバック） ==="
+# ============================================
+
+# R1. gh が利用できない環境でもインストール成功
+create_test_repo
+# PATH から gh を含むディレクトリを除外して gh を見つけられなくする
+GH_REAL=$(command -v gh 2>/dev/null || true)
+NO_GH_PATH="$PATH"
+if [[ -n "$GH_REAL" ]]; then
+  GH_DIR=$(dirname "$GH_REAL")
+  NO_GH_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "^${GH_DIR}$" | tr '\n' ':' | sed 's/:$//')
+fi
+EXIT_CODE=0
+PATH="$NO_GH_PATH" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 未インストールでもインストール成功" "0" "$EXIT_CODE"
+
+# R2. gh 利用可能だが repo view 失敗時もインストール成功
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+# repo view は失敗、それ以外（label 等）は成功
+if [[ "$1" == "repo" && "$2" == "view" ]]; then
+  exit 1
+fi
+echo "$*" >> /dev/null
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh repo view 失敗でもインストール成功" "0" "$EXIT_CODE"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== S. PR テンプレート・ワークフロー ==="
+# ============================================
+
+# S1. PR テンプレートが生成される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists "PR テンプレートが生成される" "$R/.github/pull_request_template.md"
 
-# Q2. PR テンプレートに Issue リンクセクションが含まれる
+# S2. PR テンプレートに Issue リンクセクションが含まれる
 assert_file_contains "PR テンプレートに関連 Issue セクション" "$R/.github/pull_request_template.md" "関連 Issue"
 assert_file_contains "PR テンプレートに close/ref の説明" "$R/.github/pull_request_template.md" "close"
 
-# Q3. auto-assign ワークフローが生成される
+# S3. auto-assign ワークフローが生成される
 assert_file_exists "auto-assign ワークフローが生成される" "$R/.github/workflows/auto-assign.yml"
 assert_file_contains "auto-assign に pull_request トリガー" "$R/.github/workflows/auto-assign.yml" "pull_request"
 assert_file_contains "auto-assign に add-assignee" "$R/.github/workflows/auto-assign.yml" "add-assignee"
 
-# Q4. 既存 PR テンプレートはスキップ（冪等性）
+# S4. 既存 PR テンプレートはスキップ（冪等性）
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github"
@@ -817,7 +898,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存 PR テンプレートはスキップ" "$R/.github/pull_request_template.md" "カスタム PR テンプレート"
 
-# Q5. 既存ワークフローはスキップ（冪等性）
+# S5. 既存ワークフローはスキップ（冪等性）
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.github/workflows"
@@ -827,7 +908,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存ワークフローはスキップ" "$R/.github/workflows/auto-assign.yml" "カスタム auto-assign"
 
-# Q6. 再実行時に上書きされない
+# S6. 再実行時に上書きされない
 cleanup
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
