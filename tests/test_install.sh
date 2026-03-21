@@ -763,6 +763,27 @@ PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EX
 # gh が使えなくてもインストール自体は成功する
 assert_exit_code "gh 失敗時でもインストール成功" "0" "$EXIT_CODE"
 
+# P9. gh 正常時は期待ラベル作成コマンドが発行される
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+GH_LOG="$TMPDIR_ROOT/gh_calls.log"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# ダミー gh: 引数をログに記録して成功を返す
+echo "\$*" >> "$GH_LOG"
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 正常時インストール成功" "0" "$EXIT_CODE"
+assert_file_contains "bug ラベル作成呼び出し" "$GH_LOG" "label create bug"
+assert_file_contains "enhancement ラベル作成呼び出し" "$GH_LOG" "label create enhancement"
+assert_file_contains "documentation ラベル作成呼び出し" "$GH_LOG" "label create documentation"
+assert_file_contains "good first issue ラベル作成呼び出し" "$GH_LOG" "label create good first issue"
+
 cleanup
 
 # ============================================
