@@ -34,6 +34,14 @@ resolve_language() {
   esac
 }
 
+resolve_coderabbit_language() {
+  case "$1" in
+    ja) echo "ja-JP" ;;
+    en) echo "en-US" ;;
+    *)  echo "$1" ;;
+  esac
+}
+
 # ── ステップ関数 ───────────────────────────────────────
 
 parse_args() {
@@ -225,6 +233,24 @@ YAML
   log_info "vibecorp.yml を生成"
 }
 
+generate_coderabbit_yaml() {
+  local target="${REPO_ROOT}/.coderabbit.yaml"
+  local template="${SCRIPT_DIR}/templates/coderabbit.yaml.tpl"
+
+  if [[ -f "$target" ]]; then
+    log_skip ".coderabbit.yaml は既存のためスキップ"
+    return
+  fi
+
+  local lang_code
+  lang_code=$(resolve_coderabbit_language "$LANGUAGE")
+
+  sed \
+    -e "s|{{LANGUAGE}}|${lang_code}|g" \
+    "$template" > "$target"
+  log_info ".coderabbit.yaml を生成"
+}
+
 generate_vibecorp_lock() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local installed_at
@@ -399,6 +425,7 @@ main() {
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml
+  generate_coderabbit_yaml
   generate_settings_json
   copy_rules
   generate_claude_md
