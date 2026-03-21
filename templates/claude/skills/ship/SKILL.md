@@ -101,6 +101,12 @@ git push origin HEAD
 gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ベースブランチ>
 ```
 
+**auto-merge の有効化:**
+
+```bash
+gh pr merge --squash --auto
+```
+
 - PR タイトルは Issue タイトルをそのまま使用
 - PR 本文に `close <Issue URL>` を含める
 - PR テンプレートがあればそれに従う
