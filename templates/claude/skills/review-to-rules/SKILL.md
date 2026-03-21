@@ -132,21 +132,6 @@ mkdir -p .claude/knowledge/{role}/
 - [タイポ修正] — 一過性の修正のため
 ```
 
-## `/pr-merge-loop` との統合
-
-`/pr-merge-loop` のマージ前ステップとして自動実行できる。
-ただし、反映内容は新たなコミットになるため、再度 sync-check が必要。
-
-推奨フロー:
-
-```text
-/pr-merge-loop
-  → レビュー指摘修正 → CI パス → 未解決0件
-  → /review-to-rules（マージ前に実行）
-  → sync-check → push → 再度 CI + CodeRabbit チェック
-  → 終了条件達成 → マージ
-```
-
 ### 5. スタンプ発行
 
 全エージェントの処理が完了したら、必ずスタンプを発行する（反映の有無に関わらず）:
