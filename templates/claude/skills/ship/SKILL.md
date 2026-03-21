@@ -1,13 +1,13 @@
 ---
 name: ship
-description: "Issue URLを指定するだけでブランチ作成からマージまでを全自動で実行する。「/ship」「シップして」「Issue対応して」と言った時に使用。"
+description: "Issue URLを指定するだけでブランチ作成からPR作成・auto-merge設定までを全自動で実行する。「/ship」「シップして」「Issue対応して」と言った時に使用。"
 ---
 
 **ultrathink**
 
-# Issue → マージ 全自動スキル
+# Issue → PR 全自動スキル
 
-GitHub Issue URL を受け取り、ブランチ作成 → 計画 → レビュー → 実装 → PR → マージまでを一気通貫で実行する。
+GitHub Issue URL を受け取り、ブランチ作成 → 計画 → レビュー → 実装 → PR → auto-merge 設定までを一気通貫で実行する。マージは auto-merge により GitHub が自動実行する。
 
 ## 使用方法
 
@@ -105,18 +105,16 @@ gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ベース
 - PR 本文に `close <Issue URL>` を含める
 - PR テンプレートがあればそれに従う
 
-### 9. マージループ
+**auto-merge の有効化:**
 
-PR 作成後、以下の条件を満たすまでループする（最大10回）:
-1. CI が全てパス
-2. CodeRabbit の未解決コメントが0件
+```bash
+gh pr merge --squash --auto
+```
 
-レビュー指摘があれば修正・push し、再度待機する。
+### 9. レビュー修正ループ
 
-条件を満たしたら:
-1. CodeRabbit approve を確認（なければ `@coderabbitai approve` を投稿して最大3分待機）
-2. squash マージ
-3. ベースブランチに切り替え・pull
+`/pr-review-loop` を実行して、CodeRabbit レビュー指摘の修正ループを完了させる。
+マージは auto-merge により、CI パス + approve 後に GitHub が自動実行する。
 
 ## 介入ポイント
 
@@ -128,8 +126,7 @@ PR 作成後、以下の条件を満たすまでループする（最大10回）
 | テストが繰り返し失敗する | ステップ5 |
 | コードレビューが5回ループしても問題が残る | ステップ7 |
 | CI が失敗する | ステップ9 |
-| CodeRabbit approve がタイムアウトする | ステップ9 |
-| マージコンフリクトが発生する | ステップ9 |
+| レビュー修正ループが上限に達する | ステップ9 |
 
 ## 結果報告
 
@@ -141,7 +138,7 @@ PR 作成後、以下の条件を満たすまでループする（最大10回）
 - ブランチ: dev/{番号}_{要約}
 - 計画レビュー: {n}回
 - コードレビュー: {n}回
-- マージ: 完了
+- auto-merge: 設定済み
 ```
 
 ## 制約

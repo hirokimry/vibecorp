@@ -39,4 +39,17 @@ if echo "$normalized" | grep -qE 'gh\s+api\s+.*pulls/[0-9]+/merge'; then
   exit 0
 fi
 
+# @coderabbitai approve の投稿をブロック
+# auto-merge 環境では approve が即マージのトリガーになるため、エージェントによる投稿を禁止する
+if echo "$normalized" | grep -qiE '@coderabbitai\s+approve'; then
+  jq -n '{
+    "hookSpecificOutput": {
+      "hookEventName": "PreToolUse",
+      "permissionDecision": "deny",
+      "permissionDecisionReason": "@coderabbitai approve の投稿は禁止です。approve は CodeRabbit が自動発行するか、人間が手動で行います。エージェントによる approve 操作は誤操作リスクがあります。"
+    }
+  }'
+  exit 0
+fi
+
 exit 0
