@@ -867,6 +867,118 @@ assert_exit_code "gh repo view 失敗でもインストール成功" "0" "$EXIT_
 
 cleanup
 
+# R3. 既存 contexts が保持される（マージ動作）
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# repo view → nameWithOwner を返す
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+# api 呼び出しの振り分け
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 既存 contexts を返す
+  if echo "\$*" | grep -q "required_status_checks"; then
+    echo '["test","custom-ci"]'
+    exit 0
+  fi
+  # Branch Protection PUT → payload をログに保存
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  # それ以外の API（PATCH 等）は成功
+  exit 0
+fi
+# label 等
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null
+if [[ -f "$PUT_LOG" ]] && jq -e '.required_status_checks.contexts | index("custom-ci")' "$PUT_LOG" >/dev/null 2>&1; then
+  pass "R3: 既存 contexts (custom-ci) がマージされて保持される"
+else
+  fail "R3: 既存 contexts (custom-ci) がマージされて保持される"
+fi
+
+cleanup
+
+# R4. 既存 Branch Protection なし（GET 404）でも正常動作
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 404（未設定）
+  if echo "\$*" | grep -q "required_status_checks"; then
+    exit 1
+  fi
+  # Branch Protection PUT → payload をログに保存
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null
+if [[ -f "$PUT_LOG" ]] && jq -e '.required_status_checks.contexts | index("test")' "$PUT_LOG" >/dev/null 2>&1; then
+  pass "R4: Branch Protection 未設定でも vibecorp contexts のみで動作"
+else
+  fail "R4: Branch Protection 未設定でも vibecorp contexts のみで動作"
+fi
+
+cleanup
+
+# R5. Branch Protection PUT 失敗時にフォールバック（推奨設定表示）
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+if [[ "$1" == "repo" && "$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "$1" == "api" ]]; then
+  # required_status_checks GET → 未設定
+  if echo "$*" | grep -q "required_status_checks"; then
+    exit 1
+  fi
+  # Branch Protection PUT → 403 エラー
+  if echo "$*" | grep -q "protection" && echo "$*" | grep -q "PUT"; then
+    echo "HTTP 403 - Resource not accessible" >&2
+    exit 1
+  fi
+  # PATCH（マージ戦略）は成功
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+STDERR_OUTPUT=$(PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>&1 >/dev/null) || EXIT_CODE=$?
+assert_exit_code "R5: PUT 失敗でもインストール成功" "0" "$EXIT_CODE"
+if echo "$STDERR_OUTPUT" | grep -q "推奨設定"; then
+  pass "R5: PUT 失敗時にフォールバック（推奨設定）が表示される"
+else
+  fail "R5: PUT 失敗時にフォールバック（推奨設定）が表示される"
+fi
+
+cleanup
+
 # ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
