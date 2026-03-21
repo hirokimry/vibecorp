@@ -367,6 +367,19 @@ else
   fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
 fi
 
+# F3. sync-gate.sh が削除されている
+assert_file_not_exists "sync-gate.sh が削除されている" "$R/.claude/hooks/sync-gate.sh"
+
+# F4. sync-check スキルが削除されている
+if [ ! -d "$R/.claude/skills/sync-check" ]; then
+  pass "sync-check スキルが削除されている"
+else
+  fail "sync-check スキルが削除されている (ディレクトリが存在)"
+fi
+
+# F5. settings.json に sync-gate のエントリがない
+assert_file_not_contains "settings.json に sync-gate なし" "$R/.claude/settings.json" "sync-gate"
+
 cleanup
 
 # ============================================
@@ -1243,6 +1256,79 @@ assert_file_exists "テンプレートに cto.md 存在" "$AGENTS_TPL/cto.md"
 assert_file_contains "cto.md に name: cto" "$AGENTS_TPL/cto.md" "name: cto"
 assert_file_exists "テンプレートに cpo.md 存在" "$AGENTS_TPL/cpo.md"
 assert_file_contains "cpo.md に name: cpo" "$AGENTS_TPL/cpo.md" "name: cpo"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== X. docs テンプレート ==="
+# ============================================
+
+# X1. docs/ ディレクトリが生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists "docs/ ディレクトリ存在" "$R/docs"
+
+# X2. specification.md が生成される
+assert_file_exists "specification.md 存在" "$R/docs/specification.md"
+
+# X3. POLICY.md が生成される
+assert_file_exists "POLICY.md 存在" "$R/docs/POLICY.md"
+
+# X4. SECURITY.md が生成される
+assert_file_exists "SECURITY.md 存在" "$R/docs/SECURITY.md"
+
+# X5. プレースホルダーが置換済み（残っていない）
+assert_file_not_contains "specification.md にプレースホルダーなし" "$R/docs/specification.md" '{{.*}}'
+assert_file_not_contains "POLICY.md にプレースホルダーなし" "$R/docs/POLICY.md" '{{.*}}'
+assert_file_not_contains "SECURITY.md にプレースホルダーなし" "$R/docs/SECURITY.md" '{{.*}}'
+
+# X6. PROJECT_NAME が実際のプロジェクト名に置換されている
+assert_file_contains "specification.md にプロジェクト名" "$R/docs/specification.md" "test-proj"
+assert_file_contains "POLICY.md にプロジェクト名" "$R/docs/POLICY.md" "test-proj"
+assert_file_contains "SECURITY.md にプロジェクト名" "$R/docs/SECURITY.md" "test-proj"
+
+# X7. 既存同名ファイルはスキップ（ユーザーカスタマイズ保護）
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/docs"
+echo "# カスタム仕様書" > "$TMPDIR_ROOT/docs/specification.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+CONTENT=$(cat "$R/docs/specification.md")
+if [ "$CONTENT" = "# カスタム仕様書" ]; then
+  pass "既存 docs ファイルはスキップ（ユーザー版保持）"
+else
+  fail "既存 docs ファイルはスキップ（ユーザー版保持） (上書きされた)"
+fi
+# 他の新規ファイルはコピーされる
+assert_file_exists "既存でない docs ファイルはコピーされる" "$R/docs/POLICY.md"
+
+# X8. --update でも既存 docs はスキップ（ユーザーカスタマイズ保護）
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+echo "# ユーザー編集済み仕様書" > "$R/docs/specification.md"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "--update でも docs はスキップ" "$R/docs/specification.md" "ユーザー編集済み仕様書"
+
+# X9. vibecorp.lock に docs: セクションが含まれる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "lock に docs セクション" "$R/.claude/vibecorp.lock" "docs:"
+
+# X10. vibecorp.lock に各ファイル名が含まれる
+assert_file_contains "lock に specification.md" "$R/.claude/vibecorp.lock" "specification.md"
+assert_file_contains "lock に POLICY.md" "$R/.claude/vibecorp.lock" "POLICY.md"
+assert_file_contains "lock に SECURITY.md" "$R/.claude/vibecorp.lock" "SECURITY.md"
 
 cleanup
 
