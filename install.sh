@@ -92,9 +92,9 @@ validate_name() {
 
 validate_preset() {
   case "$PRESET" in
-    minimal) ;;
+    minimal|standard) ;;
     *)
-      log_error "--preset は現在 minimal のみ対応です"
+      log_error "--preset は minimal または standard のみ対応です"
       exit 1
       ;;
   esac
@@ -220,6 +220,8 @@ remove_managed_files() {
   while IFS= read -r name; do
     [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
   done < <(read_lock_list "$lock" "agents")
+
+  # knowledge は運用中にユーザーが蓄積するデータのため削除しない
 
   log_info "管理ファイルを削除（lock ベース）"
 }
@@ -518,7 +520,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list=""
+  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -559,6 +561,12 @@ generate_vibecorp_lock() {
     local name="${tpl_name%.tpl}"
     [[ -f "${REPO_ROOT}/docs/${name}" ]] && docs_list="${docs_list}    - ${name}"$'\n'
   done
+  if [[ -d "${SCRIPT_DIR}/templates/claude/knowledge" ]]; then
+    while IFS= read -r f; do
+      local rel="${f#"${SCRIPT_DIR}/templates/claude/knowledge/"}"
+      [[ -f "${REPO_ROOT}/.claude/knowledge/${rel}" ]] && knowledge_list="${knowledge_list}    - ${rel}"$'\n'
+    done < <(find "${SCRIPT_DIR}/templates/claude/knowledge" -type f)
+  fi
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
@@ -573,7 +581,8 @@ ${skills_list}  agents:
 ${agents_list}  rules:
 ${rules_list}  issue_templates:
 ${issue_templates_list}  docs:
-${docs_list}
+${docs_list}  knowledge:
+${knowledge_list}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -782,6 +791,50 @@ copy_docs() {
   done
 }
 
+copy_knowledge() {
+  local src="${SCRIPT_DIR}/templates/claude/knowledge"
+  local dest="${REPO_ROOT}/.claude/knowledge"
+
+  # knowledge テンプレートが存在しない場合はスキップ
+  [[ -d "$src" ]] || return 0
+
+  # minimal プリセットでは knowledge をコピーしない（agents がないため不要）
+  case "$PRESET" in
+    minimal) return 0 ;;
+  esac
+
+  # ディレクトリ構造を維持してコピー（既存ファイルはスキップ）
+  find "$src" -type f | while IFS= read -r f; do
+    local rel="${f#"$src"/}"
+    local dest_file="${dest}/${rel}"
+    local dest_dir
+    dest_dir=$(dirname "$dest_file")
+
+    mkdir -p "$dest_dir"
+
+    if [[ -f "$dest_file" ]]; then
+      log_skip "knowledge/${rel} は既存のためスキップ"
+    else
+      cp "$f" "$dest_file"
+    fi
+  done
+
+  # プレースホルダー置換
+  if [[ -d "$dest" ]]; then
+    find "$dest" -type f -name '*.md' | while IFS= read -r f; do
+      if grep -q '{{' "$f" 2>/dev/null; then
+        sed \
+          -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+          -e "s|{{PRESET}}|${PRESET}|g" \
+          -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+          "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+      fi
+    done
+  fi
+
+  log_info "knowledge テンプレートをコピー"
+}
+
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
 
@@ -862,6 +915,7 @@ main() {
   generate_settings_json
   copy_rules
   copy_docs
+  copy_knowledge
   copy_issue_templates
   copy_pr_template
   copy_workflows
