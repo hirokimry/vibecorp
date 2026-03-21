@@ -7,6 +7,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    base_branches:
+      - ".*"
 
   request_changes_workflow: true
 

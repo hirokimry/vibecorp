@@ -1,11 +1,17 @@
 #!/bin/bash
 # install.sh — vibecorp プラグインインストーラー
-# Usage: install.sh --name <project-name> [--preset minimal] [--language ja|en|...]
-#        install.sh --update [--preset minimal]
+# Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja|en|...]
+#        install.sh --update [--preset minimal|standard]
 set -euo pipefail
 
 VIBECORP_VERSION="0.1.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# コピー済みファイル追跡用（lock 生成で使用）
+COPIED_DOCS=""
+COPIED_KNOWLEDGE=""
+COPIED_RULES=""
+COPIED_ISSUE_TEMPLATES=""
 
 # ── ユーティリティ ─────────────────────────────────────
 
@@ -16,13 +22,13 @@ log_skip()  { printf '\033[33m[SKIP]\033[0m  %s\n' "$*" >&2; }
 usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
-Usage: install.sh --name <project-name> [--preset minimal] [--language ja]
-       install.sh --update [--preset minimal]
+Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja]
+       install.sh --update [--preset minimal|standard]
 
 Options:
   --name      プロジェクト名（初回インストール時に必須）
   --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
-  --preset    組織プリセット: minimal（デフォルト: minimal）
+  --preset    組織プリセット: minimal または standard（デフォルト: minimal）
   --language  回答言語: ja, en, または任意（デフォルト: ja）
   -h, --help  このヘルプを表示
 
@@ -92,9 +98,9 @@ validate_name() {
 
 validate_preset() {
   case "$PRESET" in
-    minimal) ;;
+    minimal|standard) ;;
     *)
-      log_error "--preset は現在 minimal のみ対応です"
+      log_error "--preset は minimal または standard のみ対応です"
       exit 1
       ;;
   esac
@@ -221,6 +227,8 @@ remove_managed_files() {
     [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
   done < <(read_lock_list "$lock" "agents")
 
+  # knowledge は運用中にユーザーが蓄積するデータのため削除しない
+
   log_info "管理ファイルを削除（lock ベース）"
 }
 
@@ -303,6 +311,8 @@ copy_managed_files() {
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
+      rm -rf "${skills_dir}/sync-check"
+      rm -rf "${skills_dir}/sync-edit"
       rm -rf "${agents_dir}"
       ;;
   esac
@@ -517,7 +527,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list=""
+  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -539,18 +549,20 @@ generate_vibecorp_lock() {
     name=$(basename "$f")
     [[ -f "${REPO_ROOT}/.claude/agents/${name}" ]] && agents_list="${agents_list}    - ${name}"$'\n'
   done
-  for f in "${SCRIPT_DIR}/templates/claude/rules/"*.md; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    [[ -f "${REPO_ROOT}/.claude/rules/${name}" ]] && rules_list="${rules_list}    - ${name}"$'\n'
-  done
-  for f in "${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE/"*; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    [[ -f "${REPO_ROOT}/.github/ISSUE_TEMPLATE/${name}" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
-  done
+  # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && rules_list="${rules_list}    - ${name}"$'\n'
+  done <<< "$COPIED_RULES"
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
+  done <<< "$COPIED_ISSUE_TEMPLATES"
+  # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && docs_list="${docs_list}    - ${name}"$'\n'
+  done <<< "$COPIED_DOCS"
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] && knowledge_list="${knowledge_list}    - ${rel}"$'\n'
+  done <<< "$COPIED_KNOWLEDGE"
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
@@ -564,7 +576,9 @@ ${hooks_list}  skills:
 ${skills_list}  agents:
 ${agents_list}  rules:
 ${rules_list}  issue_templates:
-${issue_templates_list}
+${issue_templates_list}  docs:
+${docs_list}  knowledge:
+${knowledge_list}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -638,6 +652,7 @@ copy_issue_templates() {
       log_skip "ISSUE_TEMPLATE/${name} は既存のためスキップ"
     else
       cp "$f" "${dest}/${name}"
+      COPIED_ISSUE_TEMPLATES="${COPIED_ISSUE_TEMPLATES}${name}"$'\n'
     fi
   done
 
@@ -737,14 +752,80 @@ copy_rules() {
     basename=$(basename "$rule")
     if [[ "$UPDATE_MODE" == true ]]; then
       cp "$rule" "${dest}/${basename}"
+      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
       log_info "rules/${basename} を更新"
     elif [[ -f "${dest}/${basename}" ]]; then
       log_skip "rules/${basename} は既存のためスキップ"
     else
       cp "$rule" "${dest}/${basename}"
+      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
       log_info "rules/${basename} をコピー"
     fi
   done
+}
+
+copy_docs() {
+  local src="${SCRIPT_DIR}/templates/docs"
+  local dest="${REPO_ROOT}/docs"
+
+  [[ -d "$src" ]] || return 0
+  mkdir -p "$dest"
+
+  for tpl in "${src}"/*.tpl; do
+    [[ -f "$tpl" ]] || continue
+    local tpl_name
+    tpl_name=$(basename "$tpl")
+    # .tpl 拡張子を除去してコピー先ファイル名を決定
+    local name="${tpl_name%.tpl}"
+    if [[ -f "${dest}/${name}" ]]; then
+      log_skip "docs/${name} は既存のためスキップ"
+    else
+      # プレースホルダー置換してコピー
+      sed \
+        -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+        -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+        "$tpl" > "${dest}/${name}"
+      COPIED_DOCS="${COPIED_DOCS}${name}"$'\n'
+      log_info "docs/${name} をコピー"
+    fi
+  done
+}
+
+copy_knowledge() {
+  local src="${SCRIPT_DIR}/templates/claude/knowledge"
+  local dest="${REPO_ROOT}/.claude/knowledge"
+
+  # knowledge テンプレートが存在しない場合はスキップ
+  [[ -d "$src" ]] || return 0
+
+  # minimal プリセットでは knowledge をコピーしない（agents がないため不要）
+  case "$PRESET" in
+    minimal) return 0 ;;
+  esac
+
+  # ディレクトリ構造を維持してコピー（既存ファイルはスキップ）
+  while IFS= read -r f; do
+    local rel="${f#"$src"/}"
+    local dest_file="${dest}/${rel}"
+    local dest_dir
+    dest_dir=$(dirname "$dest_file")
+
+    mkdir -p "$dest_dir"
+
+    if [[ -f "$dest_file" ]]; then
+      log_skip "knowledge/${rel} は既存のためスキップ"
+    else
+      # コピー時にプレースホルダー置換（既存ファイルは対象外）
+      sed \
+        -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+        -e "s|{{PRESET}}|${PRESET}|g" \
+        -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+        "$f" > "$dest_file"
+      COPIED_KNOWLEDGE="${COPIED_KNOWLEDGE}${rel}"$'\n'
+    fi
+  done < <(find "$src" -type f)
+
+  log_info "knowledge テンプレートをコピー"
 }
 
 generate_claude_md() {
@@ -820,8 +901,14 @@ main() {
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
+
+  if [[ "$UPDATE_MODE" == true ]]; then
+    update_vibecorp_yml
+  fi
   generate_settings_json
   copy_rules
+  copy_docs
+  copy_knowledge
   copy_issue_templates
   copy_pr_template
   copy_workflows
