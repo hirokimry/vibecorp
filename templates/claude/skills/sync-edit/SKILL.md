@@ -106,7 +106,7 @@ rm -f /tmp/.{{PROJECT_NAME}}-agent-role
 - docs/POLICY.md: {変更の要約}
 
 ### 次のステップ
-→ /sync-check を再実行して整合性を確認してください
+→ `/sync-check` を再実行して整合性を確認してください
 ```
 
 ### 4. 再チェックの案内
