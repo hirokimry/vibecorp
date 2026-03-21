@@ -218,47 +218,59 @@ hooks・install.sh 等のシェルスクリプトの自動テスト。
 
 ## `.claude/` の git 管理ポリシー
 
-`.claude/` は **基本的に git で追跡する**。ただし個人の作業状態に該当するディレクトリは除外する。
+`.claude/` は **基本的に git で追跡する**。ただしファイルの出自によって追跡/除外を使い分ける。
 
 ### 追跡する理由
 
 | 理由 | 説明 |
 |---|---|
-| チーム一貫性 | clone したら全員同じ hooks/rules/skills/agents が揃う。各自が install.sh を実行する運用はバージョンずれの温床 |
-| コードレビュー | hooks や rules の変更が PR を通る。安全装置の変更がレビューなしで入るのは危険 |
-| 再現性 | CI でも同じ設定が使える。hooks が git に無ければ CI で動かない |
+| チーム一貫性 | clone したら全員同じ rules/knowledge が揃う。各自が install.sh を実行する運用はバージョンずれの温床 |
+| コードレビュー | rules や knowledge の変更が PR を通る。規約の変更がレビューなしで入るのは危険 |
+| 再現性 | CI でも同じ設定が使える |
 | update の一元管理 | 一人が `--update` → PR → マージ。全員が個別に update する運用は破綻する |
 
-### 追跡すべきもの
+### ファイルの分類と追跡方針
 
-| ファイル / ディレクトリ | 理由 |
-|---|---|
-| `CLAUDE.md` | プロジェクト指示。全員共有 |
-| `vibecorp.yml` | プリセット・言語等の設定 |
-| `vibecorp.lock` | 管理ファイルのマニフェスト。update の安全性担保 |
-| `settings.json` | hooks 定義。チーム全体の enforcement |
-| `hooks/` | 安全装置そのもの |
-| `rules/` | コーディング規約 |
-| `skills/` | ワークフロー定義 |
-| `agents/` | エージェント定義 |
-| `knowledge/` | チームのナレッジベース |
+`.claude/` 内のファイルは **出自** によって分類される。
 
-### 除外すべきもの
-
-| ディレクトリ | 理由 |
-|---|---|
-| `plans/` | `/plan` スキルが会話中に生成する一時的な実装計画。ブランチ作業中のみ有効で、個人の作業状態 |
+| 分類 | 例 | source of truth | 追跡 |
+|---|---|---|---|
+| プロジェクト設定 | `CLAUDE.md`, `vibecorp.yml` | このファイル自体 | する |
+| プロジェクト独自 | 独自の rules, knowledge | このファイル自体 | する |
+| テンプレート由来 | hooks, skills, agents, settings.json, lock | `templates/` | 状況による（後述） |
+| 一時ファイル | plans/ | 会話中に生成 | しない |
 
 > **注意**: `memory/` は Claude Code がユーザーの HOME ディレクトリ（`~/.claude/projects/`）に保存するため、プロジェクトの `.claude/` 内には作られない。リポジトリ側での対処は不要。
 
-### 自動設定
+### 導入先リポジトリの推奨構成
 
-`install.sh` が `.claude/.gitignore` を自動生成し、上記の除外対象を設定する。ユーザーが独自に追加した除外エントリは `--update` 時も保持される。
+導入先リポジトリでは `templates/` ディレクトリが存在しない。hooks/skills/agents を含む全ファイルが `.claude/` 内の唯一のコピーであるため、**全て追跡するのが正しい**。
+
+`install.sh` が `.claude/.gitignore` を自動生成し、`plans/` のみを除外する。
 
 ```text
 # .claude/.gitignore（自動生成）
 plans/
 ```
+
+### テンプレートソースリポジトリの構成
+
+vibecorp のようにテンプレートソース（`templates/`）を持つリポジトリでは、テンプレート由来ファイルが `templates/` と `.claude/` に二重存在する。`templates/` を source of truth として、`.claude/` 側のテンプレート由来ファイルは除外する。
+
+```text
+# .claude/.gitignore（テンプレートソースリポジトリ用）
+# テンプレート管理ファイル（templates/ が source of truth）
+hooks/
+skills/
+agents/
+settings.json
+vibecorp.lock
+
+# 一時ファイル
+plans/
+```
+
+この構成により、プロジェクト独自の rules や knowledge は git 管理しつつ、テンプレートとの二重管理を避けられる。
 
 ### 個人設定
 
