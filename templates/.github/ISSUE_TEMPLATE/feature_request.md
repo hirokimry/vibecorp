@@ -1,7 +1,7 @@
 ---
 name: "✨ 機能要望"
 about: 機能追加・改善の提案
-title: "feat: "
+title: "✨ feat: "
 labels: enhancement
 assignees: ""
 ---
