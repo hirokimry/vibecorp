@@ -602,15 +602,15 @@ R="$TMPDIR_ROOT"
 # protect-files.sh の内容を変更（古いバージョンを模擬）
 echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
 # ユーザー独自フックを追加
-echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
-echo 'echo "ユーザー独自同期ゲート"' >> "$R/.claude/hooks/sync-gate.sh"
+echo '#!/bin/bash' > "$R/.claude/hooks/my-custom-gate.sh"
+echo 'echo "ユーザー独自カスタムゲート"' >> "$R/.claude/hooks/my-custom-gate.sh"
 
 # 再実行で管理ファイルは差し替え、ユーザーファイルは保持
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
 assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
-assert_file_exists "ユーザー独自フック(sync-gate.sh)が残る" "$R/.claude/hooks/sync-gate.sh"
-assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/sync-gate.sh" "ユーザー独自同期ゲート"
+assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
 # M2. vibecorp 管理スキルも差し替えられる
 echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
@@ -669,7 +669,7 @@ cat > "$TMPDIR_ROOT/.claude/settings.json" <<'JSON'
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/my-custom-gate.sh"
           }
         ]
       }
@@ -681,7 +681,7 @@ JSON
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "sync-gate.sh"
+assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "my-custom-gate.sh"
 assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
 
 cleanup

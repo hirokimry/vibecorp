@@ -206,6 +206,7 @@ copy_managed_files() {
   case "$PRESET" in
     minimal)
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
+      rm -f "${hooks_dir}/sync-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
       ;;
   esac
@@ -408,7 +409,7 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select(.command | contains("review-to-rules-gate") | not)]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not))]
           | select((.hooks | length) > 0)
         ]
       ')
