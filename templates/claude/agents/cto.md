@@ -27,6 +27,8 @@ model: sonnet
 | ファイル | 内容 |
 |---------|------|
 | `docs/specification.md`（技術スタック部分） | アーキテクチャ・技術選定の記載 |
+| `.claude/rules/` | 全エージェントが守るべきコーディング規約 |
+| `.claude/knowledge/cto/` | 技術的なノウハウ・判断の蓄積 |
 
 **注意**: `docs/specification.md` はCPOと共同管轄。CPOはプロダクト方針・機能要件を、CTOは技術スタック・アーキテクチャ部分を担当する。
 

@@ -28,6 +28,7 @@ model: sonnet
 | `docs/specification.md` | プロダクト仕様書 |
 | `docs/screen-flow.md` | 画面遷移図 |
 | `docs/ai-prompt-design.md` | AIプロンプト設計 |
+| `.claude/knowledge/cpo/` | プロダクト判断のノウハウ蓄積 |
 
 **管轄外のファイルは編集しない。** 管轄外について意見がある場合は、該当する専門職エージェントに伝える。
 
