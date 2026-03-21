@@ -518,7 +518,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list=""
+  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -552,6 +552,13 @@ generate_vibecorp_lock() {
     name=$(basename "$f")
     [[ -f "${REPO_ROOT}/.github/ISSUE_TEMPLATE/${name}" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
   done
+  for f in "${SCRIPT_DIR}/templates/docs/"*.tpl; do
+    [[ -f "$f" ]] || continue
+    local tpl_name
+    tpl_name=$(basename "$f")
+    local name="${tpl_name%.tpl}"
+    [[ -f "${REPO_ROOT}/docs/${name}" ]] && docs_list="${docs_list}    - ${name}"$'\n'
+  done
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
@@ -565,7 +572,8 @@ ${hooks_list}  skills:
 ${skills_list}  agents:
 ${agents_list}  rules:
 ${rules_list}  issue_templates:
-${issue_templates_list}
+${issue_templates_list}  docs:
+${docs_list}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -748,6 +756,32 @@ copy_rules() {
   done
 }
 
+copy_docs() {
+  local src="${SCRIPT_DIR}/templates/docs"
+  local dest="${REPO_ROOT}/docs"
+
+  [[ -d "$src" ]] || return 0
+  mkdir -p "$dest"
+
+  for tpl in "${src}"/*.tpl; do
+    [[ -f "$tpl" ]] || continue
+    local tpl_name
+    tpl_name=$(basename "$tpl")
+    # .tpl 拡張子を除去してコピー先ファイル名を決定
+    local name="${tpl_name%.tpl}"
+    if [[ -f "${dest}/${name}" ]]; then
+      log_skip "docs/${name} は既存のためスキップ"
+    else
+      # プレースホルダー置換してコピー
+      sed \
+        -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
+        -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
+        "$tpl" > "${dest}/${name}"
+      log_info "docs/${name} をコピー"
+    fi
+  done
+}
+
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
 
@@ -827,6 +861,7 @@ main() {
   fi
   generate_settings_json
   copy_rules
+  copy_docs
   copy_issue_templates
   copy_pr_template
   copy_workflows
