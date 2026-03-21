@@ -829,6 +829,36 @@ copy_knowledge() {
   log_info "knowledge テンプレートをコピー"
 }
 
+generate_claude_gitignore() {
+  local target="${REPO_ROOT}/.claude/.gitignore"
+
+  # vibecorp が管理する除外エントリ（個人の作業状態）
+  local entries=("memory/" "plans/" "tickets/")
+
+  if [[ -f "$target" ]]; then
+    # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
+    local added=0
+    for entry in "${entries[@]}"; do
+      if ! grep -qxF "$entry" "$target"; then
+        echo "$entry" >> "$target"
+        added=1
+      fi
+    done
+    if [[ "$added" -eq 1 ]]; then
+      log_info ".claude/.gitignore にエントリを追加"
+    fi
+    return
+  fi
+
+  cat > "$target" <<'GITIGNORE'
+# 個人の作業状態（git 追跡しない）
+memory/
+plans/
+tickets/
+GITIGNORE
+  log_info ".claude/.gitignore を生成"
+}
+
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
 
@@ -913,6 +943,7 @@ main() {
   copy_issue_templates
   copy_pr_template
   copy_workflows
+  generate_claude_gitignore
   generate_claude_md
   generate_mvv_md
   create_labels
