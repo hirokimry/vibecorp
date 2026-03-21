@@ -42,19 +42,26 @@ gh label list --json name --jq '.[].name' --limit 100
 次に、タイトルと本文のテキストからキーワードベースでタイプを判定し、対応するラベル候補を決定する。
 タイプは Conventional Commits 形式と統一する。
 
-| タイプ | キーワード | ラベル候補 |
-|-------|-----------|-----------|
-| `feat` | 機能, 追加, 改善, feature, enhance | `enhancement` |
-| `fix` | バグ, 不具合, エラー, bug, fix, crash | `bug` |
-| `docs` | ドキュメント, README, docs | `documentation` |
-| `test` | テスト, test, coverage | `testing` |
-| `refactor` | リファクタ, refactor, 整理 | `refactor` |
-| `design` | 設計, design, 計画, plan | `design` |
-| `chore` | 雑務, CI, 依存, chore, deps | — |
+| タイプ | 絵文字 | キーワード | ラベル候補 |
+|-------|-------|-----------|-----------|
+| `feat` | ✨ | 機能, 追加, 改善, feature, enhance | `enhancement` |
+| `fix` | 🐛 | バグ, 不具合, エラー, bug, fix, crash | `bug` |
+| `docs` | 📖 | ドキュメント, README, docs, 仕様書 | `documentation` |
+| `test` | 🧪 | テスト, test, coverage, 検証 | `testing` |
+| `refactor` | 🔄 | リファクタ, refactor, 整理, 統一, 移行 | `refactor` |
+| `design` | 📋 | 設計, design, 計画, plan, スキーマ, 分析 | `design` |
+| `chore` | ⚙️ | 雑務, 依存, chore, deps | — |
+| `ci` | 🔧 | CI, workflow, pipeline, Actions | — |
+| `security` | 🔒 | セキュリティ, 認証, protection, auth, gate | — |
+| `perf` | ⚡ | パフォーマンス, 高速化, 最適化, performance | — |
+| `agent` | 🤖 | エージェント, agent, 自律 | — |
+| `integrate` | 🔌 | 統合, 連携, integration | — |
+| `release` | 🚀 | リリース, 公開, publish, deploy | — |
+| `template` | 📦 | テンプレート, template, プリセット | — |
 
 **ラベル付与ルール**: 候補ラベルのうち、リポジトリに存在するものだけを付与する。存在しないラベルは除外する。
 
-**タイトル形式**: `<type>: <subject>`
+**タイトル形式**: `<emoji> <type>: <subject>`
 
 - タイプはキーワードマッチで自動決定する
 - 複数マッチした場合は最初にマッチしたタイプを採用し、存在するラベルは全て付与する
@@ -69,7 +76,7 @@ gh label list --json name --jq '.[].name' --limit 100
 ### 5. 🚀 Issue 起票
 
 ```bash
-gh issue create --title "<type>: <subject>" --body "<本文>" --assignee "<assignee>" --label "<label1>" --label "<label2>"
+gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee "<assignee>" --label "<label1>" --label "<label2>"
 ```
 
 ラベルなしの場合は `--label` オプションを省略する。
@@ -89,7 +96,7 @@ gh issue create --title "<type>: <subject>" --body "<本文>" --assignee "<assig
 
 ```text
 <Issue URL>
-タイトル: <type>: <subject>
+タイトル: <emoji> <type>: <subject>
 ラベル: <付与したラベル一覧（なしの場合は「なし」）>
 担当者: <assignee>
 ```

@@ -1,7 +1,7 @@
 ---
 name: "🐛 バグ報告"
 about: 不具合の報告
-title: "fix: "
+title: "🐛 fix: "
 labels: bug
 assignees: ""
 ---
