@@ -33,11 +33,17 @@ gh repo view --json owner --jq '.owner.login'
 
 ### 3. 🏷️ タイプ判定・ラベル自動付与
 
-タイトルと本文のテキストからキーワードベースでタイプを判定し、対応するラベルを付与する。
+まずリポジトリの既存ラベル一覧を取得する。
+
+```bash
+gh label list --json name --jq '.[].name' --limit 100
+```
+
+次に、タイトルと本文のテキストからキーワードベースでタイプを判定し、対応するラベル候補を決定する。
 タイプは Conventional Commits 形式と統一する。
 
-| タイプ | キーワード | ラベル |
-|-------|-----------|--------|
+| タイプ | キーワード | ラベル候補 |
+|-------|-----------|-----------|
 | `feat` | 機能, 追加, 改善, feature, enhance | `enhancement` |
 | `fix` | バグ, 不具合, エラー, bug, fix, crash | `bug` |
 | `docs` | ドキュメント, README, docs | `documentation` |
@@ -46,10 +52,12 @@ gh repo view --json owner --jq '.owner.login'
 | `design` | 設計, design, 計画, plan | `design` |
 | `chore` | 雑務, CI, 依存, chore, deps | — |
 
+**ラベル付与ルール**: 候補ラベルのうち、リポジトリに存在するものだけを付与する。存在しないラベルは除外する。
+
 **タイトル形式**: `<type>: <subject>`
 
 - タイプはキーワードマッチで自動決定する
-- 複数マッチした場合は最初にマッチしたタイプを採用し、ラベルは全て付与する
+- 複数マッチした場合は最初にマッチしたタイプを採用し、存在するラベルは全て付与する
 - マッチなしの場合はタイプなし（プレフィックスなし）、ラベルなしで起票する
 - ユーザーが既にタイプ付きタイトルを入力した場合はそのまま使用する
 
@@ -74,7 +82,7 @@ gh issue create --title "<type>: <subject>" --body "<本文>" --assignee "<assig
 
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
-- ラベルが存在しない場合でも `gh issue create` はエラーにならない（GitHub が自動スキップする）
+- リポジトリに存在しないラベルは `--label` に渡さない（`gh issue create` がエラーになるため）
 - `vibecorp.yml` が存在しない、または `issue.default_assignee` が未定義でも正常に動作すること
 
 ## 📤 返却フォーマット

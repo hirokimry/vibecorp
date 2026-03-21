@@ -110,7 +110,7 @@ read_lock_list() {
   [[ -f "$lock_file" ]] || return 0
 
   awk -v section="$section" '
-    /^  [a-z]+:/ {
+    /^  [a-z_]+:/ {
       current = $1
       gsub(/:$/, "", current)
       next
