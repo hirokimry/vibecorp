@@ -59,22 +59,31 @@ gh pr checks {pr_number} --json name,state --jq '.[] | {name, state}'
 
 #### 2.3 終了条件の判定
 
-未解決のCodeRabbitコメントを数える:
+GraphQL API で未解決の CodeRabbit レビュースレッド数を取得する:
 
 ```bash
-# CodeRabbitのトップレベルコメントID
-CR_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --paginate \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.in_reply_to_id == null) | .id]')
-
-# 返信済みID一覧
-REPLY_TO_IDS=$(gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --paginate \
-  --jq '[.[] | select(.in_reply_to_id != null) | .in_reply_to_id] | unique')
-
-# 未返信 = 未解決
-echo "$CR_IDS" | jq --argjson replied "$REPLY_TO_IDS" \
-  '[.[] | select(. as $id | $replied | index($id) | not)]'
+gh api graphql -f query='
+  query {
+    repository(owner: "{owner}", name: "{repo}") {
+      pullRequest(number: {pr_number}) {
+        reviewThreads(first: 100) {
+          nodes {
+            isResolved
+            comments(first: 1) {
+              nodes {
+                author { login }
+                body
+              }
+            }
+          }
+        }
+      }
+    }
+  }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes
+    | [.[] | select(.isResolved == false)
+    | select(.comments.nodes[0].author.login | test("coderabbit"; "i"))]
+    | length'
 ```
 
 - CI パス + 未解決0件 → **ループ終了、ステップ2.5 へ**
