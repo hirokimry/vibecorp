@@ -655,6 +655,135 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== O. --update 引数パース ==="
+# ============================================
+
+# O1. --update で vibecorp.yml から設定を読み取って成功
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update で成功" "0" "$EXIT_CODE"
+cleanup
+
+# O2. --update で vibecorp.yml が無い場合はエラー
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update で vibecorp.yml 無しはエラー" "1" "$EXIT_CODE"
+cleanup
+
+# O3. --update + --name 同時指定はエラー
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+EXIT_CODE=0; bash "$INSTALL_SH" --update --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "--update + --name 同時指定はエラー" "1" "$EXIT_CODE"
+cleanup
+
+# O4. --update で vibecorp.yml の設定が正しく読み取られる
+create_test_repo
+bash "$INSTALL_SH" --name my-app --preset minimal --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+# CLAUDE.md を削除して --update で再生成されるか確認
+rm -f "$R/.claude/CLAUDE.md"
+bash "$INSTALL_SH" --update 2>/dev/null
+# CLAUDE.md が yml の name/language で再生成されているか
+assert_file_exists "--update で CLAUDE.md 再生成" "$R/.claude/CLAUDE.md"
+assert_file_contains "--update で yml の name を使用" "$R/.claude/CLAUDE.md" "my-app"
+assert_file_contains "--update で yml の language を使用" "$R/.claude/CLAUDE.md" "English"
+cleanup
+
+# ============================================
+echo ""
+echo "=== P. --update での管理ファイル強制差し替え ==="
+# ============================================
+
+# P1. --update で管理フックが強制上書きされる（スキップしない）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# protect-files.sh をカスタム内容に変更
+echo "# ユーザーカスタム版" > "$R/.claude/hooks/protect-files.sh"
+# ユーザー独自フックも追加
+echo '#!/bin/bash' > "$R/.claude/hooks/my-guard.sh"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# 管理フックは強制上書き
+assert_file_not_contains "--update で管理フックが上書き" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版"
+# ユーザー独自フックは残る
+assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
+cleanup
+
+# P2. --update で管理スキルが強制上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# 古い review" > "$R/.claude/skills/review/SKILL.md"
+mkdir -p "$R/.claude/skills/my-deploy"
+echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_contains "--update で管理スキルが上書き" "$R/.claude/skills/review/SKILL.md" "古い review"
+assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
+cleanup
+
+# P3. --update で管理ルールが強制上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# 古いルール" > "$R/.claude/rules/comments.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_contains "--update で管理ルールが上書き" "$R/.claude/rules/comments.md" "古いルール"
+cleanup
+
+# ============================================
+echo ""
+echo "=== Q. --update でのプリセット変更 ==="
+# ============================================
+
+# Q1. --update --preset で vibecorp.yml の preset が更新される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "初回は minimal" "$R/.claude/vibecorp.yml" "preset: minimal"
+
+# 注: 現在 minimal のみ対応のため、preset 変更テストは validate_preset を一時回避
+# ここでは yml の更新ロジック自体をテスト（同じ preset での --update）
+bash "$INSTALL_SH" --update --preset minimal 2>/dev/null
+assert_file_contains "--update --preset で yml 保持" "$R/.claude/vibecorp.yml" "preset: minimal"
+cleanup
+
+# Q2. --update で全既存テスト後のファイル整合性
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ユーザーファイルを配置
+echo '#!/bin/bash' > "$R/.claude/hooks/custom.sh"
+mkdir -p "$R/.claude/skills/custom-skill"
+echo "# custom" > "$R/.claude/skills/custom-skill/SKILL.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# vibecorp 管理ファイルが存在
+assert_file_exists "--update 後に protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
+assert_dir_exists "--update 後に review スキル存在" "$R/.claude/skills/review"
+# ユーザーファイルが保持
+assert_file_exists "--update 後にユーザーフック保持" "$R/.claude/hooks/custom.sh"
+assert_file_exists "--update 後にユーザースキル保持" "$R/.claude/skills/custom-skill/SKILL.md"
+# lock にユーザーファイルなし
+assert_file_not_contains "--update 後の lock にユーザーフックなし" "$R/.claude/vibecorp.lock" "custom.sh"
+assert_file_not_contains "--update 後の lock にユーザースキルなし" "$R/.claude/vibecorp.lock" "custom-skill"
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

@@ -1,6 +1,7 @@
 #!/bin/bash
 # install.sh — vibecorp プラグインインストーラー
-# Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja|en|...]
+# Usage: install.sh --name <project-name> [--preset minimal] [--language ja|en|...]
+#        install.sh --update [--preset minimal]
 set -euo pipefail
 
 VIBECORP_VERSION="0.1.0"
@@ -16,12 +17,16 @@ usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
 Usage: install.sh --name <project-name> [--preset minimal] [--language ja]
+       install.sh --update [--preset minimal]
 
 Options:
-  --name      プロジェクト名（必須、英数字とハイフン、1-50文字）
+  --name      プロジェクト名（初回インストール時に必須）
+  --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
   --preset    組織プリセット: minimal（デフォルト: minimal）
   --language  回答言語: ja, en, または任意（デフォルト: ja）
   -h, --help  このヘルプを表示
+
+--name と --update は同時に指定できません。
 USAGE
   exit "$exit_code"
 }
@@ -38,23 +43,36 @@ resolve_language() {
 
 parse_args() {
   PROJECT_NAME=""
-  PRESET="minimal"
-  LANGUAGE="ja"
+  PRESET=""
+  LANGUAGE=""
+  UPDATE_MODE=false
+  PRESET_SPECIFIED=false
+  LANGUAGE_SPECIFIED=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name)     [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--name に値が必要です"; usage; }; PROJECT_NAME="$2"; shift 2 ;;
-      --preset)   [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; shift 2 ;;
-      --language) [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; shift 2 ;;
+      --update)   UPDATE_MODE=true; shift ;;
+      --preset)   [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; PRESET_SPECIFIED=true; shift 2 ;;
+      --language) [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; LANGUAGE_SPECIFIED=true; shift 2 ;;
       -h|--help)  usage 0 ;;
       *)          log_error "不明なオプション: $1"; usage ;;
     esac
   done
 
-  if [[ -z "$PROJECT_NAME" ]]; then
+  if [[ "$UPDATE_MODE" == true && -n "$PROJECT_NAME" ]]; then
+    log_error "--name と --update は同時に指定できません"
+    usage
+  fi
+
+  if [[ "$UPDATE_MODE" == false && -z "$PROJECT_NAME" ]]; then
     log_error "--name は必須です"
     usage
   fi
+
+  # デフォルト値の設定（--update 時は read_vibecorp_yml で上書きされる）
+  if [[ -z "$PRESET" ]]; then PRESET="minimal"; fi
+  if [[ -z "$LANGUAGE" ]]; then LANGUAGE="ja"; fi
 }
 
 validate_name() {
@@ -100,6 +118,55 @@ detect_repo_root() {
   fi
 }
 
+read_vibecorp_yml() {
+  # vibecorp.yml からプロジェクト設定を読み取る（--update モード用）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  if [[ ! -f "$yml" ]]; then
+    log_error "vibecorp.yml が見つかりません。初回は --name でインストールしてください"
+    exit 1
+  fi
+
+  # awk でトップレベルキーの値を抽出
+  PROJECT_NAME=$(awk '/^name:/ { print $2 }' "$yml")
+  local yml_preset
+  yml_preset=$(awk '/^preset:/ { print $2 }' "$yml")
+  local yml_language
+  yml_language=$(awk '/^language:/ { print $2 }' "$yml")
+
+  # --preset 未指定なら yml の値を使う
+  if [[ "$PRESET_SPECIFIED" == false ]]; then
+    PRESET="${yml_preset:-minimal}"
+  fi
+  # --language 未指定なら yml の値を使う
+  if [[ "$LANGUAGE_SPECIFIED" == false ]]; then
+    LANGUAGE="${yml_language:-ja}"
+  fi
+
+  if [[ -z "$PROJECT_NAME" ]]; then
+    log_error "vibecorp.yml に name が定義されていません"
+    exit 1
+  fi
+
+  log_info "vibecorp.yml から設定を読み取り (name: ${PROJECT_NAME}, preset: ${PRESET})"
+}
+
+update_vibecorp_yml() {
+  # --update + --preset 指定時に vibecorp.yml の preset を更新
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  [[ "$PRESET_SPECIFIED" == true ]] || return 0
+  [[ -f "$yml" ]] || return 0
+
+  local current_preset
+  current_preset=$(awk '/^preset:/ { print $2 }' "$yml")
+
+  if [[ "$current_preset" != "$PRESET" ]]; then
+    sed "s|^preset: .*|preset: ${PRESET}|" "$yml" > "${yml}.tmp" && mv "${yml}.tmp" "$yml"
+    log_info "vibecorp.yml の preset を更新: ${current_preset} → ${PRESET}"
+  fi
+}
+
 read_lock_list() {
   # lock ファイルから指定セクションのファイル一覧を取得
   # 使い方: read_lock_list <lock_file> <section_name>
@@ -132,12 +199,12 @@ remove_managed_files() {
 
   # lock 記載の hooks を削除
   while IFS= read -r name; do
-    [[ -n "$name" ]] && rm -f "${hooks_dir}/${name}"
+    [[ -n "$name" ]] && rm -f "${hooks_dir:?}/${name:?}"
   done < <(read_lock_list "$lock" "hooks")
 
   # lock 記載の skills を削除
   while IFS= read -r name; do
-    [[ -n "$name" ]] && rm -rf "${skills_dir}/${name}"
+    [[ -n "$name" ]] && rm -rf "${skills_dir:?}/${name:?}"
   done < <(read_lock_list "$lock" "skills")
 
   log_info "管理ファイルを削除（lock ベース）"
@@ -150,24 +217,29 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
-  # hooks: 同名ファイルが既存ならスキップ
+  # hooks: --update 時は上書き、通常時は既存スキップ
   for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
     [[ -f "$src" ]] || continue
     local name
     name=$(basename "$src")
-    if [[ -f "${hooks_dir}/${name}" ]]; then
+    if [[ "$UPDATE_MODE" == true ]]; then
+      cp "$src" "${hooks_dir}/${name}"
+    elif [[ -f "${hooks_dir}/${name}" ]]; then
       log_skip "hooks/${name} は既存のためスキップ"
     else
       cp "$src" "${hooks_dir}/${name}"
     fi
   done
 
-  # skills: 同名ディレクトリが既存ならスキップ
+  # skills: --update 時は上書き、通常時は既存スキップ
   for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
     [[ -d "$src_dir" ]] || continue
     local name
     name=$(basename "$src_dir")
-    if [[ -d "${skills_dir}/${name}" ]]; then
+    if [[ "$UPDATE_MODE" == true ]]; then
+      rm -rf "${skills_dir:?}/${name:?}"
+      cp -R "$src_dir" "${skills_dir}/${name}"
+    elif [[ -d "${skills_dir}/${name}" ]]; then
       log_skip "skills/${name} は既存のためスキップ"
     else
       cp -R "$src_dir" "${skills_dir}/${name}"
@@ -333,7 +405,10 @@ copy_rules() {
   for rule in "${src}"/*.md; do
     local basename
     basename=$(basename "$rule")
-    if [[ -f "${dest}/${basename}" ]]; then
+    if [[ "$UPDATE_MODE" == true ]]; then
+      cp "$rule" "${dest}/${basename}"
+      log_info "rules/${basename} を更新"
+    elif [[ -f "${dest}/${basename}" ]]; then
       log_skip "rules/${basename} は既存のためスキップ"
     else
       cp "$rule" "${dest}/${basename}"
@@ -375,10 +450,13 @@ generate_mvv_md() {
 }
 
 print_completion() {
+  local action="インストール"
+  [[ "$UPDATE_MODE" == true ]] && action="更新"
+
   cat >&2 <<DONE
 
 ────────────────────────────────────────────
-  vibecorp ${VIBECORP_VERSION} のインストールが完了しました
+  vibecorp ${VIBECORP_VERSION} の${action}が完了しました
   プロジェクト: ${PROJECT_NAME}
   プリセット:   ${PRESET}
   リポジトリ:   ${REPO_ROOT}
@@ -391,14 +469,24 @@ DONE
 
 main() {
   parse_args "$@"
+  check_prerequisites
+  detect_repo_root
+
+  if [[ "$UPDATE_MODE" == true ]]; then
+    read_vibecorp_yml
+  fi
+
   validate_name
   validate_preset
   validate_language
-  check_prerequisites
-  detect_repo_root
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml
+
+  if [[ "$UPDATE_MODE" == true ]]; then
+    update_vibecorp_yml
+  fi
+
   generate_settings_json
   copy_rules
   generate_claude_md
