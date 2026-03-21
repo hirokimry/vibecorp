@@ -61,10 +61,6 @@ assert_exit_code "不明オプションでエラー" "1" "$EXIT_CODE"
 # そのため、--delete のパースは --help と組み合わせてはテストできない
 # 代わりに、スクリプトを source して parse_args 関数を直接テストする
 
-# parse_args 関数の直接テスト
-DELETE_RESULT=$(bash -c '
-  source "'"$SETUP_SH"'" 2>/dev/null <<< "" || true
-' 2>&1 || true)
 # source が難しいので、別アプローチ: --delete が不明オプション扱いにならないことを確認
 # gh が認証済みかどうかに依存しないテスト方法として、エラーメッセージを確認
 OUTPUT=$(bash "$SETUP_SH" --delete 2>&1 || true)
