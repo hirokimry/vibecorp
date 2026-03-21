@@ -366,7 +366,9 @@ configure_github_repo() {
     get_error="$existing_raw"
     # 404 = Branch Protection 未設定（正常）、それ以外 = 権限不足等で既存 contexts 不明
     if ! echo "$get_error" | grep -qi "404\|not found"; then
-      log_skip "既存の required status checks を取得できません。vibecorp の設定のみ適用します"
+      log_error "既存の required status checks を取得できません。上書き回避のため自動設定をスキップします: ${get_error}"
+      print_manual_guidance "$base_branch" "$checks_display"
+      return
     fi
   fi
 

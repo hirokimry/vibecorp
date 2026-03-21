@@ -956,8 +956,9 @@ if [[ "$1" == "repo" && "$2" == "view" ]]; then
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
-  # required_status_checks GET → 未設定
+  # required_status_checks GET → 404（未設定）
   if echo "$*" | grep -q "required_status_checks"; then
+    echo "HTTP 404 - Not Found" >&2
     exit 1
   fi
   # Branch Protection PUT → 403 エラー
@@ -1032,6 +1033,49 @@ echo "# ユーザー編集済み" > "$R/.github/pull_request_template.md"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
 assert_file_contains "再実行時に PR テンプレートが上書きされない" "$R/.github/pull_request_template.md" "ユーザー編集済み"
+
+cleanup
+
+# R6. required_status_checks GET が 403（権限不足）の場合、PUT をスキップして手動ガイダンス表示
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+PUT_LOG="$TMPDIR_ROOT/_put_payload.json"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+if [[ "\$1" == "repo" && "\$2" == "view" ]]; then
+  echo '{"nameWithOwner":"test/repo"}'
+  exit 0
+fi
+if [[ "\$1" == "api" ]]; then
+  # required_status_checks GET → 403（権限不足）
+  if echo "\$*" | grep -q "required_status_checks"; then
+    echo "HTTP 403 - Forbidden" >&2
+    exit 1
+  fi
+  # Branch Protection PUT → payload をログに保存（到達しないはず）
+  if echo "\$*" | grep -q "protection" && echo "\$*" | grep -q "PUT"; then
+    cat /dev/stdin > "$PUT_LOG"
+    exit 0
+  fi
+  exit 0
+fi
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+STDERR_OUTPUT=$(PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>&1 >/dev/null) || EXIT_CODE=$?
+assert_exit_code "R6: GET 403 でもインストール成功" "0" "$EXIT_CODE"
+if [[ ! -f "$PUT_LOG" ]]; then
+  pass "R6: GET 403 時は PUT をスキップ（既存 contexts 上書き回避）"
+else
+  fail "R6: GET 403 時は PUT をスキップ（既存 contexts 上書き回避）"
+fi
+if echo "$STDERR_OUTPUT" | grep -q "推奨設定"; then
+  pass "R6: GET 403 時にフォールバック（推奨設定）が表示される"
+else
+  fail "R6: GET 403 時にフォールバック（推奨設定）が表示される"
+fi
 
 cleanup
 
