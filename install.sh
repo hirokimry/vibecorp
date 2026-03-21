@@ -7,6 +7,10 @@ set -euo pipefail
 VIBECORP_VERSION="0.1.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# コピー済みファイル追跡用（lock 生成で使用）
+COPIED_DOCS=""
+COPIED_KNOWLEDGE=""
+
 # ── ユーティリティ ─────────────────────────────────────
 
 log_info()  { printf '\033[32m[INFO]\033[0m  %s\n' "$*" >&2; }
@@ -554,19 +558,13 @@ generate_vibecorp_lock() {
     name=$(basename "$f")
     [[ -f "${REPO_ROOT}/.github/ISSUE_TEMPLATE/${name}" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
   done
-  for f in "${SCRIPT_DIR}/templates/docs/"*.tpl; do
-    [[ -f "$f" ]] || continue
-    local tpl_name
-    tpl_name=$(basename "$f")
-    local name="${tpl_name%.tpl}"
-    [[ -f "${REPO_ROOT}/docs/${name}" ]] && docs_list="${docs_list}    - ${name}"$'\n'
-  done
-  if [[ -d "${SCRIPT_DIR}/templates/claude/knowledge" ]]; then
-    while IFS= read -r f; do
-      local rel="${f#"${SCRIPT_DIR}/templates/claude/knowledge/"}"
-      [[ -f "${REPO_ROOT}/.claude/knowledge/${rel}" ]] && knowledge_list="${knowledge_list}    - ${rel}"$'\n'
-    done < <(find "${SCRIPT_DIR}/templates/claude/knowledge" -type f)
-  fi
+  # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && docs_list="${docs_list}    - ${name}"$'\n'
+  done <<< "$COPIED_DOCS"
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] && knowledge_list="${knowledge_list}    - ${rel}"$'\n'
+  done <<< "$COPIED_KNOWLEDGE"
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
@@ -786,6 +784,7 @@ copy_docs() {
         -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
         -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
         "$tpl" > "${dest}/${name}"
+      COPIED_DOCS="${COPIED_DOCS}${name}"$'\n'
       log_info "docs/${name} をコピー"
     fi
   done
@@ -804,7 +803,7 @@ copy_knowledge() {
   esac
 
   # ディレクトリ構造を維持してコピー（既存ファイルはスキップ）
-  find "$src" -type f | while IFS= read -r f; do
+  while IFS= read -r f; do
     local rel="${f#"$src"/}"
     local dest_file="${dest}/${rel}"
     local dest_dir
@@ -821,8 +820,9 @@ copy_knowledge() {
         -e "s|{{PRESET}}|${PRESET}|g" \
         -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
         "$f" > "$dest_file"
+      COPIED_KNOWLEDGE="${COPIED_KNOWLEDGE}${rel}"$'\n'
     fi
-  done
+  done < <(find "$src" -type f)
 
   log_info "knowledge テンプレートをコピー"
 }

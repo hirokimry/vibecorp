@@ -38,7 +38,7 @@ path/to/vibecorp/install.sh --name your-project
 
 | プリセット | スキル | フック | ユースケース |
 |---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue | protect-files | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop | protect-files | 個人〜小規模 |
 | **standard** | +/review-to-rules, /sync-check, /sync-edit | +review-to-rules-gate, sync-gate | チーム開発 |
 | **full** | （スキル追加なし） | +role-gate | AI企業・コンプライアンス重視 |
 

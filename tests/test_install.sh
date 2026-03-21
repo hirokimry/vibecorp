@@ -1330,6 +1330,17 @@ assert_file_contains "lock に specification.md" "$R/.claude/vibecorp.lock" "spe
 assert_file_contains "lock に POLICY.md" "$R/.claude/vibecorp.lock" "POLICY.md"
 assert_file_contains "lock に SECURITY.md" "$R/.claude/vibecorp.lock" "SECURITY.md"
 
+# X10. ユーザー既存 docs ファイルは lock に載らない
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/docs"
+echo "# ユーザー独自ドキュメント" > "$TMPDIR_ROOT/docs/my-guide.md"
+echo "# ユーザー版 specification" > "$TMPDIR_ROOT/docs/specification.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_not_contains "ユーザー独自 docs は lock に載らない" "$R/.claude/vibecorp.lock" "my-guide.md"
+assert_file_not_contains "スキップされた docs は lock に載らない" "$R/.claude/vibecorp.lock" "specification.md"
+
 cleanup
 
 # ============================================
