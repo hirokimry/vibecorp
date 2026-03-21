@@ -324,7 +324,22 @@ assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.clau
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
-# E13. .claude/vibecorp/ ディレクトリが存在しない
+# E13. .coderabbit.yaml 存在
+assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
+
+# E14. .coderabbit.yaml に request_changes_workflow: true
+assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
+
+# E15. .coderabbit.yaml に auto_resolve
+assert_file_contains ".coderabbit.yaml に auto_resolve" "$R/.coderabbit.yaml" "auto_resolve"
+
+# E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
+assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
+
+# E17. .coderabbit.yaml にプレースホルダーなし
+assert_file_not_contains ".coderabbit.yaml にプレースホルダーなし" "$R/.coderabbit.yaml" '{{.*}}'
+
+# E18. .claude/vibecorp/ ディレクトリが存在しない
 if [ ! -d "$R/.claude/vibecorp" ]; then
   pass ".claude/vibecorp/ が存在しない"
 else
@@ -367,6 +382,7 @@ R="$TMPDIR_ROOT"
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
+CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
 
 # 2回目実行
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
@@ -396,6 +412,14 @@ if [ "$MVV_MD_BEFORE" = "$MVV_MD_AFTER" ]; then
   pass "MVV.md スキップ（内容保持）"
 else
   fail "MVV.md スキップ（内容が変わった）"
+fi
+
+# G5. .coderabbit.yaml スキップ（内容保持）
+CODERABBIT_AFTER=$(cat "$R/.coderabbit.yaml")
+if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
+  pass ".coderabbit.yaml スキップ（内容保持）"
+else
+  fail ".coderabbit.yaml スキップ（内容が変わった）"
 fi
 
 cleanup
@@ -569,15 +593,15 @@ R="$TMPDIR_ROOT"
 # protect-files.sh の内容を変更（古いバージョンを模擬）
 echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
 # ユーザー独自フックを追加
-echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
-echo 'echo "ユーザー独自同期ゲート"' >> "$R/.claude/hooks/sync-gate.sh"
+echo '#!/bin/bash' > "$R/.claude/hooks/my-custom-gate.sh"
+echo 'echo "ユーザー独自カスタムゲート"' >> "$R/.claude/hooks/my-custom-gate.sh"
 
 # 再実行で管理ファイルは差し替え、ユーザーファイルは保持
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
 assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
-assert_file_exists "ユーザー独自フック(sync-gate.sh)が残る" "$R/.claude/hooks/sync-gate.sh"
-assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/sync-gate.sh" "ユーザー独自同期ゲート"
+assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
+assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
 # M2. vibecorp 管理スキルも差し替えられる
 echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
@@ -636,7 +660,7 @@ cat > "$TMPDIR_ROOT/.claude/settings.json" <<'JSON'
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/my-custom-gate.sh"
           }
         ]
       }
@@ -648,8 +672,117 @@ JSON
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "sync-gate.sh"
+assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "my-custom-gate.sh"
 assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== O. .coderabbit.yaml スキップ動作 ==="
+# ============================================
+
+# O1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+create_test_repo
+echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
+
+# O2. --language en で language: en-US になる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains ".coderabbit.yaml に language: en-US" "$R/.coderabbit.yaml" "language: en-US"
+
+cleanup
+
+# ============================================
+echo ""
+echo "=== P. Issue テンプレート・ラベル・/issue スキル ==="
+# ============================================
+
+# P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists ".github/ISSUE_TEMPLATE/ 存在" "$R/.github/ISSUE_TEMPLATE"
+
+# P2. bug_report.md 存在
+assert_file_exists "bug_report.md 存在" "$R/.github/ISSUE_TEMPLATE/bug_report.md"
+
+# P3. feature_request.md 存在
+assert_file_exists "feature_request.md 存在" "$R/.github/ISSUE_TEMPLATE/feature_request.md"
+
+# P4. config.yml 存在
+assert_file_exists "config.yml 存在" "$R/.github/ISSUE_TEMPLATE/config.yml"
+
+# P5. 既存同名テンプレートはスキップ
+cleanup
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE"
+echo "# カスタムバグ報告" > "$TMPDIR_ROOT/.github/ISSUE_TEMPLATE/bug_report.md"
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+CONTENT=$(cat "$R/.github/ISSUE_TEMPLATE/bug_report.md")
+if [ "$CONTENT" = "# カスタムバグ報告" ]; then
+  pass "既存同名テンプレートはスキップ"
+else
+  fail "既存同名テンプレートはスキップ (内容が上書きされた)"
+fi
+
+# P6. vibecorp.lock に issue_templates セクション含む
+assert_file_contains "lock に issue_templates セクション" "$R/.claude/vibecorp.lock" "issue_templates:"
+assert_file_contains "lock に bug_report.md" "$R/.claude/vibecorp.lock" "bug_report.md"
+assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
+assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
+
+# P7. /issue スキルが配置されている
+assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
+assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
+assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
+
+# P8. gh が repo view に失敗する場合のラベル作成スキップ動作
+# ダミー gh を PATH の先頭に配置し、常に失敗させる
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'FAKESH'
+#!/bin/bash
+# ダミー gh: 常に失敗を返す
+exit 1
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+# gh が使えなくてもインストール自体は成功する
+assert_exit_code "gh 失敗時でもインストール成功" "0" "$EXIT_CODE"
+
+# P9. gh 正常時は期待ラベル作成コマンドが発行される
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin"
+mkdir -p "$FAKE_BIN"
+GH_LOG="$TMPDIR_ROOT/gh_calls.log"
+cat > "$FAKE_BIN/gh" <<FAKESH
+#!/bin/bash
+# ダミー gh: 引数をログに記録して成功を返す
+echo "\$*" >> "$GH_LOG"
+exit 0
+FAKESH
+chmod +x "$FAKE_BIN/gh"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "gh 正常時インストール成功" "0" "$EXIT_CODE"
+assert_file_contains "bug ラベル作成呼び出し" "$GH_LOG" "label create bug"
+assert_file_contains "enhancement ラベル作成呼び出し" "$GH_LOG" "label create enhancement"
+assert_file_contains "documentation ラベル作成呼び出し" "$GH_LOG" "label create documentation"
+assert_file_contains "good first issue ラベル作成呼び出し" "$GH_LOG" "label create good first issue"
 
 cleanup
 

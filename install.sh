@@ -34,6 +34,14 @@ resolve_language() {
   esac
 }
 
+resolve_coderabbit_language() {
+  case "$1" in
+    ja) echo "ja-JP" ;;
+    en) echo "en-US" ;;
+    *)  echo "$1" ;;
+  esac
+}
+
 # ── ステップ関数 ───────────────────────────────────────
 
 parse_args() {
@@ -110,7 +118,7 @@ read_lock_list() {
   [[ -f "$lock_file" ]] || return 0
 
   awk -v section="$section" '
-    /^  [a-z]+:/ {
+    /^  [a-z_]+:/ {
       current = $1
       gsub(/:$/, "", current)
       next
@@ -198,6 +206,7 @@ copy_managed_files() {
   case "$PRESET" in
     minimal)
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
+      rm -f "${hooks_dir}/sync-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
       ;;
   esac
@@ -225,6 +234,24 @@ YAML
   log_info "vibecorp.yml を生成"
 }
 
+generate_coderabbit_yaml() {
+  local target="${REPO_ROOT}/.coderabbit.yaml"
+  local template="${SCRIPT_DIR}/templates/coderabbit.yaml.tpl"
+
+  if [[ -f "$target" ]]; then
+    log_skip ".coderabbit.yaml は既存のためスキップ"
+    return
+  fi
+
+  local lang_code
+  lang_code=$(resolve_coderabbit_language "$LANGUAGE")
+
+  sed \
+    -e "s|{{LANGUAGE}}|${lang_code}|g" \
+    "$template" > "$target"
+  log_info ".coderabbit.yaml を生成"
+}
+
 generate_vibecorp_lock() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local installed_at
@@ -233,7 +260,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" rules_list=""
+  local hooks_list="" skills_list="" rules_list="" issue_templates_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -255,6 +282,12 @@ generate_vibecorp_lock() {
     name=$(basename "$f")
     [[ -f "${REPO_ROOT}/.claude/rules/${name}" ]] && rules_list="${rules_list}    - ${name}"$'\n'
   done
+  for f in "${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE/"*; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    [[ -f "${REPO_ROOT}/.github/ISSUE_TEMPLATE/${name}" ]] && issue_templates_list="${issue_templates_list}    - ${name}"$'\n'
+  done
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
@@ -266,7 +299,8 @@ files:
   hooks:
 ${hooks_list}  skills:
 ${skills_list}  rules:
-${rules_list}
+${rules_list}  issue_templates:
+${issue_templates_list}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -285,7 +319,7 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select(.command | contains("review-to-rules-gate") | not)]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not))]
           | select((.hooks | length) > 0)
         ]
       ')
@@ -323,6 +357,73 @@ generate_settings_json() {
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
     log_info "settings.json をマージ（ユーザーフック保持）"
   fi
+}
+
+copy_issue_templates() {
+  local src="${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE"
+  local dest="${REPO_ROOT}/.github/ISSUE_TEMPLATE"
+
+  [[ -d "$src" ]] || return 0
+  mkdir -p "$dest"
+
+  for f in "${src}"/*; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    if [[ -f "${dest}/${name}" ]]; then
+      log_skip "ISSUE_TEMPLATE/${name} は既存のためスキップ"
+    else
+      cp "$f" "${dest}/${name}"
+    fi
+  done
+
+  log_info "Issue テンプレートをコピー"
+}
+
+create_labels() {
+  # gh 未インストール or リポジトリ未接続ならスキップ
+  if ! command -v gh >/dev/null 2>&1; then
+    log_skip "gh 未インストールのためラベル作成をスキップ"
+    return 0
+  fi
+  if ! gh repo view >/dev/null 2>&1; then
+    log_skip "リポジトリ未接続のためラベル作成をスキップ"
+    return 0
+  fi
+
+  local VIBECORP_LABELS=(
+    "bug:d73a4a:不具合の報告"
+    "enhancement:a2eeef:機能追加・改善"
+    "documentation:0075ca:ドキュメントの追加・修正"
+    "question:d876e3:質問・相談"
+    "good first issue:7057ff:初心者向けのタスク"
+    "help wanted:008672:協力者募集"
+    "design:f9d0c4:設計・計画"
+    "testing:bfd4f2:テスト関連"
+    "refactor:d4c5f9:リファクタリング"
+    "priority/high:b60205:優先度: 高"
+    "priority/low:c2e0c6:優先度: 低"
+  )
+
+  # 既存ラベル一覧を取得
+  local existing_labels
+  existing_labels=$(gh label list --json name --jq '.[].name' --limit 100 2>/dev/null || echo "")
+
+  for entry in "${VIBECORP_LABELS[@]}"; do
+    local label_name label_color label_desc
+    label_name="${entry%%:*}"
+    local rest="${entry#*:}"
+    label_color="${rest%%:*}"
+    label_desc="${rest#*:}"
+
+    if echo "$existing_labels" | grep -qxF "$label_name"; then
+      log_skip "ラベル '${label_name}' は既存のためスキップ"
+    else
+      gh label create "$label_name" --color "$label_color" --description "$label_desc" 2>/dev/null \
+        && log_info "ラベル '${label_name}' を作成" \
+        || log_skip "ラベル '${label_name}' の作成に失敗（スキップ）"
+    fi
+  done
 }
 
 copy_rules() {
@@ -399,10 +500,13 @@ main() {
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml
+  generate_coderabbit_yaml
   generate_settings_json
   copy_rules
+  copy_issue_templates
   generate_claude_md
   generate_mvv_md
+  create_labels
   generate_vibecorp_lock
   print_completion
 }
