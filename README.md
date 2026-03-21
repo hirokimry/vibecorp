@@ -38,7 +38,7 @@ path/to/vibecorp/install.sh --name your-project
 
 | プリセット | スキル | フック | ユースケース |
 |---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit | protect-files | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit, /issue | protect-files | 個人〜小規模 |
 | **standard** | +/review-to-rules, /sync-check | +review-to-rules-gate, sync-gate | チーム開発 |
 | **full** | +/sync-edit | +role-gate | AI企業・コンプライアンス重視 |
 
@@ -59,6 +59,10 @@ your-project/
 │   ├── settings.json      # フック設定
 │   └── CLAUDE.md          # プロジェクト指示
 ├── .github/
+│   ├── ISSUE_TEMPLATE/    # Issue テンプレート
+│   │   ├── bug_report.md
+│   │   ├── feature_request.md
+│   │   └── config.yml
 │   └── workflows/
 │       └── test.yml       # CI ワークフロー
 ├── .coderabbit.yaml       # CodeRabbit 設定
@@ -110,6 +114,7 @@ review:
 | `/pr-review-fix` | PR のレビューコメントを取得し修正 |
 | `/pr-merge-loop` | レビュー修正 → Approve → マージまで自動ループ |
 | `/commit` | Conventional Commits 形式で自動コミット |
+| `/issue` | ラベル自動判定 + Assignees 設定で Issue 起票 |
 
 ## リポジトリインフラ設定
 
