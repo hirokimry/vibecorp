@@ -266,10 +266,59 @@ generate_ci_workflow() {
   log_info ".github/workflows/test.yml を生成"
 }
 
+print_manual_guidance() {
+  local base_branch="$1"
+  local checks="$2"
+  cat >&2 <<GUIDANCE
+[推奨設定]
+  Settings > General > Pull Requests:
+    - Allow squash merging のみ有効
+    - Allow auto-merge 有効
+    - Automatically delete head branches 有効
+  Settings > General > Update branch:
+    - Always suggest updating pull request branches 有効
+  Settings > Branches > Branch protection rules (${base_branch}):
+    - Require a pull request before merging
+    - Require approvals: 1
+    - Dismiss stale pull request approvals when new commits are pushed
+    - Require status checks to pass before merging (strict)
+    - Required checks: ${checks}
+    - Include administrators
+    - Do not allow force pushes
+    - Do not allow deletions
+GUIDANCE
+}
+
+resolve_github_checks() {
+  # .coderabbit.yaml が存在すれば CodeRabbit を required check に追加
+  if [[ -f "${REPO_ROOT}/.coderabbit.yaml" ]]; then
+    echo "test, CodeRabbit"
+  else
+    echo "test"
+  fi
+}
+
+resolve_base_branch() {
+  local base_branch="main"
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  if [[ -f "$yml" ]]; then
+    local parsed
+    parsed=$(awk '/^base_branch:/ { print $2 }' "$yml")
+    [[ -n "$parsed" ]] && base_branch="$parsed"
+  fi
+  echo "$base_branch"
+}
+
 configure_github_repo() {
+  local base_branch
+  base_branch=$(resolve_base_branch)
+  local checks_display
+  checks_display=$(resolve_github_checks)
+
   # gh CLI が利用できない場合はスキップ
   if ! command -v gh >/dev/null 2>&1; then
     log_skip "gh CLI が見つかりません。リポジトリ設定は手動で行ってください"
+    print_manual_guidance "$base_branch" "$checks_display"
     return
   fi
 
@@ -277,16 +326,8 @@ configure_github_repo() {
   local name_with_owner
   if ! name_with_owner=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null); then
     log_skip "GitHub リポジトリに接続できません。リポジトリ設定は手動で行ってください"
+    print_manual_guidance "$base_branch" "$checks_display"
     return
-  fi
-
-  # vibecorp.yml から base_branch を取得（デフォルト: main）
-  local base_branch="main"
-  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
-  if [[ -f "$yml" ]]; then
-    local parsed
-    parsed=$(awk '/^base_branch:/ { print $2 }' "$yml")
-    [[ -n "$parsed" ]] && base_branch="$parsed"
   fi
 
   # マージ戦略の設定
@@ -301,11 +342,10 @@ configure_github_repo() {
     log_info "マージ戦略を設定（squash merge のみ、auto-merge 有効）"
   else
     log_error "マージ戦略の設定に失敗しました（admin 権限が必要です）"
-    log_error "手動設定: https://github.com/${name_with_owner}/settings"
+    print_manual_guidance "$base_branch" "$checks_display"
   fi
 
   # Branch Protection の設定
-  # CodeRabbit が導入されている場合は required check に追加
   local status_checks='["test"]'
   if [[ -f "${REPO_ROOT}/.coderabbit.yaml" ]]; then
     status_checks='["test","CodeRabbit"]'
@@ -338,7 +378,7 @@ configure_github_repo() {
     log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve必須）"
   else
     log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）"
-    log_error "手動設定: https://github.com/${name_with_owner}/settings/branches"
+    print_manual_guidance "$base_branch" "$checks_display"
   fi
 }
 
