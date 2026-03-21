@@ -9,6 +9,8 @@ reviews:
     drafts: false
     auto_incremental_review: true
     auto_pause_after_reviewed_commits: 0
+    base_branches:
+      - ".*"
 
   # 指摘0件 → approve、指摘あり → request changes、全 resolve 後 → approve に切替
   request_changes_workflow: true
