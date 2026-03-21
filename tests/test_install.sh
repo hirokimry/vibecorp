@@ -377,6 +377,13 @@ else
   fail "sync-check スキルが削除されている (ディレクトリが存在)"
 fi
 
+# F4b. sync-edit スキルが削除されている
+if [ ! -d "$R/.claude/skills/sync-edit" ]; then
+  pass "sync-edit スキルが削除されている"
+else
+  fail "sync-edit スキルが削除されている (ディレクトリが存在)"
+fi
+
 # F5. settings.json に sync-gate のエントリがない
 assert_file_not_contains "settings.json に sync-gate なし" "$R/.claude/settings.json" "sync-gate"
 
