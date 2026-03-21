@@ -41,11 +41,11 @@ PRが見つからない場合はエラー。
 
 ### 2. メインループ（最大10回）
 
-以下のステップ 2.1〜2.8 を、終了条件を満たすまで繰り返す。**最大10回でループを打ち切る。上限到達時は未解決の状況を報告してユーザーに判断を委ねる。**
+以下のステップ 2.1〜2.9 を、終了条件を満たすまで繰り返す。**最大10回でループを打ち切る。上限到達時は未解決の状況を報告してユーザーに判断を委ねる。**
 
 #### 2.1 CodeRabbitレビュー待ち
 
-30秒間隔でポーリング。最大10分:
+30秒間隔でポーリング。最大5分:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
@@ -53,9 +53,19 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length'
 ```
 
-- コメント数が0のまま10分経過 → **CodeRabbit 未導入と判断し、ステップ3へスキップ**
+- コメント数が0のまま5分経過 → **CodeRabbit 未導入と判断し、ステップ3へスキップ**
 - コメント数が安定（2回連続同数） → レビュー完了と判断、2.2 へ
-- 10分経過（コメントあり） → タイムアウト。現状のコメントで進める
+- 5分経過（コメントあり） → タイムアウト。現状のコメントで進める
+
+**rate limit チェック**: レビュー待ち中に CodeRabbit の rate limit コメントを検出した場合、ユーザーに報告して停止する:
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  --paginate \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.body | test("[Rr]ate limit"))] | length'
+```
+
+1以上なら「CodeRabbit が rate limit 中のため停止しています。rate limit 解除後に再実行してください」と報告して**停止する**。
 
 #### 2.2 CI 状態の確認
 
@@ -129,17 +139,9 @@ gh api graphql -f query='
 - **計画に記載された範囲のみを変更する**
 - 修正後、関連するテスト・lint を実行して通過を確認する
 
-#### 2.7 コミット・push
+#### 2.7 却下した指摘に返信・resolve
 
-`/commit` を使用してコミットし、リモートに push する:
-
-```bash
-git push
-```
-
-#### 2.8 却下した指摘に返信・resolve
-
-**修正した指摘**: 返信不要。push 時に CodeRabbit の auto-resolve で自動的に resolved になる。
+**修正した指摘**: 返信不要。次のステップ（2.8）の push 時に CodeRabbit の auto-resolve で自動的に resolved になる。
 
 **却下した指摘**: 却下理由を返信した後、GraphQL mutation でスレッドを resolve する。
 
@@ -168,9 +170,15 @@ gh api graphql -f query='
 - `{thread_node_id}` はステップ2.3で取得した各スレッドの `id` フィールド（例: `PRRT_xxx`）
 - 返信 → resolve の順序で実行する（resolve 済みスレッドには CodeRabbit は再反応しない）
 
-push 後、**ループ先頭（2.1）に戻る。**
+#### 2.8 コミット・push
 
-### 3. 規約・ナレッジ反映（オプション）
+`/commit` を使用してコミットし、リモートに push する:
+
+```bash
+git push
+```
+
+#### 2.9 規約・ナレッジ反映（オプション）
 
 vibecorp.yml の `gates.review_to_rules` を確認する:
 
@@ -178,12 +186,12 @@ vibecorp.yml の `gates.review_to_rules` を確認する:
 yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
 ```
 
-- `false` → スキップしてステップ4へ
+- `false` → **ループ先頭（2.1）に戻る**
 - `true` → `/review-to-rules` を実行し、結果を確認する:
-  - **変更なし** → **ステップ4へ**（スタンプファイルが発行され、ゲートを通過可能になる）
+  - **変更なし** → **ループ先頭（2.1）に戻る**（スタンプファイルが発行され、ゲートを通過可能になる）
   - **変更あり** → `/commit` でコミットし `git push` する。push により CodeRabbit が再レビューするため、**ループ先頭（2.1）に戻る。** rules/knowledge の変更もレビュー対象とし、品質を担保する
 
-### 4. auto-merge 状態の確認
+### 3. auto-merge 状態の確認
 
 auto-merge が設定されているか確認する:
 
@@ -191,14 +199,14 @@ auto-merge が設定されているか確認する:
 gh pr view {pr_number} --json autoMergeRequest --jq '.autoMergeRequest'
 ```
 
-- auto-merge 設定済み → ステップ5へ
+- auto-merge 設定済み → ステップ4へ
 - auto-merge 未設定 → 設定する:
 
 ```bash
 gh pr merge {pr_number} --squash --auto
 ```
 
-### 5. 結果報告
+### 4. 結果報告
 
 ```text
 ## /pr-review-loop 完了
@@ -227,7 +235,7 @@ gh pr merge {pr_number} --squash --auto
 | 状況 | 対応 |
 |------|------|
 | CodeRabbit レビュータイムアウト（コメントあり） | 現状のコメントで修正を進める |
-| CodeRabbit 未導入（コメント0件のまま10分経過） | ループをスキップし、auto-merge 確認のみ実行 |
+| CodeRabbit 未導入（コメント0件のまま5分経過） | ループをスキップし、auto-merge 確認のみ実行 |
 | CodeRabbit rate limit | rate limit コメントを検出したらユーザーに報告して停止 |
 | CI 失敗 | 失敗内容を報告してユーザーに判断を委ねる |
 | ループ上限（10回）到達 | 未解決の状況を報告してユーザーに判断を委ねる |

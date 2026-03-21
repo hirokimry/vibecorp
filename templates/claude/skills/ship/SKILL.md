@@ -1,13 +1,13 @@
 ---
 name: ship
-description: "Issue URLを指定するだけでブランチ作成からマージまでを全自動で実行する。「/ship」「シップして」「Issue対応して」と言った時に使用。"
+description: "Issue URLを指定するだけでブランチ作成からPR作成・auto-merge設定までを全自動で実行する。「/ship」「シップして」「Issue対応して」と言った時に使用。"
 ---
 
 **ultrathink**
 
-# Issue → マージ 全自動スキル
+# Issue → PR 全自動スキル
 
-GitHub Issue URL を受け取り、ブランチ作成 → 計画 → レビュー → 実装 → PR → マージまでを一気通貫で実行する。
+GitHub Issue URL を受け取り、ブランチ作成 → 計画 → レビュー → 実装 → PR → auto-merge 設定までを一気通貫で実行する。マージは auto-merge により GitHub が自動実行する。
 
 ## 使用方法
 
