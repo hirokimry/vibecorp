@@ -111,28 +111,18 @@ yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
 マージ前に CodeRabbit の approve レビューが存在するか確認する。
 `request_changes_workflow: true` 環境では指摘なしで自動 approve されるはずだが、差分が小さい場合等に approve が発行されないケースがある。
 
-**⚠️ API エラーガード: このステップの全ての `gh api` 呼び出しは、終了コードが0であることを必ず確認する。非0の場合はフォールバックに進まず、エラー処理（後述）に従う。**
-
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
   --paginate \
   --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.state == "APPROVED")] | length'
 ```
 
-**API 呼び出しの終了コードを確認し、以下のように分岐する:**
-
-- **API 失敗（終了コード非0）** → 「API エラー時の挙動」に従う。**フォールバックには絶対に進まない**
 - approve あり（1以上） → ステップ4へ
-- approve なし（API 成功かつ0件） → 以下のフォールバックを実行:
+- approve なし → 以下のフォールバックを実行:
 
 #### フォールバック: approve 依頼
 
-**発動条件（全て満たす場合のみ）:**
-1. approve 確認の API 呼び出しが**成功**している（終了コード0）
-2. CodeRabbit ステータスが `SUCCESS`
-3. 未解決スレッドが0件
-
-上記を全て満たす場合のみ、`@coderabbitai approve` を投稿して approve を促す。
+CodeRabbit ステータスが `SUCCESS` かつ未解決スレッドが0件なのに approve がない場合、`@coderabbitai approve` を投稿して approve を促す。
 
 ```bash
 gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
@@ -166,25 +156,12 @@ git checkout {baseRefName} && git pull
 - マージ: 完了
 ```
 
-## API エラー時の挙動
-
-**全ての `gh api` 呼び出しに適用する共通ルール:**
-
-1. **終了コードの確認を必須とする** — `gh api` の終了コードが非0の場合、そのレスポンスを「データなし（0件）」として扱ってはならない
-2. **rate limit の検出** — HTTP 403 / 429、またはレスポンスに `rate limit` を含む場合は rate limit と判断する
-3. **rate limit 時のリトライ** — 60秒待機して再試行する。3回失敗したらユーザーに報告して停止する
-4. **その他の API エラー** — エラー内容をユーザーに報告して停止する。**自動的に次のステップに進まない**
-
-**特に重要: API エラー時に approve フォールバック（`@coderabbitai approve` 投稿）に進むことは絶対に禁止する。** API 失敗を「approve 0件」と誤解釈すると、レビュープロセスを完全にバイパスしてマージされるリスクがある。
-
 ## エラー時の挙動
 
 | 状況 | 対応 |
 |------|------|
-| `gh api` rate limit (HTTP 403/429) | 60秒待機してリトライ（最大3回）。超過時はユーザーに報告して停止 |
-| `gh api` その他のエラー | エラー内容を報告してユーザーに判断を委ねる。次ステップに自動で進まない |
 | CodeRabbitレビュータイムアウト | コメント0件ならそのまま進行、あれば現状で修正 |
-| CodeRabbit approve 未発行 | API成功を確認した上で `@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
+| CodeRabbit approve 未発行 | `@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
 | CI失敗 | 失敗内容を報告してユーザーに判断を委ねる |
 | マージコンフリクト | ユーザーに報告して停止 |
 
