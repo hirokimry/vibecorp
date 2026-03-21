@@ -141,6 +141,7 @@ find_existing_ruleset() {
   # 既存の vibecorp-protection ルールセットを検索
   EXISTING_RULESET_ID=$(gh api --paginate "repos/${REPO_NWOPATH}/rulesets" \
     --jq '.[] | select(.name == "'"${RULESET_NAME}"'") | .id' \
+    | head -1 \
     || echo "")
 
   if [[ -n "$EXISTING_RULESET_ID" ]]; then
@@ -246,4 +247,6 @@ main() {
   fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
