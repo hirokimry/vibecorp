@@ -128,7 +128,6 @@ create_or_update_ruleset() {
 
   if [[ -n "$existing_id" ]]; then
     # 既存を更新
-    local http_status
     local response
     response=$(echo "$json" | gh api \
       --method PUT \
