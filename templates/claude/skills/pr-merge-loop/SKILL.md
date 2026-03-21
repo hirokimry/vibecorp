@@ -111,6 +111,21 @@ yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
 マージ前に CodeRabbit の approve レビューが存在するか確認する。
 `request_changes_workflow: true` 環境では指摘なしで自動 approve されるはずだが、差分が小さい場合等に approve が発行されないケースがある。
 
+#### 3.1 rate limit チェック（フォールバック前の必須ガード）
+
+**approve 確認の前に**、CodeRabbit が rate limit 状態でないことを確認する。rate limit 中は CodeRabbit がレビューを実行できていないため、「approve がない」を「レビュー済みで問題なし」と解釈してはならない。
+
+```bash
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
+  --paginate \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.body | test("[Rr]ate limit"))] | length'
+```
+
+- **1以上（rate limit コメントあり）** → **フォールバック禁止**。ユーザーに「CodeRabbit が rate limit 中のためマージを保留しています。rate limit 解除後に再実行してください」と報告して**停止する**
+- **0（rate limit なし）** → 3.2 へ進む
+
+#### 3.2 approve 確認
+
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
   --paginate \
@@ -120,9 +135,14 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
 - approve あり（1以上） → ステップ4へ
 - approve なし → 以下のフォールバックを実行:
 
-#### フォールバック: approve 依頼
+#### 3.3 フォールバック: approve 依頼
 
-CodeRabbit ステータスが `SUCCESS` かつ未解決スレッドが0件なのに approve がない場合、`@coderabbitai approve` を投稿して approve を促す。
+**発動条件（全て満たす場合のみ）:**
+1. 3.1 の rate limit チェックを通過している（rate limit コメントなし）
+2. CodeRabbit ステータスが `SUCCESS`
+3. 未解決スレッドが0件
+
+上記を全て満たす場合のみ、`@coderabbitai approve` を投稿して approve を促す。
 
 ```bash
 gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
@@ -161,7 +181,8 @@ git checkout {baseRefName} && git pull
 | 状況 | 対応 |
 |------|------|
 | CodeRabbitレビュータイムアウト | コメント0件ならそのまま進行、あれば現状で修正 |
-| CodeRabbit approve 未発行 | `@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
+| CodeRabbit rate limit | rate limit コメントを検出したらフォールバック禁止。ユーザーに報告して停止 |
+| CodeRabbit approve 未発行 | rate limit チェック通過後、`@coderabbitai approve` を投稿して最大3分待機。タイムアウト時はユーザーに報告 |
 | CI失敗 | 失敗内容を報告してユーザーに判断を委ねる |
 | マージコンフリクト | ユーザーに報告して停止 |
 
