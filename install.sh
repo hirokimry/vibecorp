@@ -251,6 +251,96 @@ generate_coderabbit_yaml() {
   log_info ".coderabbit.yaml を生成"
 }
 
+generate_ci_workflow() {
+  local target="${REPO_ROOT}/.github/workflows/test.yml"
+  local template="${SCRIPT_DIR}/templates/.github/workflows/test.yml"
+
+  if [[ -f "$target" ]]; then
+    log_skip ".github/workflows/test.yml は既存のためスキップ"
+    return
+  fi
+
+  mkdir -p "${REPO_ROOT}/.github/workflows"
+  cp "$template" "$target"
+  log_info ".github/workflows/test.yml を生成"
+}
+
+configure_github_repo() {
+  # gh CLI が利用できない場合はスキップ
+  if ! command -v gh >/dev/null 2>&1; then
+    log_skip "gh CLI が見つかりません。リポジトリ設定は手動で行ってください"
+    return
+  fi
+
+  # GitHub リポジトリ情報を取得
+  local name_with_owner
+  if ! name_with_owner=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null); then
+    log_skip "GitHub リポジトリに接続できません。リポジトリ設定は手動で行ってください"
+    return
+  fi
+
+  # vibecorp.yml から base_branch を取得（デフォルト: main）
+  local base_branch="main"
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  if [[ -f "$yml" ]]; then
+    local parsed
+    parsed=$(awk '/^base_branch:/ { print $2 }' "$yml")
+    [[ -n "$parsed" ]] && base_branch="$parsed"
+  fi
+
+  # マージ戦略の設定
+  if gh api "repos/${name_with_owner}" -X PATCH \
+    -f allow_squash_merge=true \
+    -f allow_merge_commit=false \
+    -f allow_rebase_merge=false \
+    -f allow_auto_merge=true \
+    -f delete_branch_on_merge=true \
+    -f allow_update_branch=true \
+    >/dev/null 2>&1; then
+    log_info "マージ戦略を設定（squash merge のみ、auto-merge 有効）"
+  else
+    log_error "マージ戦略の設定に失敗しました（admin 権限が必要です）"
+    log_error "手動設定: https://github.com/${name_with_owner}/settings"
+  fi
+
+  # Branch Protection の設定
+  # CodeRabbit が導入されている場合は required check に追加
+  local status_checks='["test"]'
+  if [[ -f "${REPO_ROOT}/.coderabbit.yaml" ]]; then
+    status_checks='["test","CodeRabbit"]'
+  fi
+
+  local protection_json
+  protection_json=$(jq -n \
+    --argjson contexts "$status_checks" \
+    '{
+      required_status_checks: {
+        strict: true,
+        contexts: $contexts
+      },
+      required_pull_request_reviews: {
+        dismiss_stale_reviews: true,
+        require_code_owner_reviews: false,
+        require_last_push_approval: false,
+        required_approving_review_count: 1
+      },
+      enforce_admins: true,
+      restrictions: null,
+      allow_force_pushes: false,
+      allow_deletions: false,
+      block_creations: false,
+      required_conversation_resolution: false
+    }')
+
+  if echo "$protection_json" | gh api "repos/${name_with_owner}/branches/${base_branch}/protection" \
+    -X PUT --input - >/dev/null 2>&1; then
+    log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve必須）"
+  else
+    log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）"
+    log_error "手動設定: https://github.com/${name_with_owner}/settings/branches"
+  fi
+}
+
 generate_vibecorp_lock() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local installed_at
@@ -500,6 +590,8 @@ main() {
   copy_managed_files
   generate_vibecorp_yml
   generate_coderabbit_yaml
+  generate_ci_workflow
+  configure_github_repo
   generate_settings_json
   copy_rules
   copy_issue_templates
