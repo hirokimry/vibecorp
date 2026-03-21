@@ -186,7 +186,23 @@ else
   fail "integration_id が省略されている (integration_id が含まれている)"
 fi
 
-# C12. ルールセット名が vibecorp-protection
+# C12. bypass_actors に RepositoryRole (admin) が含まれる
+VALUE=$(echo "$RULESET_JSON" | jq -r '.bypass_actors[0].actor_type')
+if [ "$VALUE" = "RepositoryRole" ]; then
+  pass "bypass_actors に RepositoryRole が含まれる"
+else
+  fail "bypass_actors に RepositoryRole が含まれる (実際: $VALUE)"
+fi
+
+# C13. bypass_actors の actor_id が 5 (Admin)
+VALUE=$(echo "$RULESET_JSON" | jq -r '.bypass_actors[0].actor_id')
+if [ "$VALUE" = "5" ]; then
+  pass "bypass_actors の actor_id が 5 (Admin)"
+else
+  fail "bypass_actors の actor_id が 5 (Admin) (実際: $VALUE)"
+fi
+
+# C14. ルールセット名が vibecorp-protection
 VALUE=$(echo "$RULESET_JSON" | jq -r '.name')
 if [ "$VALUE" = "vibecorp-protection" ]; then
   pass "ルールセット名が vibecorp-protection"
@@ -194,7 +210,7 @@ else
   fail "ルールセット名が vibecorp-protection (実際: $VALUE)"
 fi
 
-# C13. JSON 全体が有効
+# C15. JSON 全体が有効
 if echo "$RULESET_JSON" | jq empty 2>/dev/null; then
   pass "JSON 全体が有効"
 else
