@@ -29,9 +29,11 @@
 - または Public 化時に新リポジトリを作り、main の最新だけを push する
 
 ### 今回の設計
-- .claude/ 全体を .gitignore にした
-- plans/, rules/, knowledge/ はローカル専用。Claude Code はファイルシステムから読むので問題なし
-- git に載るのは templates/, docs/, install.sh, tests/ のみ（全て Public 可能な内容）
+- .claude/ は基本的に git 追跡対象とする
+- `.claude/.gitignore` で `plans/` などのローカル生成物のみ除外する
+- rules/, knowledge/ はプロジェクト共有ファイルとして追跡する
+- テンプレートソースリポジトリでは hooks/, skills/, agents/, settings.json, vibecorp.lock も追加で除外する（templates/ が source of truth のため）
+- git に載るのは templates/, docs/, install.sh, tests/ に加え、共有対象の .claude/ 配下ファイル
 
 ## 守るべきルール
 
