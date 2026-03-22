@@ -127,6 +127,10 @@ GITIGNORE
   git -C "$REPO_DIR" add .
   git -C "$REPO_DIR" commit -m "初期コミット" >/dev/null 2>&1
 
+  # origin/main 参照を作成（自身をリモートとして追加）
+  git -C "$REPO_DIR" remote add origin "$REPO_DIR" 2>/dev/null || true
+  git -C "$REPO_DIR" fetch origin >/dev/null 2>&1
+
   # 未追跡ファイル（.gitignore で除外されるもの — コミット後に作成）
   mkdir -p "$REPO_DIR/.claude/hooks" "$REPO_DIR/.claude/skills/branch"
   echo '#!/bin/bash' > "$REPO_DIR/.claude/hooks/test-hook.sh"
@@ -264,6 +268,9 @@ echo ""
 
 echo "--- テスト8: 孤立 Agent worktree の検出 ---"
 
+# origin/main を最新化（テスト5でコミットが追加されているため）
+git -C "$REPO_DIR" fetch origin >/dev/null 2>&1
+
 AGENT_WT_DIR="$REPO_DIR/.claude/worktrees/agent-test123"
 AGENT_WT_BRANCH="worktree-agent-test123"
 mkdir -p "$(dirname "$AGENT_WT_DIR")"
@@ -278,7 +285,7 @@ else
 fi
 
 # 差分なし確認（同じコミット上なので差分はないはず）
-if git -C "$AGENT_WT_DIR" diff HEAD..main --quiet 2>/dev/null; then
+if git -C "$AGENT_WT_DIR" diff HEAD..origin/main --quiet; then
   pass "孤立 Agent worktree: ベースとの差分なし"
 else
   fail "孤立 Agent worktree: ベースとの差分あり（想定外）"
@@ -309,9 +316,23 @@ else
   fail "作業中 Agent worktree: 未コミット変更が検出されない"
 fi
 
+# スキップ相当の前提確認（自動削除されていないこと）
+if [ -d "$AGENT_WT_DIR2" ]; then
+  pass "作業中 Agent worktree: 削除対象にせず保持される"
+else
+  fail "作業中 Agent worktree: 想定外に削除されている"
+fi
+
+# ブランチも残っていることを確認
+if [ -n "$(git -C "$REPO_DIR" branch --list "$AGENT_WT_BRANCH2")" ]; then
+  pass "作業中 Agent worktree: ブランチが保持される"
+else
+  fail "作業中 Agent worktree: ブランチが想定外に削除されている"
+fi
+
 # クリーンアップ
 git -C "$REPO_DIR" worktree remove --force "$AGENT_WT_DIR2"
-git -C "$REPO_DIR" branch -D "$AGENT_WT_BRANCH2" >/dev/null 2>&1
+git -C "$REPO_DIR" branch -d "$AGENT_WT_BRANCH2" >/dev/null 2>&1
 
 echo ""
 
