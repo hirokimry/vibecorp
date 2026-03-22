@@ -119,7 +119,8 @@ gh pr merge --squash --auto
 
 ### 9. レビュー修正ループ
 
-`/pr-review-loop` を実行して、CodeRabbit レビュー指摘の修正ループを完了させる。
+`/pr-review-loop` を実行して、レビュー指摘の修正ループを完了させる。
+`vibecorp.yml` の `coderabbit.enabled` が `false` の場合、CodeRabbit レビュー待ちはスキップされ、CI パス確認と auto-merge 設定のみ実行される。
 マージは auto-merge により、CI パス + approve 後に GitHub が自動実行する。
 
 ## 介入ポイント

@@ -20,7 +20,17 @@ git diff --name-only --cached
 
 ## 2. レビュー実行
 
-### CodeRabbit CLI（常に実行）
+### CodeRabbit CLI
+
+**まず `vibecorp.yml` の `coderabbit.enabled` を確認する:**
+
+```bash
+awk '/^coderabbit:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' \
+  "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
+```
+
+- 結果が `false` → **CodeRabbit CLI セクション全体をスキップ**し、レポートに「CodeRabbit: 無効（vibecorp.yml で coderabbit.enabled: false）」と記載する
+- 結果が `true` または空（未定義）→ 以下を実行
 
 ```bash
 cr review --plain
