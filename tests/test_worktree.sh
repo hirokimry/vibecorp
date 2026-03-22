@@ -238,9 +238,86 @@ assert_file_contains "vibecorp.yml からプロジェクト名を取得できる
 
 echo ""
 
-# --- テスト7: メインワークツリーへの影響なし ---
+# --- テスト7: Agent worktree のブランチ名パターン判定 ---
 
-echo "--- テスト7: メインワークツリーへの影響確認 ---"
+echo "--- テスト7: Agent worktree ブランチ名パターン判定 ---"
+
+# Agent worktree のブランチ名パターンをテスト
+AGENT_BRANCH="worktree-agent-abc123"
+if echo "$AGENT_BRANCH" | grep -q '^worktree-agent-'; then
+  pass "worktree-agent-* パターンが Agent worktree として判定される"
+else
+  fail "worktree-agent-* パターンの判定に失敗"
+fi
+
+# 通常ブランチは Agent worktree と判定されない
+NORMAL_BRANCH="dev/62_parallel_worktree"
+if echo "$NORMAL_BRANCH" | grep -q '^worktree-agent-'; then
+  fail "dev/* パターンが Agent worktree として誤判定される"
+else
+  pass "dev/* パターンは Agent worktree と判定されない"
+fi
+
+echo ""
+
+# --- テスト8: 孤立 Agent worktree の検出 ---
+
+echo "--- テスト8: 孤立 Agent worktree の検出 ---"
+
+AGENT_WT_DIR="$REPO_DIR/.claude/worktrees/agent-test123"
+AGENT_WT_BRANCH="worktree-agent-test123"
+mkdir -p "$(dirname "$AGENT_WT_DIR")"
+git -C "$REPO_DIR" worktree add "$AGENT_WT_DIR" -b "$AGENT_WT_BRANCH" >/dev/null 2>&1
+
+# 未コミット変更なし + ベースとの差分なし → 孤立
+PORCELAIN=$(git -C "$AGENT_WT_DIR" status --porcelain)
+if [ -z "$PORCELAIN" ]; then
+  pass "孤立 Agent worktree: 未コミット変更なし"
+else
+  fail "孤立 Agent worktree: 未コミット変更がある（想定外）"
+fi
+
+# 差分なし確認（同じコミット上なので差分はないはず）
+if git -C "$AGENT_WT_DIR" diff HEAD..main --quiet 2>/dev/null; then
+  pass "孤立 Agent worktree: ベースとの差分なし"
+else
+  fail "孤立 Agent worktree: ベースとの差分あり（想定外）"
+fi
+
+# クリーンアップ
+git -C "$REPO_DIR" worktree remove "$AGENT_WT_DIR"
+git -C "$REPO_DIR" branch -d "$AGENT_WT_BRANCH" >/dev/null 2>&1
+
+echo ""
+
+# --- テスト9: 作業中 Agent worktree のスキップ ---
+
+echo "--- テスト9: 作業中 Agent worktree のスキップ ---"
+
+AGENT_WT_DIR2="$REPO_DIR/.claude/worktrees/agent-test456"
+AGENT_WT_BRANCH2="worktree-agent-test456"
+mkdir -p "$(dirname "$AGENT_WT_DIR2")"
+git -C "$REPO_DIR" worktree add "$AGENT_WT_DIR2" -b "$AGENT_WT_BRANCH2" >/dev/null 2>&1
+
+# 未コミット変更を作成
+echo "# 作業中の変更" > "$AGENT_WT_DIR2/wip.txt"
+
+PORCELAIN2=$(git -C "$AGENT_WT_DIR2" status --porcelain)
+if [ -n "$PORCELAIN2" ]; then
+  pass "作業中 Agent worktree: 未コミット変更が検出される"
+else
+  fail "作業中 Agent worktree: 未コミット変更が検出されない"
+fi
+
+# クリーンアップ
+git -C "$REPO_DIR" worktree remove --force "$AGENT_WT_DIR2"
+git -C "$REPO_DIR" branch -D "$AGENT_WT_BRANCH2" >/dev/null 2>&1
+
+echo ""
+
+# --- テスト10: メインワークツリーへの影響なし ---
+
+echo "--- テスト10: メインワークツリーへの影響確認 ---"
 
 BRANCH_NAME_3="dev/3_isolation_test"
 git -C "$REPO_DIR" worktree add "$WORKTREE_BASE/$BRANCH_NAME_3" -b "$BRANCH_NAME_3" >/dev/null 2>&1
