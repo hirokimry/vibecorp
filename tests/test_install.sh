@@ -1572,11 +1572,8 @@ echo "=== CR. CodeRabbit 無効設定テスト ==="
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-# vibecorp.yml に coderabbit: enabled: false を追記
-cat >> "$R/.claude/vibecorp.yml" <<'YML'
-coderabbit:
-  enabled: false
-YML
+# vibecorp.yml の coderabbit.enabled を false に変更
+sed -i '' 's/  enabled: true/  enabled: false/' "$R/.claude/vibecorp.yml"
 # 既存の .coderabbit.yaml を削除して再インストール
 rm -f "$R/.coderabbit.yaml"
 bash "$INSTALL_SH" --update 2>/dev/null
@@ -1596,14 +1593,11 @@ assert_file_exists "デフォルトで .coderabbit.yaml 生成" "$R/.coderabbit.
 
 cleanup
 
-# CR3. coderabbit.enabled: true で .coderabbit.yaml が生成される
+# CR3. coderabbit.enabled: true（デフォルト生成値）で .coderabbit.yaml が生成される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-cat >> "$R/.claude/vibecorp.yml" <<'YML'
-coderabbit:
-  enabled: true
-YML
+# デフォルトで coderabbit.enabled: true が生成されているのでそのまま再インストール
 rm -f "$R/.coderabbit.yaml"
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_exists "coderabbit.enabled: true で .coderabbit.yaml 生成" "$R/.coderabbit.yaml"

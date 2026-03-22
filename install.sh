@@ -336,6 +336,8 @@ language: ${LANGUAGE}
 base_branch: main
 protected_files:
   - MVV.md
+coderabbit:
+  enabled: true
 YAML
   log_info "vibecorp.yml を生成"
 }
