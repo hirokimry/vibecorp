@@ -12,7 +12,12 @@ GitHub Issue URL からブランチを作成する。
 
 ```bash
 /branch <Issue URL>
+/branch --worktree <Issue URL>
 ```
+
+## オプション
+
+- `--worktree`: ブランチ作成と同時に git worktree を作成し、独立したディレクトリで作業できるようにする
 
 ## ワークフロー
 
@@ -48,10 +53,44 @@ dev/{Issue番号}_{要約}
 git pull origin HEAD --ff-only
 ```
 
-### 4. ブランチ作成・チェックアウト
+### 4. ブランチ作成
+
+`--worktree` オプションの有無で分岐する。
+
+#### 通常モード（`--worktree` なし）
 
 ```bash
 git checkout -b <ブランチ名>
+```
+
+#### ワークツリーモード（`--worktree` あり）
+
+##### 4a. ワークツリーディレクトリの決定
+
+`vibecorp.yml` の `worktree_dir` を読み取る。未設定の場合はデフォルト値を使用する。
+
+```bash
+# デフォルト: ../{プロジェクト名}.worktrees
+MAIN_DIR=$(git rev-parse --show-toplevel)
+PROJECT_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml")
+WORKTREE_BASE="${MAIN_DIR}/../${PROJECT_NAME}.worktrees"
+```
+
+`vibecorp.yml` に `worktree_dir` が定義されている場合はその値を使用する（相対パスはプロジェクトルートからの相対）。
+
+##### 4b. ワークツリーの作成
+
+```bash
+mkdir -p "$WORKTREE_BASE"
+git worktree add "$WORKTREE_BASE/<ブランチ名>" -b <ブランチ名>
+```
+
+##### 4c. `.claude/` の同期
+
+メインワークツリーの `.claude/` を worktree にコピーする。git 追跡状況に関わらず全ケースで同じコマンドで動作する。
+
+```bash
+rsync -a "$MAIN_DIR/.claude/" "$WORKTREE_BASE/<ブランチ名>/.claude/"
 ```
 
 ## 制約
@@ -62,6 +101,15 @@ git checkout -b <ブランチ名>
 
 ## 返却フォーマット
 
+### 通常モード
+
 ```text
 <ブランチ名>
+```
+
+### ワークツリーモード
+
+```text
+<ブランチ名>
+worktree: <ワークツリーの絶対パス>
 ```
