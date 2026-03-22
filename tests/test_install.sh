@@ -1572,8 +1572,10 @@ echo "=== CR. CodeRabbit 無効設定テスト ==="
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-# vibecorp.yml の coderabbit.enabled を false に変更
-sed -i '' 's/  enabled: true/  enabled: false/' "$R/.claude/vibecorp.yml"
+# vibecorp.yml の coderabbit.enabled を false に変更（macOS/Linux 互換）
+tmp_yml=$(mktemp)
+sed 's/  enabled: true/  enabled: false/' "$R/.claude/vibecorp.yml" > "$tmp_yml"
+mv "$tmp_yml" "$R/.claude/vibecorp.yml"
 # 既存の .coderabbit.yaml を削除して再インストール
 rm -f "$R/.coderabbit.yaml"
 bash "$INSTALL_SH" --update 2>/dev/null
