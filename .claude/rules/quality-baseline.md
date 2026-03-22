@@ -20,11 +20,13 @@ vibecorp が生成するテンプレート（hooks, skills, agents, rules 等）
 
 ## 参照元の実装を確認する方法
 
-- hooks: /Users/staff/Public/development/tsumitoku/.claude/hooks/
-- skills: /Users/staff/Public/development/tsumitoku/.claude/skills/
-- agents: /Users/staff/Public/development/tsumitoku/.claude/agents/
-- rules: /Users/staff/Public/development/tsumitoku/.claude/rules/
-- knowledge: /Users/staff/Public/development/tsumitoku/.claude/knowledge/
-- settings: /Users/staff/Public/development/tsumitoku/.claude/settings.json
+参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する。未設定時はスキップ可。
+
+- hooks: `${VIBECORP_REFERENCE_DIR}/.claude/hooks/`
+- skills: `${VIBECORP_REFERENCE_DIR}/.claude/skills/`
+- agents: `${VIBECORP_REFERENCE_DIR}/.claude/agents/`
+- rules: `${VIBECORP_REFERENCE_DIR}/.claude/rules/`
+- knowledge: `${VIBECORP_REFERENCE_DIR}/.claude/knowledge/`
+- settings: `${VIBECORP_REFERENCE_DIR}/.claude/settings.json`
 
 実装前に必ず参照元の対応ファイルを読むこと。「たぶんこうだろう」で実装しない。
