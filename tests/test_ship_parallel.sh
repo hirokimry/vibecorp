@@ -36,6 +36,11 @@ if [ -f "$SKILL_FILE" ]; then
   pass "SKILL.md が存在する"
 else
   fail "SKILL.md が存在しない: $SKILL_FILE"
+  echo ""
+  echo "==========================="
+  echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
+  echo "==========================="
+  exit 1
 fi
 
 echo ""
