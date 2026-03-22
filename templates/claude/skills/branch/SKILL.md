@@ -70,13 +70,23 @@ git checkout -b <ブランチ名>
 `vibecorp.yml` の `worktree_dir` を読み取る。未設定の場合はデフォルト値を使用する。
 
 ```bash
-# デフォルト: ../{プロジェクト名}.worktrees
 MAIN_DIR=$(git rev-parse --show-toplevel)
-PROJECT_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml" | tr -cs 'A-Za-z0-9._-' '_')
-WORKTREE_BASE="${MAIN_DIR}/../${PROJECT_NAME}.worktrees"
-```
 
-`vibecorp.yml` に `worktree_dir` が定義されている場合はその値を使用する（相対パスはプロジェクトルートからの相対）。
+# vibecorp.yml の worktree_dir を読み取る（未定義なら空文字）
+CONFIG_WORKTREE_DIR=$(awk '/^worktree_dir:[[:space:]]*/ { sub(/^worktree_dir:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml")
+
+if [ -n "$CONFIG_WORKTREE_DIR" ]; then
+  # worktree_dir が定義されている場合: 絶対パスはそのまま、相対パスはプロジェクトルート基準
+  case "$CONFIG_WORKTREE_DIR" in
+    /*) WORKTREE_BASE="$CONFIG_WORKTREE_DIR" ;;
+    *) WORKTREE_BASE="$MAIN_DIR/$CONFIG_WORKTREE_DIR" ;;
+  esac
+else
+  # デフォルト: ../{プロジェクト名}.worktrees
+  PROJECT_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml" | tr -cs 'A-Za-z0-9._-' '_')
+  WORKTREE_BASE="${MAIN_DIR}/../${PROJECT_NAME}.worktrees"
+fi
+```
 
 ##### 4b. ワークツリーの作成
 
