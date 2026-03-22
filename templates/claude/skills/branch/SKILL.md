@@ -72,7 +72,7 @@ git checkout -b <ブランチ名>
 ```bash
 # デフォルト: ../{プロジェクト名}.worktrees
 MAIN_DIR=$(git rev-parse --show-toplevel)
-PROJECT_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml")
+PROJECT_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$MAIN_DIR/.claude/vibecorp.yml" | tr -cs 'A-Za-z0-9._-' '_')
 WORKTREE_BASE="${MAIN_DIR}/../${PROJECT_NAME}.worktrees"
 ```
 

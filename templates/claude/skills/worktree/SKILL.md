@@ -29,7 +29,7 @@ git worktree list
 各ワークツリーについて、対応する PR の状態（open / merged / closed）を確認する。
 
 ```bash
-gh pr list --head <ブランチ名> --state all --json number,state,title --jq '.[0] | .number + " " + .state + " " + .title'
+gh pr list --head <ブランチ名> --state all --json number,state,title --jq '.[0] | (.number | tostring) + " " + .state + " " + .title'
 ```
 
 #### 返却フォーマット
