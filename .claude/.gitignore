@@ -1,0 +1,9 @@
+# テンプレート管理ファイル（templates/ が source of truth）
+hooks/
+skills/
+agents/
+settings.json
+vibecorp.lock
+
+# 一時ファイル
+plans/

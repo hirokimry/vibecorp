@@ -236,11 +236,13 @@ assert_blocked "ファイル名にスペース含む → deny" "$OUTPUT"
 
 # 14. CLAUDE_PROJECT_DIR 未設定（デフォルト "."）→ 許可（カレントに yml なし）
 unset CLAUDE_PROJECT_DIR
-# カレントディレクトリに .claude/vibecorp.yml がないことを前提
+# カレントディレクトリに .claude/vibecorp.yml がないことを保証するため一時ディレクトリで実行
+EMPTY_DIR=$(mktemp -d)
 set +e
-OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh 2>/dev/null)
+OUTPUT=$(cd "$EMPTY_DIR" && echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh 2>/dev/null)
 EXIT_CODE=$?
 set -e
+rm -rf "$EMPTY_DIR"
 assert_exit_code "CLAUDE_PROJECT_DIR 未設定時に異常終了しない" "0" "$EXIT_CODE"
 assert_allowed "CLAUDE_PROJECT_DIR 未設定 → 許可" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"

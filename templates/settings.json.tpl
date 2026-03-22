@@ -31,15 +31,6 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/vibecorp/hooks/sync-gate.sh"
-          }
-        ]
       }
     ]
   }

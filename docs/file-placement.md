@@ -216,6 +216,66 @@ hooks・install.sh 等のシェルスクリプトの自動テスト。
 | 対象読者 | 一般の開発者 | 特定の職種エージェント |
 | 汎用性 | 他プロジェクトでも応用可能 | プロジェクト固有 |
 
+## `.claude/` の git 管理ポリシー
+
+`.claude/` は **基本的に git で追跡する**。ただしファイルの出自によって追跡/除外を使い分ける。
+
+### 追跡する理由
+
+| 理由 | 説明 |
+|---|---|
+| チーム一貫性 | clone したら全員同じ rules/knowledge が揃う。各自が install.sh を実行する運用はバージョンずれの温床 |
+| コードレビュー | rules や knowledge の変更が PR を通る。規約の変更がレビューなしで入るのは危険 |
+| 再現性 | CI でも同じ設定が使える |
+| update の一元管理 | 一人が `--update` → PR → マージ。全員が個別に update する運用は破綻する |
+
+### ファイルの分類と追跡方針
+
+`.claude/` 内のファイルは **出自** によって分類される。
+
+| 分類 | 例 | source of truth | 追跡 |
+|---|---|---|---|
+| プロジェクト設定 | `CLAUDE.md`, `vibecorp.yml` | このファイル自体 | する |
+| プロジェクト独自 | 独自の rules, knowledge | このファイル自体 | する |
+| テンプレート由来 | hooks, skills, agents, settings.json, lock | `templates/` | 状況による（後述） |
+| 一時ファイル | plans/ | 会話中に生成 | しない |
+
+> **注意**: `memory/` は Claude Code がユーザーの HOME ディレクトリ（`~/.claude/projects/`）に保存するため、プロジェクトの `.claude/` 内には作られない。リポジトリ側での対処は不要。
+
+### 導入先リポジトリの推奨構成
+
+導入先リポジトリでは `templates/` ディレクトリが存在しない。hooks/skills/agents を含む全ファイルが `.claude/` 内の唯一のコピーであるため、**全て追跡するのが正しい**。
+
+`install.sh` が `.claude/.gitignore` を自動生成し、`plans/` のみを除外する。
+
+```text
+# .claude/.gitignore（自動生成）
+plans/
+```
+
+### テンプレートソースリポジトリの構成
+
+vibecorp のようにテンプレートソース（`templates/`）を持つリポジトリでは、テンプレート由来ファイルが `templates/` と `.claude/` に二重存在する。`templates/` を source of truth として、`.claude/` 側のテンプレート由来ファイルは除外する。
+
+```text
+# .claude/.gitignore（テンプレートソースリポジトリ用）
+# テンプレート管理ファイル（templates/ が source of truth）
+hooks/
+skills/
+agents/
+settings.json
+vibecorp.lock
+
+# 一時ファイル
+plans/
+```
+
+この構成により、プロジェクト独自の rules や knowledge は git 管理しつつ、テンプレートとの二重管理を避けられる。
+
+### 個人設定
+
+`settings.local.json`（Claude Code 公式機能）を使えば、チーム共有の `settings.json` を上書きせずに個人カスタマイズできる。これは Claude Code 自体が `.gitignore` 対象としているため、追加設定不要。
+
 ## 配置してはいけないもの
 
 以下はどのディレクトリにも配置してはならない。

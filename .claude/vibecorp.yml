@@ -1,0 +1,7 @@
+# vibecorp.yml — プロジェクト設定
+name: vibecorp
+preset: standard
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
