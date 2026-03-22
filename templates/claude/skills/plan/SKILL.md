@@ -3,7 +3,7 @@ name: plan
 description: |
   実装計画作成のガイダンスを提供するスキル。plan modeでの計画策定、EnterPlanMode使用時、
   「実装計画を立てて」「計画を作成」「プランニング」と言われた時、またはGitHub Issueの
-  実装方針を決める時に自動的に使用する。計画をplans/ディレクトリに出力する。
+  実装方針を決める時に自動的に使用する。計画を.claude/plans/ディレクトリに出力する。
 ---
 
 # 実装計画作成ガイド
@@ -21,7 +21,7 @@ Issue の実装方針を策定し、計画ファイルとして出力する。
 ## 出力先
 
 ```text
-plans/{branch_name}.md
+.claude/plans/{branch_name}.md
 ```
 
 ブランチ名は `git branch --show-current` で取得。
@@ -66,7 +66,7 @@ Issue の内容に基づき、変更が必要な箇所を調査する:
 
 ### 5. 計画ファイルの出力
 
-以下のテンプレートで `plans/{branch_name}.md` に書き出す:
+以下のテンプレートで `.claude/plans/{branch_name}.md` に書き出す:
 
 ```markdown
 # {タイトル}
@@ -117,7 +117,7 @@ gh issue edit <番号> --body "<更新後の本文>"
 
 ## 制約
 
-- 計画は `plans/` ディレクトリに出力する（`.claude/plans/` ではない）
+- 計画は `.claude/plans/` ディレクトリに出力する
 - Issue 本文の更新は設計セクションのみ。既存の💡概要、🎯背景等は保持する
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
@@ -125,5 +125,5 @@ gh issue edit <番号> --body "<更新後の本文>"
 ## 返却フォーマット
 
 ```text
-plans/{branch_name}.md
+.claude/plans/{branch_name}.md
 ```
