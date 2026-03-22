@@ -1565,6 +1565,53 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== CR. CodeRabbit 無効設定テスト ==="
+# ============================================
+
+# CR1. coderabbit.enabled: false で .coderabbit.yaml が生成されない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# vibecorp.yml に coderabbit: enabled: false を追記
+cat >> "$R/.claude/vibecorp.yml" <<'YML'
+coderabbit:
+  enabled: false
+YML
+# 既存の .coderabbit.yaml を削除して再インストール
+rm -f "$R/.coderabbit.yaml"
+bash "$INSTALL_SH" --update 2>/dev/null
+if [ ! -f "$R/.coderabbit.yaml" ]; then
+  pass "coderabbit.enabled: false で .coderabbit.yaml が生成されない"
+else
+  fail "coderabbit.enabled: false で .coderabbit.yaml が生成されない (ファイルが生成された)"
+fi
+
+cleanup
+
+# CR2. coderabbit キー未定義（デフォルト）で .coderabbit.yaml が生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_exists "デフォルトで .coderabbit.yaml 生成" "$R/.coderabbit.yaml"
+
+cleanup
+
+# CR3. coderabbit.enabled: true で .coderabbit.yaml が生成される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+cat >> "$R/.claude/vibecorp.yml" <<'YML'
+coderabbit:
+  enabled: true
+YML
+rm -f "$R/.coderabbit.yaml"
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "coderabbit.enabled: true で .coderabbit.yaml 生成" "$R/.coderabbit.yaml"
+
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

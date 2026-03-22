@@ -344,6 +344,22 @@ generate_coderabbit_yaml() {
   local target="${REPO_ROOT}/.coderabbit.yaml"
   local template="${SCRIPT_DIR}/templates/coderabbit.yaml.tpl"
 
+  # vibecorp.yml の coderabbit.enabled を確認（未定義時は true）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local cr_enabled="true"
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '/^coderabbit:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' "$yml")
+    if [[ "$val" == "false" ]]; then
+      cr_enabled="false"
+    fi
+  fi
+
+  if [[ "$cr_enabled" == "false" ]]; then
+    log_skip ".coderabbit.yaml の生成をスキップ（coderabbit.enabled: false）"
+    return
+  fi
+
   if [[ -f "$target" ]]; then
     log_skip ".coderabbit.yaml は既存のためスキップ"
     return

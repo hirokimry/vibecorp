@@ -81,10 +81,28 @@ PR作成 → auto-merge 設定 → 人間レビュー → 人間 approve → aut
 
 `/pr-review-loop` と `/ship` のステップ9は実質スキップされるため、PR作成後は人間のワークフローに委ねる形になる。
 
+## 設定方法
+
+`vibecorp.yml` に以下を追加することで CodeRabbit を無効化できる:
+
+```yaml
+coderabbit:
+  enabled: false
+```
+
+- **デフォルト**: `true`（キー未定義時も `true` として扱う）
+- **`false` 設定時の効果**:
+  - `install.sh` が `.coderabbit.yaml` を生成しない
+  - `/pr-review-loop` が CodeRabbit レビュー待ちを即座にスキップ（5分待ち解消）
+  - `/review` が CodeRabbit CLI セクションをスキップ
+  - `/ship` のステップ9で CodeRabbit 関連処理がスキップされる
+  - Branch Protection の required checks から `CodeRabbit` が除外される
+
 ## install.sh の挙動
 
 `install.sh` は CodeRabbit の有無に関わらず動作する:
 
-- `.coderabbit.yaml` テンプレートは配置するが、既存ファイルがあればスキップ
-- Branch Protection の Required status checks に CodeRabbit を含めるかは `resolve_github_checks()` で判定
+- `vibecorp.yml` の `coderabbit.enabled` が `false` の場合、`.coderabbit.yaml` を生成しない
+- `coderabbit.enabled` が `true`（デフォルト）の場合、`.coderabbit.yaml` テンプレートを配置（既存ファイルがあればスキップ）
+- Branch Protection の Required status checks に CodeRabbit を含めるかは `.coderabbit.yaml` の存在で `resolve_github_checks()` が判定
 - CodeRabbit がない環境でもインストールは成功する

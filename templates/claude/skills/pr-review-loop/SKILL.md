@@ -45,6 +45,16 @@ PRが見つからない場合はエラー。
 
 #### 2.1 CodeRabbitレビュー待ち
 
+**まず `vibecorp.yml` の `coderabbit.enabled` を確認する:**
+
+```bash
+awk '/^coderabbit:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' \
+  "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
+```
+
+- 結果が `false` → **CodeRabbit 無効。ステップ 2.1〜2.9 を全てスキップし、ステップ3（auto-merge確認）へ直接進む**
+- 結果が `true` または空（未定義）→ CodeRabbit 有効。以下のポーリングを実行
+
 30秒間隔でポーリング。最大5分:
 
 ```bash
@@ -217,6 +227,17 @@ gh pr merge {pr_number} --squash --auto
 - 却下: {n}件
 - 規約・ナレッジ反映: {n}件（gates.review_to_rules が true の場合のみ）
 - auto-merge: 設定済み（CI パス + approve 後に GitHub が自動マージします）
+```
+
+**CodeRabbit 無効時（`coderabbit.enabled: false`）の結果報告:**
+
+```text
+## /pr-review-loop 完了
+
+- CodeRabbit: 無効（vibecorp.yml で coderabbit.enabled: false）
+- CI: {パス/失敗}
+- auto-merge: 設定済み
+- 注意: Require approvals が有効な場合、人間による approve が必要です
 ```
 
 **CodeRabbit 未導入検出時の結果報告:**
