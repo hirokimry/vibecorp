@@ -12,6 +12,10 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 if [ "$TOOL_NAME" = "Write" ] || [ "$TOOL_NAME" = "Edit" ]; then
   FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
+  if [ -z "$FILE_PATH" ]; then
+    exit 0
+  fi
+
   # 保護対象ファイルは承認しない（通常フローに委ねる）
   case "$FILE_PATH" in
     *.env|*secrets*|*credentials*|*id_rsa*|*id_ed25519*)
@@ -35,6 +39,10 @@ fi
 # --- Read: 機密ファイル以外を自動承認 ---
 if [ "$TOOL_NAME" = "Read" ]; then
   FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+
+  if [ -z "$FILE_PATH" ]; then
+    exit 0
+  fi
 
   case "$FILE_PATH" in
     *.env|*secrets*|*credentials*|*key*|*token*|*id_rsa*|*id_ed25519*)
