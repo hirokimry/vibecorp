@@ -238,10 +238,19 @@ EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null ||
 assert_exit_code "minimal → 成功" "0" "$EXIT_CODE"
 cleanup
 
-# C2. full → エラー（現在未対応）
+# C2. full → 成功
 create_test_repo
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
-assert_exit_code "full → エラー" "1" "$EXIT_CODE"
+assert_exit_code "full → 成功" "0" "$EXIT_CODE"
+R="$TMPDIR_ROOT"
+assert_file_contains "full: vibecorp.yml に preset: full" "$R/.claude/vibecorp.yml" "preset: full"
+assert_dir_exists "full: agents ディレクトリ存在" "$R/.claude/agents"
+assert_dir_exists "full: skills ディレクトリ存在" "$R/.claude/skills"
+assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
+# --update --preset full の冪等性確認
+EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "full → update 成功" "0" "$EXIT_CODE"
+assert_file_contains "full: update 後も preset: full" "$R/.claude/vibecorp.yml" "preset: full"
 cleanup
 
 # ============================================
