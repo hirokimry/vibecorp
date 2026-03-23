@@ -238,10 +238,10 @@ EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null ||
 assert_exit_code "minimal → 成功" "0" "$EXIT_CODE"
 cleanup
 
-# C2. full → エラー（現在未対応）
+# C2. full → 成功
 create_test_repo
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
-assert_exit_code "full → エラー" "1" "$EXIT_CODE"
+assert_exit_code "full → 成功" "0" "$EXIT_CODE"
 cleanup
 
 # ============================================
