@@ -122,10 +122,10 @@ else
   fail "worktree への言及がない"
 fi
 
-if grep -q 'TeamCreate' "$SKILL_FILE" && grep -q 'isolation.*worktree' "$SKILL_FILE"; then
-  pass "TeamCreate + Agent worktree による並列実行への言及がある"
+if grep -q 'TeamCreate' "$SKILL_FILE" && grep -q 'git worktree add' "$SKILL_FILE"; then
+  pass "TeamCreate + 手動 worktree による並列実行への言及がある"
 else
-  fail "TeamCreate + Agent worktree による並列実行への言及がない"
+  fail "TeamCreate + 手動 worktree による並列実行への言及がない"
 fi
 
 if grep -q '結果報告' "$SKILL_FILE"; then
@@ -177,108 +177,109 @@ fi
 
 echo ""
 
-# --- テスト7: ワークツリー分離検証（安全装置） ---
-# Issue #125: Agent worktree 分離が機能しない致命的バグへの対策
+# --- テスト7: 方式I の worktree 事前作成手順 ---
 
-echo "--- テスト7: ワークツリー分離検証（安全装置） ---"
+echo "--- テスト7: worktree 事前作成手順（方式I） ---"
 
-# 7-1: エージェントプロンプトにワークツリー自己検証が含まれている
-if grep -q 'ワークツリー分離検証' "$SKILL_FILE"; then
-  pass "エージェントプロンプトにワークツリー分離検証セクションがある"
+# 7-1: git worktree add コマンドがある
+if grep -q 'git worktree add' "$SKILL_FILE"; then
+  pass "git worktree add による worktree 作成手順がある"
 else
-  fail "エージェントプロンプトにワークツリー分離検証セクションがない（#125 安全装置欠如）"
+  fail "git worktree add による worktree 作成手順がない"
 fi
 
-# 7-2: エージェントに「即座に作業を中断」の指示がある
-if grep -q '即座に作業を中断' "$SKILL_FILE"; then
-  pass "エージェントに分離失敗時の中断指示がある"
+# 7-2: rsync による .claude/ 同期手順がある
+if grep -q 'rsync.*\.claude/' "$SKILL_FILE"; then
+  pass "rsync による .claude/ 同期手順がある"
 else
-  fail "エージェントに分離失敗時の中断指示がない（#125 安全装置欠如）"
+  fail "rsync による .claude/ 同期手順がない"
 fi
 
-# 7-3: エージェントプロンプトに pwd による作業ディレクトリ確認がある
-if grep -q 'pwd' "$SKILL_FILE"; then
-  pass "エージェントプロンプトに pwd による作業ディレクトリ確認がある"
-else
-  fail "エージェントプロンプトに pwd がない（分離検証不可）"
-fi
-
-# 7-4: エージェントプロンプトに git rev-parse による確認がある
-if grep -q 'git rev-parse' "$SKILL_FILE"; then
-  pass "エージェントプロンプトに git rev-parse による確認がある"
-else
-  fail "エージェントプロンプトに git rev-parse がない（分離検証不可）"
-fi
-
-# 7-5: メインリポジトリと異なることの確認指示がある
-if grep -q 'メインリポジトリと同一' "$SKILL_FILE"; then
-  pass "メインリポジトリとの同一性チェック指示がある"
-else
-  fail "メインリポジトリとの同一性チェック指示がない（分離検証不完全）"
-fi
-
-echo ""
-
-# --- テスト8: オーケストレーター側の分離検証ステップ ---
-
-echo "--- テスト8: オーケストレーター側の分離検証ステップ ---"
-
-# 8-1: ステップ 5d の存在（オーケストレーター側の検証ステップ）
-if grep -q '5d.*ワークツリー分離の検証' "$SKILL_FILE"; then
-  pass "ステップ 5d: オーケストレーター側のワークツリー分離検証ステップがある"
-else
-  fail "ステップ 5d: オーケストレーター側のワークツリー分離検証ステップがない（#125 安全装置欠如）"
-fi
-
-# 8-2: git worktree list による検証コマンドがある
+# 7-3: git worktree list による確認がある
 if grep -q 'git worktree list' "$SKILL_FILE"; then
-  pass "git worktree list による検証コマンドがある"
+  pass "git worktree list による worktree 確認がある"
 else
-  fail "git worktree list による検証コマンドがない（分離を検出する手段がない）"
+  fail "git worktree list による worktree 確認がない"
 fi
 
-# 8-3: 出力が2行以上であることの確認条件がある
-if grep -q '2行以上' "$SKILL_FILE"; then
-  pass "worktree list の出力が2行以上であることの確認条件がある"
+# 7-4: worktree 作成失敗時のスキップ動作が明記されている
+if grep -q 'worktree 作成.*失敗.*スキップ' "$SKILL_FILE"; then
+  pass "worktree 作成失敗時のスキップ動作が明記されている"
 else
-  fail "worktree list の出力行数の確認条件がない（1行＝分離なし を検出できない）"
-fi
-
-# 8-4: メインリポジトリのブランチ変更検知がある
-if grep -q 'git branch --show-current' "$SKILL_FILE"; then
-  pass "メインリポジトリのブランチ変更検知コマンドがある"
-else
-  fail "メインリポジトリのブランチ変更検知コマンドがない（ブランチ汚染を検出できない）"
-fi
-
-# 8-5: 検証失敗時のシャットダウン指示がある
-if grep -q '検証失敗.*シャットダウン' "$SKILL_FILE"; then
-  pass "検証失敗時の全 Agent シャットダウン指示がある"
-else
-  fail "検証失敗時の全 Agent シャットダウン指示がない（分離失敗時に暴走する）"
-fi
-
-# 8-6: 検証失敗時に作業続行禁止が明記されている
-if grep -q '作業続行は.*禁止' "$SKILL_FILE"; then
-  pass "ワークツリー分離なしでの作業続行禁止が明記されている"
-else
-  fail "ワークツリー分離なしでの作業続行禁止が明記されていない（最重要制約の欠如）"
+  fail "worktree 作成失敗時のスキップ動作が明記されていない"
 fi
 
 echo ""
 
-# --- テスト9: 介入ポイントにワークツリー分離失敗が含まれている ---
+# --- テスト8: Agent プロンプトの方式I 対応 ---
 
-echo "--- テスト9: 介入ポイントの検証 ---"
+echo "--- テスト8: Agent プロンプトの方式I 対応 ---"
 
-# 9-1: ワークツリー分離確認失敗が介入ポイントに含まれている
-if grep -q 'ワークツリー分離が確認できない.*ステップ 5d' "$SKILL_FILE"; then
-  pass "介入ポイントにワークツリー分離失敗（ステップ 5d）が含まれている"
+# 8-1: /ship --worktree パラメータの使用
+if grep -q '/ship.*--worktree' "$SKILL_FILE"; then
+  pass "Agent プロンプトに /ship --worktree がある"
 else
-  fail "介入ポイントにワークツリー分離失敗が含まれていない（#125 安全装置欠如）"
+  fail "Agent プロンプトに /ship --worktree がない"
 fi
 
-# 9-2: full プリセット確認の介入ポイントがある
+# 8-2: Agent(isolation: "worktree") がパラメータとして使われていない
+# 方式選定理由での「機能しない」という説明的言及は許容する
+ISOLATION_COUNT=$(grep -c 'isolation.*worktree' "$SKILL_FILE" || true)
+EXPLANATION_COUNT=$(grep -c 'isolation.*worktree.*機能しない' "$SKILL_FILE" || true)
+if [ "$ISOLATION_COUNT" -eq "$EXPLANATION_COUNT" ]; then
+  pass "isolation: \"worktree\" がパラメータとして使われていない"
+else
+  fail "isolation: \"worktree\" がパラメータとして使われている（方式I では不要）"
+fi
+
+# 8-3: Agent プロンプトに SendMessage での報告指示がある
+if grep -q 'SendMessage.*チームリーダー' "$SKILL_FILE"; then
+  pass "Agent プロンプトに SendMessage での報告指示がある"
+else
+  fail "Agent プロンプトに SendMessage での報告指示がない"
+fi
+
+echo ""
+
+# --- テスト9: アーキテクチャが方式I になっている ---
+
+echo "--- テスト9: アーキテクチャの方式I 確認 ---"
+
+# 9-1: 手動 worktree 方式の記載
+if grep -q '手動 worktree' "$SKILL_FILE"; then
+  pass "アーキテクチャに手動 worktree 方式の記載がある"
+else
+  fail "アーキテクチャに手動 worktree 方式の記載がない"
+fi
+
+# 9-2: 方式選定理由に #127 検証結果への言及がある
+if grep -q '#127' "$SKILL_FILE"; then
+  pass "方式選定理由に #127 検証結果への言及がある"
+else
+  fail "方式選定理由に #127 検証結果への言及がない"
+fi
+
+# 9-3: #128 の --worktree 実装への言及がある
+if grep -q '#128' "$SKILL_FILE"; then
+  pass "方式選定理由に #128 の --worktree 実装への言及がある"
+else
+  fail "方式選定理由に #128 の --worktree 実装への言及がない"
+fi
+
+echo ""
+
+# --- テスト10: 介入ポイントの検証 ---
+
+echo "--- テスト10: 介入ポイントの検証 ---"
+
+# 10-1: worktree 作成失敗は介入ポイントに含まれていない（自動スキップのため）
+if grep -q 'worktree 作成失敗.*ステップ 5c' "$SKILL_FILE"; then
+  fail "介入ポイントに worktree 作成失敗が含まれている（自動スキップなので不要）"
+else
+  pass "介入ポイントに worktree 作成失敗が含まれていない（自動スキップで処理）"
+fi
+
+# 10-2: full プリセット確認の介入ポイントがある
 if grep -q 'full プリセットでない.*ステップ 1' "$SKILL_FILE"; then
   pass "介入ポイントに full プリセット確認がある"
 else
@@ -287,72 +288,39 @@ fi
 
 echo ""
 
-# --- テスト10: 制約セクションにワークツリー分離制約がある ---
+# --- テスト11: 制約セクションの検証 ---
 
-echo "--- テスト10: 制約セクションの安全装置 ---"
+echo "--- テスト11: 制約セクションの検証 ---"
 
-# 10-1: 制約セクションにワークツリー分離の絶対禁止ルールがある
-if grep -q 'ワークツリー分離が確認できない状態での作業続行は絶対に禁止' "$SKILL_FILE"; then
-  pass "制約セクションにワークツリー分離なし作業続行の絶対禁止ルールがある"
+# 11-1: worktree 作成失敗時のスキップ制約がある
+if grep -q 'worktree 作成.*失敗.*スキップ' "$SKILL_FILE"; then
+  pass "制約セクションに worktree 作成失敗時のスキップ制約がある"
 else
-  fail "制約セクションにワークツリー分離の絶対禁止ルールがない（最重要制約の欠如）"
+  fail "制約セクションに worktree 作成失敗時のスキップ制約がない"
 fi
 
-# 10-2: 制約がスキル末尾の制約セクション内にある（プロンプト内ではなく）
-CONSTRAINT_LINE=$(grep -n 'ワークツリー分離が確認できない状態での作業続行は絶対に禁止' "$SKILL_FILE" | head -1 | cut -d: -f1)
-CONSTRAINT_SECTION_LINE=$(grep -n '^## 制約' "$SKILL_FILE" | head -1 | cut -d: -f1)
-if [ -n "$CONSTRAINT_LINE" ] && [ -n "$CONSTRAINT_SECTION_LINE" ] && [ "$CONSTRAINT_LINE" -gt "$CONSTRAINT_SECTION_LINE" ]; then
-  pass "ワークツリー分離制約が制約セクション内にある"
+# 11-2: 1つの Issue の失敗で他を中断しない制約がある
+if grep -q '1つの Issue の失敗で他の並列実行を中断しない' "$SKILL_FILE"; then
+  pass "1つの Issue の失敗で他を中断しない制約がある"
 else
-  fail "ワークツリー分離制約が制約セクション外にある（制約として機能しない可能性）"
+  fail "1つの Issue の失敗で他を中断しない制約がない"
 fi
 
 echo ""
 
-# --- テスト11: テンプレートとソースの一致 ---
+# --- テスト12: テンプレートとソースの一致 ---
 
-echo "--- テスト11: テンプレートとソースの一致 ---"
+echo "--- テスト12: テンプレートとソースの一致 ---"
 
 if [ -f "$TEMPLATE_FILE" ]; then
   pass "テンプレートファイルが存在する"
   if diff -q "$SKILL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
     pass "ソースとテンプレートが一致する"
   else
-    fail "ソースとテンプレートが一致しない（安全装置がテンプレートに反映されていない）"
+    fail "ソースとテンプレートが一致しない"
   fi
 else
   fail "テンプレートファイルが存在しない: $TEMPLATE_FILE"
-fi
-
-echo ""
-
-# --- テスト12: 安全装置の二重防御（エージェント側 + オーケストレーター側） ---
-
-echo "--- テスト12: 二重防御の検証 ---"
-
-# エージェントプロンプト内の検証（エージェント自身が分離を確認する）
-AGENT_SELF_CHECK=0
-if grep -q 'ワークツリー分離検証.*最初に必ず実行' "$SKILL_FILE"; then
-  AGENT_SELF_CHECK=1
-  pass "エージェント側: 起動直後の自己検証指示がある（第1層防御）"
-else
-  fail "エージェント側: 起動直後の自己検証指示がない（第1層防御の欠如）"
-fi
-
-# オーケストレーター側の検証（スキル実行者が外部から分離を確認する）
-ORCH_CHECK=0
-if grep -q '最初の Agent 起動直後.*スキル実行者.*自身が分離を検証' "$SKILL_FILE"; then
-  ORCH_CHECK=1
-  pass "オーケストレーター側: Agent 起動後の外部検証指示がある（第2層防御）"
-else
-  fail "オーケストレーター側: Agent 起動後の外部検証指示がない（第2層防御の欠如）"
-fi
-
-# 二重防御の両方が存在すること
-if [ "$AGENT_SELF_CHECK" -eq 1 ] && [ "$ORCH_CHECK" -eq 1 ]; then
-  pass "二重防御: エージェント自己検証 + オーケストレーター外部検証の両方が存在する"
-else
-  fail "二重防御が不完全: エージェント側=$AGENT_SELF_CHECK, オーケストレーター側=$ORCH_CHECK"
 fi
 
 echo ""
