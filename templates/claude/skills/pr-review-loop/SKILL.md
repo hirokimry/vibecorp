@@ -201,7 +201,7 @@ git push
 
 #### 2.9 規約・ナレッジ反映（オプション）
 
-vibecorp.yml の `gates.review_to_rules` を確認する（worktree モードでは `<path>` を `$CLAUDE_PROJECT_DIR` の代わりに使用）:
+vibecorp.yml の `gates.review_to_rules` を確認する:
 
 ```bash
 yq '.gates.review_to_rules // false' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
