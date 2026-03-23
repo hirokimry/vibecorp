@@ -310,10 +310,14 @@ copy_managed_files() {
     minimal)
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
+      rm -f "${hooks_dir}/role-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${agents_dir}"
+      ;;
+    standard)
+      rm -f "${hooks_dir}/role-gate.sh"
       ;;
   esac
 
@@ -615,7 +619,16 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not))]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("role-gate") | not))]
+          | select((.hooks | length) > 0)
+        ]
+      ')
+      ;;
+    standard)
+      new_settings=$(echo "$new_settings" | jq '
+        .hooks.PreToolUse |= [
+          .[]
+          | .hooks |= [.[] | select(.command | contains("role-gate") | not)]
           | select((.hooks | length) > 0)
         ]
       ')
