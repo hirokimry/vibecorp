@@ -6,6 +6,16 @@ description: "実装レビューを実行する。CodeRabbit CLI とカスタム
 **ultrathink**
 変更差分をレビューします。以下の手順で実行してください。
 
+## worktree モード
+
+`--worktree <path>` が指定された場合、全操作を指定パス内で実行する。
+
+- **Bash**: 全コマンドを `cd <path> && command` で実行する
+- **Read/Write/Edit**: `<path>/` を基準とした絶対パスを使用する
+- **サブスキル呼び出し**: `--worktree <path>` を引き継ぐ
+- 未指定時は従来通り CWD で実行する（後方互換）
+- **`$CLAUDE_PROJECT_DIR`**: worktree モードでは `<path>` に置き換える
+
 ## 1. 変更ファイルの確認
 
 **各コマンドは個別に実行すること。`&&` で連結しない。**
