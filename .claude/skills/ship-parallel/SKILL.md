@@ -215,24 +215,7 @@ git worktree list
 エラーが発生した場合も SendMessage で即座にチームリーダーに報告してください。
 ```
 
-#### 5e. worktree 作成の確認（安全装置）
-
-Agent 起動後に、worktree が正しく存在することを確認する。
-
-```bash
-git worktree list
-```
-
-- worktree 数が期待値と一致すること
-- メインリポジトリのブランチが変更されていないこと
-
-```bash
-git branch --show-current
-```
-
-worktree 作成失敗が検出された場合は、該当 Issue の Agent に SendMessage でエラーを通知し、その Issue はスキップする。
-
-#### 5f. 直列チェーンの順序実行
+#### 5e. 直列チェーンの順序実行
 
 直列チェーンがある場合、前の Issue の Agent が完了してから次の Issue の Agent を起動する。
 SendMessage で前の Agent の完了を確認し、成功していれば次を起動する。
@@ -293,7 +276,6 @@ git merge-tree $(git merge-base HEAD <branch_a>) HEAD <branch_a>
 | Issue が1件以下 | ステップ 2 |
 | COO が全 Issue を保留に分類 | ステップ 3 |
 | ユーザーが実行計画を承認しない | ステップ 4 |
-| worktree 作成失敗 | ステップ 5c |
 | 個別の /ship が介入ポイントに到達 | ステップ 5 |
 | 並列 PR 間でコンフリクト検出 | ステップ 7 |
 
