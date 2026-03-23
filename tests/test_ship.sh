@@ -22,8 +22,10 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/.claude/skills/ship/SKILL.md"
 TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/ship/SKILL.md"
+LOCAL_FILE="$PROJECT_DIR/.claude/skills/ship/SKILL.md"
+# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
+SKILL_FILE="$TEMPLATE_FILE"
 
 echo "=== /ship スキル テスト ==="
 echo ""
@@ -256,19 +258,24 @@ fi
 
 echo ""
 
-# --- テスト10: テンプレートとソースの一致 ---
+# --- テスト10: テンプレートとローカルの一致 ---
 
-echo "--- テスト10: テンプレートとソースの一致 ---"
+echo "--- テスト10: テンプレートとローカルの一致 ---"
 
 if [ -f "$TEMPLATE_FILE" ]; then
   pass "テンプレートファイルが存在する"
-  if diff -q "$SKILL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
-    pass "ソースとテンプレートが一致する"
-  else
-    fail "ソースとテンプレートが一致しない"
-  fi
 else
   fail "テンプレートファイルが存在しない: $TEMPLATE_FILE"
+fi
+
+if [ -f "$LOCAL_FILE" ]; then
+  if diff -q "$LOCAL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
+    pass "ローカルとテンプレートが一致する"
+  else
+    fail "ローカルとテンプレートが一致しない"
+  fi
+else
+  pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
 fi
 
 echo ""
