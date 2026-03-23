@@ -148,7 +148,7 @@ mkdir -p .claude/knowledge/{role}/
 全エージェントの処理が完了したら、必ずスタンプを発行する（反映の有無に関わらず）:
 
 ```bash
-touch /tmp/.vibecorp-review-to-rules-ok
+touch /tmp/.{{PROJECT_NAME}}-review-to-rules-ok
 ```
 
 このスタンプがないと review-to-rules-gate フックにより `gh pr merge` がブロックされる。
