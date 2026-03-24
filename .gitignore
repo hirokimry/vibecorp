@@ -1,1 +1,12 @@
+# vibecorp 内部データ
 .claude/vibecorp/
+
+# OS 生成ファイル
+.DS_Store
+Thumbs.db
+
+# エディタ・IDE
+.vscode/
+.idea/
+*.swp
+*.swo
