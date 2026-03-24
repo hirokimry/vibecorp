@@ -80,7 +80,7 @@ if [ "$TOOL_NAME" = "Bash" ]; then
 
   # 環境変数プレフィックス・ラッパーコマンドを除去して正規化
   normalized="$COMMAND"
-  while [[ "$normalized" =~ ^[A-Za-z_][A-Za-z0-9_]*=\S+\ (.+)$ ]]; do
+  while [[ "$normalized" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]](.+)$ ]]; do
     normalized="${BASH_REMATCH[1]}"
   done
   normalized="${normalized#env }"
@@ -104,7 +104,7 @@ if [ "$TOOL_NAME" = "Bash" ]; then
 
   # 安全なコマンドリスト
   case "$base_cmd" in
-    git|gh|ls|cat|head|tail|echo|printf|grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|test|true|false|\
+    cd|git|gh|ls|cat|head|tail|echo|printf|grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|test|true|false|\
     basename|dirname|realpath|readlink|mkdir|cp|mv|touch|chmod|tree|node|npm|npx|python3|pip3|\
     bash|rsync|coderabbit|for|while|do|done|xargs|source|export)
       jq -n '{
