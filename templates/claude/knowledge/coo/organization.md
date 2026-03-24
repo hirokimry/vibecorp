@@ -30,6 +30,12 @@ AI組織構成は `docs/ai-organization.md` を参照すること。
 | CLO | .claude/knowledge/clo/, .claude/knowledge/legal/, docs/POLICY.md |
 | CISO | .claude/knowledge/ciso/, .claude/knowledge/security/, docs/SECURITY.md |
 
+## role-gate.sh のロール設計
+
+- role-gate.sh は分析員ロール（legal, accounting, security）の管轄ファイル書き込み制限を制御する
+- 統括職（CFO, CLO, CISO）は role-gate.sh に個別のケースを持たない。統括職は分析員のメタレビューを行う立場であり、直接ファイルを編集する運用ではないため
+- 統括職が knowledge/ 配下に書き込むケース（判断ログ等）は、knowledge/ が全ロール編集可であることで対応している
+
 ## ナレッジ配置場所
 
 | ディレクトリ | 用途 |

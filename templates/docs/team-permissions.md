@@ -62,7 +62,7 @@ hooks はチームメイトにも伝播する。この性質を利用し、PreTo
 第1層: team-auto-approve.sh（allow のゲートキーパー）
   - 機密ファイル（.env, secrets, credentials, MVV.md）は allow しない
   - 危険コマンド（rm, sudo, kill 等）は allow しない
-  - 危険フラグ（--force, --hard, -rf, --no-verify）は allow しない
+  - 危険フラグ（--force, --hard, -rf, -fr, --no-verify, --delete）は allow しない
   - 未知のコマンドは allow しない（ホワイトリスト方式）
 
 第2層: 既存の deny hook（deny のガードレール）
