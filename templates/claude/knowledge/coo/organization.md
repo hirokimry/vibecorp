@@ -18,23 +18,34 @@ AI組織構成は `docs/ai-organization.md` を参照すること。
 
 ## 管轄ファイルマッピング
 
-<!-- 各エージェントが編集権限を持つファイルを記述する -->
-<!-- role-gate.sh による書き込み制御と一致させること -->
+<!-- 各エージェントの責任範囲と書き込み権限を記述する -->
+<!-- role-gate.sh は docs/ 配下の書き込みのみを制御する -->
 
-| エージェント | 管轄パス |
-|-------------|---------|
-| CTO | .claude/knowledge/cto/, .claude/rules/ |
-| CPO | .claude/knowledge/cpo/, docs/specification.md |
-| COO | .claude/knowledge/coo/, docs/ai-organization.md |
-| CFO | .claude/knowledge/cfo/, .claude/knowledge/accounting/, docs/cost-analysis.md |
-| CLO | .claude/knowledge/clo/, .claude/knowledge/legal/, docs/POLICY.md |
-| CISO | .claude/knowledge/ciso/, .claude/knowledge/security/, docs/SECURITY.md |
+### docs/ 書き込み権限（role-gate.sh で制御）
 
-## role-gate.sh のロール設計
+| ロール | 書き込み可能な docs/ パス |
+|--------|------------------------|
+| CTO | docs/specification.md（技術スタック部分） |
+| CPO | docs/specification.md（プロダクト仕様部分） |
+| COO | （docs/ 書き込み権限なし） |
+| 分析員 legal | docs/POLICY.md |
+| 分析員 accounting | docs/cost-analysis.md |
+| 分析員 security | docs/SECURITY.md |
 
-- role-gate.sh は分析員ロール（legal, accounting, security）の管轄ファイル書き込み制限を制御する
-- 統括職（CFO, CLO, CISO）は role-gate.sh に個別のケースを持たない。統括職は分析員のメタレビューを行う立場であり、直接ファイルを編集する運用ではないため
-- 統括職が knowledge/ 配下に書き込むケース（判断ログ等）は、knowledge/ が全ロール編集可であることで対応している
+統括職（CFO, CLO, CISO）は role-gate.sh に個別ケースを持たず、docs/ への直接書き込み権限がない。統括職は分析員チームのメタレビューを行う立場であり、docs/ の更新は分析員が実行する。
+
+### knowledge/ 書き込み権限
+
+knowledge/ は role-gate.sh の制御対象外であり、全ロールが自分の配下ディレクトリに書き込み可能。
+
+| エージェント | knowledge/ パス |
+|-------------|----------------|
+| CTO | .claude/knowledge/cto/ |
+| CPO | .claude/knowledge/cpo/ |
+| COO | .claude/knowledge/coo/ |
+| CFO | .claude/knowledge/cfo/, .claude/knowledge/accounting/ |
+| CLO | .claude/knowledge/clo/, .claude/knowledge/legal/ |
+| CISO | .claude/knowledge/ciso/, .claude/knowledge/security/ |
 
 ## ナレッジ配置場所
 
