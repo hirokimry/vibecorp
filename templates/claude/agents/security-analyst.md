@@ -5,7 +5,7 @@ description: >
   SECURITY.md 制約遵守チェック、OWASP Top 10 対策レビュー、CVEスキャンを行う。
   同一プロンプトで3回独立実行し、CISOがメタレビューする合議制で運用する。
   「セキュリティチェック」「脆弱性スキャン」「依存パッケージ監査」と言った時に使用。
-tools: Read, Bash, Grep, Glob
+tools: Read, Write, Bash, Grep, Glob
 model: sonnet
 ---
 

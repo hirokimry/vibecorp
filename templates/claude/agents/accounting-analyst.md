@@ -5,7 +5,7 @@ description: >
   コスト管理ポリシーの MUST 制約遵守チェック、課金ロジック・コスト影響評価を行う。
   同一プロンプトで3回独立実行し、CFOがメタレビューする合議制で運用する。
   「コスト分析して」「API利用量を確認」「費用を集計」と言った時に使用。
-tools: Read, Bash, Grep, Glob
+tools: Read, Write, Bash, Grep, Glob
 model: sonnet
 ---
 

@@ -4,7 +4,7 @@ description: >
   CFO（最高財務責任者）エージェント。コスト分析・API利用量管理・予算管理の番人。
   経理チームの合議結果をメタレビューし、コスト最適化を判断する。
   「コスト確認」「API利用量は？」「予算分析」と言った時に使用。
-tools: Read, Bash, Grep, Glob
+tools: Read, Write, Bash, Grep, Glob
 model: sonnet
 ---
 

@@ -153,4 +153,4 @@ Claude Code のパーミッション制御は **3つの独立したレイヤー*
 
 - `--enable-auto-mode` のチームモード統合が進めば、hook が不要になる可能性がある
 - `settings.local.json` の継承バグが修正されれば、hook との二重管理を解消できる
-- [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) を定期的に確認すること
+- [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams) を定期的に確認すること

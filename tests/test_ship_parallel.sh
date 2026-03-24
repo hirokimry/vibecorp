@@ -74,6 +74,14 @@ else
   fail "description フィールドが存在しない"
 fi
 
+# frontmatter 終端区切りの確認
+FRONTMATTER_DELIMS=$(awk '$0=="---"{c++} END{print c+0}' "$SKILL_FILE")
+if [ "$FRONTMATTER_DELIMS" -ge 2 ]; then
+  pass "frontmatter 終端区切りが存在する"
+else
+  fail "frontmatter 終端区切りがない"
+fi
+
 echo ""
 
 # --- テスト3: 必須セクションの存在 ---
