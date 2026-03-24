@@ -11,7 +11,17 @@ description: "実装計画に対するレビュー→修正の自動ループ。
 ```bash
 /plan-review-loop                 # 現在のブランチの計画を自動検出
 /plan-review-loop <plan_file>     # 計画ファイルを直接指定
+/plan-review-loop --worktree <path>  # worktree 内の計画を対象
 ```
+
+## worktree モード
+
+`--worktree <path>` が指定された場合、全操作を指定パス内で実行する。
+
+- **Bash**: 全コマンドを `cd <path> && command` で実行する
+- **Read/Write/Edit**: `<path>/` を基準とした絶対パスを使用する
+- **サブスキル呼び出し**: `--worktree <path>` を引き継ぐ
+- 未指定時は従来通り CWD で実行する（後方互換）
 
 ## 計画ファイルの検出
 

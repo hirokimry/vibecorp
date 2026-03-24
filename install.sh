@@ -1,7 +1,7 @@
 #!/bin/bash
 # install.sh — vibecorp プラグインインストーラー
-# Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja|en|...]
-#        install.sh --update [--preset minimal|standard]
+# Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja|en|...]
+#        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
 VIBECORP_VERSION="0.1.0"
@@ -22,13 +22,13 @@ log_skip()  { printf '\033[33m[SKIP]\033[0m  %s\n' "$*" >&2; }
 usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
-Usage: install.sh --name <project-name> [--preset minimal|standard] [--language ja]
-       install.sh --update [--preset minimal|standard]
+Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja]
+       install.sh --update [--preset minimal|standard|full]
 
 Options:
   --name      プロジェクト名（初回インストール時に必須）
   --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
-  --preset    組織プリセット: minimal または standard（デフォルト: minimal）
+  --preset    組織プリセット: minimal, standard, full（デフォルト: minimal）
   --language  回答言語: ja, en, または任意（デフォルト: ja）
   -h, --help  このヘルプを表示
 
@@ -98,9 +98,9 @@ validate_name() {
 
 validate_preset() {
   case "$PRESET" in
-    minimal|standard) ;;
+    minimal|standard|full) ;;
     *)
-      log_error "--preset は minimal または standard のみ対応です"
+      log_error "--preset は minimal, standard, full のいずれかを指定してください"
       exit 1
       ;;
   esac
@@ -310,10 +310,14 @@ copy_managed_files() {
     minimal)
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
+      rm -f "${hooks_dir}/role-gate.sh"
       rm -rf "${skills_dir}/review-to-rules"
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${agents_dir}"
+      ;;
+    standard)
+      rm -f "${hooks_dir}/role-gate.sh"
       ;;
   esac
 
@@ -615,7 +619,16 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not))]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("role-gate") | not))]
+          | select((.hooks | length) > 0)
+        ]
+      ')
+      ;;
+    standard)
+      new_settings=$(echo "$new_settings" | jq '
+        .hooks.PreToolUse |= [
+          .[]
+          | .hooks |= [.[] | select(.command | contains("role-gate") | not)]
           | select((.hooks | length) > 0)
         ]
       ')

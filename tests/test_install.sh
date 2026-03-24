@@ -238,10 +238,19 @@ EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null ||
 assert_exit_code "minimal → 成功" "0" "$EXIT_CODE"
 cleanup
 
-# C2. full → エラー（現在未対応）
+# C2. full → 成功
 create_test_repo
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
-assert_exit_code "full → エラー" "1" "$EXIT_CODE"
+assert_exit_code "full → 成功" "0" "$EXIT_CODE"
+R="$TMPDIR_ROOT"
+assert_file_contains "full: vibecorp.yml に preset: full" "$R/.claude/vibecorp.yml" "preset: full"
+assert_dir_exists "full: agents ディレクトリ存在" "$R/.claude/agents"
+assert_dir_exists "full: skills ディレクトリ存在" "$R/.claude/skills"
+assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
+# --update --preset full の冪等性確認
+EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "full → update 成功" "0" "$EXIT_CODE"
+assert_file_contains "full: update 後も preset: full" "$R/.claude/vibecorp.yml" "preset: full"
 cleanup
 
 # ============================================
@@ -1285,15 +1294,37 @@ assert_file_exists "POLICY.md 存在" "$R/docs/POLICY.md"
 # X4. SECURITY.md が生成される
 assert_file_exists "SECURITY.md 存在" "$R/docs/SECURITY.md"
 
+# X4a. cost-analysis.md が生成される
+assert_file_exists "cost-analysis.md 存在" "$R/docs/cost-analysis.md"
+
+# X4b. ai-organization.md が生成される
+assert_file_exists "ai-organization.md 存在" "$R/docs/ai-organization.md"
+
 # X5. プレースホルダーが置換済み（残っていない）
 assert_file_not_contains "specification.md にプレースホルダーなし" "$R/docs/specification.md" '{{.*}}'
 assert_file_not_contains "POLICY.md にプレースホルダーなし" "$R/docs/POLICY.md" '{{.*}}'
 assert_file_not_contains "SECURITY.md にプレースホルダーなし" "$R/docs/SECURITY.md" '{{.*}}'
+assert_file_not_contains "cost-analysis.md にプレースホルダーなし" "$R/docs/cost-analysis.md" '{{.*}}'
+assert_file_not_contains "ai-organization.md にプレースホルダーなし" "$R/docs/ai-organization.md" '{{.*}}'
 
 # X6. PROJECT_NAME が実際のプロジェクト名に置換されている
 assert_file_contains "specification.md にプロジェクト名" "$R/docs/specification.md" "test-proj"
 assert_file_contains "POLICY.md にプロジェクト名" "$R/docs/POLICY.md" "test-proj"
 assert_file_contains "SECURITY.md にプロジェクト名" "$R/docs/SECURITY.md" "test-proj"
+assert_file_contains "cost-analysis.md にプロジェクト名" "$R/docs/cost-analysis.md" "test-proj"
+assert_file_contains "ai-organization.md にプロジェクト名" "$R/docs/ai-organization.md" "test-proj"
+
+# X6a. cost-analysis.md に必須セクションが含まれる
+assert_file_contains "cost-analysis.md に初期投資セクション" "$R/docs/cost-analysis.md" "初期投資"
+assert_file_contains "cost-analysis.md に変動費セクション" "$R/docs/cost-analysis.md" "変動費"
+assert_file_contains "cost-analysis.md にスケール時のコスト予測セクション" "$R/docs/cost-analysis.md" "スケール時のコスト予測"
+assert_file_contains "cost-analysis.md にコスト管理ポリシーセクション" "$R/docs/cost-analysis.md" "コスト管理ポリシー"
+
+# X6b. ai-organization.md に必須セクションが含まれる
+assert_file_contains "ai-organization.md に基本思想セクション" "$R/docs/ai-organization.md" "基本思想"
+assert_file_contains "ai-organization.md に組織構成セクション" "$R/docs/ai-organization.md" "組織構成"
+assert_file_contains "ai-organization.md に権限モデルセクション" "$R/docs/ai-organization.md" "権限モデル"
+assert_file_contains "ai-organization.md に段階的導入計画セクション" "$R/docs/ai-organization.md" "段階的導入計画"
 
 # X7. 既存同名ファイルはスキップ（ユーザーカスタマイズ保護）
 cleanup
@@ -1334,6 +1365,8 @@ assert_file_contains "lock に docs セクション" "$R/.claude/vibecorp.lock" 
 assert_file_contains "lock に specification.md" "$R/.claude/vibecorp.lock" "specification.md"
 assert_file_contains "lock に POLICY.md" "$R/.claude/vibecorp.lock" "POLICY.md"
 assert_file_contains "lock に SECURITY.md" "$R/.claude/vibecorp.lock" "SECURITY.md"
+assert_file_contains "lock に cost-analysis.md" "$R/.claude/vibecorp.lock" "cost-analysis.md"
+assert_file_contains "lock に ai-organization.md" "$R/.claude/vibecorp.lock" "ai-organization.md"
 
 # X10. ユーザー既存 docs ファイルは lock に載らない
 cleanup
