@@ -26,9 +26,9 @@ AI組織構成は `docs/ai-organization.md` を参照すること。
 | CTO | .claude/knowledge/cto/, .claude/rules/ |
 | CPO | .claude/knowledge/cpo/, docs/specification.md |
 | COO | .claude/knowledge/coo/, docs/ai-organization.md |
-| CFO | .claude/knowledge/cfo/, docs/cost-analysis.md |
-| CLO | .claude/knowledge/clo/, docs/POLICY.md |
-| CISO | .claude/knowledge/ciso/, docs/SECURITY.md |
+| CFO | .claude/knowledge/cfo/, .claude/knowledge/accounting/, docs/cost-analysis.md |
+| CLO | .claude/knowledge/clo/, .claude/knowledge/legal/, docs/POLICY.md |
+| CISO | .claude/knowledge/ciso/, .claude/knowledge/security/, docs/SECURITY.md |
 
 ## ナレッジ配置場所
 
