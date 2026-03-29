@@ -383,6 +383,7 @@ copy_managed_files() {
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${skills_dir}/session-harvest"
+      rm -rf "${skills_dir}/harvest-all"
       rm -rf "${agents_dir}"
       ;;
     standard)

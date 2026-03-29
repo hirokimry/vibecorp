@@ -19,14 +19,29 @@ description: >
 /harvest-all --scope <path>
 /harvest-all --dry-run
 /harvest-all --scope src/ --dry-run
+/harvest-all --worktree <path>
 ```
 
 - `--scope <path>`: 走査対象ディレクトリを限定する。省略時はプロジェクトルート全体を走査する
 - `--dry-run`: 反映せず、発見項目のレポートのみ出力する
+- `--worktree <path>`: 指定パス内で全操作を実行する
+
+## worktree モード
+
+`--worktree <path>` が指定された場合、全操作を指定パス内で実行する。
+
+- **Bash**: 全コマンドを `cd <path> && command` で実行する
+- **Read/Write/Edit**: `<path>/` を基準とした絶対パスを使用する
+- 未指定時は従来通り CWD で実行する（後方互換）
 
 ## 前提条件
 
-- プリセット不問（minimal 以上で利用可能）
+- standard 以上のプリセットで利用可能
+
+## /session-harvest との使い分け
+
+- **/session-harvest**: セッション中の暗黙知をマージ前に吸い上げる日常ツール。session-harvest-gate と連携し、PR マージ前のゲートとして機能する
+- **/harvest-all**: コードベース全体を走査して暗黙知を洗い出すオンデマンドツール。初期導入時や定期棚卸し用に使用する
 
 ## ワークフロー
 
