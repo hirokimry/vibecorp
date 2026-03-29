@@ -1640,6 +1640,91 @@ assert_file_exists "coderabbit.enabled: true で .coderabbit.yaml 生成" "$R/.c
 cleanup
 
 # ============================================
+echo "=== T. スキル・hooks トグル ==="
+# ============================================
+
+# T1. hooks セクションで false 指定した hook がインストールされない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+R="$TMPDIR_ROOT"
+# vibecorp.yml に hooks トグルを追加
+cat >> "$R/.claude/vibecorp.yml" <<'YML'
+hooks:
+  block-api-bypass: false
+YML
+# --update で再インストール
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_exists "無効化した hook がインストールされない" "$R/.claude/hooks/block-api-bypass.sh"
+# 他の hook はインストールされている
+assert_file_exists "無効化していない hook はインストールされる" "$R/.claude/hooks/protect-files.sh"
+
+cleanup
+
+# T2. skills セクションで false 指定した skill がインストールされない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+R="$TMPDIR_ROOT"
+cat >> "$R/.claude/vibecorp.yml" <<'YML'
+skills:
+  commit: false
+YML
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_exists "無効化した skill がインストールされない" "$R/.claude/skills/commit/SKILL.md"
+# 他の skill はインストールされている
+assert_dir_exists "無効化していない skill はインストールされる" "$R/.claude/skills/branch"
+
+cleanup
+
+# T3. 無効化した hook が settings.json に含まれない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+R="$TMPDIR_ROOT"
+cat >> "$R/.claude/vibecorp.yml" <<'YML'
+hooks:
+  block-api-bypass: false
+YML
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_contains "無効化した hook が settings.json に含まれない" "$R/.claude/settings.json" "block-api-bypass"
+# 他の hook は settings.json に含まれる
+assert_file_contains "無効化していない hook は settings.json に含まれる" "$R/.claude/settings.json" "protect-files"
+
+cleanup
+
+# T4. トグルセクション省略時は全て有効（既存動作維持）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_exists "トグル省略時: hook がインストールされる" "$R/.claude/hooks/block-api-bypass.sh"
+assert_dir_exists "トグル省略時: skill がインストールされる" "$R/.claude/skills/commit"
+assert_file_contains "トグル省略時: hook が settings.json に含まれる" "$R/.claude/settings.json" "block-api-bypass"
+
+cleanup
+
+# T5. 初回インストール時に yml の hooks トグルが反映される
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+cat > "$R/.claude/vibecorp.yml" <<'YML'
+# vibecorp.yml — プロジェクト設定
+name: test-proj
+preset: full
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+hooks:
+  sync-gate: false
+skills:
+  review-to-rules: false
+YML
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_exists "初回トグル: 無効化 hook がインストールされない" "$R/.claude/hooks/sync-gate.sh"
+assert_file_not_exists "初回トグル: 無効化 skill がインストールされない" "$R/.claude/skills/review-to-rules/SKILL.md"
+assert_file_not_contains "初回トグル: 無効化 hook が settings.json に含まれない" "$R/.claude/settings.json" "sync-gate"
+
+cleanup
+
+# ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 

@@ -53,6 +53,64 @@ resolve_coderabbit_language() {
   esac
 }
 
+is_item_enabled() {
+  # vibecorp.yml の指定セクション内で、指定キーが false かどうかを判定する
+  # 使い方: is_item_enabled <section> <name>
+  # yml が存在しない、セクションがない、キーがない場合は有効（0）を返す
+  # 明示的に false の場合のみ無効（1）を返す
+  local section="$1"
+  local name="$2"
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  [[ -f "$yml" ]] || return 0
+
+  local val
+  val=$(awk -v section="$section" -v key="$name" '
+    /^[^ #]/ { current_section = $0; gsub(/:.*/, "", current_section) }
+    current_section == section && $0 ~ "^  " key ":" {
+      val = $2
+      gsub(/^[ \t]+/, "", val)
+      print val
+      exit
+    }
+  ' "$yml")
+
+  [[ "$val" == "false" ]] && return 1
+  return 0
+}
+
+is_skill_enabled() {
+  # vibecorp.yml の skills セクションを参照し、有効かどうかを返す
+  is_item_enabled "skills" "$1"
+}
+
+is_hook_enabled() {
+  # vibecorp.yml の hooks セクションを参照し、有効かどうかを返す
+  is_item_enabled "hooks" "$1"
+}
+
+get_disabled_hooks() {
+  # vibecorp.yml の hooks セクションから無効化された hook 名の JSON 配列を返す
+  # settings.json の jq フィルタで使用する
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  if [[ ! -f "$yml" ]]; then
+    echo "[]"
+    return
+  fi
+
+  awk '
+    /^hooks:/ { in_hooks = 1; next }
+    in_hooks && /^[^ #]/ { exit }
+    in_hooks && /: false/ {
+      key = $1
+      gsub(/:$/, "", key)
+      gsub(/^[ \t]+/, "", key)
+      print key
+    }
+  ' "$yml" | jq -R -s 'split("\n") | map(select(length > 0))'
+}
+
 # ── ステップ関数 ───────────────────────────────────────
 
 parse_args() {
@@ -240,11 +298,18 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
-  # hooks: --update 時は上書き、通常時は既存スキップ
+  # hooks: --update 時は上書き、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
     [[ -f "$src" ]] || continue
     local name
     name=$(basename "$src")
+    local hook_key="${name%.sh}"
+    if ! is_hook_enabled "$hook_key"; then
+      log_skip "hooks/${name} は yml で無効化されているためスキップ"
+      # --update 時は無効化された hook を削除（以前インストール済みの場合）
+      [[ "$UPDATE_MODE" == true ]] && rm -f "${hooks_dir}/${name}"
+      continue
+    fi
     if [[ "$UPDATE_MODE" == true ]]; then
       cp "$src" "${hooks_dir}/${name}"
     elif [[ -f "${hooks_dir}/${name}" ]]; then
@@ -254,11 +319,17 @@ copy_managed_files() {
     fi
   done
 
-  # skills: --update 時は上書き、通常時は既存スキップ
+  # skills: --update 時は上書き、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
     [[ -d "$src_dir" ]] || continue
     local name
     name=$(basename "$src_dir")
+    if ! is_skill_enabled "$name"; then
+      log_skip "skills/${name} は yml で無効化されているためスキップ"
+      # --update 時は無効化された skill を削除（以前インストール済みの場合）
+      [[ "$UPDATE_MODE" == true ]] && rm -rf "${skills_dir:?}/${name:?}"
+      continue
+    fi
     if [[ "$UPDATE_MODE" == true ]]; then
       rm -rf "${skills_dir:?}/${name:?}"
       cp -R "$src_dir" "${skills_dir}/${name}"
@@ -634,6 +705,22 @@ generate_settings_json() {
       ')
       ;;
   esac
+
+  # yml で無効化された hooks を settings.json からも除外
+  local disabled_hooks_json
+  disabled_hooks_json=$(get_disabled_hooks)
+  if [[ "$disabled_hooks_json" != "[]" ]]; then
+    new_settings=$(echo "$new_settings" | jq --argjson disabled "$disabled_hooks_json" '
+      .hooks.PreToolUse |= [
+        .[]
+        | .hooks |= [.[] | select(
+            (.command | split("/") | last | gsub("\\.sh$";"") | gsub("^\"";"";"g")) as $hook_name |
+            any($disabled[]; . == $hook_name) | not
+          )]
+        | select((.hooks | length) > 0)
+      ]
+    ')
+  fi
 
   if [[ ! -f "$settings" ]]; then
     # 新規: フィルタ済みテンプレートをそのまま書き出し
