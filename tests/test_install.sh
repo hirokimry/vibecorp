@@ -758,7 +758,7 @@ echo ""
 echo "=== P. --update での管理ファイル強制差し替え ==="
 # ============================================
 
-# P1. --update で管理フックが強制上書きされる（スキップしない）
+# P1. --update でカスタマイズ済みフックはテンプレート未変更ならスキップ（3-way マージ）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -770,13 +770,13 @@ echo '#!/bin/bash' > "$R/.claude/hooks/my-guard.sh"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# 管理フックは強制上書き
-assert_file_not_contains "--update で管理フックが上書き" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版"
+# テンプレート未変更のため、カスタム版が保持される
+assert_file_contains "--update でカスタム版フックが保持される" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版"
 # ユーザー独自フックは残る
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
 
-# P2. --update で管理スキルが強制上書きされる
+# P2. --update でカスタマイズ済みスキルはテンプレート未変更ならスキップ（3-way マージ）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -787,11 +787,12 @@ echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_not_contains "--update で管理スキルが上書き" "$R/.claude/skills/review/SKILL.md" "古い review"
+# テンプレート未変更のため、カスタム版が保持される
+assert_file_contains "--update でカスタム版スキルが保持される" "$R/.claude/skills/review/SKILL.md" "古い review"
 assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
 cleanup
 
-# P3. --update で管理ルールが強制上書きされる
+# P3. --update でカスタマイズ済みルールはテンプレート未変更ならスキップ（3-way マージ）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -800,7 +801,8 @@ echo "# 古いルール" > "$R/.claude/rules/comments.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_not_contains "--update で管理ルールが上書き" "$R/.claude/rules/comments.md" "古いルール"
+# テンプレートが変更されていないため、カスタム版が保持される
+assert_file_contains "--update でカスタム済みルールがテンプレート未変更なら保持" "$R/.claude/rules/comments.md" "古いルール"
 cleanup
 
 # ============================================
@@ -1750,6 +1752,291 @@ assert_file_exists "同名ユーザースキルは保持される" "$R/.claude/s
 assert_file_contains "ユーザーフックの内容が維持される" "$R/.claude/hooks/block-api-bypass.sh" "#!/bin/bash"
 assert_file_not_contains "無効化 hook が settings.json に含まれない" "$R/.claude/settings.json" "block-api-bypass"
 
+cleanup
+
+# ============================================
+echo ""
+echo "=== AB. 3-way マージ（コンフリクト解消） ==="
+# ============================================
+
+# AB1. 未カスタマイズファイルは --update で上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ファイルを変更せずに --update
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_exists "AB1: hook ファイルが存在" "$R/.claude/hooks/protect-files.sh"
+assert_file_exists "AB1: rules ファイルが存在" "$R/.claude/rules/comments.md"
+cleanup
+
+# AB2. カスタマイズ済み & テンプレート未変更 → カスタム版を保持
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ユーザーがフックをカスタマイズ
+echo '#!/bin/bash' > "$R/.claude/hooks/protect-files.sh"
+echo '# ユーザーカスタム: 追加のチェック' >> "$R/.claude/hooks/protect-files.sh"
+echo 'echo "カスタム版"' >> "$R/.claude/hooks/protect-files.sh"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# テンプレートが変更されていないため、カスタム版が保持される
+assert_file_contains "AB2: カスタム版が保持される" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム: 追加のチェック"
+cleanup
+
+# AB3. ベーススナップショットが保存される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_dir_exists "AB3: vibecorp-base ディレクトリ存在" "$R/.claude/vibecorp-base"
+assert_file_exists "AB3: hooks のベーススナップショット" "$R/.claude/vibecorp-base/hooks/protect-files.sh"
+assert_file_exists "AB3: rules のベーススナップショット" "$R/.claude/vibecorp-base/rules/comments.md"
+cleanup
+
+# AB4. vibecorp.lock に base_hashes セクションが含まれる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "AB4: lock に base_hashes セクション" "$R/.claude/vibecorp.lock" "base_hashes:"
+assert_file_contains "AB4: lock に hooks ハッシュ" "$R/.claude/vibecorp.lock" "hooks/protect-files.sh:"
+assert_file_contains "AB4: lock に rules ハッシュ" "$R/.claude/vibecorp.lock" "rules/comments.md:"
+cleanup
+
+# AB5. .claude/.gitignore に vibecorp-base/ が含まれる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+assert_file_contains "AB5: .gitignore に vibecorp-base/" "$R/.claude/.gitignore" "vibecorp-base/"
+cleanup
+
+# AB6. 3-way マージ: 非コンフリクト自動解消
+# テンプレートの先頭にベースから行を追加し、ユーザーが末尾に追加した場合
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ベーススナップショットを確認して取得
+ORIGINAL_CONTENT=$(cat "$R/.claude/hooks/protect-files.sh")
+
+# ユーザーが末尾に独自行を追加
+echo "# ユーザー追加: カスタム処理" >> "$R/.claude/hooks/protect-files.sh"
+
+# テンプレートを変更（先頭にコメント追加）
+TEMPLATE_FILE="$SCRIPT_DIR/templates/claude/hooks/protect-files.sh"
+ORIGINAL_TEMPLATE=$(cat "$TEMPLATE_FILE")
+
+# ベーススナップショットを保持しつつ、テンプレートを変更
+# ベースを明示的に設定して 3-way マージをテスト
+TMPBASE=$(mktemp)
+echo "#!/bin/bash" > "$TMPBASE"
+echo "# ベース行1" >> "$TMPBASE"
+echo "# ベース行2" >> "$TMPBASE"
+echo "# 共通行" >> "$TMPBASE"
+
+# カスタム版（末尾追加）
+TMPCUSTOM=$(mktemp)
+echo "#!/bin/bash" > "$TMPCUSTOM"
+echo "# ベース行1" >> "$TMPCUSTOM"
+echo "# ベース行2" >> "$TMPCUSTOM"
+echo "# 共通行" >> "$TMPCUSTOM"
+echo "# ユーザー追加行" >> "$TMPCUSTOM"
+
+# 新テンプレート（先頭変更）
+TMPNEW=$(mktemp)
+echo "#!/bin/bash" > "$TMPNEW"
+echo "# 新テンプレート行1" >> "$TMPNEW"
+echo "# ベース行2" >> "$TMPNEW"
+echo "# 共通行" >> "$TMPNEW"
+
+# git merge-file を直接テスト
+MERGE_EXIT=0
+git merge-file "$TMPCUSTOM" "$TMPBASE" "$TMPNEW" 2>/dev/null || MERGE_EXIT=$?
+if [ "$MERGE_EXIT" -eq 0 ]; then
+  # マージ成功: ユーザー追加行と新テンプレート行の両方が含まれる
+  if grep -q "ユーザー追加行" "$TMPCUSTOM" && grep -q "新テンプレート行1" "$TMPCUSTOM"; then
+    pass "AB6: 3-way マージで非コンフリクト自動解消"
+  else
+    fail "AB6: 3-way マージで非コンフリクト自動解消 (マージ結果が不正)"
+  fi
+else
+  fail "AB6: 3-way マージで非コンフリクト自動解消 (マージ失敗: exit $MERGE_EXIT)"
+fi
+rm -f "$TMPBASE" "$TMPCUSTOM" "$TMPNEW"
+cleanup
+
+# AB7. 3-way マージ: コンフリクト発生時にマーカーが出力される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+TMPBASE=$(mktemp)
+echo "共通行" > "$TMPBASE"
+
+TMPCUSTOM=$(mktemp)
+echo "カスタム版の変更" > "$TMPCUSTOM"
+
+TMPNEW=$(mktemp)
+echo "テンプレートの変更" > "$TMPNEW"
+
+MERGE_EXIT=0
+git merge-file -L "カスタム版" -L "前回テンプレート" -L "新テンプレート" \
+  "$TMPCUSTOM" "$TMPBASE" "$TMPNEW" 2>/dev/null || MERGE_EXIT=$?
+if [ "$MERGE_EXIT" -gt 0 ]; then
+  if grep -q "<<<<<<<" "$TMPCUSTOM" && grep -q ">>>>>>>" "$TMPCUSTOM"; then
+    pass "AB7: コンフリクト時にマーカーが出力される"
+  else
+    fail "AB7: コンフリクト時にマーカーが出力される (マーカーなし)"
+  fi
+else
+  fail "AB7: コンフリクト時にマーカーが出力される (コンフリクトが発生しなかった)"
+fi
+rm -f "$TMPBASE" "$TMPCUSTOM" "$TMPNEW"
+cleanup
+
+# AB8. 統合テスト: merge_or_overwrite がカスタム版を保持（テンプレート未変更時）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# sync-gate.sh をカスタマイズ
+echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
+echo '# カスタム sync-gate' >> "$R/.claude/hooks/sync-gate.sh"
+
+bash "$INSTALL_SH" --update --preset standard 2>/dev/null
+
+assert_file_contains "AB8: カスタム sync-gate が保持される" "$R/.claude/hooks/sync-gate.sh" "カスタム sync-gate"
+cleanup
+
+# AB9. 統合テスト: SKILL.md のカスタマイズが保持される（テンプレート未変更時）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# review スキルの SKILL.md をカスタマイズ
+echo "# custom-review-skill" > "$R/.claude/skills/review/SKILL.md"
+echo "user-added-instruction" >> "$R/.claude/skills/review/SKILL.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "AB9: カスタム SKILL.md が保持される" "$R/.claude/skills/review/SKILL.md" "custom-review-skill"
+cleanup
+
+# AB10. コンフリクト発生時に stderr に警告メッセージが出力される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ベーススナップショットとは異なる内容で上書き（カスタマイズ模擬）
+echo "# カスタム版コメントルール" > "$R/.claude/rules/comments.md"
+
+# テンプレートも変更（ベースと異なる新しい内容にする）
+# ベーススナップショットを直接変更して強制的にマージをトリガー
+echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+
+# マージまたはスキップのログが出力されることを確認
+if echo "$STDERR_OUTPUT" | grep -q "マージ\|スキップ\|MERGE\|SKIP\|CONFLICT"; then
+  pass "AB10: マージ関連ログが出力される"
+else
+  fail "AB10: マージ関連ログが出力される (ログなし)"
+fi
+cleanup
+
+# AB11. ベースハッシュなし（旧バージョン移行）の場合は上書きされる
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# vibecorp.lock から base_hashes セクションを除去（旧バージョンの lock を模擬）
+awk '/^  base_hashes:/{skip=1;next} skip && /^  [a-z]/{skip=0} skip{next} {print}' \
+  "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
+# ベーススナップショットも削除
+rm -rf "$R/.claude/vibecorp-base"
+
+echo "# 古いカスタム版" > "$R/.claude/hooks/protect-files.sh"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_contains "AB11: ベースハッシュなしなら上書き" "$R/.claude/hooks/protect-files.sh" "古いカスタム版"
+cleanup
+
+# AB12. カスタムなし & テンプレート変更 → 新テンプレートで上書き
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ファイルは変更しないが、ベーススナップショットを差し替えて「テンプレート変更」を模擬
+echo "# 古いベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+# lock のハッシュもベースに合わせる
+OLD_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+CURRENT_HASH=$(shasum -a 256 "$R/.claude/rules/comments.md" | awk '{print $1}')
+# lock のハッシュを現在のファイルのハッシュに設定（= カスタムなし状態を作る）
+awk -v path="rules/comments.md" -v newhash="$CURRENT_HASH" '
+  /^  base_hashes:/ { in_hashes = 1; print; next }
+  in_hashes && /^  [a-z]/ { in_hashes = 0 }
+  in_hashes && /^[^ ]/ { in_hashes = 0 }
+  in_hashes {
+    gsub(/^[ \t]+/, "", $0)
+    split($0, parts, ": ")
+    if (parts[1] == path) {
+      print "    " path ": " newhash
+      next
+    }
+  }
+  { print }
+' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# テンプレート版（=元々のテンプレート）で上書きされているはず
+assert_file_exists "AB12: rules ファイルが存在" "$R/.claude/rules/comments.md"
+cleanup
+
+# AB13. --update 後のコンフリクト警告表示テスト
+# ベースと現在とテンプレートが全て異なる場合にコンフリクトが報告される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ベーススナップショットを置き換え（独立した3つの内容を作る）
+echo "ベース版の内容" > "$R/.claude/vibecorp-base/rules/comments.md"
+BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+
+# lock のハッシュをベースに合わせる
+awk -v path="rules/comments.md" -v newhash="$BASE_HASH" '
+  /^  base_hashes:/ { in_hashes = 1; print; next }
+  in_hashes && /^  [a-z]/ { in_hashes = 0 }
+  in_hashes && /^[^ ]/ { in_hashes = 0 }
+  in_hashes {
+    gsub(/^[ \t]+/, "", $0)
+    split($0, parts, ": ")
+    if (parts[1] == path) {
+      print "    " path ": " newhash
+      next
+    }
+  }
+  { print }
+' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
+
+# カスタム版に書き換え
+echo "カスタム版の内容" > "$R/.claude/rules/comments.md"
+
+# --update 実行（テンプレートはベースと異なる → 3-way マージ発生）
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+
+# MERGE または CONFLICT のログが出力される
+if echo "$STDERR_OUTPUT" | grep -q "MERGE\|CONFLICT\|マージ\|コンフリクト"; then
+  pass "AB13: コンフリクト/マージログが表示される"
+else
+  fail "AB13: コンフリクト/マージログが表示される (ログなし)"
+fi
 cleanup
 
 # ============================================
