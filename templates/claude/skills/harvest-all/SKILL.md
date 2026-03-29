@@ -26,7 +26,6 @@ description: >
 
 ## 前提条件
 
-- GitHub CLI (`gh`) が認証済みであること
 - プリセット不問（minimal 以上で利用可能）
 
 ## ワークフロー
