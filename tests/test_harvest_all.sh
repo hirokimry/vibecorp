@@ -198,9 +198,58 @@ fi
 
 echo ""
 
-# --- テスト7: コードブロックの言語指定 ---
+# --- テスト7: worktree モードセクションの存在 ---
 
-echo "--- テスト7: コードブロックの言語指定 ---"
+echo "--- テスト7: worktree モードセクション ---"
+
+if grep -q '## worktree モード' "$SKILL_FILE"; then
+  pass "worktree モードセクションが存在する"
+else
+  fail "worktree モードセクションが存在しない"
+fi
+
+if grep -q '\-\-worktree' "$SKILL_FILE"; then
+  pass "--worktree オプションの記載がある"
+else
+  fail "--worktree オプションの記載がない"
+fi
+
+echo ""
+
+# --- テスト8: session-harvest との補完関係 ---
+
+echo "--- テスト8: session-harvest との補完関係 ---"
+
+if grep -q 'session-harvest' "$SKILL_FILE"; then
+  pass "session-harvest との使い分け記載がある"
+else
+  fail "session-harvest との使い分け記載がない"
+fi
+
+echo ""
+
+# --- テスト9: プリセット記載が standard ---
+
+echo "--- テスト9: プリセット記載 ---"
+
+if grep -q 'standard' "$SKILL_FILE"; then
+  pass "standard プリセットの記載がある"
+else
+  fail "standard プリセットの記載がない"
+fi
+
+# minimal 以上（旧記載）が残っていないことを確認
+if grep -q 'minimal 以上' "$SKILL_FILE"; then
+  fail "旧記載 'minimal 以上' が残っている"
+else
+  pass "旧記載 'minimal 以上' が残っていない"
+fi
+
+echo ""
+
+# --- テスト10: コードブロックの言語指定 ---
+
+echo "--- テスト10: コードブロックの言語指定 ---"
 
 BARE_OPEN_COUNT=$(awk '
   /^```/ {
@@ -221,9 +270,9 @@ fi
 
 echo ""
 
-# --- テスト8: 制約の検証 ---
+# --- テスト11: 制約の検証 ---
 
-echo "--- テスト8: 制約の検証 ---"
+echo "--- テスト11: 制約の検証 ---"
 
 if grep -q 'jq.*string interpolation' "$SKILL_FILE"; then
   pass "jq の string interpolation 禁止制約がある"
@@ -245,9 +294,9 @@ fi
 
 echo ""
 
-# --- テスト9: ユーザー確認ステップの存在 ---
+# --- テスト12: ユーザー確認ステップの存在 ---
 
-echo "--- テスト9: ユーザー確認ステップの存在 ---"
+echo "--- テスト12: ユーザー確認ステップの存在 ---"
 
 if grep -q '反映しますか' "$SKILL_FILE"; then
   pass "反映前の確認プロンプトがある"
@@ -257,9 +306,9 @@ fi
 
 echo ""
 
-# --- テスト10: デフォルト即反映の設計 ---
+# --- テスト13: デフォルト即反映の設計 ---
 
-echo "--- テスト10: デフォルト即反映の設計 ---"
+echo "--- テスト13: デフォルト即反映の設計 ---"
 
 if grep -q '直接反映' "$SKILL_FILE"; then
   pass "デフォルト動作が直接反映である"
