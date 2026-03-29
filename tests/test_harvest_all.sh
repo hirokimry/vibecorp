@@ -142,10 +142,10 @@ else
   fail "ステップ6: ユーザーへの確認が存在しない"
 fi
 
-if grep -q '### 7\. GitHub Issue の一括作成' "$SKILL_FILE"; then
-  pass "ステップ7: GitHub Issue の一括作成が存在する"
+if grep -q '### 7\. ドキュメントへの直接反映' "$SKILL_FILE"; then
+  pass "ステップ7: ドキュメントへの直接反映が存在する"
 else
-  fail "ステップ7: GitHub Issue の一括作成が存在しない"
+  fail "ステップ7: ドキュメントへの直接反映が存在しない"
 fi
 
 if grep -q '### 8\. 結果報告' "$SKILL_FILE"; then
@@ -194,6 +194,12 @@ if grep -q '\-\-dry-run' "$SKILL_FILE"; then
   pass "--dry-run オプションの記載がある"
 else
   fail "--dry-run オプションの記載がない"
+fi
+
+if grep -q '\-\-issue' "$SKILL_FILE"; then
+  pass "--issue オプションの記載がある"
+else
+  fail "--issue オプションの記載がない"
 fi
 
 echo ""
@@ -249,10 +255,28 @@ echo ""
 
 echo "--- テスト9: ユーザー確認ステップの存在 ---"
 
-if grep -q 'Issue を作成しますか' "$SKILL_FILE"; then
-  pass "Issue 作成前の確認プロンプトがある"
+if grep -q '反映しますか' "$SKILL_FILE"; then
+  pass "反映前の確認プロンプトがある"
 else
-  fail "Issue 作成前の確認プロンプトがない"
+  fail "反映前の確認プロンプトがない"
+fi
+
+echo ""
+
+# --- テスト10: デフォルト即反映の設計 ---
+
+echo "--- テスト10: デフォルト即反映の設計 ---"
+
+if grep -q '直接反映' "$SKILL_FILE"; then
+  pass "デフォルト動作が直接反映である"
+else
+  fail "デフォルト動作が直接反映でない"
+fi
+
+if grep -q '\-\-issue モード' "$SKILL_FILE"; then
+  pass "--issue モードが代替として存在する"
+else
+  fail "--issue モードが代替として存在しない"
 fi
 
 echo ""
