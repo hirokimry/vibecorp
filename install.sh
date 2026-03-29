@@ -102,7 +102,7 @@ get_disabled_hooks() {
   awk '
     /^hooks:/ { in_hooks = 1; next }
     in_hooks && /^[^ #]/ { exit }
-    in_hooks && /: false/ {
+    in_hooks && $2 == "false" {
       key = $1
       gsub(/:$/, "", key)
       gsub(/^[ \t]+/, "", key)
