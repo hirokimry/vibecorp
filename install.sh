@@ -306,8 +306,6 @@ copy_managed_files() {
     local hook_key="${name%.sh}"
     if ! is_hook_enabled "$hook_key"; then
       log_skip "hooks/${name} は yml で無効化されているためスキップ"
-      # --update 時は無効化された hook を削除（以前インストール済みの場合）
-      [[ "$UPDATE_MODE" == true ]] && rm -f "${hooks_dir}/${name}"
       continue
     fi
     if [[ "$UPDATE_MODE" == true ]]; then
@@ -326,8 +324,6 @@ copy_managed_files() {
     name=$(basename "$src_dir")
     if ! is_skill_enabled "$name"; then
       log_skip "skills/${name} は yml で無効化されているためスキップ"
-      # --update 時は無効化された skill を削除（以前インストール済みの場合）
-      [[ "$UPDATE_MODE" == true ]] && rm -rf "${skills_dir:?}/${name:?}"
       continue
     fi
     if [[ "$UPDATE_MODE" == true ]]; then
