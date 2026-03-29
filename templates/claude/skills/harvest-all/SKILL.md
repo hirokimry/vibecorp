@@ -1,7 +1,7 @@
 ---
 name: harvest-all
 description: >
-  コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を洗い出して docs/ / rules/ / knowledge/ に直接反映する。
+  コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を洗い出して docs/ / .claude/rules/ / .claude/knowledge/ に直接反映する。
   初期導入時や定期棚卸し用のオンデマンドスキル。
   「/harvest-all」「棚卸し」「全量棚卸し」と言った時に使用。
 ---
@@ -10,7 +10,7 @@ description: >
 
 # 全量棚卸しスキル
 
-コードベース全体を走査し、ドキュメント化されていない暗黙知を洗い出して docs/ / rules/ / knowledge/ に直接反映する。
+コードベース全体を走査し、ドキュメント化されていない暗黙知を洗い出して docs/ / .claude/rules/ / .claude/knowledge/ に直接反映する。
 
 ## 使用方法
 
