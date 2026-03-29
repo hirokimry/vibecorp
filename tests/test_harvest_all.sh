@@ -196,12 +196,6 @@ else
   fail "--dry-run オプションの記載がない"
 fi
 
-if grep -q '\-\-issue' "$SKILL_FILE"; then
-  pass "--issue オプションの記載がある"
-else
-  fail "--issue オプションの記載がない"
-fi
-
 echo ""
 
 # --- テスト7: コードブロックの言語指定 ---
@@ -273,11 +267,6 @@ else
   fail "デフォルト動作が直接反映でない"
 fi
 
-if grep -q '\-\-issue モード' "$SKILL_FILE"; then
-  pass "--issue モードが代替として存在する"
-else
-  fail "--issue モードが代替として存在しない"
-fi
 
 echo ""
 

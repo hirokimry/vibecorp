@@ -18,17 +18,15 @@ description: >
 /harvest-all
 /harvest-all --scope <path>
 /harvest-all --dry-run
-/harvest-all --issue
 /harvest-all --scope src/ --dry-run
 ```
 
 - `--scope <path>`: 走査対象ディレクトリを限定する。省略時はプロジェクトルート全体を走査する
 - `--dry-run`: 反映せず、発見項目のレポートのみ出力する
-- `--issue`: 直接反映ではなく GitHub Issue として登録する（大量の発見項目がある場合向け）
 
 ## 前提条件
 
-- GitHub CLI (`gh`) が認証済みであること（`--issue` モード時のみ必須）
+- GitHub CLI (`gh`) が認証済みであること
 - プリセット不問（minimal 以上で利用可能）
 
 ## ワークフロー
@@ -191,62 +189,6 @@ ls -d <scope_path>
 - スキップ（ユーザー判断）: {n} 件
 ```
 
-## --issue モード
-
-`--issue` フラグが指定された場合、ステップ 7 の直接反映の代わりに GitHub Issue を作成する。発見項目が大量にある場合や、反映を段階的に行いたい場合に使用する。
-
-**リポジトリ情報の取得:**
-
-```bash
-gh repo view --json owner,name --jq '.owner.login + "/" + .name'
-```
-
-**既存ラベルの取得:**
-
-```bash
-gh label list --json name --jq '.[].name' --limit 100
-```
-
-**Issue 作成:**
-
-```bash
-gh issue create --title "<絵文字> <type>: <subject>" --body "<本文>" --assignee "<assignee>" --label "<label>"
-```
-
-**Issue 本文のテンプレート:**
-
-```markdown
-## 💡 概要
-
-{発見項目の説明}
-
-## 🎯 背景
-
-/harvest-all による全量棚卸しで発見。
-
-## 📝 対応内容
-
-- 対象ファイル: {反映先ディレクトリ}/{ファイル名}
-- 内容: {何をドキュメント化するか}
-
-## 📍 根拠
-
-- ファイル: {該当コードのパス}
-- 該当箇所: {行番号やコード抜粋}
-```
-
-**タイプ判定:**
-
-| カテゴリ | タイプ | 絵文字 |
-|---------|-------|-------|
-| docs/ 向け | `docs` | 📖 |
-| rules/ 向け | `refactor` | 🔄 |
-| knowledge/ 向け | `docs` | 📖 |
-
-**ラベル付与:** リポジトリに存在するラベルのみ付与する。存在しないラベルは除外する。
-
-**Assignees:** `.claude/vibecorp.yml` の `issue.default_assignee` があればその値を使用。未定義の場合はリポジトリオーナーを使用する。
-
 ## 介入ポイント
 
 以下の状況ではユーザーに報告して判断を委ねる:
@@ -257,7 +199,6 @@ gh issue create --title "<絵文字> <type>: <subject>" --body "<本文>" --assi
 | 発見項目が 0 件 | ステップ 5 |
 | ユーザーが反映を承認しない | ステップ 6 |
 | 反映先ファイルの編集で競合が発生する | ステップ 7 |
-| Issue 作成が失敗する（--issue モード時） | ステップ 7 |
 
 ## 制約
 
