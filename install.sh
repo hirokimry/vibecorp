@@ -627,6 +627,13 @@ protected_files:
   - MVV.md
 coderabbit:
   enabled: true
+# plan:
+#   review_agents:
+#     - architect
+#     - security
+#     - testing
+#     - performance
+#     - dx
 YAML
   log_info "vibecorp.yml を生成"
 }
