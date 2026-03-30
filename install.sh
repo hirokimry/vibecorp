@@ -594,15 +594,19 @@ copy_managed_files() {
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -f "${hooks_dir}/session-harvest-gate.sh"
       rm -f "${hooks_dir}/role-gate.sh"
+      rm -f "${hooks_dir}/kaizen-guard.sh"
       rm -rf "${skills_dir}/review-to-rules"
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${skills_dir}/session-harvest"
       rm -rf "${skills_dir}/harvest-all"
+      rm -rf "${skills_dir}/kaizen"
       rm -rf "${agents_dir}"
       ;;
     standard)
       rm -f "${hooks_dir}/role-gate.sh"
+      rm -f "${hooks_dir}/kaizen-guard.sh"
+      rm -rf "${skills_dir}/kaizen"
       ;;
   esac
 
@@ -627,6 +631,18 @@ protected_files:
   - MVV.md
 coderabbit:
   enabled: true
+kaizen:
+  enabled: true
+  max_issues_per_run: 5
+  max_issues_per_day: 10
+  max_files_per_issue: 10
+  scope: ""
+  forbidden_targets:
+    - "hooks/*.sh"
+    - "vibecorp.yml"
+    - "MVV.md"
+    - "SECURITY.md"
+    - "POLICY.md"
 # plan:
 #   review_agents:
 #     - architect
@@ -927,7 +943,7 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("session-harvest-gate") | not) and (.command | contains("role-gate") | not))]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("session-harvest-gate") | not) and (.command | contains("role-gate") | not) and (.command | contains("kaizen-guard") | not))]
           | select((.hooks | length) > 0)
         ]
       ')
@@ -936,7 +952,7 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select(.command | contains("role-gate") | not)]
+          | .hooks |= [.[] | select((.command | contains("role-gate") | not) and (.command | contains("kaizen-guard") | not))]
           | select((.hooks | length) > 0)
         ]
       ')
