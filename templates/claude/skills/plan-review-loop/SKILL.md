@@ -34,11 +34,70 @@ plan_file="plans/${branch}.md"
 
 ファイルが存在しなければユーザーに報告して停止する。
 
+## 専門家エージェントモード
+
+### 設定の読み取り
+
+`vibecorp.yml` の `plan.review_agents` を読み取り、有効な専門家エージェントを特定する。
+
+```bash
+# vibecorp.yml から plan.review_agents を読み取る
+awk '
+  /^plan:/ { in_plan = 1; next }
+  in_plan && /^[^ #]/ { exit }
+  in_plan && /review_agents:/ { in_agents = 1; next }
+  in_agents && /^    - / { gsub(/^    - /, ""); print }
+  in_agents && !/^    / { exit }
+' .claude/vibecorp.yml
+```
+
+### エージェント名とファイルの対応
+
+| 設定名 | エージェントファイル |
+|--------|-------------------|
+| `architect` | `.claude/agents/plan-architect.md` |
+| `security` | `.claude/agents/plan-security.md` |
+| `testing` | `.claude/agents/plan-testing.md` |
+| `performance` | `.claude/agents/plan-performance.md` |
+| `dx` | `.claude/agents/plan-dx.md` |
+
+### フォールバック
+
+以下の場合は従来の単一レビュー（後述の「レビュー観点」による直接レビュー）にフォールバックする:
+
+- `vibecorp.yml` が存在しない
+- `plan.review_agents` が未設定または空
+- 設定されたエージェントファイルが `.claude/agents/` に存在しない
+
 ## ループフロー
 
 以下を問題が0件になるまで繰り返す。**最大5回でループを打ち切る。上限到達時は未解決の指摘一覧を報告してユーザーに判断を委ねる。**
 
 ### 1. レビュー実行
+
+#### 専門家エージェントモード（`plan.review_agents` が設定されている場合）
+
+1. 計画ファイルの内容を読み込む
+2. Issue の完了条件を取得する
+3. 各エージェントを SubAgent（Agent tool）として**並列起動**する
+4. 各 SubAgent に以下を渡す:
+   - 計画ファイルの内容
+   - Issue の完了条件
+   - プロジェクトの既存コード構造の概要
+
+SubAgent 起動例:
+
+```text
+Agent tool で以下を実行:
+「.claude/agents/plan-architect.md の指示に従い、以下の計画をレビューしてください。
+計画ファイル: {plan_content}
+Issue 完了条件: {completion_criteria}」
+```
+
+5. 全エージェントのレビュー結果を収集する
+6. フィードバックを統合する（後述の「フィードバック統合」参照）
+
+#### 単一レビューモード（フォールバック）
 
 計画ファイルを読み込み、以下のレビュー観点で評価する。
 
@@ -60,6 +119,15 @@ plan_file="plans/${branch}.md"
 3. 計画に記載されたファイルパス・関数名が実在するか確認する
 4. 既存の実装パターンとの整合性を確認する
 
+### フィードバック統合（専門家エージェントモード時）
+
+各エージェントのレビュー結果を以下のルールで統合する:
+
+1. **重複排除**: 複数エージェントが同じ問題を指摘した場合、1件にまとめる
+2. **優先順位付け**: セキュリティ指摘 > その他の指摘
+3. **矛盾解決**: エージェント間の意見が矛盾した場合は Issue の完了条件を優先基準とする
+4. **好みレベル除外**: 好みレベルの改善提案は問題として扱わない
+
 #### 出力形式
 
 ```text
@@ -67,14 +135,14 @@ plan_file="plans/${branch}.md"
 
 ### 問題あり
 
-1. [観点: 網羅性] Issue の完了条件「○○」に対応するタスクがない
-2. [観点: 実現可能性] Phase 2 のタスク3 が参照する関数 foo() は存在しない
+1. [エージェント: architect / 観点: 構造設計] 問題の説明
+2. [エージェント: security / 観点: 入力検証] 問題の説明
 3. ...
 
 ### 問題なし
 
-- 独立性: タスクは適切に分解されている
-- テスト: 全タスクにテスト項目が含まれている
+- architect: 責務分離は適切
+- testing: テストカバレッジは十分
 ```
 
 **問題0件ならループ終了。**
@@ -127,6 +195,10 @@ plan_file="plans/${branch}.md"
 ```text
 ## plan-review-loop 結果
 
+### レビューモード
+- {専門家エージェント / 単一レビュー}
+- 起動エージェント: {architect, security, testing}（専門家モード時のみ）
+
 ### 修正した問題
 - [観点: 網羅性] 完了条件「○○」のタスク追加
 - [観点: 実現可能性] 関数参照の修正
@@ -144,3 +216,4 @@ plan_file="plans/${branch}.md"
 - `git add` / `git commit` / `git push` は実行しない（呼び出し元に委ねる）
 - 最大5回でループを打ち切る（無限ループ防止）
 - レビュー観点に該当しない「好み」レベルの改善提案は問題として扱わない
+- 専門家エージェント未設定時は Phase 1 の動作にフォールバックする
