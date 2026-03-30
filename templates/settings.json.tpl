@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/kaizen-guard.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diagnose-guard.sh"
           },
           {
             "type": "command",
