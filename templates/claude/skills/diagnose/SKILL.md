@@ -1,24 +1,24 @@
 ---
-name: kaizen
+name: diagnose
 description: >
-  コードベースを自律的に分析し、改善点を発見→フィルタリング→GitHub Issue 起票まで行う。
+  コードベースを自律的に診断し、改善点を発見→フィルタリング→GitHub Issue 起票まで行う。
   実装はユーザーが /ship で別途実行する。full プリセット専用。
-  「/kaizen」「自律改善」「改善ループ」と言った時に使用。
+  「/diagnose」「診断」「コード診断」と言った時に使用。
 ---
 
 **ultrathink**
 
-# 自律改善ループ
+# コード診断スキル
 
-コードベースを自律的に分析し、改善点を発見してフィルタリング後に GitHub Issue として起票する。
+コードベースを自律的に診断し、改善点を発見してフィルタリング後に GitHub Issue として起票する。
 **実装は行わない。起票と実装を分離することで暴走を防止する。**
 
 ## 使用方法
 
 ```bash
-/kaizen               # 発見→フィルタ→確認→起票
-/kaizen --dry-run     # レポート出力のみ（起票しない）
-/kaizen --scope <path> # 走査対象を限定
+/diagnose               # 発見→フィルタ→確認→起票
+/diagnose --dry-run     # レポート出力のみ（起票しない）
+/diagnose --scope <path> # 走査対象を限定
 ```
 
 ## 前提条件
@@ -32,7 +32,7 @@ description: >
 vibecorp.yml の preset を確認する。full 以外の場合は以下を出力して終了する:
 
 ```text
-/kaizen は full プリセット専用です。現在のプリセット: <preset>
+/diagnose は full プリセット専用です。現在のプリセット: <preset>
 ```
 
 ```bash
@@ -59,13 +59,13 @@ forbidden_targets のデフォルト値:
 - `SECURITY.md`
 - `POLICY.md`
 
-### 3. kaizen-active スタンプ作成
+### 3. diagnose-active スタンプ作成
 
 ```bash
-touch "/tmp/.{{PROJECT_NAME}}-kaizen-active"
+touch "/tmp/.{{PROJECT_NAME}}-diagnose-active"
 ```
 
-このスタンプが存在する間、kaizen-guard.sh が保護ファイルへの変更を deny する。
+このスタンプが存在する間、diagnose-guard.sh が保護ファイルへの変更を deny する。
 
 ### 4. 改善点の発見
 
@@ -125,16 +125,16 @@ CPO が「除外」と判定した候補はリストから除外する。
 
 ### 7. 起票上限チェック
 
-既存の [kaizen] ラベル付き Issue を確認する:
+既存の [diagnose] ラベル付き Issue を確認する:
 
 ```bash
-gh issue list --label "kaizen" --state open --json number --jq 'length'
+gh issue list --label "diagnose" --state open --json number --jq 'length'
 ```
 
 当日起票済みの kaizen Issue 数を確認する:
 
 ```bash
-gh issue list --label "kaizen" --state all --json createdAt --jq '[.[] | select(.createdAt | startswith("'$(date -u +%Y-%m-%d)'"))] | length'
+gh issue list --label "diagnose" --state all --json createdAt --jq '[.[] | select(.createdAt | startswith("'$(date -u +%Y-%m-%d)'"))] | length'
 ```
 
 - オープン中の kaizen Issue 数 + 今回起票予定数が `max_issues_per_run` を超える場合、超過分を候補から除外する
@@ -143,7 +143,7 @@ gh issue list --label "kaizen" --state all --json createdAt --jq '[.[] | select(
 ### 8. ユーザーへ候補一覧提示
 
 ```text
-## /kaizen 改善候補
+## /diagnose 改善候補
 
 | # | カテゴリ | 優先度 | タイトル | 対象ファイル | 根拠 |
 |---|---------|--------|---------|-------------|------|
@@ -171,25 +171,25 @@ gh issue list --label "kaizen" --state all --json createdAt --jq '[.[] | select(
 
 各 Issue には以下を付与する:
 - ラベル: `kaizen`
-- タイトルプレフィックス: `[kaizen]`
+- タイトルプレフィックス: `[diagnose]`
 - 本文末尾に自動起票メッセージ:
 
 ```text
 ---
-この Issue は /kaizen による自律改善ループで自動起票されました。
+この Issue は /diagnose による自律改善ループで自動起票されました。
 実装は /ship で別途実行してください。
 ```
 
-### 10. kaizen-active スタンプ削除
+### 10. diagnose-active スタンプ削除
 
 ```bash
-rm -f "/tmp/.{{PROJECT_NAME}}-kaizen-active"
+rm -f "/tmp/.{{PROJECT_NAME}}-diagnose-active"
 ```
 
 ### 11. 結果レポート
 
 ```text
-## /kaizen 完了
+## /diagnose 完了
 
 ### 起票済み Issue
 | # | タイトル | URL |
@@ -222,4 +222,4 @@ rm -f "/tmp/.{{PROJECT_NAME}}-kaizen-active"
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - 介入ポイントではユーザーの指示を待つ（自動でスキップしない）
-- kaizen-active スタンプは正常終了・異常終了を問わず必ず削除する
+- diagnose-active スタンプは正常終了・異常終了を問わず必ず削除する
