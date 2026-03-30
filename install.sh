@@ -15,9 +15,14 @@ COPIED_ISSUE_TEMPLATES=""
 
 # ── ユーティリティ ─────────────────────────────────────
 
-log_info()  { printf '\033[32m[INFO]\033[0m  %s\n' "$*" >&2; }
-log_error() { printf '\033[31m[ERROR]\033[0m %s\n' "$*" >&2; }
-log_skip()  { printf '\033[33m[SKIP]\033[0m  %s\n' "$*" >&2; }
+log_info()     { printf '\033[32m[INFO]\033[0m     %s\n' "$*" >&2; }
+log_error()    { printf '\033[31m[ERROR]\033[0m    %s\n' "$*" >&2; }
+log_skip()     { printf '\033[33m[SKIP]\033[0m     %s\n' "$*" >&2; }
+log_merge()    { printf '\033[36m[MERGE]\033[0m    %s\n' "$*" >&2; }
+log_conflict() { printf '\033[35m[CONFLICT]\033[0m %s\n' "$*" >&2; }
+
+# コンフリクトが発生したファイルを追跡
+CONFLICT_FILES=""
 
 usage() {
   local exit_code="${1:-1}"
@@ -87,6 +92,171 @@ is_skill_enabled() {
 is_hook_enabled() {
   # vibecorp.yml の hooks セクションを参照し、有効かどうかを返す
   is_item_enabled "hooks" "$1"
+}
+
+compute_hash() {
+  # ファイルの SHA256 ハッシュを計算する（macOS/Linux 互換）
+  local file="$1"
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{ print $1 }'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{ print $1 }'
+  else
+    # フォールバック: ハッシュ計算不可の場合は空を返す（上書きモードにフォールバック）
+    echo ""
+  fi
+}
+
+read_base_hash() {
+  # vibecorp.lock の base_hashes セクションから指定パスのハッシュを取得
+  local lock="$1"
+  local rel_path="$2"
+
+  [[ -f "$lock" ]] || return 0
+
+  awk -v path="$rel_path" '
+    /^  base_hashes:/ { in_hashes = 1; next }
+    in_hashes && /^  [a-z]/ { exit }
+    in_hashes && /^[^ ]/ { exit }
+    in_hashes {
+      # "    hooks/protect-files.sh: abc123..." の形式をパース
+      gsub(/^[ \t]+/, "")
+      split($0, parts, ": ")
+      if (parts[1] == path) {
+        print parts[2]
+        exit
+      }
+    }
+  ' "$lock"
+}
+
+save_base_snapshot() {
+  # テンプレートファイルをベーススナップショットとして保存
+  local src="$1"
+  local rel_path="$2"
+  local base_dir="${REPO_ROOT}/.claude/vibecorp-base"
+  local dest="${base_dir}/${rel_path}"
+  local dest_dir
+  dest_dir=$(dirname "$dest")
+
+  mkdir -p "$dest_dir"
+  cp "$src" "$dest"
+}
+
+get_base_snapshot() {
+  # ベーススナップショットのパスを返す（存在しない場合は空）
+  local rel_path="$1"
+  local base_dir="${REPO_ROOT}/.claude/vibecorp-base"
+  local path="${base_dir}/${rel_path}"
+
+  if [[ -f "$path" ]]; then
+    echo "$path"
+  fi
+}
+
+merge_or_overwrite() {
+  # 3-way マージまたは上書きを実行する
+  # 引数: <テンプレートファイル> <配置先ファイル> <相対パス>
+  # 戻り値: 0=成功, 1=コンフリクト
+  local template="$1"
+  local target="$2"
+  local rel_path="$3"
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+
+  # 配置先が存在しない場合は単純コピー
+  if [[ ! -f "$target" ]]; then
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # ベースハッシュを取得
+  local base_hash
+  base_hash=$(read_base_hash "$lock" "$rel_path")
+
+  # ベースハッシュがない場合（旧バージョンからの移行）は上書き
+  if [[ -z "$base_hash" ]]; then
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # 現在のファイルのハッシュを計算
+  local current_hash
+  current_hash=$(compute_hash "$target")
+
+  # ハッシュ計算不可の場合は上書き
+  if [[ -z "$current_hash" ]]; then
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # カスタマイズされていない場合は上書き
+  if [[ "$current_hash" == "$base_hash" ]]; then
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # カスタマイズされている場合: テンプレート変更を確認
+  local template_hash
+  template_hash=$(compute_hash "$template")
+  if [[ "$template_hash" == "$base_hash" ]]; then
+    # テンプレート未変更 → カスタム版を保持
+    log_skip "${rel_path} はカスタマイズ済みでテンプレート未変更のためスキップ"
+    return 0
+  fi
+
+  # 両方変更あり → 3-way マージ
+  local base_snapshot
+  base_snapshot=$(get_base_snapshot "$rel_path")
+
+  if [[ -z "$base_snapshot" ]]; then
+    # ベーススナップショットがない場合は上書き（ユーザーに警告）
+    log_merge "${rel_path} はカスタマイズ済みですが、ベーススナップショットがないため上書きします"
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # git merge-file で 3-way マージ
+  # git merge-file <current> <base> <other>
+  # current = カスタム版、base = 前回テンプレート、other = 新テンプレート
+  local tmp_current tmp_base tmp_other
+  tmp_current=$(mktemp)
+  tmp_base=$(mktemp)
+  tmp_other=$(mktemp)
+  cp "$target" "$tmp_current"
+  cp "$base_snapshot" "$tmp_base"
+  cp "$template" "$tmp_other"
+
+  local merge_exit=0
+  git merge-file \
+    -L "カスタム版" \
+    -L "前回テンプレート" \
+    -L "新テンプレート" \
+    "$tmp_current" "$tmp_base" "$tmp_other" 2>/dev/null || merge_exit=$?
+
+  if [[ "$merge_exit" -eq 0 ]]; then
+    # マージ成功（コンフリクトなし）
+    cp "$tmp_current" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    log_merge "${rel_path} を 3-way マージで自動解消しました"
+  elif [[ "$merge_exit" -gt 0 ]]; then
+    # コンフリクト発生
+    cp "$tmp_current" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    log_conflict "${rel_path} にコンフリクトが発生しました。手動で解消してください"
+    CONFLICT_FILES="${CONFLICT_FILES}  - ${rel_path}"$'\n'
+  fi
+
+  rm -f "$tmp_current" "$tmp_base" "$tmp_other"
+
+  if [[ "$merge_exit" -gt 0 ]]; then
+    return 1
+  fi
+  return 0
 }
 
 get_disabled_hooks() {
@@ -262,7 +432,8 @@ read_lock_list() {
 }
 
 remove_managed_files() {
-  # lock に記載された vibecorp 管理ファイルのみ削除
+  # lock に記載された vibecorp 管理ファイルを削除
+  # --update 時は hooks/skills を 3-way マージ対象として保持する
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local hooks_dir="${REPO_ROOT}/.claude/hooks"
   local skills_dir="${REPO_ROOT}/.claude/skills"
@@ -270,24 +441,26 @@ remove_managed_files() {
 
   [[ -f "$lock" ]] || return 0
 
-  # lock 記載の hooks を削除
-  while IFS= read -r name; do
-    [[ -n "$name" ]] && rm -f "${hooks_dir:?}/${name:?}"
-  done < <(read_lock_list "$lock" "hooks")
+  if [[ "$UPDATE_MODE" != true ]]; then
+    # 再インストール（--name）時は管理ファイルを削除して再配置
+    while IFS= read -r name; do
+      [[ -n "$name" ]] && rm -f "${hooks_dir:?}/${name:?}"
+    done < <(read_lock_list "$lock" "hooks")
 
-  # lock 記載の skills を削除
-  while IFS= read -r name; do
-    [[ -n "$name" ]] && rm -rf "${skills_dir:?}/${name:?}"
-  done < <(read_lock_list "$lock" "skills")
+    while IFS= read -r name; do
+      [[ -n "$name" ]] && rm -rf "${skills_dir:?}/${name:?}"
+    done < <(read_lock_list "$lock" "skills")
+  fi
+  # --update 時は hooks/skills を削除しない（merge_or_overwrite で処理）
 
-  # lock 記載の agents を削除
+  # lock 記載の agents を削除（agents は 3-way マージ対象外）
   while IFS= read -r name; do
     [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
   done < <(read_lock_list "$lock" "agents")
 
   # knowledge は運用中にユーザーが蓄積するデータのため削除しない
 
-  log_info "管理ファイルを削除（lock ベース）"
+  log_info "管理ファイルを整理（lock ベース）"
 }
 
 copy_managed_files() {
@@ -298,41 +471,83 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
-  # hooks: --update 時は上書き、通常時は既存スキップ（yml で無効化されたものはスキップ）
+  # hooks: --update 時は 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
     [[ -f "$src" ]] || continue
     local name
     name=$(basename "$src")
     local hook_key="${name%.sh}"
     if ! is_hook_enabled "$hook_key"; then
+      # --update 時は無効化されたフックを削除（lock に記載されている場合のみ）
+      if [[ "$UPDATE_MODE" == true ]]; then
+        local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+        if [[ -f "$lock" ]] && read_lock_list "$lock" "hooks" | grep -qxF "$name"; then
+          rm -f "${hooks_dir}/${name}"
+        fi
+      fi
       log_skip "hooks/${name} は yml で無効化されているためスキップ"
       continue
     fi
     if [[ "$UPDATE_MODE" == true ]]; then
-      cp "$src" "${hooks_dir}/${name}"
+      merge_or_overwrite "$src" "${hooks_dir}/${name}" "hooks/${name}" || true
     elif [[ -f "${hooks_dir}/${name}" ]]; then
       log_skip "hooks/${name} は既存のためスキップ"
     else
       cp "$src" "${hooks_dir}/${name}"
+      save_base_snapshot "$src" "hooks/${name}"
     fi
   done
 
-  # skills: --update 時は上書き、通常時は既存スキップ（yml で無効化されたものはスキップ）
+  # skills: --update 時は SKILL.md を 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
     [[ -d "$src_dir" ]] || continue
     local name
     name=$(basename "$src_dir")
     if ! is_skill_enabled "$name"; then
+      # --update 時は無効化されたスキルを削除（lock に記載されている場合のみ）
+      if [[ "$UPDATE_MODE" == true ]]; then
+        local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+        if [[ -f "$lock" ]] && read_lock_list "$lock" "skills" | grep -qxF "$name"; then
+          rm -rf "${skills_dir:?}/${name:?}"
+        fi
+      fi
       log_skip "skills/${name} は yml で無効化されているためスキップ"
       continue
     fi
     if [[ "$UPDATE_MODE" == true ]]; then
-      rm -rf "${skills_dir:?}/${name:?}"
-      cp -R "$src_dir" "${skills_dir}/${name}"
+      if [[ -d "${skills_dir}/${name}" ]]; then
+        # SKILL.md を 3-way マージ、その他のファイルは上書き
+        for src_file in "${src_dir}"*; do
+          [[ -f "$src_file" ]] || continue
+          local fname
+          fname=$(basename "$src_file")
+          if [[ "$fname" == "SKILL.md" ]]; then
+            merge_or_overwrite "$src_file" "${skills_dir}/${name}/${fname}" "skills/${name}/${fname}" || true
+          else
+            cp "$src_file" "${skills_dir}/${name}/${fname}"
+          fi
+        done
+      else
+        cp -R "$src_dir" "${skills_dir}/${name}"
+        # ベーススナップショットを保存
+        for src_file in "${src_dir}"*; do
+          [[ -f "$src_file" ]] || continue
+          local fname
+          fname=$(basename "$src_file")
+          save_base_snapshot "$src_file" "skills/${name}/${fname}"
+        done
+      fi
     elif [[ -d "${skills_dir}/${name}" ]]; then
       log_skip "skills/${name} は既存のためスキップ"
     else
       cp -R "$src_dir" "${skills_dir}/${name}"
+      # ベーススナップショットを保存
+      for src_file in "${src_dir}"*; do
+        [[ -f "$src_file" ]] || continue
+        local fname
+        fname=$(basename "$src_file")
+        save_base_snapshot "$src_file" "skills/${name}/${fname}"
+      done
     fi
   done
 
@@ -656,6 +871,21 @@ generate_vibecorp_lock() {
     [[ -n "$rel" ]] && knowledge_list="${knowledge_list}    - ${rel}"$'\n'
   done <<< "$COPIED_KNOWLEDGE"
 
+  # base_hashes: ベーススナップショットの SHA256 ハッシュ
+  local base_hashes=""
+  local base_dir="${REPO_ROOT}/.claude/vibecorp-base"
+  if [[ -d "$base_dir" ]]; then
+    while IFS= read -r base_file; do
+      [[ -f "$base_file" ]] || continue
+      local rel="${base_file#"$base_dir"/}"
+      local hash
+      hash=$(compute_hash "$base_file")
+      if [[ -n "$hash" ]]; then
+        base_hashes="${base_hashes}    ${rel}: ${hash}"$'\n'
+      fi
+    done < <(find "$base_dir" -type f | sort)
+  fi
+
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
 version: ${VIBECORP_VERSION}
@@ -670,7 +900,8 @@ ${agents_list}  rules:
 ${rules_list}  issue_templates:
 ${issue_templates_list}  docs:
 ${docs_list}  knowledge:
-${knowledge_list}
+${knowledge_list}  base_hashes:
+${base_hashes}
 YAML
   log_info "vibecorp.lock を生成"
 }
@@ -869,13 +1100,13 @@ copy_rules() {
     local basename
     basename=$(basename "$rule")
     if [[ "$UPDATE_MODE" == true ]]; then
-      cp "$rule" "${dest}/${basename}"
+      merge_or_overwrite "$rule" "${dest}/${basename}" "rules/${basename}" || true
       COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
-      log_info "rules/${basename} を更新"
     elif [[ -f "${dest}/${basename}" ]]; then
       log_skip "rules/${basename} は既存のためスキップ"
     else
       cp "$rule" "${dest}/${basename}"
+      save_base_snapshot "$rule" "rules/${basename}"
       COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
       log_info "rules/${basename} をコピー"
     fi
@@ -949,8 +1180,8 @@ copy_knowledge() {
 generate_claude_gitignore() {
   local target="${REPO_ROOT}/.claude/.gitignore"
 
-  # vibecorp が管理する除外エントリ（会話中の一時的な実装計画）
-  local entries=("plans/")
+  # vibecorp が管理する除外エントリ
+  local entries=("plans/" "vibecorp-base/")
 
   if [[ -f "$target" ]]; then
     # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
@@ -970,6 +1201,8 @@ generate_claude_gitignore() {
   cat > "$target" <<'GITIGNORE'
 # 会話中の一時的な実装計画（git 追跡しない）
 plans/
+# アップデート時の 3-way マージ用ベーススナップショット
+vibecorp-base/
 GITIGNORE
   log_info ".claude/.gitignore を生成"
 }
@@ -1020,6 +1253,16 @@ print_completion() {
 ────────────────────────────────────────────
 
 DONE
+
+  # コンフリクトが発生したファイルがある場合、警告を表示
+  if [[ -n "$CONFLICT_FILES" ]]; then
+    cat >&2 <<CONFLICT
+⚠️  以下のファイルにコンフリクトが発生しています:
+${CONFLICT_FILES}
+コンフリクトマーカー（<<<<<<<, =======, >>>>>>>）を検索し、手動で解消してください。
+
+CONFLICT
+  fi
 }
 
 # ── メイン ─────────────────────────────────────────────
