@@ -170,7 +170,7 @@ gh issue list --label "diagnose" --state all --json createdAt --jq '[.[] | selec
 ユーザーが承認した候補について、`/issue` スキルで起票する。
 
 各 Issue には以下を付与する:
-- ラベル: `kaizen`
+- ラベル: `diagnose`
 - タイトルプレフィックス: `[diagnose]`
 - 本文末尾に自動起票メッセージ:
 
