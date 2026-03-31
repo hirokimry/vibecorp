@@ -77,8 +77,6 @@ jobs:
             fi
 
             # 絵文字プレフィックスを除去してタイプを判定
-            # 例: "✨ feat: ..." → "feat: ..."
-            # 例: "🐛 fix: ..." → "fix: ..."
             CLEAN_SUBJECT=$(echo "$subject" | sed 's/^[^a-zA-Z]* *//')
 
             # Conventional Commit のタイプを抽出
@@ -155,68 +153,35 @@ jobs:
           NEW_TAG="v${NEW_VERSION}"
           echo "リリースバージョン: ${NEW_TAG}"
 
-          # ── install.sh の VIBECORP_VERSION を更新 ────
-          # sed -i は BSD/GNU 互換問題があるため使わない
-          sed "s/^VIBECORP_VERSION=\".*\"/VIBECORP_VERSION=\"${NEW_VERSION}\"/" install.sh > install.sh.tmp
-          mv install.sh.tmp install.sh
-          chmod +x install.sh
-
-          # ── CHANGELOG.md を更新 ──────────────────────
-          RELEASE_DATE=$(date -u +"%Y-%m-%d")
-          CHANGELOG_ENTRY="## [${NEW_VERSION}] - ${RELEASE_DATE}"$'\n\n'
+          # ── リリースノートを生成 ─────────────────────
+          RELEASE_NOTES=""
 
           if [ -n "$BREAKING_COMMITS" ]; then
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### ⚠️ 破壊的変更"$'\n'
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$BREAKING_COMMITS")"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}## ⚠️ 破壊的変更"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$BREAKING_COMMITS")"$'\n'
           fi
           if [ -n "$FEAT_COMMITS" ]; then
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### ✨ 新機能"$'\n'
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$FEAT_COMMITS")"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}## ✨ 新機能"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$FEAT_COMMITS")"$'\n'
           fi
           if [ -n "$FIX_COMMITS" ]; then
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 🐛 バグ修正"$'\n'
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$FIX_COMMITS")"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}## 🐛 バグ修正"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$FIX_COMMITS")"$'\n'
           fi
           if [ -n "$REFACTOR_COMMITS" ]; then
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 🔄 リファクタリング"$'\n'
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$REFACTOR_COMMITS")"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}## 🔄 リファクタリング"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$REFACTOR_COMMITS")"$'\n'
           fi
           if [ -n "$DOCS_COMMITS" ]; then
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 📝 ドキュメント"$'\n'
-            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$DOCS_COMMITS")"$'\n'
-          fi
-
-          # 既存の CHANGELOG.md に追記（先頭のヘッダーの後に挿入）
-          if [ -f CHANGELOG.md ]; then
-            # 同じバージョンのエントリが既に存在する場合はスキップ
-            if grep -qF "## [${NEW_VERSION}]" CHANGELOG.md; then
-              echo "CHANGELOG に v${NEW_VERSION} のエントリが既に存在するためスキップ"
-            else
-              # "# Changelog" ヘッダーの後に新しいエントリを挿入
-              {
-                echo "# Changelog"
-                echo ""
-                printf '%s' "$CHANGELOG_ENTRY"
-                # 既存の内容から "# Changelog" ヘッダーを除去して追記
-                tail -n +2 CHANGELOG.md
-              } > CHANGELOG.md.tmp
-              mv CHANGELOG.md.tmp CHANGELOG.md
-            fi
-          else
-            {
-              echo "# Changelog"
-              echo ""
-              printf '%s' "$CHANGELOG_ENTRY"
-            } > CHANGELOG.md
+            RELEASE_NOTES="${RELEASE_NOTES}## 📝 ドキュメント"$'\n'
+            RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$DOCS_COMMITS")"$'\n'
           fi
 
           # ── タグが既に存在する場合はスキップ ────────────
           if git tag -l | grep -qF "${NEW_TAG}"; then
             echo "タグ ${NEW_TAG} は既に存在します"
-            # GitHub Release が未作成なら作成
             if ! gh release view "${NEW_TAG}" > /dev/null 2>&1; then
               echo "GitHub Release を作成します"
-              RELEASE_NOTES=$(printf '%s' "$CHANGELOG_ENTRY")
               gh release create "${NEW_TAG}" \
                 --title "v${NEW_VERSION}" \
                 --notes "$RELEASE_NOTES"
@@ -227,18 +192,11 @@ jobs:
             exit 0
           fi
 
-          # ── コミット・タグ・push ────────────────────
-          git add install.sh CHANGELOG.md
-          if git diff --cached --quiet; then
-            echo "変更がないためコミットをスキップ"
-          else
-            git commit -m "chore(release): v${NEW_VERSION}"
-          fi
+          # ── タグ作成・push ──────────────────────────
           git tag -a "${NEW_TAG}" -m "リリース v${NEW_VERSION}"
-          git push origin main --follow-tags
+          git push origin "${NEW_TAG}"
 
           # ── GitHub Release 作成 ──────────────────────
-          RELEASE_NOTES=$(printf '%s' "$CHANGELOG_ENTRY")
           gh release create "${NEW_TAG}" \
             --title "v${NEW_VERSION}" \
             --notes "$RELEASE_NOTES"

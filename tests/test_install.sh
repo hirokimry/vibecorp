@@ -2130,11 +2130,13 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 LOCK_VERSION=$(awk '/^version:/ { print $2 }' "$R/.claude/vibecorp.lock")
-EXPECTED_VERSION=$(awk -F'"' '/^VIBECORP_VERSION=/ { print $2 }' "$INSTALL_SH")
+# VIBECORP_VERSION は Git タグから動的取得されるため、同じ方法で期待値を算出
+EXPECTED_VERSION=$(git -C "$(dirname "$INSTALL_SH")" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+EXPECTED_VERSION="${EXPECTED_VERSION#v}"
 if [ "$LOCK_VERSION" = "$EXPECTED_VERSION" ]; then
-  pass "AD3: lock の version が VIBECORP_VERSION と一致"
+  pass "AD3: lock の version が VIBECORP_VERSION（Git タグ由来）と一致"
 else
-  fail "AD3: lock の version が VIBECORP_VERSION と一致 (lock: ${LOCK_VERSION}, expected: ${EXPECTED_VERSION})"
+  fail "AD3: lock の version が VIBECORP_VERSION（Git タグ由来）と一致 (lock: ${LOCK_VERSION}, expected: ${EXPECTED_VERSION})"
 fi
 cleanup
 

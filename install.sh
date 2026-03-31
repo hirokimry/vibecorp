@@ -4,8 +4,10 @@
 #        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
-VIBECORP_VERSION="0.1.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Git タグからバージョンを動的取得（タグがない場合は開発版として扱う）
+VIBECORP_VERSION=$(git -C "$SCRIPT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+VIBECORP_VERSION="${VIBECORP_VERSION#v}"
 
 # コピー済みファイル追跡用（lock 生成で使用）
 COPIED_DOCS=""
@@ -1329,12 +1331,11 @@ checkout_target_version() {
     exec bash "${SCRIPT_DIR}/install.sh" "$@"
   fi
 
-  # checkout 後の install.sh から VIBECORP_VERSION を読み取って上書き
+  # checkout 後の Git タグからバージョンを再取得
   local checked_out_version
-  checked_out_version=$(awk -F'"' '/^VIBECORP_VERSION=/ { print $2 }' "${SCRIPT_DIR}/install.sh")
-  if [[ -n "$checked_out_version" ]]; then
-    VIBECORP_VERSION="$checked_out_version"
-  fi
+  checked_out_version=$(git -C "$SCRIPT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+  checked_out_version="${checked_out_version#v}"
+  VIBECORP_VERSION="$checked_out_version"
 }
 
 restore_original_ref() {
