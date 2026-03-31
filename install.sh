@@ -601,6 +601,7 @@ copy_managed_files() {
       rm -rf "${skills_dir}/session-harvest"
       rm -rf "${skills_dir}/harvest-all"
       rm -rf "${skills_dir}/diagnose"
+      rm -rf "${skills_dir}/context7"
       rm -rf "${agents_dir}"
       ;;
     standard)
