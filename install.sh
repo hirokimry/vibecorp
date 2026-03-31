@@ -4,7 +4,7 @@
 #        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
-VIBECORP_VERSION="0.1.0"
+VIBECORP_VERSION="0.1.1"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # コピー済みファイル追跡用（lock 生成で使用）
