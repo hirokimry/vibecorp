@@ -1,0 +1,221 @@
+# release.yml — main マージ時にセマンティックリリースを自動実行
+# Conventional Commits を解析し、バージョン番号を決定して GitHub Release を作成する
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: git ユーザー設定
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: リリース判定・実行
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # ── 直前のタグを取得 ──────────────────────────
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            # タグが一つもない場合は全コミットを対象にする
+            COMMITS=$(git log --pretty=format:"%s|%H|%h" HEAD)
+            CURRENT_MAJOR=0
+            CURRENT_MINOR=1
+            CURRENT_PATCH=0
+            FIRST_RELEASE=true
+          else
+            COMMITS=$(git log --pretty=format:"%s|%H|%h" "${LATEST_TAG}..HEAD")
+            # タグからバージョン番号をパース
+            VERSION_STR="${LATEST_TAG#v}"
+            CURRENT_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
+            CURRENT_MINOR=$(echo "$VERSION_STR" | cut -d. -f2)
+            CURRENT_PATCH=$(echo "$VERSION_STR" | cut -d. -f3)
+            FIRST_RELEASE=false
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            echo "新しいコミットがないためリリースをスキップ"
+            exit 0
+          fi
+
+          # ── Conventional Commits 解析 ─────────────────
+          # バンプ種別: 0=none, 1=patch, 2=minor, 3=major
+          BUMP_LEVEL=0
+
+          # カテゴリ別コミットメッセージ収集
+          FEAT_COMMITS=""
+          FIX_COMMITS=""
+          REFACTOR_COMMITS=""
+          DOCS_COMMITS=""
+          BREAKING_COMMITS=""
+          OTHER_COMMITS=""
+
+          while IFS='|' read -r subject full_hash short_hash; do
+            [ -z "$subject" ] && continue
+
+            # コミット本文に BREAKING CHANGE: があるか確認
+            BODY=$(git log -1 --pretty=format:"%b" "$full_hash" 2>/dev/null || echo "")
+            IS_BREAKING=false
+            if echo "$subject" | grep -qE '^[^:]*!:' || echo "$BODY" | grep -q "BREAKING CHANGE:"; then
+              IS_BREAKING=true
+            fi
+
+            # 絵文字プレフィックスを除去してタイプを判定
+            # 例: "✨ feat: ..." → "feat: ..."
+            # 例: "🐛 fix: ..." → "fix: ..."
+            CLEAN_SUBJECT=$(echo "$subject" | sed 's/^[^a-zA-Z]* *//')
+
+            # Conventional Commit のタイプを抽出
+            TYPE=$(echo "$CLEAN_SUBJECT" | sed -n 's/^\([a-zA-Z]*\)\(([^)]*)\)\{0,1\}[!]\{0,1\}:.*/\1/p')
+
+            # スコープを除いた説明部分を取得
+            DESC=$(echo "$subject" | sed 's/^[^:]*: *//')
+
+            if [ "$IS_BREAKING" = true ]; then
+              [ "$BUMP_LEVEL" -lt 3 ] && BUMP_LEVEL=3
+              BREAKING_COMMITS="${BREAKING_COMMITS}- ${DESC} (${short_hash})\n"
+            fi
+
+            case "$TYPE" in
+              feat)
+                [ "$BUMP_LEVEL" -lt 2 ] && BUMP_LEVEL=2
+                FEAT_COMMITS="${FEAT_COMMITS}- ${DESC} (${short_hash})\n"
+                ;;
+              fix)
+                [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+                FIX_COMMITS="${FIX_COMMITS}- ${DESC} (${short_hash})\n"
+                ;;
+              refactor)
+                [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+                REFACTOR_COMMITS="${REFACTOR_COMMITS}- ${DESC} (${short_hash})\n"
+                ;;
+              docs)
+                [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+                DOCS_COMMITS="${DOCS_COMMITS}- ${DESC} (${short_hash})\n"
+                ;;
+              chore|ci|test)
+                # リリース対象外
+                OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
+                ;;
+              *)
+                # 認識できない形式のコミットは patch 扱い
+                if [ -n "$TYPE" ]; then
+                  [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+                  OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
+                else
+                  # Conventional Commits 形式でないコミットは無視
+                  OTHER_COMMITS="${OTHER_COMMITS}- ${subject} (${short_hash})\n"
+                fi
+                ;;
+            esac
+          done <<< "$COMMITS"
+
+          # リリース対象のコミットがない場合はスキップ
+          if [ "$BUMP_LEVEL" -eq 0 ]; then
+            echo "リリース対象のコミットがないためスキップ（chore/ci/test のみ）"
+            exit 0
+          fi
+
+          # ── バージョン番号を計算 ──────────────────────
+          if [ "$FIRST_RELEASE" = true ]; then
+            NEW_VERSION="0.1.0"
+          else
+            case "$BUMP_LEVEL" in
+              3)
+                NEW_MAJOR=$((CURRENT_MAJOR + 1))
+                NEW_VERSION="${NEW_MAJOR}.0.0"
+                ;;
+              2)
+                NEW_MINOR=$((CURRENT_MINOR + 1))
+                NEW_VERSION="${CURRENT_MAJOR}.${NEW_MINOR}.0"
+                ;;
+              1)
+                NEW_PATCH=$((CURRENT_PATCH + 1))
+                NEW_VERSION="${CURRENT_MAJOR}.${CURRENT_MINOR}.${NEW_PATCH}"
+                ;;
+            esac
+          fi
+
+          NEW_TAG="v${NEW_VERSION}"
+          echo "リリースバージョン: ${NEW_TAG}"
+
+          # ── install.sh の VIBECORP_VERSION を更新 ────
+          # sed -i は BSD/GNU 互換問題があるため使わない
+          sed "s/^VIBECORP_VERSION=\".*\"/VIBECORP_VERSION=\"${NEW_VERSION}\"/" install.sh > install.sh.tmp
+          mv install.sh.tmp install.sh
+          chmod +x install.sh
+
+          # ── CHANGELOG.md を更新 ──────────────────────
+          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+          CHANGELOG_ENTRY="## [${NEW_VERSION}] - ${RELEASE_DATE}"$'\n\n'
+
+          if [ -n "$BREAKING_COMMITS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### ⚠️ 破壊的変更"$'\n'
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$BREAKING_COMMITS")"$'\n'
+          fi
+          if [ -n "$FEAT_COMMITS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### ✨ 新機能"$'\n'
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$FEAT_COMMITS")"$'\n'
+          fi
+          if [ -n "$FIX_COMMITS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 🐛 バグ修正"$'\n'
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$FIX_COMMITS")"$'\n'
+          fi
+          if [ -n "$REFACTOR_COMMITS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 🔄 リファクタリング"$'\n'
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$REFACTOR_COMMITS")"$'\n'
+          fi
+          if [ -n "$DOCS_COMMITS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### 📝 ドキュメント"$'\n'
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}$(printf '%b' "$DOCS_COMMITS")"$'\n'
+          fi
+
+          # 既存の CHANGELOG.md に追記（先頭のヘッダーの後に挿入）
+          if [ -f CHANGELOG.md ]; then
+            # "# Changelog" ヘッダーの後に新しいエントリを挿入
+            {
+              echo "# Changelog"
+              echo ""
+              printf '%s' "$CHANGELOG_ENTRY"
+              # 既存の内容から "# Changelog" ヘッダーを除去して追記
+              tail -n +2 CHANGELOG.md
+            } > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          else
+            {
+              echo "# Changelog"
+              echo ""
+              printf '%s' "$CHANGELOG_ENTRY"
+            } > CHANGELOG.md
+          fi
+
+          # ── コミット・タグ・push ────────────────────
+          git add install.sh CHANGELOG.md
+          git commit -m "chore(release): v${NEW_VERSION}"
+          git tag -a "${NEW_TAG}" -m "リリース v${NEW_VERSION}"
+          git push origin main --follow-tags
+
+          # ── GitHub Release 作成 ──────────────────────
+          # CHANGELOG エントリからリリースノートを生成
+          RELEASE_NOTES=$(printf '%s' "$CHANGELOG_ENTRY")
+          gh release create "${NEW_TAG}" \
+            --title "v${NEW_VERSION}" \
+            --notes "$RELEASE_NOTES"
+
+          echo "リリース完了: ${NEW_TAG}"
