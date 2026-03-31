@@ -188,15 +188,20 @@ jobs:
 
           # 既存の CHANGELOG.md に追記（先頭のヘッダーの後に挿入）
           if [ -f CHANGELOG.md ]; then
-            # "# Changelog" ヘッダーの後に新しいエントリを挿入
-            {
-              echo "# Changelog"
-              echo ""
-              printf '%s' "$CHANGELOG_ENTRY"
-              # 既存の内容から "# Changelog" ヘッダーを除去して追記
-              tail -n +2 CHANGELOG.md
-            } > CHANGELOG.md.tmp
-            mv CHANGELOG.md.tmp CHANGELOG.md
+            # 同じバージョンのエントリが既に存在する場合はスキップ
+            if grep -qF "## [${NEW_VERSION}]" CHANGELOG.md; then
+              echo "CHANGELOG に v${NEW_VERSION} のエントリが既に存在するためスキップ"
+            else
+              # "# Changelog" ヘッダーの後に新しいエントリを挿入
+              {
+                echo "# Changelog"
+                echo ""
+                printf '%s' "$CHANGELOG_ENTRY"
+                # 既存の内容から "# Changelog" ヘッダーを除去して追記
+                tail -n +2 CHANGELOG.md
+              } > CHANGELOG.md.tmp
+              mv CHANGELOG.md.tmp CHANGELOG.md
+            fi
           else
             {
               echo "# Changelog"

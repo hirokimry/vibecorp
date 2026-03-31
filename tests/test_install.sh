@@ -2068,6 +2068,25 @@ EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --version "v99.99.99" 2>/dev/nu
 assert_exit_code "AC4: 存在しないタグでエラー" "1" "$EXIT_CODE"
 cleanup
 
+# AC5. --version に存在するタグを指定して成功する
+# 一時 clone にタグを打ち、そのタグでインストールが成功することを検証
+create_test_repo
+# SCRIPT_DIR リポジトリ（vibecorp 本体）にテスト用タグを作成
+VIBECORP_REPO_DIR="$(cd "$(dirname "$INSTALL_SH")" && pwd)"
+ORIGINAL_BRANCH=$(git -C "$VIBECORP_REPO_DIR" symbolic-ref --short HEAD 2>/dev/null || git -C "$VIBECORP_REPO_DIR" rev-parse HEAD)
+TEST_TAG="v0.0.99"
+git -C "$VIBECORP_REPO_DIR" tag "$TEST_TAG"
+
+EXIT_CODE=0
+VIBECORP_REEXEC=1 bash "$INSTALL_SH" --name test-proj --version "$TEST_TAG" 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC5: --version に存在するタグを指定して成功" "0" "$EXIT_CODE"
+
+# テスト用タグを削除して元に戻す
+# テスト用タグを削除して元のブランチに戻す
+git -C "$VIBECORP_REPO_DIR" tag -d "$TEST_TAG" >/dev/null 2>&1 || true
+git -C "$VIBECORP_REPO_DIR" checkout "$ORIGINAL_BRANCH" --quiet 2>/dev/null || true
+cleanup
+
 # ============================================
 echo ""
 echo "=== AD. --update 時のバージョン差分表示 ==="

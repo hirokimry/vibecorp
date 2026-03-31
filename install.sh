@@ -1315,10 +1315,18 @@ checkout_target_version() {
   fi
 
   # 現在のブランチ/コミットを記録（後で戻すため）
-  ORIGINAL_REF=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+  # ブランチ名を優先し、detached HEAD の場合は SHA にフォールバック
+  ORIGINAL_REF=$(git -C "$SCRIPT_DIR" symbolic-ref --short HEAD 2>/dev/null || git -C "$SCRIPT_DIR" rev-parse HEAD)
 
   log_info "vibecorp を ${TARGET_VERSION} に切り替え中..."
   git -C "$SCRIPT_DIR" checkout "$TARGET_VERSION" --quiet 2>/dev/null
+
+  # 無限ループ防止: 既に re-exec 済みならスキップ
+  if [[ "${VIBECORP_REEXEC:-}" != "1" ]]; then
+    # checkout 後の新バージョンの install.sh で再実行する
+    export VIBECORP_REEXEC=1
+    exec bash "${SCRIPT_DIR}/install.sh" "$@"
+  fi
 
   # checkout 後の install.sh から VIBECORP_VERSION を読み取って上書き
   local checked_out_version
@@ -1330,6 +1338,7 @@ checkout_target_version() {
 
 restore_original_ref() {
   # --version 指定後、元のブランチ/コミットに戻す
+  # ORIGINAL_REF にはブランチ名が優先保存されているため、detached HEAD にならない
   if [[ -n "${ORIGINAL_REF:-}" ]]; then
     git -C "$SCRIPT_DIR" checkout "$ORIGINAL_REF" --quiet 2>/dev/null || true
     unset ORIGINAL_REF
@@ -1359,7 +1368,7 @@ main() {
   detect_repo_root
 
   # --version 指定時は vibecorp リポジトリを指定バージョンに checkout
-  checkout_target_version
+  checkout_target_version "$@"
   # checkout 後の復元を確実に行うために trap を設定
   trap 'restore_original_ref' EXIT
 
