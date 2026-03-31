@@ -1,6 +1,6 @@
 #!/bin/bash
 # install.sh — vibecorp プラグインインストーラー
-# Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja|en|...]
+# Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja|en|...] [--version v1.0.0]
 #        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
@@ -27,7 +27,7 @@ CONFLICT_FILES=""
 usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
-Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja]
+Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--language ja] [--version v1.0.0]
        install.sh --update [--preset minimal|standard|full]
 
 Options:
@@ -35,6 +35,7 @@ Options:
   --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
   --preset    組織プリセット: minimal, standard, full（デフォルト: minimal）
   --language  回答言語: ja, en, または任意（デフォルト: ja）
+  --version   インストールする vibecorp のバージョン（例: v1.0.0）
   -h, --help  このヘルプを表示
 
 --name と --update は同時に指定できません。
@@ -287,6 +288,7 @@ parse_args() {
   PROJECT_NAME=""
   PRESET=""
   LANGUAGE=""
+  TARGET_VERSION=""
   UPDATE_MODE=false
   PRESET_SPECIFIED=false
   LANGUAGE_SPECIFIED=false
@@ -297,6 +299,7 @@ parse_args() {
       --update)   UPDATE_MODE=true; shift ;;
       --preset)   [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; PRESET_SPECIFIED=true; shift 2 ;;
       --language) [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; LANGUAGE_SPECIFIED=true; shift 2 ;;
+      --version)  [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--version に値が必要です"; usage; }; TARGET_VERSION="$2"; shift 2 ;;
       -h|--help)  usage 0 ;;
       *)          log_error "不明なオプション: $1"; usage ;;
     esac
@@ -310,6 +313,14 @@ parse_args() {
   if [[ "$UPDATE_MODE" == false && -z "$PROJECT_NAME" ]]; then
     log_error "--name は必須です"
     usage
+  fi
+
+  # --version のバリデーション（v付きのセマンティックバージョニング形式）
+  if [[ -n "$TARGET_VERSION" ]]; then
+    if [[ ! "$TARGET_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      log_error "--version はセマンティックバージョニング形式で指定してください（例: v1.0.0）"
+      exit 1
+    fi
   fi
 
   # デフォルト値の設定（--update 時は read_vibecorp_yml で上書きされる）
@@ -1289,6 +1300,67 @@ CONFLICT
   fi
 }
 
+# ── バージョン管理 ──────────────────────────────────────
+
+checkout_target_version() {
+  # --version 指定時に vibecorp リポジトリを指定バージョンに checkout する
+  if [[ -z "$TARGET_VERSION" ]]; then
+    return 0
+  fi
+
+  # 指定タグが存在するか確認
+  if ! git -C "$SCRIPT_DIR" rev-parse "$TARGET_VERSION" >/dev/null 2>&1; then
+    log_error "指定されたバージョン ${TARGET_VERSION} が見つかりません"
+    log_error "利用可能なバージョン: $(git -C "$SCRIPT_DIR" tag -l 'v*' | sort -V | tr '\n' ' ')"
+    exit 1
+  fi
+
+  # 現在のブランチ/コミットを記録（後で戻すため）
+  # ブランチ名を優先し、detached HEAD の場合は SHA にフォールバック
+  ORIGINAL_REF=$(git -C "$SCRIPT_DIR" symbolic-ref --short HEAD 2>/dev/null || git -C "$SCRIPT_DIR" rev-parse HEAD)
+
+  log_info "vibecorp を ${TARGET_VERSION} に切り替え中..."
+  git -C "$SCRIPT_DIR" checkout "$TARGET_VERSION" --quiet 2>/dev/null
+
+  # 無限ループ防止: 既に re-exec 済みならスキップ
+  if [[ "${VIBECORP_REEXEC:-}" != "1" ]]; then
+    # checkout 後の新バージョンの install.sh で再実行する
+    export VIBECORP_REEXEC=1
+    exec bash "${SCRIPT_DIR}/install.sh" "$@"
+  fi
+
+  # checkout 後の install.sh から VIBECORP_VERSION を読み取って上書き
+  local checked_out_version
+  checked_out_version=$(awk -F'"' '/^VIBECORP_VERSION=/ { print $2 }' "${SCRIPT_DIR}/install.sh")
+  if [[ -n "$checked_out_version" ]]; then
+    VIBECORP_VERSION="$checked_out_version"
+  fi
+}
+
+restore_original_ref() {
+  # --version 指定後、元のブランチ/コミットに戻す
+  # ORIGINAL_REF にはブランチ名が優先保存されているため、detached HEAD にならない
+  if [[ -n "${ORIGINAL_REF:-}" ]]; then
+    git -C "$SCRIPT_DIR" checkout "$ORIGINAL_REF" --quiet 2>/dev/null || true
+    unset ORIGINAL_REF
+  fi
+}
+
+show_version_diff() {
+  # --update 時にインストール済みバージョンと現在のバージョンの差分を表示する
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+  [[ -f "$lock" ]] || return 0
+
+  local installed_version
+  installed_version=$(awk '/^version:/ { print $2 }' "$lock")
+
+  if [[ -n "$installed_version" && "$installed_version" != "$VIBECORP_VERSION" ]]; then
+    log_info "バージョン更新: ${installed_version} → ${VIBECORP_VERSION}"
+  elif [[ -n "$installed_version" && "$installed_version" == "$VIBECORP_VERSION" ]]; then
+    log_info "バージョン: ${VIBECORP_VERSION}（変更なし）"
+  fi
+}
+
 # ── メイン ─────────────────────────────────────────────
 
 main() {
@@ -1296,8 +1368,14 @@ main() {
   check_prerequisites
   detect_repo_root
 
+  # --version 指定時は vibecorp リポジトリを指定バージョンに checkout
+  checkout_target_version "$@"
+  # checkout 後の復元を確実に行うために trap を設定
+  trap 'restore_original_ref' EXIT
+
   if [[ "$UPDATE_MODE" == true ]]; then
     read_vibecorp_yml
+    show_version_diff
   fi
 
   validate_name

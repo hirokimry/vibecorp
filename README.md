@@ -24,6 +24,26 @@ cd your-project
 path/to/vibecorp/install.sh --name your-project
 ```
 
+### バージョン指定インストール
+
+```bash
+# 特定バージョンを指定してインストール
+path/to/vibecorp/install.sh --name your-project --version v1.0.0
+```
+
+### アップデート
+
+```bash
+# vibecorp リポジトリを最新化
+cd path/to/vibecorp && git pull
+
+# 導入先リポジトリに移動してアップデート実行
+cd your-project
+path/to/vibecorp/install.sh --update
+```
+
+`--update` 実行時にバージョン差分がある場合、自動的に表示される。
+
 ### オプション
 
 | オプション | 説明 | デフォルト |
@@ -31,6 +51,7 @@ path/to/vibecorp/install.sh --name your-project
 | `--name <name>` | プロジェクト名（必須、英数字とハイフン、1-50文字） | — |
 | `--preset <preset>` | 組織プリセット（後述） | `minimal` |
 | `--language <lang>` | エージェントの回答言語 | `ja` |
+| `--version <version>` | インストールする vibecorp のバージョン（例: `v1.0.0`） | 最新 |
 
 ## プリセット
 

@@ -2041,6 +2041,105 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== AC. --version オプション ==="
+# ============================================
+
+# AC1. --version のバリデーション: 不正な形式でエラー
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --version "1.0.0" 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC1: --version v なしでエラー" "1" "$EXIT_CODE"
+cleanup
+
+# AC2. --version のバリデーション: 不正な形式でエラー（文字列）
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --version "latest" 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC2: --version 不正文字列でエラー" "1" "$EXIT_CODE"
+cleanup
+
+# AC3. --version の値欠落でエラー
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --version 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC3: --version の値欠落でエラー" "1" "$EXIT_CODE"
+cleanup
+
+# AC4. --version に存在しないタグを指定してエラー
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --version "v99.99.99" 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC4: 存在しないタグでエラー" "1" "$EXIT_CODE"
+cleanup
+
+# AC5. --version に存在するタグを指定して成功する
+# 一時 clone にタグを打ち、そのタグでインストールが成功することを検証
+create_test_repo
+# SCRIPT_DIR リポジトリ（vibecorp 本体）にテスト用タグを作成
+VIBECORP_REPO_DIR="$(cd "$(dirname "$INSTALL_SH")" && pwd)"
+ORIGINAL_BRANCH=$(git -C "$VIBECORP_REPO_DIR" symbolic-ref --short HEAD 2>/dev/null || git -C "$VIBECORP_REPO_DIR" rev-parse HEAD)
+TEST_TAG="v0.0.99"
+git -C "$VIBECORP_REPO_DIR" tag "$TEST_TAG"
+
+EXIT_CODE=0
+VIBECORP_REEXEC=1 bash "$INSTALL_SH" --name test-proj --version "$TEST_TAG" 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AC5: --version に存在するタグを指定して成功" "0" "$EXIT_CODE"
+
+# テスト用タグを削除して元に戻す
+# テスト用タグを削除して元のブランチに戻す
+git -C "$VIBECORP_REPO_DIR" tag -d "$TEST_TAG" >/dev/null 2>&1 || true
+git -C "$VIBECORP_REPO_DIR" checkout "$ORIGINAL_BRANCH" --quiet 2>/dev/null || true
+cleanup
+
+# ============================================
+echo ""
+echo "=== AD. --update 時のバージョン差分表示 ==="
+# ============================================
+
+# AD1. --update 時にバージョンが異なる場合、差分が表示される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# lock の version を古いバージョンに書き換え
+awk '
+  /^version:/ { print "version: 0.0.1"; next }
+  { print }
+' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
+
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+if echo "$STDERR_OUTPUT" | grep -q "バージョン更新:.*0.0.1.*→"; then
+  pass "AD1: --update 時にバージョン差分が表示される"
+else
+  fail "AD1: --update 時にバージョン差分が表示される (ログ: ${STDERR_OUTPUT})"
+fi
+cleanup
+
+# AD2. --update 時にバージョンが同一の場合、「変更なし」と表示される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+if echo "$STDERR_OUTPUT" | grep -q "変更なし"; then
+  pass "AD2: --update 時に同一バージョンで変更なし表示"
+else
+  fail "AD2: --update 時に同一バージョンで変更なし表示 (ログ: ${STDERR_OUTPUT})"
+fi
+cleanup
+
+# AD3. lock ファイルに正しいバージョンが記録される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+LOCK_VERSION=$(awk '/^version:/ { print $2 }' "$R/.claude/vibecorp.lock")
+EXPECTED_VERSION=$(awk -F'"' '/^VIBECORP_VERSION=/ { print $2 }' "$INSTALL_SH")
+if [ "$LOCK_VERSION" = "$EXPECTED_VERSION" ]; then
+  pass "AD3: lock の version が VIBECORP_VERSION と一致"
+else
+  fail "AD3: lock の version が VIBECORP_VERSION と一致 (lock: ${LOCK_VERSION}, expected: ${EXPECTED_VERSION})"
+fi
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
