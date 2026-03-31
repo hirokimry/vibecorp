@@ -46,11 +46,11 @@ Context7 CLI (`c7`) がインストールされていません。以下の手順
 
 ### インストール方法
 
-npm install -g @anthropic-ai/context7
+npm install -g @upstash/context7
 
 ### 参考
 
-- https://github.com/anthropics/context7
+- https://github.com/upstash/context7
 
 インストール後、再度 `/context7 <ライブラリ名>` を実行してください。
 ```
