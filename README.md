@@ -112,7 +112,7 @@ your-project/
 | スキル | 説明 |
 |---|---|
 | `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行 |
-| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し同時進行（full プリセット専用機能） |
+| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し同時進行 |
 | `/plan` | Issue の実装方針を策定し、計画ファイルとして `.claude/plans/` に出力 |
 | `/plan-review-loop` | 実装計画に対するレビュー → 修正の自動ループ。問題0件まで繰り返す |
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
@@ -339,7 +339,7 @@ hooks:
 /ship-parallel --all
 ```
 
-COO エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。full プリセット専用。
+COO エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。全プリセットで利用可能。
 
 ### /diagnose — コードベース自律診断
 
@@ -394,9 +394,9 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
 
 | ファイル種別 | 更新時の挙動 |
 |---|---|
-| **hooks** | lock 記載の管理ファイルを削除し、テンプレートから再配置 |
-| **skills** | lock 記載の管理ファイルを削除し、テンプレートから再配置 |
-| **agents** | lock 記載の管理ファイルを削除し、テンプレートから再配置 |
+| **hooks** | カスタムなし→上書き、カスタムあり＆テンプレート未変更→スキップ、両方変更→3-way マージ、コンフリクト→マーカー付き出力 |
+| **skills** | hooks と同じ（3-way マージ対象） |
+| **agents** | 削除して再配置（3-way マージ対象外） |
 | **knowledge** | 削除しない（運用中にエージェントが蓄積したデータを保護） |
 | **rules** | テンプレート由来の rules を上書き。ユーザー独自追加分は影響なし |
 | **docs** | 既存ファイルはスキップ（ユーザーカスタマイズ済みの前提） |
@@ -440,7 +440,9 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
 }
 ```
 
-プリセットに応じて不要なフックエントリが自動除外される。vibecorp.yml の `hooks:` でトグルした場合も同様に反映される。
+上記は `settings.json.tpl` の全内容。プリセットに応じて不要なフックエントリが自動除外される。vibecorp.yml の `hooks:` でトグルした場合も同様に反映される。
+
+> **注**: `session-harvest-gate.sh` と `team-auto-approve.sh` は settings.json ではなく、install.sh の generate_settings_json 関数で動的に登録される。
 
 ## リポジトリインフラ設定
 
