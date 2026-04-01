@@ -32,24 +32,45 @@ jobs:
 
           UPDATED=0
           SKIPPED=0
+          FAILED=0
 
           for PR in $PR_NUMBERS; do
             echo "--- PR #${PR} を更新中 ---"
-            # 現在の head SHA を取得して expected_head_sha に渡す
-            HEAD_SHA=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.head.sha')
-            if gh api "repos/${REPO}/pulls/${PR}/update-branch" \
+            # 現在の head SHA を取得（失敗時は致命的エラー）
+            if ! HEAD_SHA=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.head.sha' 2>&1); then
+              echo "PR #${PR}: SHA 取得失敗（想定外エラー）"
+              echo "${HEAD_SHA}"
+              exit 1
+            fi
+
+            # ブランチ更新（HTTP ステータスで分岐）
+            HTTP_STATUS=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
               --method PUT \
               --field expected_head_sha="${HEAD_SHA}" \
-              > /dev/null 2>&1; then
-              echo "PR #${PR}: 更新成功"
-              UPDATED=$((UPDATED + 1))
-            else
-              echo "PR #${PR}: 更新スキップ（コンフリクト等）"
-              SKIPPED=$((SKIPPED + 1))
-            fi
+              --include 2>&1 | head -1 | awk '{print $2}') || true
+
+            case "${HTTP_STATUS}" in
+              202)
+                echo "PR #${PR}: 更新成功"
+                UPDATED=$((UPDATED + 1))
+                ;;
+              422)
+                echo "PR #${PR}: 更新スキップ（コンフリクトまたは更新不要）"
+                SKIPPED=$((SKIPPED + 1))
+                ;;
+              *)
+                echo "PR #${PR}: 更新失敗（HTTP ${HTTP_STATUS}）"
+                FAILED=$((FAILED + 1))
+                ;;
+            esac
           done
 
           echo ""
           echo "=== 結果 ==="
           echo "更新成功: ${UPDATED} 件"
           echo "スキップ: ${SKIPPED} 件"
+          echo "失敗: ${FAILED} 件"
+
+          if [ "${FAILED}" -gt 0 ]; then
+            exit 1
+          fi
