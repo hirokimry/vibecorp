@@ -243,6 +243,11 @@ merge_or_overwrite() {
   tmp_current=$(mktemp)
   tmp_base=$(mktemp)
   tmp_other=$(mktemp)
+
+  # SIGINT/SIGTERM 時に tmp ファイルをクリーンアップする trap を設定
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmp_current' '$tmp_base' '$tmp_other'" INT TERM
+
   cp "$target" "$tmp_current"
   cp "$base_snapshot" "$tmp_base"
   cp "$template" "$tmp_other"
@@ -268,6 +273,8 @@ merge_or_overwrite() {
   fi
 
   rm -f "$tmp_current" "$tmp_base" "$tmp_other"
+  # trap をリセット
+  trap - INT TERM
 
   if [[ "$merge_exit" -gt 0 ]]; then
     return 1
