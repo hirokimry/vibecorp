@@ -42,8 +42,8 @@ git diff --name-only
 
 | エージェント | 管轄ファイル | 起動条件 |
 |-------------|------------|---------|
-| CTO | `docs/` 内の技術設計ドキュメント、`knowledge/cto/`、`README.md` | アーキテクチャ・技術設計・エージェント定義・hooks・スキル・README 関連の変更 |
-| CPO | `docs/specification.md`、`knowledge/cpo/` | 仕様・UI・プロンプト関連の変更 |
+| CTO | `docs/` 内の技術設計ドキュメント、`knowledge/cto/` | アーキテクチャ・技術設計・エージェント定義・hooks・スキル関連の変更 |
+| CPO | `docs/specification.md`、`knowledge/cpo/`、`README.md` | 仕様・UI・プロンプト・スキル・フック・エージェント・README 関連の変更 |
 
 **拡張時（上記に加えて追加可能）:**
 
@@ -69,8 +69,8 @@ git diff --name-only
 ## チェック観点
 - 矛盾: コード変更がドキュメントの記載と食い違っていないか
 - 更新漏れ: ドキュメントに反映すべき変更が漏れていないか
-- README 乖離（CTO）: 実装と README の記載に乖離がないか
-- README 未反映（CTO）: 新しいスキル・フック・エージェントが追加されたのに README に未反映でないか
+- README 乖離（CPO）: 実装と README の記載に乖離がないか
+- README 未反映（CPO）: 新しいスキル・フック・エージェントが追加されたのに README に未反映でないか
 - POLICY.md 違反（法務のみ）: MUST/MUST NOT 制約に抵触していないか
 
 ## 制約

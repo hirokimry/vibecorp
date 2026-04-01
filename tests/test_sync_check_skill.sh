@@ -35,6 +35,16 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local desc="$1"
+  local pattern="$2"
+  if grep -q "$pattern" "$SKILL_MD"; then
+    fail "$desc (パターンが検出された: $pattern)"
+  else
+    pass "$desc"
+  fi
+}
+
 # ============================================
 echo "=== sync-check SKILL.md 構造テスト ==="
 # ============================================
@@ -55,24 +65,27 @@ assert_contains "description に README.md が含まれる" "README.md"
 assert_contains "対象外判定に docs/ や knowledge/ や README.md が含まれる" \
   "docs/.*knowledge/.*README.md.*のみの変更"
 
-# 4. CTO 管轄テーブルに README.md が含まれる
-assert_contains "CTO 管轄テーブルに README.md が含まれる" \
+# 4. CPO 管轄テーブルに README.md が含まれる
+assert_contains "CPO 管轄テーブルに README.md が含まれる" \
+  "| CPO.*README.md"
+
+# 5. CTO 管轄テーブルに README.md が含まれない
+assert_not_contains "CTO 管轄テーブルに README.md が含まれない" \
   "| CTO.*README.md"
 
-# 5. CTO 起動条件に README が含まれる
-assert_contains "CTO 起動条件に README が含まれる" \
-  "README 関連の変更"
+# 6. CPO 起動条件に README が含まれる
+assert_contains "CPO 起動条件に README 関連の変更が含まれる" \
+  "| CPO.*README 関連の変更"
 
-# 6. チェック観点に README 乖離が含まれる
-assert_contains "チェック観点に README 乖離が含まれる" \
-  "README 乖離.*実装と README の記載に乖離がないか"
+# 7. チェック観点に README 乖離（CPO）が含まれる
+assert_contains "チェック観点に README 乖離（CPO）が含まれる" \
+  "README 乖離（CPO）.*実装と README の記載に乖離がないか"
 
-# 7. チェック観点に README 未反映が含まれる
-assert_contains "チェック観点に README 未反映が含まれる" \
-  "README 未反映.*スキル・フック・エージェントが追加されたのに README に未反映"
+# 8. チェック観点に README 未反映（CPO）が含まれる
+assert_contains "チェック観点に README 未反映（CPO）が含まれる" \
+  "README 未反映（CPO）.*スキル・フック・エージェントが追加されたのに README に未反映"
 
-# 8. 軽微な変更リストから README.md が除外されている
-#    （.gitignore 等の軽微な変更に README.md が含まれていないこと）
+# 9. 軽微な変更リストから README.md が除外されている
 if grep -q '\.gitignore.*README\.md.*軽微な変更' "$SKILL_MD"; then
   fail "軽微な変更リストから README.md が除外されている (まだ含まれている)"
 else
