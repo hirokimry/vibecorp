@@ -1408,9 +1408,6 @@ main() {
   generate_ci_workflow
   configure_github_repo
 
-  if [[ "$UPDATE_MODE" == true ]]; then
-    update_vibecorp_yml
-  fi
   generate_settings_json
   copy_rules
   copy_docs

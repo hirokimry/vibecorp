@@ -2188,6 +2188,21 @@ fi
 cleanup
 
 # ============================================
+# テスト: update_vibecorp_yml が main() 内で重複呼び出しされていないこと
+# ============================================
+echo ""
+echo "--- テスト: update_vibecorp_yml 重複呼び出し防止 ---"
+
+# main() 関数内での update_vibecorp_yml 呼び出し回数を数える
+# 関数定義行（update_vibecorp_yml()）は除外し、呼び出し行のみカウントする
+CALL_COUNT=$(awk '/^main\(\)/{found=1} found && /update_vibecorp_yml/ && !/update_vibecorp_yml\(\)/' "$INSTALL_SH" | wc -l | tr -d ' ')
+if [ "$CALL_COUNT" -eq 1 ]; then
+  pass "update_vibecorp_yml は main() 内で1回だけ呼ばれている"
+else
+  fail "update_vibecorp_yml が main() 内で ${CALL_COUNT} 回呼ばれている（期待: 1回）"
+fi
+
+# ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
