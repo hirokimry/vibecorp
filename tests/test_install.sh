@@ -302,8 +302,10 @@ assert_file_contains "vibecorp.yml に name" "$R/.claude/vibecorp.yml" "name: te
 assert_file_contains "vibecorp.yml に preset" "$R/.claude/vibecorp.yml" "preset: minimal"
 assert_file_contains "vibecorp.yml に language" "$R/.claude/vibecorp.yml" "language: ja"
 
-# E6. vibecorp.lock に version
-assert_file_contains "vibecorp.lock に version" "$R/.claude/vibecorp.lock" "version: 0.1.0"
+# E6. vibecorp.lock に version（動的取得値と一致すること）
+EXPECTED_VERSION=$(git -C "$(dirname "$INSTALL_SH")" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+EXPECTED_VERSION="${EXPECTED_VERSION#v}"
+assert_file_contains "vibecorp.lock に version" "$R/.claude/vibecorp.lock" "version: ${EXPECTED_VERSION}"
 
 # E7. vibecorp.lock にマニフェスト
 assert_file_contains "vibecorp.lock に hooks マニフェスト" "$R/.claude/vibecorp.lock" "protect-files.sh"
