@@ -1357,6 +1357,49 @@ bash "$INSTALL_SH" --update 2>/dev/null
 
 assert_file_contains "--update でも docs はスキップ" "$R/docs/specification.md" "ユーザー編集済み仕様書"
 
+# X8b. --update でも既存 docs の全ファイルがスキップされる（複数ファイル検証）
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# 全 docs ファイルにユーザー編集内容を書き込む
+echo "# ユーザー編集済みポリシー" > "$R/docs/POLICY.md"
+echo "# ユーザー編集済みセキュリティ" > "$R/docs/SECURITY.md"
+echo "# ユーザー編集済みコスト分析" > "$R/docs/cost-analysis.md"
+echo "# ユーザー編集済みAI組織" > "$R/docs/ai-organization.md"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "--update でも POLICY.md はスキップ" "$R/docs/POLICY.md" "ユーザー編集済みポリシー"
+assert_file_contains "--update でも SECURITY.md はスキップ" "$R/docs/SECURITY.md" "ユーザー編集済みセキュリティ"
+assert_file_contains "--update でも cost-analysis.md はスキップ" "$R/docs/cost-analysis.md" "ユーザー編集済みコスト分析"
+assert_file_contains "--update でも ai-organization.md はスキップ" "$R/docs/ai-organization.md" "ユーザー編集済みAI組織"
+
+# X8c. --update でも既存 workflows ファイルはスキップされる（ユーザーカスタマイズ保護）
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# workflows ファイルにユーザー編集内容を書き込む
+echo "# ユーザー編集済みテストワークフロー" > "$R/.github/workflows/test.yml"
+echo "# ユーザー編集済み自動アサイン" > "$R/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "--update でも test.yml はスキップ" "$R/.github/workflows/test.yml" "ユーザー編集済みテストワークフロー"
+assert_file_contains "--update でも auto-assign.yml はスキップ" "$R/.github/workflows/auto-assign.yml" "ユーザー編集済み自動アサイン"
+
+# X8d. --update で workflows に新規ファイルが追加された場合はコピーされる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# 既存ワークフローを1つ削除して --update を実行
+rm "$R/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_exists "--update で欠落した auto-assign.yml が再コピーされる" "$R/.github/workflows/auto-assign.yml"
+# 既存の test.yml は変わらない
+assert_file_exists "--update 後も test.yml は存在する" "$R/.github/workflows/test.yml"
+
 # X9. vibecorp.lock に docs: セクションが含まれる
 cleanup
 create_test_repo
