@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_hooks.sh — protect-files.sh / review-to-rules-gate.sh / sync-gate.sh のユニットテスト
+# test_hooks.sh — protect-files.sh / review-to-rules-gate.sh / sync-gate.sh / block-api-bypass.sh のユニットテスト
 # 使い方: bash tests/test_hooks.sh
 
 set -euo pipefail
