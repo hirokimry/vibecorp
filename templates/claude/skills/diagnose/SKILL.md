@@ -219,7 +219,7 @@ rm -f "/tmp/.{{PROJECT_NAME}}-diagnose-active"
 - **コード変更は一切行わない** — Issue 起票のみ
 - **forbidden_targets に含まれるファイルの変更を提案しない**
 - `--force`、`--hard`、`--no-verify` は使用しない
-- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - 介入ポイントではユーザーの指示を待つ（自動でスキップしない）
 - diagnose-active スタンプは正常終了・異常終了を問わず必ず削除する
