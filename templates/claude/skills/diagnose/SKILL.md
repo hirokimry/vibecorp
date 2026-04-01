@@ -220,6 +220,6 @@ rm -f "/tmp/.{{PROJECT_NAME}}-diagnose-active"
 - **forbidden_targets に含まれるファイルの変更を提案しない**
 - `--force`、`--hard`、`--no-verify` は使用しない
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
 - 介入ポイントではユーザーの指示を待つ（自動でスキップしない）
 - diagnose-active スタンプは正常終了・異常終了を問わず必ず削除する
