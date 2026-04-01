@@ -2144,6 +2144,51 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== AE. --update 時の fetch --tags 実行 ==="
+# ============================================
+
+# AE1. --update 時に git fetch --tags のログが出力される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+if echo "$STDERR_OUTPUT" | grep -q "タグ"; then
+  pass "AE1: --update 時にタグ取得のログが出力される"
+else
+  fail "AE1: --update 時にタグ取得のログが出力される (ログ: ${STDERR_OUTPUT})"
+fi
+cleanup
+
+# AE2. fetch 失敗時（リモートなし）でもエラーで停止しない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# リモートが設定されていないリポジトリで --update を実行
+# fetch は失敗するがフォールバックで続行する
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AE2: fetch 失敗時でもエラーで停止しない" "0" "$EXIT_CODE"
+cleanup
+
+# AE3. fetch 後に VIBECORP_VERSION が lock に正しく記録される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+LOCK_VERSION=$(awk '/^version:/ { print $2 }' "$R/.claude/vibecorp.lock")
+EXPECTED_VERSION=$(git -C "$(dirname "$INSTALL_SH")" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+EXPECTED_VERSION="${EXPECTED_VERSION#v}"
+if [ "$LOCK_VERSION" = "$EXPECTED_VERSION" ]; then
+  pass "AE3: fetch 後の VIBECORP_VERSION が lock に正しく記録される"
+else
+  fail "AE3: fetch 後の VIBECORP_VERSION が lock に正しく記録される (lock: ${LOCK_VERSION}, expected: ${EXPECTED_VERSION})"
+fi
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

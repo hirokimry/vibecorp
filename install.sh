@@ -26,6 +26,19 @@ log_conflict() { printf '\033[35m[CONFLICT]\033[0m %s\n' "$*" >&2; }
 # コンフリクトが発生したファイルを追跡
 CONFLICT_FILES=""
 
+fetch_latest_tags() {
+  # リモートから最新のタグ情報を取得する（--update モード用）
+  # fetch 失敗時（オフライン等）はローカルのタグで続行し、エラーで止めない
+  if git -C "$SCRIPT_DIR" fetch --tags --quiet 2>/dev/null; then
+    log_info "リモートから最新のタグ情報を取得しました"
+  else
+    log_info "タグの取得に失敗しました。ローカルのタグ情報で続行します"
+  fi
+  # fetch 後にバージョンを再取得して最新化
+  VIBECORP_VERSION=$(git -C "$SCRIPT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+  VIBECORP_VERSION="${VIBECORP_VERSION#v}"
+}
+
 usage() {
   local exit_code="${1:-1}"
   cat >&2 <<'USAGE'
@@ -1375,6 +1388,7 @@ main() {
   trap 'restore_original_ref' EXIT
 
   if [[ "$UPDATE_MODE" == true ]]; then
+    fetch_latest_tags
     read_vibecorp_yml
     show_version_diff
   fi
