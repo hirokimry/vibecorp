@@ -497,6 +497,15 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
+  # hooks/lib/: 共通ライブラリを常にコピー（上書き）
+  if [[ -d "${SCRIPT_DIR}/templates/claude/hooks/lib" ]]; then
+    mkdir -p "${hooks_dir}/lib"
+    for src in "${SCRIPT_DIR}/templates/claude/hooks/lib/"*.sh; do
+      [[ -f "$src" ]] || continue
+      cp "$src" "${hooks_dir}/lib/$(basename "$src")"
+    done
+  fi
+
   # hooks: --update 時は 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
     [[ -f "$src" ]] || continue

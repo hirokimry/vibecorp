@@ -33,15 +33,10 @@ if [ "$CMD_HEAD" != "gh pr merge" ]; then
   exit 0
 fi
 
-# vibecorp.yml からプロジェクト名を取得
-VIBECORP_YML="${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml"
-PROJECT_NAME="vibecorp-project"
-if [ -f "$VIBECORP_YML" ]; then
-  RAW_NAME=$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$VIBECORP_YML")
-  if [ -n "${RAW_NAME:-}" ]; then
-    PROJECT_NAME=$(printf '%s' "$RAW_NAME" | tr -cs 'A-Za-z0-9._-' '_')
-  fi
-fi
+# 共通ライブラリ読み込み
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${HOOK_DIR}/lib/common.sh"
+PROJECT_NAME=$(get_project_name)
 
 STAMP_FILE="/tmp/.${PROJECT_NAME}-session-harvest-ok"
 
