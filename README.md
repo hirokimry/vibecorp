@@ -64,8 +64,8 @@ path/to/vibecorp/install.sh --update
 | プリセット | スキル | フック | エージェント | ユースケース |
 |---|---|---|---|---|
 | **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree | protect-files, block-api-bypass, team-auto-approve | なし | 個人〜小規模 |
-| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate | CTO, CPO | チーム開発 |
-| **full** | 上記 + /diagnose, /context7 | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
+| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate | CTO, CPO | チーム開発 |
+| **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
@@ -124,7 +124,7 @@ your-project/
 | `/branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
 | `/worktree` | git worktree のライフサイクル管理。`list`（一覧）、`clean`（マージ済み削除）、`remove`（手動削除） |
 
-### standard プリセットで追加（5スキル）
+### standard プリセットで追加（6スキル）
 
 | スキル | 説明 |
 |---|---|
@@ -133,13 +133,13 @@ your-project/
 | `/sync-edit` | `/sync-check` で検出された不整合を、各職種エージェントが管轄ファイルのみ編集して修正 |
 | `/session-harvest` | セッション中の知見を rules / knowledge / docs に自動反映。マージ前に知識を蓄積する |
 | `/harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
+| `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（2スキル）
+### full プリセットで追加（1スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
-| `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
 ## フック一覧
 
