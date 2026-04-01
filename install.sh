@@ -1337,6 +1337,9 @@ checkout_target_version() {
   log_info "vibecorp を ${TARGET_VERSION} に切り替え中..."
   git -C "$SCRIPT_DIR" checkout "$TARGET_VERSION" --quiet 2>/dev/null
 
+  # exec で現在のプロセスが置き換わると trap EXIT が失われるため、exec 前に設定する
+  trap 'restore_original_ref' EXIT
+
   # 無限ループ防止: 既に re-exec 済みならスキップ
   if [[ "${VIBECORP_REEXEC:-}" != "1" ]]; then
     # checkout 後の新バージョンの install.sh で再実行する
@@ -1383,9 +1386,8 @@ main() {
   detect_repo_root
 
   # --version 指定時は vibecorp リポジトリを指定バージョンに checkout
+  # trap EXIT は checkout_target_version 内で exec 前に設定される
   checkout_target_version "$@"
-  # checkout 後の復元を確実に行うために trap を設定
-  trap 'restore_original_ref' EXIT
 
   if [[ "$UPDATE_MODE" == true ]]; then
     fetch_latest_tags

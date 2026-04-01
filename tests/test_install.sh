@@ -2188,6 +2188,41 @@ fi
 cleanup
 
 # ============================================
+echo "=== AF. exec 前の trap EXIT 設定 ==="
+# ============================================
+
+# AF1. checkout_target_version 内で trap が exec より前に設定されていること
+# exec でプロセスが置き換わると trap EXIT が失われるため、exec 前に trap を設定する必要がある
+TRAP_LINE=$(grep -n "trap 'restore_original_ref' EXIT" "$INSTALL_SH" | head -1 | cut -d: -f1)
+EXEC_LINE=$(grep -n 'exec bash.*install\.sh' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$TRAP_LINE" ] && [ -n "$EXEC_LINE" ] && [ "$TRAP_LINE" -lt "$EXEC_LINE" ]; then
+  pass "AF1: trap EXIT が exec より前の行に設定されている (trap:${TRAP_LINE} < exec:${EXEC_LINE})"
+else
+  fail "AF1: trap EXIT が exec より前の行に設定されている (trap:${TRAP_LINE:-未検出} exec:${EXEC_LINE:-未検出})"
+fi
+
+# AF2. main() 内に冗長な trap 'restore_original_ref' EXIT が残っていないこと
+MAIN_START=$(grep -n '^main()' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$MAIN_START" ]; then
+  TRAP_IN_MAIN=$(tail -n +"$MAIN_START" "$INSTALL_SH" | grep -c "trap 'restore_original_ref' EXIT" || true)
+  if [ "$TRAP_IN_MAIN" -eq 0 ]; then
+    pass "AF2: main() 内に冗長な trap EXIT が残っていない"
+  else
+    fail "AF2: main() 内に冗長な trap EXIT が残っている (${TRAP_IN_MAIN}件)"
+  fi
+else
+  fail "AF2: main() 関数が見つからない"
+fi
+
+# AF3. trap が checkout_target_version 関数内に定義されていること
+FUNC_START=$(grep -n '^checkout_target_version()' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$FUNC_START" ] && [ -n "$TRAP_LINE" ] && [ "$TRAP_LINE" -gt "$FUNC_START" ]; then
+  pass "AF3: trap EXIT が checkout_target_version 関数内に定義されている"
+else
+  fail "AF3: trap EXIT が checkout_target_version 関数内に定義されている"
+fi
+
+# ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
