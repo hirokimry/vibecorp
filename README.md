@@ -63,7 +63,7 @@ path/to/vibecorp/install.sh --update
 
 | プリセット | スキル | フック | エージェント | ユースケース |
 |---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree | protect-files, protect-branch, block-api-bypass, team-auto-approve | なし | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
 | **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
@@ -123,6 +123,7 @@ your-project/
 | `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票 |
 | `/branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
 | `/worktree` | git worktree のライフサイクル管理。`list`（一覧）、`clean`（マージ済み削除）、`remove`（手動削除） |
+| `/approve-audit` | コマンドログを棚卸しし、`settings.local.json` の allow リストへの追加を提案・実行 |
 
 ### standard プリセットで追加（6スキル）
 
@@ -166,6 +167,12 @@ your-project/
 | フック | プリセット | トリガー | 説明 |
 |---|---|---|---|
 | `block-api-bypass.sh` | minimal 以上 | `Bash` | `gh api` による直接マージ（`pulls/{number}/merge`）と `@coderabbitai approve` の投稿をブロック。auto-merge 環境でのレビュープロセス迂回を防止 |
+
+### コマンドログ型
+
+| フック | プリセット | トリガー | 説明 |
+|---|---|---|---|
+| `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`/tmp/.{project}-command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
 
 ### 自動承認型
 
@@ -431,6 +438,7 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
       {
         "matcher": "Bash",
         "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/command-log.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-api-bypass.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" }
         ]
