@@ -63,7 +63,7 @@ path/to/vibecorp/install.sh --update
 
 | プリセット | スキル | フック | エージェント | ユースケース |
 |---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree | protect-files, block-api-bypass, team-auto-approve | なし | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree | protect-files, protect-branch, block-api-bypass, team-auto-approve | なし | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate | CTO, CPO | チーム開発 |
 | **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
@@ -148,6 +148,7 @@ your-project/
 | フック | プリセット | トリガー | 説明 |
 |---|---|---|---|
 | `protect-files.sh` | minimal 以上 | `Edit`/`Write` | `vibecorp.yml` の `protected_files` で指定したファイルの編集をブロック。MVV.md はデフォルトで保護対象 |
+| `protect-branch.sh` | minimal 以上 | `Edit`/`Write`/`Bash`（git commit） | メインブランチ（base_branch）での Edit/Write/git commit をブロック |
 | `role-gate.sh` | full | `Edit`/`Write` | エージェントの管轄外ファイルの編集をブロック。ロールファイル（`/tmp/.{project}-agent-role`）に書かれたロール名で判定。通常セッション（人間操作時）は制約なし |
 | `diagnose-guard.sh` | full | `Edit`/`Write` | `/diagnose` 実行中に hooks/*.sh, vibecorp.yml, MVV.md, diagnose-guard.sh 自身への変更をブロック |
 
@@ -420,6 +421,7 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
         "matcher": "Edit|Write",
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diagnose-guard.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/role-gate.sh" }
         ]
@@ -427,7 +429,8 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-api-bypass.sh" }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-api-bypass.sh" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" }
         ]
       },
       {
