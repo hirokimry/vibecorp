@@ -2282,6 +2282,80 @@ fi
 
 # ============================================
 echo ""
+echo "=== AG. merge_or_overwrite の tmp ファイルリーク検証 ==="
+# ============================================
+
+# AG1. merge_or_overwrite が正常終了時に tmp ファイルを残さないことを検証
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# テスト専用 TMPDIR を隔離して外部プロセスの影響を排除
+TMP_SANDBOX=$(mktemp -d)
+TMP_BEFORE=$(mktemp)
+TMP_AFTER=$(mktemp)
+find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_BEFORE"
+
+# 3-way merge 分岐に入るための条件を整える:
+# 1. current_hash != base_hash（ユーザーがカスタマイズした状態）
+# 2. template_hash != base_hash（テンプレートも変更された状態）
+# まず current ファイルを改変してカスタマイズ済みにする
+echo "# ユーザーによるカスタマイズ" >> "$R/.claude/rules/comments.md"
+# ベーススナップショットを改変してテンプレート変更を模擬する
+echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+# vibecorp.lock の base_hashes を更新して current_hash != base_hash にする
+NEW_BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+LOCK_FILE="$R/.claude/vibecorp.lock"
+ORIG_HASH=$(grep 'rules/comments\.md:' "$LOCK_FILE" | awk '{print $2}')
+sed "s/${ORIG_HASH}/${NEW_BASE_HASH}/" "$LOCK_FILE" > "${LOCK_FILE}.tmp" && mv "${LOCK_FILE}.tmp" "$LOCK_FILE"
+
+EXIT_CODE=0
+TMPDIR="$TMP_SANDBOX" bash "$INSTALL_SH" --update --preset standard 2>/dev/null || EXIT_CODE=$?
+
+# exit code の検証（0 以外なら --update 自体が失敗している）
+if [ "$EXIT_CODE" -ne 0 ]; then
+  fail "AG1: --update コマンドが exit code $EXIT_CODE で失敗"
+else
+  # 隔離 TMPDIR 内の新規ファイルを確認
+  find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_AFTER"
+
+  # diff で新規 tmp ファイルがないか確認
+  TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" | grep -v -F -e "$TMP_BEFORE" -e "$TMP_AFTER" || true)
+
+  if [ -z "$TMP_LEAKED" ]; then
+    pass "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない"
+  else
+    fail "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない (リーク: $TMP_LEAKED)"
+  fi
+fi
+rm -f "$TMP_BEFORE" "$TMP_AFTER"
+rm -rf "$TMP_SANDBOX"
+cleanup
+
+# AG2. merge_or_overwrite の trap 設定を静的検証
+# merge_or_overwrite 関数本体を抽出してからスコープを限定して検証
+FUNC_BODY=$(sed -n '/^merge_or_overwrite()[[:space:]]*{/,/^}/p' "$INSTALL_SH")
+TRAP_LINE=$(printf '%s\n' "$FUNC_BODY" | grep -E '^[[:space:]]*trap ' | grep 'rm' || true)
+if [ -n "$TRAP_LINE" ] \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_current' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_base' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_other' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'INT' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'TERM'; then
+  pass "AG2: merge_or_overwrite に INT/TERM 用の trap が設定されている"
+else
+  fail "AG2: merge_or_overwrite に INT/TERM 用の trap が設定されている"
+fi
+
+# AG3. trap リセットが merge_or_overwrite 関数内に存在することを確認
+if echo "$FUNC_BODY" | grep -q 'trap - INT TERM'; then
+  pass "AG3: merge_or_overwrite の trap がリセットされている"
+else
+  fail "AG3: merge_or_overwrite の trap がリセットされている"
+fi
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
