@@ -58,6 +58,8 @@ hooks はチームメイトにも伝播する。この性質を利用し、PreTo
 
 ### 安全性の多層構造
 
+> **allow と approve の違い**: `permissionDecision` には `"allow"` を使用すること。`"approve"` は deprecated であり、Write / Edit 等のツールに対して効果がない。カスタマイズ時にこの違いを間違えると、ファイル書き込み系の自動承認が機能しなくなる。
+
 ```text
 第1層: team-auto-approve.sh（allow のゲートキーパー）
   - 機密ファイル（.env, secrets, credentials, MVV.md）は allow しない

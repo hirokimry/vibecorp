@@ -171,6 +171,8 @@ your-project/
 |---|---|---|---|
 | `team-auto-approve.sh` | minimal 以上 | `PreToolUse` | チームモードでの安全なツールコールを自動承認。チームメイトが `settings.local.json` の allow リストを継承しない問題の回避策 |
 
+> **注意**: `team-auto-approve.sh` をカスタマイズする場合、`permissionDecision` には必ず `"allow"` を使用すること。`"approve"` は deprecated であり、Write / Edit 等のツールに対して効果がない。
+
 ## ゲートフックとスタンプ
 
 ゲートフックはスタンプファイル（`/tmp/.{project}-*`）で状態管理する。対応するスキルを実行するとスタンプが発行され、ゲートが通過可能になる。スタンプは確認後に自動削除される（ワンタイム）。
