@@ -285,6 +285,6 @@ git merge-tree $(git merge-base HEAD <branch_a>) HEAD <branch_a>
 - `--force`、`--hard`、`--no-verify` は使用しない
 - ユーザーの明示的な指示なしに force push しない
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - 介入ポイントではユーザーの指示を待つ（自動でスキップしない）
 - 1つの Issue の失敗で他の並列実行を中断しない
