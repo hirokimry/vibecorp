@@ -61,7 +61,21 @@ review:
 
 各カスタムコマンドを実行し、結果を収集する。
 
-## 3. 結果報告
+## 3. レビュー完了スタンプの生成
+
+レビューが完了したら、PR 作成を許可するスタンプを生成する。
+
+```bash
+touch "/tmp/.$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml)-review-ok"
+```
+
+worktree モードの場合:
+
+```bash
+touch "/tmp/.$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "<path>"/.claude/vibecorp.yml)-review-ok"
+```
+
+## 4. 結果報告
 
 全レビュー結果を統合して報告する:
 
