@@ -2310,10 +2310,16 @@ cleanup
 # AG2. merge_or_overwrite の trap 設定を静的検証
 # merge_or_overwrite 関数本体を抽出してからスコープを限定して検証
 FUNC_BODY=$(sed -n '/^merge_or_overwrite()[[:space:]]*{/,/^}/p' "$INSTALL_SH")
-if echo "$FUNC_BODY" | grep -q 'trap.*rm.*tmp_current.*tmp_base.*tmp_other.*INT'; then
-  pass "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
+TRAP_LINE=$(printf '%s\n' "$FUNC_BODY" | grep -E '^[[:space:]]*trap ' | grep 'rm' || true)
+if [ -n "$TRAP_LINE" ] \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_current' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_base' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'tmp_other' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'INT' \
+  && printf '%s\n' "$TRAP_LINE" | grep -q 'TERM'; then
+  pass "AG2: merge_or_overwrite に INT/TERM 用の trap が設定されている"
 else
-  fail "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
+  fail "AG2: merge_or_overwrite に INT/TERM 用の trap が設定されている"
 fi
 
 # AG3. trap リセットが merge_or_overwrite 関数内に存在することを確認
