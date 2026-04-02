@@ -2198,7 +2198,9 @@ bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # /tmp 内の既存ファイルを記録
+# TMP_BEFORE/TMP_AFTER 自身が /tmp/tmp.* にマッチするため、比較時に除外する
 TMP_BEFORE=$(mktemp)
+TMP_AFTER=$(mktemp)
 ls /tmp/tmp.* 2>/dev/null | sort > "$TMP_BEFORE" || true
 
 # ベーススナップショットを改変してマージをトリガーする
@@ -2207,11 +2209,11 @@ echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
 bash "$INSTALL_SH" --update --preset standard 2>/dev/null || true
 
 # /tmp 内の新規ファイルを確認
-TMP_AFTER=$(mktemp)
 ls /tmp/tmp.* 2>/dev/null | sort > "$TMP_AFTER" || true
 
 # diff で新規 tmp ファイルがないか確認
-TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" || true)
+# TMP_BEFORE と TMP_AFTER 自身を除外する
+TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" | grep -v -F -e "$TMP_BEFORE" -e "$TMP_AFTER" || true)
 rm -f "$TMP_BEFORE" "$TMP_AFTER"
 
 if [ -z "$TMP_LEAKED" ]; then
