@@ -43,7 +43,9 @@ Issue URL が引数で渡された場合はそれを使用する。
 プロジェクト固有の設計ガイドがあれば参照する。
 
 ```bash
-ls .claude/planning-guides/ 2>/dev/null
+if [ -d .claude/planning-guides/ ]; then
+  ls .claude/planning-guides/
+fi
 ```
 
 ガイドが存在すれば関連するもののみ読み込む。
@@ -120,7 +122,7 @@ gh issue edit <番号> --body "<更新後の本文>"
 - 計画は `.claude/plans/` ディレクトリに出力する
 - Issue 本文の更新は設計セクションのみ。既存の💡概要、🎯背景等は保持する
 - **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
 
 ## 返却フォーマット
 
