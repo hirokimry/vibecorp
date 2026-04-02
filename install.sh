@@ -497,6 +497,16 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
+  # lib: フック共通ユーティリティをコピー（常に最新で上書き）
+  local lib_dir="${REPO_ROOT}/.claude/lib"
+  if [[ -d "${SCRIPT_DIR}/templates/claude/lib" ]]; then
+    mkdir -p "$lib_dir"
+    for src in "${SCRIPT_DIR}/templates/claude/lib/"*.sh; do
+      [[ -f "$src" ]] || continue
+      cp "$src" "${lib_dir}/$(basename "$src")"
+    done
+  fi
+
   # hooks: --update 時は 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
     [[ -f "$src" ]] || continue
