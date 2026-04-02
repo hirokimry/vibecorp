@@ -53,6 +53,8 @@ setup_project_dir() {
 
   # git リポジトリを初期化（git branch --show-current が動作するために必要）
   git init "$TMPDIR_ROOT" >/dev/null 2>&1
+  git -C "$TMPDIR_ROOT" config user.name "Test" >/dev/null 2>&1
+  git -C "$TMPDIR_ROOT" config user.email "test@example.com" >/dev/null 2>&1
   git -C "$TMPDIR_ROOT" commit --allow-empty -m "初期コミット" >/dev/null 2>&1
 }
 
