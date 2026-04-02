@@ -2275,42 +2275,49 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# /tmp 内の既存ファイルを記録
-# TMP_BEFORE/TMP_AFTER 自身が /tmp/tmp.* にマッチするため、比較時に除外する
+# テスト専用 TMPDIR を隔離して外部プロセスの影響を排除
+TMP_SANDBOX=$(mktemp -d)
 TMP_BEFORE=$(mktemp)
 TMP_AFTER=$(mktemp)
-ls /tmp/tmp.* 2>/dev/null | sort > "$TMP_BEFORE" || true
+find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_BEFORE"
 
 # ベーススナップショットを改変してマージをトリガーする
 echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
 
-bash "$INSTALL_SH" --update --preset standard 2>/dev/null || true
+EXIT_CODE=0
+TMPDIR="$TMP_SANDBOX" bash "$INSTALL_SH" --update --preset standard 2>/dev/null || EXIT_CODE=$?
 
-# /tmp 内の新規ファイルを確認
-ls /tmp/tmp.* 2>/dev/null | sort > "$TMP_AFTER" || true
-
-# diff で新規 tmp ファイルがないか確認
-# TMP_BEFORE と TMP_AFTER 自身を除外する
-TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" | grep -v -F -e "$TMP_BEFORE" -e "$TMP_AFTER" || true)
-rm -f "$TMP_BEFORE" "$TMP_AFTER"
-
-if [ -z "$TMP_LEAKED" ]; then
-  pass "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない"
+# exit code の検証（0 以外なら --update 自体が失敗している）
+if [ "$EXIT_CODE" -ne 0 ]; then
+  fail "AG1: --update コマンドが exit code $EXIT_CODE で失敗"
 else
-  fail "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない (リーク: $TMP_LEAKED)"
+  # 隔離 TMPDIR 内の新規ファイルを確認
+  find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_AFTER"
+
+  # diff で新規 tmp ファイルがないか確認
+  TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" | grep -v -F -e "$TMP_BEFORE" -e "$TMP_AFTER" || true)
+
+  if [ -z "$TMP_LEAKED" ]; then
+    pass "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない"
+  else
+    fail "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない (リーク: $TMP_LEAKED)"
+  fi
 fi
+rm -f "$TMP_BEFORE" "$TMP_AFTER"
+rm -rf "$TMP_SANDBOX"
 cleanup
 
 # AG2. merge_or_overwrite の trap 設定を静的検証
-# install.sh 内に trap による tmp クリーンアップが存在することを確認
-if grep -q 'trap.*rm.*tmp_current.*tmp_base.*tmp_other.*INT' "$INSTALL_SH"; then
+# merge_or_overwrite 関数本体を抽出してからスコープを限定して検証
+FUNC_BODY=$(sed -n '/^merge_or_overwrite()[[:space:]]*{/,/^}/p' "$INSTALL_SH")
+if echo "$FUNC_BODY" | grep -q 'trap.*rm.*tmp_current.*tmp_base.*tmp_other.*INT'; then
   pass "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
 else
   fail "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
 fi
 
-# AG3. trap リセットが merge_or_overwrite 内に存在することを確認
-if grep -q 'trap - INT TERM' "$INSTALL_SH"; then
+# AG3. trap リセットが merge_or_overwrite 関数内に存在することを確認
+if echo "$FUNC_BODY" | grep -q 'trap - INT TERM'; then
   pass "AG3: merge_or_overwrite の trap がリセットされている"
 else
   fail "AG3: merge_or_overwrite の trap がリセットされている"
