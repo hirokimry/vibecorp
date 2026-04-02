@@ -497,12 +497,13 @@ copy_managed_files() {
 
   mkdir -p "$hooks_dir" "$skills_dir"
 
-  # hooks/lib/: 共通ライブラリを常にコピー（上書き）
-  if [[ -d "${SCRIPT_DIR}/templates/claude/hooks/lib" ]]; then
-    mkdir -p "${hooks_dir}/lib"
-    for src in "${SCRIPT_DIR}/templates/claude/hooks/lib/"*.sh; do
+  # lib: フック共通ユーティリティをコピー（常に最新で上書き）
+  local lib_dir="${REPO_ROOT}/.claude/lib"
+  if [[ -d "${SCRIPT_DIR}/templates/claude/lib" ]]; then
+    mkdir -p "$lib_dir"
+    for src in "${SCRIPT_DIR}/templates/claude/lib/"*.sh; do
       [[ -f "$src" ]] || continue
-      cp "$src" "${hooks_dir}/lib/$(basename "$src")"
+      cp "$src" "${lib_dir}/$(basename "$src")"
     done
   fi
 
