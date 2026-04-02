@@ -27,9 +27,11 @@ normalize_command() {
   local first_token
   first_token=$(echo "$cmd" | awk '{print $1}')
   if [[ "$first_token" == */* ]]; then
-    local base_cmd
+    local base_cmd rest
     base_cmd=$(basename "$first_token")
-    cmd="$base_cmd $(echo "$cmd" | awk '{$1=""; print}' | sed 's/^ *//')"
+    rest=$(echo "$cmd" | awk '{$1=""; print}' | sed 's/^ *//')
+    cmd="$base_cmd"
+    [[ -n "$rest" ]] && cmd="${cmd} ${rest}"
   fi
   echo "$cmd"
 }
