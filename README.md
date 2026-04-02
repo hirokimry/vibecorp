@@ -64,7 +64,7 @@ path/to/vibecorp/install.sh --update
 | プリセット | スキル | フック | エージェント | ユースケース |
 |---|---|---|---|---|
 | **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree | protect-files, block-api-bypass, team-auto-approve | なし | 個人〜小規模 |
-| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate | CTO, CPO | チーム開発 |
+| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
 | **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
@@ -158,6 +158,7 @@ your-project/
 | `review-to-rules-gate.sh` | standard 以上 | `Bash`（`gh pr merge`） | PR マージ | `/review-to-rules` を実行してスタンプを取得 |
 | `sync-gate.sh` | standard 以上 | `Bash`（`git push`） | push | `/sync-check` を実行してスタンプを取得 |
 | `session-harvest-gate.sh` | standard 以上 | `Bash`（`gh pr merge`） | PR マージ | `/session-harvest` を実行してスタンプを取得 |
+| `review-gate.sh` | standard 以上 | `Bash`（`gh pr create`） | PR 作成 | `/review-loop` または `/review` を実行してスタンプを取得 |
 
 ### API バイパス防止型
 
@@ -182,6 +183,7 @@ your-project/
 | `sync-gate.sh` | `git push` | `/sync-check` | `/tmp/.{project}-sync-ok` |
 | `review-to-rules-gate.sh` | `gh pr merge` | `/review-to-rules` | `/tmp/.{project}-review-to-rules-ok` |
 | `session-harvest-gate.sh` | `gh pr merge` | `/session-harvest` | `/tmp/.{project}-session-harvest-ok` |
+| `review-gate.sh` | `gh pr create` | `/review-loop` または `/review` | `/tmp/.{project}-review-ok` |
 
 ゲートフックは `vibecorp.yml` の `hooks:` セクションで個別に無効化できる。
 
@@ -434,7 +436,8 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
         "matcher": "Bash",
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-to-rules-gate.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh" }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-gate.sh" }
         ]
       }
     ]
