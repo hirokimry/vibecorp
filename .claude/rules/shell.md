@@ -13,11 +13,21 @@
   - 絶対パス/相対パスを `basename` で正規化
 - 正規化せずに文字列比較すると簡単にバイパスされる
 
-## sed の BSD / GNU 互換
+## `sed -i` を使わない（BSD/GNU 互換）
 
-- `sed -i` は BSD（macOS）と GNU（Linux）で構文が異なる
-- 安全なパターン: `sed '...' file > file.tmp && mv file.tmp file`
-- `install.sh` 等のクロスプラットフォームスクリプトでは `sed -i` を使わない
+- `sed -i` は macOS (BSD) と Linux (GNU) で引数の形式が異なり、移植性がない
+  - GNU: `sed -i 's/old/new/' file`
+  - BSD: `sed -i '' 's/old/new/' file`
+- クロスプラットフォームで動作させるには、対象ファイルと同一ディレクトリで一時ファイルを作るパターンを使う:
+
+```bash
+# 推奨パターン: 対象ファイルと同一ディレクトリに一時ファイルを作成してから置換
+# （同一ファイルシステムなので mv が原子的に動作する）
+tmp="$(mktemp "$(dirname "$file")/.${file##*/}.XXXXXX")"
+sed 's/old/new/' "$file" > "$tmp" && mv "$tmp" "$file"
+```
+
+- `sed -i` はスクリプト内で使用禁止とする
 
 ## jq フィルタでのフック名マッチング
 
