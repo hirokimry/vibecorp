@@ -284,7 +284,7 @@ git merge-tree $(git merge-base HEAD <branch_a>) HEAD <branch_a>
 - **worktree 作成（`git worktree add`）が失敗した場合は該当 Issue をスキップ**し、他の Issue の処理は継続する
 - `--force`、`--hard`、`--no-verify` は使用しない
 - ユーザーの明示的な指示なしに force push しない
-- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - 介入ポイントではユーザーの指示を待つ（自動でスキップしない）
 - 1つの Issue の失敗で他の並列実行を中断しない
