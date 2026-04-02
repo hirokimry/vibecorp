@@ -319,6 +319,9 @@ assert_file_contains "settings.json に hooks 構造" "$R/.claude/settings.json"
 assert_file_contains "settings.json のフックパス" "$R/.claude/settings.json" '.claude/hooks/'
 assert_file_not_contains "settings.json に旧パスなし" "$R/.claude/settings.json" '.claude/vibecorp/'
 
+# E9b. settings.json に team-auto-approve.sh が含まれる
+assert_file_contains "settings.json に team-auto-approve" "$R/.claude/settings.json" "team-auto-approve.sh"
+
 # E10. .claude/rules/ にファイル存在
 RULES_COUNT=$(find "$R/.claude/rules" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
 if [ "$RULES_COUNT" -gt 0 ]; then
