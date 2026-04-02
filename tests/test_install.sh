@@ -251,6 +251,7 @@ assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
 EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → update 成功" "0" "$EXIT_CODE"
 assert_file_contains "full: update 後も preset: full" "$R/.claude/vibecorp.yml" "preset: full"
+assert_file_contains "full: update 後も settings.json に team-auto-approve" "$R/.claude/settings.json" "team-auto-approve.sh"
 cleanup
 
 # ============================================
