@@ -629,6 +629,7 @@ copy_managed_files() {
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -f "${hooks_dir}/session-harvest-gate.sh"
+      rm -f "${hooks_dir}/review-gate.sh"
       rm -f "${hooks_dir}/role-gate.sh"
       rm -f "${hooks_dir}/diagnose-guard.sh"
       rm -rf "${skills_dir}/review-to-rules"
@@ -980,7 +981,7 @@ generate_settings_json() {
       new_settings=$(echo "$new_settings" | jq '
         .hooks.PreToolUse |= [
           .[]
-          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("session-harvest-gate") | not) and (.command | contains("role-gate") | not) and (.command | contains("diagnose-guard") | not))]
+          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("session-harvest-gate") | not) and (.command | contains("review-gate") | not) and (.command | contains("role-gate") | not) and (.command | contains("diagnose-guard") | not))]
           | select((.hooks | length) > 0)
         ]
       ')
