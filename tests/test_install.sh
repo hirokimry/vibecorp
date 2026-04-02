@@ -1357,6 +1357,49 @@ bash "$INSTALL_SH" --update 2>/dev/null
 
 assert_file_contains "--update でも docs はスキップ" "$R/docs/specification.md" "ユーザー編集済み仕様書"
 
+# X8b. --update でも既存 docs の全ファイルがスキップされる（複数ファイル検証）
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# 全 docs ファイルにユーザー編集内容を書き込む
+echo "# ユーザー編集済みポリシー" > "$R/docs/POLICY.md"
+echo "# ユーザー編集済みセキュリティ" > "$R/docs/SECURITY.md"
+echo "# ユーザー編集済みコスト分析" > "$R/docs/cost-analysis.md"
+echo "# ユーザー編集済みAI組織" > "$R/docs/ai-organization.md"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "--update でも POLICY.md はスキップ" "$R/docs/POLICY.md" "ユーザー編集済みポリシー"
+assert_file_contains "--update でも SECURITY.md はスキップ" "$R/docs/SECURITY.md" "ユーザー編集済みセキュリティ"
+assert_file_contains "--update でも cost-analysis.md はスキップ" "$R/docs/cost-analysis.md" "ユーザー編集済みコスト分析"
+assert_file_contains "--update でも ai-organization.md はスキップ" "$R/docs/ai-organization.md" "ユーザー編集済みAI組織"
+
+# X8c. --update でも既存 workflows ファイルはスキップされる（ユーザーカスタマイズ保護）
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# workflows ファイルにユーザー編集内容を書き込む
+echo "# ユーザー編集済みテストワークフロー" > "$R/.github/workflows/test.yml"
+echo "# ユーザー編集済み自動アサイン" > "$R/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "--update でも test.yml はスキップ" "$R/.github/workflows/test.yml" "ユーザー編集済みテストワークフロー"
+assert_file_contains "--update でも auto-assign.yml はスキップ" "$R/.github/workflows/auto-assign.yml" "ユーザー編集済み自動アサイン"
+
+# X8d. --update で workflows に新規ファイルが追加された場合はコピーされる
+cleanup
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# 既存ワークフローを1つ削除して --update を実行
+rm "$R/.github/workflows/auto-assign.yml"
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_exists "--update で欠落した auto-assign.yml が再コピーされる" "$R/.github/workflows/auto-assign.yml"
+# 既存の test.yml は変わらない
+assert_file_exists "--update 後も test.yml は存在する" "$R/.github/workflows/test.yml"
+
 # X9. vibecorp.lock に docs: セクションが含まれる
 cleanup
 create_test_repo
@@ -2200,6 +2243,41 @@ if [ "$CALL_COUNT" -eq 1 ]; then
   pass "update_vibecorp_yml は main() 内で1回だけ呼ばれている"
 else
   fail "update_vibecorp_yml が main() 内で ${CALL_COUNT} 回呼ばれている（期待: 1回）"
+fi
+
+# ============================================
+echo "=== AF. exec 前の trap EXIT 設定 ==="
+# ============================================
+
+# AF1. checkout_target_version 内で trap が exec より前に設定されていること
+# exec でプロセスが置き換わると trap EXIT が失われるため、exec 前に trap を設定する必要がある
+TRAP_LINE=$(grep -n "trap 'restore_original_ref' EXIT" "$INSTALL_SH" | head -1 | cut -d: -f1)
+EXEC_LINE=$(grep -n 'exec bash.*install\.sh' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$TRAP_LINE" ] && [ -n "$EXEC_LINE" ] && [ "$TRAP_LINE" -lt "$EXEC_LINE" ]; then
+  pass "AF1: trap EXIT が exec より前の行に設定されている (trap:${TRAP_LINE} < exec:${EXEC_LINE})"
+else
+  fail "AF1: trap EXIT が exec より前の行に設定されている (trap:${TRAP_LINE:-未検出} exec:${EXEC_LINE:-未検出})"
+fi
+
+# AF2. main() 内に冗長な trap 'restore_original_ref' EXIT が残っていないこと
+MAIN_START=$(grep -n '^main()' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$MAIN_START" ]; then
+  TRAP_IN_MAIN=$(tail -n +"$MAIN_START" "$INSTALL_SH" | grep -c "trap 'restore_original_ref' EXIT" || true)
+  if [ "$TRAP_IN_MAIN" -eq 0 ]; then
+    pass "AF2: main() 内に冗長な trap EXIT が残っていない"
+  else
+    fail "AF2: main() 内に冗長な trap EXIT が残っている (${TRAP_IN_MAIN}件)"
+  fi
+else
+  fail "AF2: main() 関数が見つからない"
+fi
+
+# AF3. trap が checkout_target_version 関数内に定義されていること
+FUNC_START=$(grep -n '^checkout_target_version()' "$INSTALL_SH" | head -1 | cut -d: -f1)
+if [ -n "$FUNC_START" ] && [ -n "$TRAP_LINE" ] && [ "$TRAP_LINE" -gt "$FUNC_START" ]; then
+  pass "AF3: trap EXIT が checkout_target_version 関数内に定義されている"
+else
+  fail "AF3: trap EXIT が checkout_target_version 関数内に定義されている"
 fi
 
 # ============================================
