@@ -16,9 +16,15 @@ jobs:
     steps:
       - name: 全 open PR のブランチを更新
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT }}
         run: |
           set -euo pipefail
+
+          # PAT 未設定時はスキップ
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::PAT シークレットが未設定のためスキップします。README の「PAT セットアップ」セクションを参照してください。"
+            exit 0
+          fi
 
           REPO="${{ github.repository }}"
 
@@ -31,8 +37,10 @@ jobs:
           fi
 
           UPDATED=0
+          CONFLICT=0
           SKIPPED=0
           FAILED=0
+          CONFLICT_PRS=""
 
           for PR in $PR_NUMBERS; do
             echo "--- PR #${PR} を更新中 ---"
@@ -43,33 +51,38 @@ jobs:
               exit 1
             fi
 
-            # ブランチ更新（HTTP ステータスで分岐）
-            HTTP_STATUS=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
+            # ブランチ更新（終了コード + レスポンスボディで分岐）
+            RESPONSE=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
               --method PUT \
-              --field expected_head_sha="${HEAD_SHA}" \
-              --include 2>&1 | head -1 | awk '{print $2}') || true
-
-            case "${HTTP_STATUS}" in
-              202)
-                echo "PR #${PR}: 更新成功"
-                UPDATED=$((UPDATED + 1))
-                ;;
-              422)
-                echo "PR #${PR}: 更新スキップ（コンフリクトまたは更新不要）"
+              --field expected_head_sha="${HEAD_SHA}" 2>&1) && {
+              echo "PR #${PR}: 更新成功"
+              UPDATED=$((UPDATED + 1))
+            } || {
+              if echo "${RESPONSE}" | grep -qi "merge conflict"; then
+                echo "PR #${PR}: コンフリクトのためスキップ"
+                CONFLICT=$((CONFLICT + 1))
+                CONFLICT_PRS="${CONFLICT_PRS} #${PR}"
+              elif echo "${RESPONSE}" | grep -qi "already up to date"; then
+                echo "PR #${PR}: 既に最新"
                 SKIPPED=$((SKIPPED + 1))
-                ;;
-              *)
-                echo "PR #${PR}: 更新失敗（HTTP ${HTTP_STATUS}）"
+              else
+                echo "PR #${PR}: 更新失敗 — ${RESPONSE}"
                 FAILED=$((FAILED + 1))
-                ;;
-            esac
+              fi
+            }
           done
 
           echo ""
           echo "=== 結果 ==="
           echo "更新成功: ${UPDATED} 件"
-          echo "スキップ: ${SKIPPED} 件"
+          echo "コンフリクト: ${CONFLICT} 件"
+          echo "スキップ（既に最新）: ${SKIPPED} 件"
           echo "失敗: ${FAILED} 件"
+
+          if [ -n "${CONFLICT_PRS}" ]; then
+            echo ""
+            echo "コンフリクト PR:${CONFLICT_PRS}"
+          fi
 
           if [ "${FAILED}" -gt 0 ]; then
             exit 1
