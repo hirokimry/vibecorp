@@ -43,7 +43,9 @@ Issue URL が引数で渡された場合はそれを使用する。
 プロジェクト固有の設計ガイドがあれば参照する。
 
 ```bash
-ls .claude/planning-guides/ 2>/dev/null
+if [ -d .claude/planning-guides/ ]; then
+  ls .claude/planning-guides/
+fi
 ```
 
 ガイドが存在すれば関連するもののみ読み込む。
