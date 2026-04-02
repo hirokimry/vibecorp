@@ -27,7 +27,7 @@ assert_contains() {
   local desc="$1"
   local haystack="$2"
   local needle="$3"
-  if echo "$haystack" | grep -q "$needle"; then
+  if printf '%s\n' "$haystack" | grep -q "$needle"; then
     pass "$desc"
   else
     fail "$desc (パターン '$needle' が見つからない)"
@@ -38,7 +38,7 @@ assert_not_contains() {
   local desc="$1"
   local haystack="$2"
   local needle="$3"
-  if echo "$haystack" | grep -q "$needle"; then
+  if printf '%s\n' "$haystack" | grep -q "$needle"; then
     fail "$desc (パターン '$needle' が見つかった)"
   else
     pass "$desc"
@@ -53,6 +53,18 @@ assert_equals() {
     pass "$desc"
   else
     fail "$desc (期待: '$expected', 実際: '$actual')"
+  fi
+}
+
+# ファイルに対して直接 grep する（大きなファイルの変数展開問題を回避）
+assert_file_contains() {
+  local desc="$1"
+  local file="$2"
+  local needle="$3"
+  if grep -q "$needle" "$file"; then
+    pass "$desc"
+  else
+    fail "$desc (パターン '$needle' がファイル '$file' に見つからない)"
   fi
 }
 
@@ -142,12 +154,10 @@ echo "=== README PAT セクションテスト ==="
 README_FILE="$(cd "$(dirname "$0")/.." && pwd)/README.md"
 
 test_readme_has_pat_section() {
-  local content
-  content=$(cat "$README_FILE")
-  assert_contains "PAT セットアップセクションがある" "$content" '## PAT セットアップ'
-  assert_contains "Fine-grained PAT の作成手順がある" "$content" 'Fine-grained PAT'
-  assert_contains "gh secret set コマンドがある" "$content" 'gh secret set PAT'
-  assert_contains "注意事項セクションがある" "$content" '### 注意事項'
+  assert_file_contains "PAT セットアップセクションがある" "$README_FILE" '## PAT セットアップ'
+  assert_file_contains "Fine-grained PAT の作成手順がある" "$README_FILE" 'Fine-grained PAT'
+  assert_file_contains "gh secret set コマンドがある" "$README_FILE" 'gh secret set PAT'
+  assert_file_contains "注意事項セクションがある" "$README_FILE" '### 注意事項'
 }
 
 test_readme_has_pat_section
