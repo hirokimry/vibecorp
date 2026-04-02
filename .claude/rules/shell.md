@@ -18,18 +18,13 @@
 - `sed -i` は macOS (BSD) と Linux (GNU) で引数の形式が異なり、移植性がない
   - GNU: `sed -i 's/old/new/' file`
   - BSD: `sed -i '' 's/old/new/' file`
-- クロスプラットフォームで動作させるには、一時ファイル経由のパターンを使う:
+- クロスプラットフォームで動作させるには、対象ファイルと同一ディレクトリで一時ファイルを作るパターンを使う:
 
 ```bash
-# 安全パターン: sed の出力を一時ファイルに書き出してから置換
-sed 's/old/new/' file > file.tmp && mv file.tmp file
-```
-
-- `mktemp` を使うとより安全:
-
-```bash
-tmp=$(mktemp)
-sed 's/old/new/' file > "$tmp" && mv "$tmp" file
+# 推奨パターン: 対象ファイルと同一ディレクトリに一時ファイルを作成してから置換
+# （同一ファイルシステムなので mv が原子的に動作する）
+tmp="$(mktemp "$(dirname "$file")/.${file##*/}.XXXXXX")"
+sed 's/old/new/' "$file" > "$tmp" && mv "$tmp" "$file"
 ```
 
 - `sed -i` はスクリプト内で使用禁止とする
