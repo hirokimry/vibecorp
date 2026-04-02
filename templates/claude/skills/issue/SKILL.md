@@ -87,7 +87,7 @@ gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee
 
 ## ⚠️ 制約
 
-- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
 - リポジトリに存在しないラベルは `--label` に渡さない（`gh issue create` がエラーになるため）
 - `vibecorp.yml` が存在しない、または `issue.default_assignee` が未定義でも正常に動作すること
