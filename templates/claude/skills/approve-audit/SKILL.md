@@ -34,13 +34,17 @@ cat "/tmp/.{project}-command-log"
 ## 2. settings.local.json の allow パターン取得
 
 ```bash
-cat "$CLAUDE_PROJECT_DIR"/.claude/settings.local.json
+if [ -f "$CLAUDE_PROJECT_DIR"/.claude/settings.local.json ]; then
+  cat "$CLAUDE_PROJECT_DIR"/.claude/settings.local.json
+else
+  echo '{"permissions":{"allow":[]}}'
+fi
 ```
 
-ファイルが存在しない場合は、allow リストが空として扱う。
+ファイルが存在しない場合、または `permissions.allow` が空の場合は空リストとして扱う。
 
 `permissions.allow` 配列の各エントリを取得する。パターンの形式:
-- `Bash(command:*)` — コマンドプレフィックスマッチ
+- `Bash(prefix:*)` — コマンドプレフィックスマッチ
 - `Bash(exact command)` — 完全一致
 
 ## 3. 未許可コマンドの抽出
@@ -108,7 +112,9 @@ cat "$CLAUDE_PROJECT_DIR"/.claude/settings.local.json
 
 書き込み後、追加されたパターンを報告する。
 
-## 7. ログファイルのクリア
+## 7. ログファイルのクリア（任意）
+
+ユーザーに「ログファイルを削除しますか？」と確認し、承認された場合のみ削除する:
 
 ```bash
 rm -f "/tmp/.{project}-command-log"
