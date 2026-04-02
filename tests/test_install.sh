@@ -2296,8 +2296,18 @@ TMP_BEFORE=$(mktemp)
 TMP_AFTER=$(mktemp)
 find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_BEFORE"
 
-# ベーススナップショットを改変してマージをトリガーする
+# 3-way merge 分岐に入るための条件を整える:
+# 1. current_hash != base_hash（ユーザーがカスタマイズした状態）
+# 2. template_hash != base_hash（テンプレートも変更された状態）
+# まず current ファイルを改変してカスタマイズ済みにする
+echo "# ユーザーによるカスタマイズ" >> "$R/.claude/rules/comments.md"
+# ベーススナップショットを改変してテンプレート変更を模擬する
 echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+# vibecorp.lock の base_hashes を更新して current_hash != base_hash にする
+NEW_BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+LOCK_FILE="$R/.claude/vibecorp.lock"
+ORIG_HASH=$(grep 'rules/comments\.md:' "$LOCK_FILE" | awk '{print $2}')
+sed "s/${ORIG_HASH}/${NEW_BASE_HASH}/" "$LOCK_FILE" > "${LOCK_FILE}.tmp" && mv "${LOCK_FILE}.tmp" "$LOCK_FILE"
 
 EXIT_CODE=0
 TMPDIR="$TMP_SANDBOX" bash "$INSTALL_SH" --update --preset standard 2>/dev/null || EXIT_CODE=$?
