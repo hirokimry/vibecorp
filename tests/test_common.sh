@@ -89,7 +89,7 @@ EXPECTED=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
 RESULT=$(CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case4" source "$COMMON_SH" && CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case4" get_project_name)
 assert_eq "name に特殊文字 → サニタイズされる" "$EXPECTED" "$RESULT"
 
-# 5. name にスペースのみ → サニタイズ後は '_' のみ（空ではない）
+# 5. name にクォート付きスペースのみ → awk がクォート込みで返し、tr でサニタイズされて "_" になる
 mkdir -p "${TMPDIR_TEST}/case5/.claude"
 cat > "${TMPDIR_TEST}/case5/.claude/vibecorp.yml" <<'YAML'
 name: "   "
@@ -97,14 +97,7 @@ preset: standard
 YAML
 
 RESULT=$(CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case5" source "$COMMON_SH" && CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case5" get_project_name)
-# awk が "   " をそのまま返し、tr でサニタイズされて "_" になる
-# ただしクォート付きの場合は awk の挙動次第
-if [ -n "$RESULT" ]; then
-  pass "name にスペースのみ → 空でない値を返す"
-else
-  # クォート処理で空になる場合はデフォルト
-  pass "name にスペースのみ → デフォルト名を返す"
-fi
+assert_eq "name にスペースのみ → サニタイズされて '_' を返す" "_" "$RESULT"
 
 # 6. CLAUDE_PROJECT_DIR 未設定 → カレントディレクトリの .claude/vibecorp.yml を参照
 echo "--- CLAUDE_PROJECT_DIR 未設定 ---"
