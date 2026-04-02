@@ -2267,10 +2267,10 @@ fi
 
 # ============================================
 echo ""
-echo "=== AF. merge_or_overwrite の tmp ファイルリーク検証 ==="
+echo "=== AG. merge_or_overwrite の tmp ファイルリーク検証 ==="
 # ============================================
 
-# AF1. merge_or_overwrite が正常終了時に tmp ファイルを残さないことを検証
+# AG1. merge_or_overwrite が正常終了時に tmp ファイルを残さないことを検証
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -2295,25 +2295,25 @@ TMP_LEAKED=$(comm -13 "$TMP_BEFORE" "$TMP_AFTER" | grep -v -F -e "$TMP_BEFORE" -
 rm -f "$TMP_BEFORE" "$TMP_AFTER"
 
 if [ -z "$TMP_LEAKED" ]; then
-  pass "AF1: merge_or_overwrite が正常終了時に tmp ファイルを残さない"
+  pass "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない"
 else
-  fail "AF1: merge_or_overwrite が正常終了時に tmp ファイルを残さない (リーク: $TMP_LEAKED)"
+  fail "AG1: merge_or_overwrite が正常終了時に tmp ファイルを残さない (リーク: $TMP_LEAKED)"
 fi
 cleanup
 
-# AF2. merge_or_overwrite の trap 設定を静的検証
+# AG2. merge_or_overwrite の trap 設定を静的検証
 # install.sh 内に trap による tmp クリーンアップが存在することを確認
 if grep -q 'trap.*rm.*tmp_current.*tmp_base.*tmp_other.*INT' "$INSTALL_SH"; then
-  pass "AF2: merge_or_overwrite に SIGINT 用の trap が設定されている"
+  pass "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
 else
-  fail "AF2: merge_or_overwrite に SIGINT 用の trap が設定されている"
+  fail "AG2: merge_or_overwrite に SIGINT 用の trap が設定されている"
 fi
 
-# AF3. trap リセットが merge_or_overwrite 内に存在することを確認
+# AG3. trap リセットが merge_or_overwrite 内に存在することを確認
 if grep -q 'trap - INT TERM' "$INSTALL_SH"; then
-  pass "AF3: merge_or_overwrite の trap がリセットされている"
+  pass "AG3: merge_or_overwrite の trap がリセットされている"
 else
-  fail "AF3: merge_or_overwrite の trap がリセットされている"
+  fail "AG3: merge_or_overwrite の trap がリセットされている"
 fi
 
 # ============================================
