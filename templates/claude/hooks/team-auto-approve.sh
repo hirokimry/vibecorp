@@ -102,11 +102,32 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     exit 0
   fi
 
-  # 安全なコマンドリスト
+  # bash はファイル実行（bash *.sh）のみ許可。-c による任意コード実行はブロック
+  if [ "$base_cmd" = "bash" ]; then
+    # 複合オプション（-xc, -vc 等）も検出するため -[a-zA-Z]*[cs] にマッチ
+    if echo "$normalized" | grep -qE '(^|[[:space:]])-[a-zA-Z]*[cs]'; then
+      exit 0
+    fi
+    jq -n '{
+      "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "allow"
+      }
+    }'
+    exit 0
+  fi
+
+  # 安全なコマンドリスト（任意実行・外部通信不可のコマンドのみ）
   case "$base_cmd" in
-    cd|git|gh|ls|cat|head|tail|echo|printf|grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|test|true|false|\
-    basename|dirname|realpath|readlink|mkdir|cp|mv|touch|chmod|tree|node|npm|npx|python3|pip3|\
-    bash|rsync|coderabbit|for|while|do|done|xargs|source|export)
+    cd|ls|pwd|cat|head|tail|echo|printf|test|true|false|\
+    grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|comm|rev|paste|jq|\
+    git|gh|cr|coderabbit|shellcheck|\
+    basename|dirname|realpath|readlink|stat|file|which|type|id|whoami|hostname|\
+    mkdir|cp|mv|touch|chmod|mktemp|rmdir|\
+    source|export|set|shopt|for|while|do|done|xargs|\
+    npm|npx|\
+    rsync|tar|zip|unzip|tree|\
+    date|sleep)
       jq -n '{
         "hookSpecificOutput": {
           "hookEventName": "PreToolUse",
