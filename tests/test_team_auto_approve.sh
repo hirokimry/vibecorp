@@ -154,9 +154,9 @@ assert_auto_approved "gh pr view → 自動承認" "$OUTPUT"
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"npm install"}}' | run_hook)
 assert_auto_approved "npm install → 自動承認" "$OUTPUT"
 
-# 23. python3 script.py → 自動承認
+# 23. python3 script.py → 任意コード実行のため自動承認しない
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"python3 script.py"}}' | run_hook)
-assert_auto_approved "python3 script.py → 自動承認" "$OUTPUT"
+assert_not_auto_approved "python3 script.py → 自動承認しない" "$OUTPUT"
 
 # 24. 環境変数プレフィックス付き安全コマンド → 自動承認
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"NODE_ENV=test npm test"}}' | run_hook)
@@ -207,9 +207,9 @@ assert_not_auto_approved "--no-verify フラグ → 自動承認しない" "$OUT
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git push --delete origin branch"}}' | run_hook)
 assert_not_auto_approved "--delete フラグ → 自動承認しない" "$OUTPUT"
 
-# 35. リストにないコマンド(curl) → 自動承認しない
-OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"curl https://example.com"}}' | run_hook)
-assert_not_auto_approved "リストにないコマンド(curl) → 自動承認しない" "$OUTPUT"
+# 35. リストにないコマンド(nc) → 自動承認しない
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"nc -l 8080"}}' | run_hook)
+assert_not_auto_approved "リストにないコマンド(nc) → 自動承認しない" "$OUTPUT"
 
 # 36. command が空 → 自動承認しない
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":""}}' | run_hook)
