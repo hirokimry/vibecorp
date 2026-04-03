@@ -1632,6 +1632,7 @@ R="$TMPDIR_ROOT"
 assert_file_contains "ユーザー独自エントリが保持される" "$R/.claude/.gitignore" "my-local-stuff/"
 assert_file_contains "plans/ が追記される" "$R/.claude/.gitignore" "plans/"
 assert_file_contains "lib/ が追記される" "$R/.claude/.gitignore" "lib/"
+assert_file_contains "vibecorp-base/ が追記される" "$R/.claude/.gitignore" "vibecorp-base/"
 
 cleanup
 
