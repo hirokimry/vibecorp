@@ -207,9 +207,9 @@ assert_not_auto_approved "--no-verify フラグ → 自動承認しない" "$OUT
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git push --delete origin branch"}}' | run_hook)
 assert_not_auto_approved "--delete フラグ → 自動承認しない" "$OUTPUT"
 
-# 35. リストにないコマンド(curl) → 自動承認しない
-OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"curl https://example.com"}}' | run_hook)
-assert_not_auto_approved "リストにないコマンド(curl) → 自動承認しない" "$OUTPUT"
+# 35. リストにないコマンド(nc) → 自動承認しない
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"nc -l 8080"}}' | run_hook)
+assert_not_auto_approved "リストにないコマンド(nc) → 自動承認しない" "$OUTPUT"
 
 # 36. command が空 → 自動承認しない
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":""}}' | run_hook)

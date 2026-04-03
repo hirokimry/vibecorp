@@ -104,9 +104,16 @@ if [ "$TOOL_NAME" = "Bash" ]; then
 
   # 安全なコマンドリスト
   case "$base_cmd" in
-    cd|git|gh|ls|cat|head|tail|echo|printf|grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|test|true|false|\
-    basename|dirname|realpath|readlink|mkdir|cp|mv|touch|chmod|tree|node|npm|npx|python3|pip3|\
-    bash|rsync|coderabbit|for|while|do|done|xargs|source|export)
+    cd|ls|pwd|cat|head|tail|echo|printf|test|true|false|"["|"[["|\
+    grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|comm|rev|paste|jq|\
+    git|gh|cr|coderabbit|shellcheck|\
+    basename|dirname|realpath|readlink|stat|file|which|type|id|whoami|hostname|\
+    mkdir|cp|mv|ln|touch|chmod|mktemp|rmdir|\
+    bash|sh|env|source|export|set|shopt|for|while|do|done|xargs|\
+    node|npm|npx|python3|pip3|python|\
+    rsync|curl|wget|tar|zip|unzip|tree|\
+    docker|docker-compose|\
+    date|sleep)
       jq -n '{
         "hookSpecificOutput": {
           "hookEventName": "PreToolUse",
