@@ -104,7 +104,8 @@ if [ "$TOOL_NAME" = "Bash" ]; then
 
   # bash はファイル実行（bash *.sh）のみ許可。-c による任意コード実行はブロック
   if [ "$base_cmd" = "bash" ]; then
-    if echo "$normalized" | grep -qE '(^| )-[ceilns]'; then
+    # 複合オプション（-xc, -vc 等）も検出するため -[a-zA-Z]*[cs] にマッチ
+    if echo "$normalized" | grep -qE '(^|[[:space:]])-[a-zA-Z]*[cs]'; then
       exit 0
     fi
     jq -n '{
