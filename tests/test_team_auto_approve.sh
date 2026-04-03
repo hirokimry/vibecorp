@@ -154,9 +154,9 @@ assert_auto_approved "gh pr view → 自動承認" "$OUTPUT"
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"npm install"}}' | run_hook)
 assert_auto_approved "npm install → 自動承認" "$OUTPUT"
 
-# 23. python3 script.py → 自動承認
+# 23. python3 script.py → 任意コード実行のため自動承認しない
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"python3 script.py"}}' | run_hook)
-assert_auto_approved "python3 script.py → 自動承認" "$OUTPUT"
+assert_not_auto_approved "python3 script.py → 自動承認しない" "$OUTPUT"
 
 # 24. 環境変数プレフィックス付き安全コマンド → 自動承認
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"NODE_ENV=test npm test"}}' | run_hook)
