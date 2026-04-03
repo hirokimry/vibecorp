@@ -1612,6 +1612,8 @@ R="$TMPDIR_ROOT"
 
 assert_file_exists ".claude/.gitignore が生成される" "$R/.claude/.gitignore"
 assert_file_contains ".gitignore に plans/" "$R/.claude/.gitignore" "plans/"
+assert_file_contains ".gitignore に lib/" "$R/.claude/.gitignore" "lib/"
+assert_file_contains ".gitignore に vibecorp-base/" "$R/.claude/.gitignore" "vibecorp-base/"
 assert_file_not_contains ".gitignore に memory/ なし" "$R/.claude/.gitignore" "memory/"
 assert_file_not_contains ".gitignore に tickets/ なし" "$R/.claude/.gitignore" "tickets/"
 
@@ -1629,6 +1631,8 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "ユーザー独自エントリが保持される" "$R/.claude/.gitignore" "my-local-stuff/"
 assert_file_contains "plans/ が追記される" "$R/.claude/.gitignore" "plans/"
+assert_file_contains "lib/ が追記される" "$R/.claude/.gitignore" "lib/"
+assert_file_contains "vibecorp-base/ が追記される" "$R/.claude/.gitignore" "vibecorp-base/"
 
 cleanup
 

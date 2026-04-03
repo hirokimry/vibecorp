@@ -7,3 +7,5 @@ vibecorp.lock
 
 # 一時ファイル
 plans/
+vibecorp-base/
+lib/

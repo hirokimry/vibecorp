@@ -1249,7 +1249,7 @@ generate_claude_gitignore() {
   local target="${REPO_ROOT}/.claude/.gitignore"
 
   # vibecorp が管理する除外エントリ
-  local entries=("plans/" "vibecorp-base/")
+  local entries=("plans/" "vibecorp-base/" "lib/")
 
   if [[ -f "$target" ]]; then
     # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
@@ -1271,6 +1271,8 @@ generate_claude_gitignore() {
 plans/
 # アップデート時の 3-way マージ用ベーススナップショット
 vibecorp-base/
+# フック共通ライブラリ（テンプレートからコピーされる生成物）
+lib/
 GITIGNORE
   log_info ".claude/.gitignore を生成"
 }
