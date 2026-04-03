@@ -102,15 +102,29 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     exit 0
   fi
 
-  # 安全なコマンドリスト
+  # bash はファイル実行（bash *.sh）のみ許可。-c による任意コード実行はブロック
+  if [ "$base_cmd" = "bash" ]; then
+    if echo "$normalized" | grep -qE '(^| )-[ceilns]'; then
+      exit 0
+    fi
+    jq -n '{
+      "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "allow"
+      }
+    }'
+    exit 0
+  fi
+
+  # 安全なコマンドリスト（任意実行・外部通信不可のコマンドのみ）
   case "$base_cmd" in
     cd|ls|pwd|cat|head|tail|echo|printf|test|true|false|\
     grep|find|awk|sed|sort|uniq|wc|cut|tr|tee|diff|comm|rev|paste|jq|\
     git|gh|cr|coderabbit|shellcheck|\
     basename|dirname|realpath|readlink|stat|file|which|type|id|whoami|hostname|\
-    mkdir|cp|mv|ln|touch|chmod|mktemp|rmdir|\
-    bash|source|export|set|shopt|for|while|do|done|xargs|\
-    node|npm|npx|\
+    mkdir|cp|mv|touch|chmod|mktemp|rmdir|\
+    source|export|set|shopt|for|while|do|done|xargs|\
+    npm|npx|\
     rsync|tar|zip|unzip|tree|\
     date|sleep)
       jq -n '{
