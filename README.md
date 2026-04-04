@@ -142,7 +142,7 @@ your-project/
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
-| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。`/loop 12h /autopilot` で定期実行可能 |
+| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能 |
 
 ## フック一覧
 
