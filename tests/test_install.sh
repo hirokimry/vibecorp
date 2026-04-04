@@ -2362,6 +2362,118 @@ else
   fail "AG3: merge_or_overwrite の trap がリセットされている"
 fi
 
+
+# ============================================
+echo ""
+echo "=== AH. lock ファイル空リスト時のインデント ===" 
+# ============================================
+
+# AH1. 空リスト時に YAML の明示的空リスト表記 [] が使用される
+create_test_repo
+# テンプレートディレクトリを空にして空リストを再現
+# hooks/skills/agents テンプレートを退避
+TEMPLATES_BAK=$(mktemp -d)
+for tpl_dir in hooks skills agents; do
+  if [ -d "$SCRIPT_DIR/templates/claude/$tpl_dir" ]; then
+    cp -r "$SCRIPT_DIR/templates/claude/$tpl_dir" "$TEMPLATES_BAK/$tpl_dir"
+    rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
+    mkdir -p "$SCRIPT_DIR/templates/claude/$tpl_dir"
+  fi
+done
+
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=0
+R="$TMPDIR_ROOT"
+LOCK="$R/.claude/vibecorp.lock"
+
+if [ -f "$LOCK" ]; then
+  # 空リスト時は "hooks: []" のような表記であること（null ではない）
+  if grep -q 'hooks: \[\]' "$LOCK"; then
+    pass "AH1: 空リスト時に hooks: [] が出力される"
+  else
+    fail "AH1: 空リスト時に hooks: [] が出力される"
+  fi
+else
+  fail "AH1: 空リスト時に hooks: [] が出力される (lock ファイルが存在しない)"
+fi
+
+# テンプレート復元
+for tpl_dir in hooks skills agents; do
+  if [ -d "$TEMPLATES_BAK/$tpl_dir" ]; then
+    rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
+    mv "$TEMPLATES_BAK/$tpl_dir" "$SCRIPT_DIR/templates/claude/$tpl_dir"
+  fi
+done
+rm -rf "$TEMPLATES_BAK"
+cleanup
+
+# AH2. 空リスト時の lock を read_lock_list で正常に読み取れる
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+LOCK="$R/.claude/vibecorp.lock"
+# 空リストを含む lock ファイルを手動生成
+cat > "$LOCK" <<'LOCK_YAML'
+# vibecorp.lock — 自動生成、手動編集禁止
+version: 0.0.0
+installed_at: 2026-01-01T00:00:00+00:00
+preset: standard
+vibecorp_commit: abc1234
+files:
+  hooks: []
+  skills: []
+  agents: []
+  rules: []
+  issue_templates: []
+  docs: []
+  knowledge: []
+  base_hashes: {}
+LOCK_YAML
+
+
+
+# awk ベースの read_lock_list を直接テスト
+RESULT=$(awk -v section="hooks" '
+  /^  [a-z_]+:/ {
+    current = $1
+    gsub(/:$/, "", current)
+    next
+  }
+  current == section && /^    - / {
+    sub(/^    - /, "")
+    print
+  }
+' "$LOCK")
+
+if [ -z "$RESULT" ]; then
+  pass "AH2: 空リスト lock を read_lock_list で正常に読み取れる（空結果）"
+else
+  fail "AH2: 空リスト lock を read_lock_list で正常に読み取れる（空結果）"
+fi
+
+# AH3. 非空リスト時はインデント付きリストが出力される
+create_test_repo
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=0
+R="$TMPDIR_ROOT"
+LOCK="$R/.claude/vibecorp.lock"
+
+if [ -f "$LOCK" ]; then
+  # rules セクションには通常コピーされるファイルがある
+  # ファイルがある場合はリスト形式（- で始まる行）であること
+  if grep -q 'rules:' "$LOCK"; then
+    # rules: [] か rules: の後にリスト項目があるかのどちらか
+    if grep -q 'rules: \[\]' "$LOCK" || grep -A1 'rules:' "$LOCK" | grep -q '    - '; then
+      pass "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される"
+    else
+      fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される"
+    fi
+  else
+    fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される (rules セクションなし)"
+  fi
+else
+  fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される (lock なし)"
+fi
+cleanup
+
 # ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="

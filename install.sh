@@ -954,6 +954,34 @@ generate_vibecorp_lock() {
     done < <(find "$base_dir" -type f | sort)
   fi
 
+  # 空リスト時は YAML の明示的空リスト表記 [] を使用（null を防止）
+  _lock_list_section() {
+    local key="$1" items="$2"
+    if [[ -z "$items" ]]; then
+      printf '  %s: []\n' "$key"
+    else
+      printf '  %s:\n%s' "$key" "$items"
+    fi
+  }
+  _lock_map_section() {
+    local key="$1" items="$2"
+    if [[ -z "$items" ]]; then
+      printf '  %s: {}\n' "$key"
+    else
+      printf '  %s:\n%s' "$key" "$items"
+    fi
+  }
+
+  local files_block=""
+  files_block+=$(_lock_list_section "hooks" "$hooks_list")
+  files_block+=$(_lock_list_section "skills" "$skills_list")
+  files_block+=$(_lock_list_section "agents" "$agents_list")
+  files_block+=$(_lock_list_section "rules" "$rules_list")
+  files_block+=$(_lock_list_section "issue_templates" "$issue_templates_list")
+  files_block+=$(_lock_list_section "docs" "$docs_list")
+  files_block+=$(_lock_list_section "knowledge" "$knowledge_list")
+  files_block+=$(_lock_map_section "base_hashes" "$base_hashes")
+
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
 version: ${VIBECORP_VERSION}
@@ -961,15 +989,7 @@ installed_at: ${installed_at}
 preset: ${PRESET}
 vibecorp_commit: ${vibecorp_commit}
 files:
-  hooks:
-${hooks_list}  skills:
-${skills_list}  agents:
-${agents_list}  rules:
-${rules_list}  issue_templates:
-${issue_templates_list}  docs:
-${docs_list}  knowledge:
-${knowledge_list}  base_hashes:
-${base_hashes}
+${files_block}
 YAML
   log_info "vibecorp.lock を生成"
 }
