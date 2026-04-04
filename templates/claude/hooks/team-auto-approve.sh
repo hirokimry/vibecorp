@@ -105,7 +105,7 @@ is_safe_segment() {
   esac
 
   # 危険なフラグを検出
-  if echo "$normalized" | grep -qE '(--force|--hard|-rf|-fr|--no-verify|--delete)'; then
+  if echo "$normalized" | grep -qE '(--force|--hard|-rf|-fr|--no-verify|--delete|--rsh)'; then
     return 1
   fi
 

