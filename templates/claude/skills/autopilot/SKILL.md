@@ -1,0 +1,105 @@
+---
+name: autopilot
+description: "diagnose→ship の自律改善ループを1回実行する。Issue がなければ diagnose で起票し、あれば ship-parallel で実装する。「/autopilot」「自律改善」と言った時に使用。"
+---
+
+**ultrathink**
+
+# 自律改善
+
+`/diagnose` → `/ship-parallel` のサイクルを1回実行する。
+定期実行は `/loop 12h /autopilot` で行う。
+
+## 使用方法
+
+```bash
+/autopilot              # ship 前にユーザー確認（デフォルト）
+/autopilot --auto       # 確認なしで全自動
+/loop 12h /autopilot    # 12時間ごとに定期実行（確認あり）
+```
+
+## 前提条件
+
+- **full プリセット専用**（`/diagnose` と `/ship-parallel` が必要）
+- main ブランチにいること
+
+## ワークフロー
+
+### 1. プリセット確認
+
+```bash
+awk '/^preset:[[:space:]]*/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' .claude/vibecorp.yml
+```
+
+`full` 以外の場合は「/autopilot は full プリセット専用です」と報告して終了。
+
+### 2. ブランチ確認
+
+```bash
+git branch --show-current
+```
+
+main でない場合は「main ブランチに切り替えてください」と報告して終了。
+
+### 3. open な diagnose Issue を確認
+
+```bash
+gh issue list --label "diagnose" --state open --json number,title --jq '.[] | "#" + (.number | tostring) + ": " + .title'
+```
+
+### 4. Issue がない場合 → diagnose 実行
+
+open な diagnose Issue が0件の場合、`/diagnose` を実行して Issue を起票する。
+起票後、そのままステップ5に進む（起票した Issue を ship する）。
+
+### 5. COO による並列判定
+
+COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ3と同じ）。
+
+COO の分析結果に基づき、並列グループ・直列チェーン・保留に分類する。
+保留と判定された Issue は候補から除外する。
+
+### 6. ship 確認・実行
+
+#### 6a. デフォルト（確認あり）
+
+COO の分析結果と候補一覧をユーザーに提示する:
+
+```text
+## /autopilot 改善候補
+
+| # | Issue | タイトル |
+|---|-------|---------|
+| 1 | #218 | block-api-bypass.sh の専用テスト |
+| 2 | #219 | install.sh の lock ファイル空リスト |
+
+ship する Issue の番号を指定してください（例: 1,2）。
+全て ship: all / スキップ: skip
+```
+
+AskUserQuestion でユーザーの選択を取得する。
+
+- `skip` → 「スキップしました」で終了
+- 番号指定 or `all` → 選択された Issue を `/ship-parallel` で実行
+
+#### 6b. `--auto` モード
+
+ユーザー確認なしで、全 diagnose Issue を `/ship-parallel` に渡す。
+
+### 7. 結果報告
+
+```text
+## /autopilot 完了
+
+- diagnose Issue: {n}件
+- ship 実行: {n}件
+- スキップ: {n}件
+```
+
+## 制約
+
+- `--force`、`--hard`、`--no-verify` は使用しない
+- ユーザーの明示的な指示なしに force push しない
+- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する（[根拠](docs/design-philosophy.md#jq-string-interpolation-の禁止)）
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
+- デフォルトでは ship 前にユーザー確認を挟む（`--auto` で解除可能）
