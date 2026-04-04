@@ -973,14 +973,15 @@ generate_vibecorp_lock() {
   }
 
   local files_block=""
-  files_block+=$(_lock_list_section "hooks" "$hooks_list")
-  files_block+=$(_lock_list_section "skills" "$skills_list")
-  files_block+=$(_lock_list_section "agents" "$agents_list")
-  files_block+=$(_lock_list_section "rules" "$rules_list")
-  files_block+=$(_lock_list_section "issue_templates" "$issue_templates_list")
-  files_block+=$(_lock_list_section "docs" "$docs_list")
-  files_block+=$(_lock_list_section "knowledge" "$knowledge_list")
-  files_block+=$(_lock_map_section "base_hashes" "$base_hashes")
+  # $() は末尾改行を除去するため、各セクション連結時に明示的に改行を補う
+  files_block+="$(_lock_list_section "hooks" "$hooks_list")"$'\n'
+  files_block+="$(_lock_list_section "skills" "$skills_list")"$'\n'
+  files_block+="$(_lock_list_section "agents" "$agents_list")"$'\n'
+  files_block+="$(_lock_list_section "rules" "$rules_list")"$'\n'
+  files_block+="$(_lock_list_section "issue_templates" "$issue_templates_list")"$'\n'
+  files_block+="$(_lock_list_section "docs" "$docs_list")"$'\n'
+  files_block+="$(_lock_list_section "knowledge" "$knowledge_list")"$'\n'
+  files_block+="$(_lock_map_section "base_hashes" "$base_hashes")"$'\n'
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止

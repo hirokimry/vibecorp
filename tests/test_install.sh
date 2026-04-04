@@ -2381,7 +2381,7 @@ for tpl_dir in hooks skills agents; do
   fi
 done
 
-EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=0
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
 R="$TMPDIR_ROOT"
 LOCK="$R/.claude/vibecorp.lock"
 
@@ -2406,7 +2406,7 @@ done
 rm -rf "$TEMPLATES_BAK"
 cleanup
 
-# AH2. 空リスト時の lock を read_lock_list で正常に読み取れる
+# AH2. 空リスト lock がある状態で --update が正常に動作する
 create_test_repo
 R="$TMPDIR_ROOT"
 mkdir -p "$R/.claude"
@@ -2429,48 +2429,43 @@ files:
   base_hashes: {}
 LOCK_YAML
 
+# vibecorp.yml も必要（--update は REPO_ROOT/.claude/vibecorp.yml から設定を読む）
+cat > "$R/.claude/vibecorp.yml" <<'YML'
+name: test-proj
+preset: standard
+YML
 
+# --update で空リスト lock を読んでも正常終了することを検証
+EXIT_CODE=0; bash "$INSTALL_SH" --update 2>/dev/null || EXIT_CODE=$?
 
-# awk ベースの read_lock_list を直接テスト
-RESULT=$(awk -v section="hooks" '
-  /^  [a-z_]+:/ {
-    current = $1
-    gsub(/:$/, "", current)
-    next
-  }
-  current == section && /^    - / {
-    sub(/^    - /, "")
-    print
-  }
-' "$LOCK")
-
-if [ -z "$RESULT" ]; then
-  pass "AH2: 空リスト lock を read_lock_list で正常に読み取れる（空結果）"
+if [ "$EXIT_CODE" -eq 0 ] && [ -f "$LOCK" ]; then
+  pass "AH2: 空リスト lock がある状態で --update が正常に動作する"
 else
-  fail "AH2: 空リスト lock を read_lock_list で正常に読み取れる（空結果）"
+  fail "AH2: 空リスト lock がある状態で --update が正常に動作する (exit=$EXIT_CODE)"
 fi
 
-# AH3. 非空リスト時はインデント付きリストが出力される
+# AH3. 非空リスト時はインデント付きリスト項目（"    - "）が出力される
 create_test_repo
-EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=0
+EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
 R="$TMPDIR_ROOT"
 LOCK="$R/.claude/vibecorp.lock"
 
 if [ -f "$LOCK" ]; then
   # rules セクションには通常コピーされるファイルがある
-  # ファイルがある場合はリスト形式（- で始まる行）であること
-  if grep -q 'rules:' "$LOCK"; then
-    # rules: [] か rules: の後にリスト項目があるかのどちらか
-    if grep -q 'rules: \[\]' "$LOCK" || grep -A1 'rules:' "$LOCK" | grep -q '    - '; then
-      pass "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される"
+  # 非空リストの場合、"rules:" の後に "    - " で始まるリスト項目が必須
+  if grep -q 'rules:$' "$LOCK"; then
+    # rules: の後にリスト項目が存在することを厳密に検証（空リスト [] は不可）
+    RULE_ITEMS=$(awk '/^  rules:$/{found=1; next} found && /^    - /{count++} found && /^  [a-z]/{exit} END{print count+0}' "$LOCK")
+    if [ "$RULE_ITEMS" -gt 0 ]; then
+      pass "AH3: 非空リスト時はインデント付きリスト項目が出力される (${RULE_ITEMS}件)"
     else
-      fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される"
+      fail "AH3: 非空リスト時はインデント付きリスト項目が出力される (リスト項目なし)"
     fi
   else
-    fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される (rules セクションなし)"
+    fail "AH3: 非空リスト時はインデント付きリスト項目が出力される (rules セクションなし)"
   fi
 else
-  fail "AH3: 非空リスト時はインデント付きリストまたは空リスト表記が出力される (lock なし)"
+  fail "AH3: 非空リスト時はインデント付きリスト項目が出力される (lock なし)"
 fi
 cleanup
 
