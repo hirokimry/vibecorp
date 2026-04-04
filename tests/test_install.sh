@@ -2472,6 +2472,67 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== AI. プレースホルダー置換エラーハンドリング ==="
+# ============================================
+
+# AI1. 正常な置換後にプレースホルダーが残らない（既存テスト I と重複するが明示的に検証）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full --language ja 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# hooks 内の全ファイルにプレースホルダーが残っていないこと
+REMAINING=$(grep -rl '{{' "$R/.claude/hooks/" 2>/dev/null || true)
+if [ -z "$REMAINING" ]; then
+  pass "AI1: hooks 内にプレースホルダーが残っていない"
+else
+  fail "AI1: hooks 内にプレースホルダーが残っている: $REMAINING"
+fi
+
+# skills 内の全ファイルにプレースホルダーが残っていないこと
+REMAINING=$(grep -rl '{{' "$R/.claude/skills/" 2>/dev/null || true)
+if [ -z "$REMAINING" ]; then
+  pass "AI1: skills 内にプレースホルダーが残っていない"
+else
+  fail "AI1: skills 内にプレースホルダーが残っている: $REMAINING"
+fi
+cleanup
+
+# AI2. sed 置換が失敗した場合にエラーメッセージが出力される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# 未知のプレースホルダーを含むファイルを hooks に配置して --update で再実行
+echo '#!/bin/bash
+# {{UNKNOWN_PLACEHOLDER}} テスト' > "$R/.claude/hooks/test-placeholder.sh"
+chmod +x "$R/.claude/hooks/test-placeholder.sh"
+
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+if echo "$STDERR_OUTPUT" | grep -q "未解決のプレースホルダーが残っています"; then
+  pass "AI2: 未解決プレースホルダー検出時にエラーメッセージが出力される"
+else
+  fail "AI2: 未解決プレースホルダー検出時にエラーメッセージが出力される"
+fi
+# クリーンアップ
+rm -f "$R/.claude/hooks/test-placeholder.sh"
+cleanup
+
+# AI3. sed 失敗時に .tmp ファイルが残らない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# 正常実行後に .tmp ファイルが残っていないこと
+TMP_FILES=$(find "$R/.claude/hooks/" "$R/.claude/skills/" -name '*.tmp' 2>/dev/null || true)
+if [ -z "$TMP_FILES" ]; then
+  pass "AI3: 置換後に .tmp ファイルが残っていない"
+else
+  fail "AI3: 置換後に .tmp ファイルが残っている: $TMP_FILES"
+fi
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

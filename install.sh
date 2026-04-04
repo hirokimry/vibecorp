@@ -613,17 +613,35 @@ copy_managed_files() {
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
   local target_dirs=("$hooks_dir" "$skills_dir")
   [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
+  local placeholder_errors=0
   for dir in "${target_dirs[@]}"; do
-    find "$dir" -type f \( -name '*.sh' -o -name '*.md' \) | while IFS= read -r f; do
+    while IFS= read -r f; do
       if grep -q '{{' "$f" 2>/dev/null; then
-        sed \
+        local tmp
+        tmp="$(mktemp "$(dirname "$f")/.${f##*/}.XXXXXX")"
+        if sed \
           -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
           -e "s|{{PRESET}}|${PRESET}|g" \
           -e "s|{{LANGUAGE}}|$(resolve_language "$LANGUAGE")|g" \
-          "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+          "$f" > "$tmp"; then
+          mv "$tmp" "$f"
+        else
+          log_error "プレースホルダー置換に失敗しました: $f"
+          rm -f "$tmp"
+          placeholder_errors=$((placeholder_errors + 1))
+        fi
+        # 置換後も未解決のプレースホルダーが残っていないか検証
+        if grep -q '{{' "$f" 2>/dev/null; then
+          log_error "未解決のプレースホルダーが残っています: $f"
+          placeholder_errors=$((placeholder_errors + 1))
+        fi
       fi
-    done
+    done < <(find "$dir" -type f \( -name '*.sh' -o -name '*.md' \))
   done
+  if [[ "$placeholder_errors" -gt 0 ]]; then
+    log_error "プレースホルダー置換で ${placeholder_errors} 件のエラーが発生しました"
+    return 1
+  fi
 
   # hooks に実行権限を付与
   for f in "${hooks_dir}/"*.sh; do
