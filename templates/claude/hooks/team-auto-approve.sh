@@ -144,6 +144,16 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     exit 0
   fi
 
+  # サブシェル/コマンド置換を含むコマンドは通常フローに委ねる
+  if echo "$COMMAND" | grep -qE '\$\(|`'; then
+    exit 0
+  fi
+
+  # パイプ (|) や OR (||) を含むコマンドは通常フローに委ねる
+  if echo "$COMMAND" | grep -qE '\|'; then
+    exit 0
+  fi
+
   # && や ; で連結されたコマンドを各セグメントに分割し、全セグメントを検証
   all_safe=true
   while IFS= read -r segment; do
