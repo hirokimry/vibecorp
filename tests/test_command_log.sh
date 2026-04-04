@@ -44,7 +44,7 @@ preset: minimal
 YAML
   # lib/common.sh をコピー
   mkdir -p "${TMPDIR_ROOT}/.claude/lib"
-  cp "${HOOKS_DIR}/lib/common.sh" "${TMPDIR_ROOT}/.claude/lib/common.sh"
+  cp "${HOOKS_DIR}/../lib/common.sh" "${TMPDIR_ROOT}/.claude/lib/common.sh"
   # command-log.sh をコピー
   mkdir -p "${TMPDIR_ROOT}/.claude/hooks"
   cp "${HOOKS_DIR}/command-log.sh" "${TMPDIR_ROOT}/.claude/hooks/command-log.sh"
