@@ -65,7 +65,7 @@ path/to/vibecorp/install.sh --update
 |---|---|---|---|---|
 | **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
-| **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
+| **full** | 上記 + /diagnose, /autopilot | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
@@ -137,11 +137,12 @@ your-project/
 | `/harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（1スキル）
+### full プリセットで追加（2スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
+| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。`/loop 12h /autopilot` で定期実行可能 |
 
 ## フック一覧
 
