@@ -13,7 +13,8 @@ fi
 
 # 共通ライブラリ読み込み
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${HOOK_DIR}/lib/common.sh"
+# shellcheck source=../lib/common.sh
+source "${HOOK_DIR}/../lib/common.sh"
 PROJECT_NAME=$(get_project_name)
 
 STAMP_FILE="/tmp/.${PROJECT_NAME}-diagnose-active"

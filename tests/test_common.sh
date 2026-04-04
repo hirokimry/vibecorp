@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-COMMON_SH="${SCRIPT_DIR}/templates/claude/hooks/lib/common.sh"
+COMMON_SH="${SCRIPT_DIR}/templates/claude/lib/common.sh"
 PASSED=0
 FAILED=0
 TOTAL=0
