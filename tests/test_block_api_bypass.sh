@@ -136,6 +136,34 @@ else
   fail "approve ブロックの JSON 構造検証 (構造が不正)"
 fi
 
+# 13. env ラッパー付き直接マージ → deny
+OUTPUT=$(make_bash_input "env gh api repos/owner/repo/${MERGE_PATH}/123/${MERGE_SUFFIX} -X PUT" | run_hook block-api-bypass.sh)
+assert_blocked "env ラッパー付き直接マージ → deny" "$OUTPUT"
+
+# 14. command ラッパー付き直接マージ → deny
+OUTPUT=$(make_bash_input "command gh api repos/owner/repo/${MERGE_PATH}/123/${MERGE_SUFFIX} -X PUT" | run_hook block-api-bypass.sh)
+assert_blocked "command ラッパー付き直接マージ → deny" "$OUTPUT"
+
+# 15. KEY=VALUE 付き直接マージ → deny
+OUTPUT=$(make_bash_input "KEY=VALUE gh api repos/owner/repo/${MERGE_PATH}/123/${MERGE_SUFFIX} -X PUT" | run_hook block-api-bypass.sh)
+assert_blocked "KEY=VALUE 付き直接マージ → deny" "$OUTPUT"
+
+# 16. 複数環境変数連結付き直接マージ → deny
+OUTPUT=$(make_bash_input "GH_TOKEN=abc GITHUB_HOST=example.com gh api repos/owner/repo/${MERGE_PATH}/123/${MERGE_SUFFIX} -X PUT" | run_hook block-api-bypass.sh)
+assert_blocked "複数環境変数連結付き直接マージ → deny" "$OUTPUT"
+
+# 17. env ラッパー付き approve → deny
+OUTPUT=$(make_bash_input "env gh api repos/owner/repo/issues/123/comments -X POST -f body=\"${CR_APPROVE}\"" | run_hook block-api-bypass.sh)
+assert_blocked "env ラッパー付き approve → deny" "$OUTPUT"
+
+# 18. command ラッパー付き approve → deny
+OUTPUT=$(make_bash_input "command gh api repos/owner/repo/issues/123/comments -X POST -f body=\"${CR_APPROVE}\"" | run_hook block-api-bypass.sh)
+assert_blocked "command ラッパー付き approve → deny" "$OUTPUT"
+
+# 19. KEY=VALUE 付き approve → deny
+OUTPUT=$(make_bash_input "KEY=VALUE gh api repos/owner/repo/issues/123/comments -X POST -f body=\"${CR_APPROVE}\"" | run_hook block-api-bypass.sh)
+assert_blocked "KEY=VALUE 付き approve → deny" "$OUTPUT"
+
 # --- 結果サマリ ---
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
