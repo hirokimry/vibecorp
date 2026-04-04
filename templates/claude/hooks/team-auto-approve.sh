@@ -71,15 +71,21 @@ if [ "$TOOL_NAME" = "Glob" ] || [ "$TOOL_NAME" = "Grep" ]; then
 fi
 
 # --- Bash: 安全なコマンドのみ自動承認 ---
-if [ "$TOOL_NAME" = "Bash" ]; then
-  COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-  if [ -z "$COMMAND" ]; then
-    exit 0
+# 単一コマンドセグメントの安全性を判定する関数
+# 戻り値: 0=安全, 1=安全でない
+is_safe_segment() {
+  local segment="$1"
+
+  # 前後の空白を除去
+  segment=$(echo "$segment" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+  if [ -z "$segment" ]; then
+    return 0
   fi
 
   # 環境変数プレフィックス・ラッパーコマンドを除去して正規化
-  normalized="$COMMAND"
+  local normalized="$segment"
   while [[ "$normalized" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]](.+)$ ]]; do
     normalized="${BASH_REMATCH[1]}"
   done
@@ -87,34 +93,29 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   normalized="${normalized#command }"
 
   # ベースコマンドを抽出
+  local base_cmd
   base_cmd=$(echo "$normalized" | awk '{print $1}')
   base_cmd=$(basename "$base_cmd")
 
   # 危険なコマンドは承認しない
   case "$base_cmd" in
     rm|sudo|kill|killall|pkill|reboot|shutdown|dd|mkfs|fdisk)
-      exit 0
+      return 1
       ;;
   esac
 
   # 危険なフラグを検出
   if echo "$normalized" | grep -qE '(--force|--hard|-rf|-fr|--no-verify|--delete)'; then
-    exit 0
+    return 1
   fi
 
   # bash はファイル実行（bash *.sh）のみ許可。-c による任意コード実行はブロック
   if [ "$base_cmd" = "bash" ]; then
     # 複合オプション（-xc, -vc 等）も検出するため -[a-zA-Z]*[cs] にマッチ
     if echo "$normalized" | grep -qE '(^|[[:space:]])-[a-zA-Z]*[cs]'; then
-      exit 0
+      return 1
     fi
-    jq -n '{
-      "hookSpecificOutput": {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "allow"
-      }
-    }'
-    exit 0
+    return 0
   fi
 
   # 安全なコマンドリスト（任意実行・外部通信不可のコマンドのみ）
@@ -128,17 +129,41 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     npm|npx|\
     rsync|tar|zip|unzip|tree|\
     date|sleep)
-      jq -n '{
-        "hookSpecificOutput": {
-          "hookEventName": "PreToolUse",
-          "permissionDecision": "allow"
-        }
-      }'
-      exit 0
+      return 0
       ;;
   esac
 
-  # リストにないコマンドは通常フローに委ねる
+  # リストにないコマンドは安全でない
+  return 1
+}
+
+if [ "$TOOL_NAME" = "Bash" ]; then
+  COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+  if [ -z "$COMMAND" ]; then
+    exit 0
+  fi
+
+  # && や ; で連結されたコマンドを各セグメントに分割し、全セグメントを検証
+  all_safe=true
+  while IFS= read -r segment; do
+    if ! is_safe_segment "$segment"; then
+      all_safe=false
+      break
+    fi
+  done < <(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g')
+
+  if [ "$all_safe" = true ]; then
+    jq -n '{
+      "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "allow"
+      }
+    }'
+    exit 0
+  fi
+
+  # 安全でないセグメントがある場合は通常フローに委ねる
   exit 0
 fi
 
