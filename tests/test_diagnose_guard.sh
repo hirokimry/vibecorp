@@ -86,15 +86,15 @@ echo "=== diagnose-guard.sh ==="
 echo "--- スタンプなし（通常動作）---"
 
 # 1. スタンプなしで hooks/*.sh を編集 → allow
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | bash "$HOOK")
 assert_allowed "スタンプなしで hooks/*.sh 編集 → allow" "$OUTPUT"
 
 # 2. スタンプなしで vibecorp.yml を編集 → allow
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/vibecorp.yml"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/vibecorp.yml"}}' | bash "$HOOK")
 assert_allowed "スタンプなしで vibecorp.yml 編集 → allow" "$OUTPUT"
 
 # 3. スタンプなしで MVV.md を編集 → allow
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | bash "$HOOK")
 assert_allowed "スタンプなしで MVV.md 編集 → allow" "$OUTPUT"
 
 # --- スタンプあり（diagnose 実行中）---
@@ -103,39 +103,39 @@ echo "--- スタンプあり（diagnose 実行中）---"
 touch "$STAMP_FILE"
 
 # 4. hooks/*.sh への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に hooks/*.sh 編集 → deny" "$OUTPUT"
 
 # 5. vibecorp.yml への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/vibecorp.yml"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/vibecorp.yml"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に vibecorp.yml 編集 → deny" "$OUTPUT"
 
 # 6. MVV.md への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に MVV.md 編集 → deny" "$OUTPUT"
 
 # 7. diagnose-guard.sh 自体への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/diagnose-guard.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/diagnose-guard.sh"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に diagnose-guard.sh 自体の編集 → deny" "$OUTPUT"
 
 # 8. SECURITY.md への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/SECURITY.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/SECURITY.md"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に SECURITY.md 編集 → deny" "$OUTPUT"
 
 # 9. POLICY.md への編集 → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/POLICY.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/POLICY.md"}}' | bash "$HOOK")
 assert_blocked "diagnose 実行中に POLICY.md 編集 → deny" "$OUTPUT"
 
 # 10. 通常のソースファイル → allow
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/src/main.ts"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/src/main.ts"}}' | bash "$HOOK")
 assert_allowed "diagnose 実行中でも通常ファイル編集 → allow" "$OUTPUT"
 
 # 11. docs/ 配下のファイル → allow
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/docs/architecture.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/docs/architecture.md"}}' | bash "$HOOK")
 assert_allowed "diagnose 実行中でも docs/ 配下は → allow" "$OUTPUT"
 
 # 12. file_path が空 → allow
-OUTPUT=$(echo '{"tool_input":{}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{}}' | bash "$HOOK")
 assert_allowed "file_path が空 → allow" "$OUTPUT"
 
 # --- スタンプ名のプロジェクト名動的生成テスト ---
@@ -148,7 +148,7 @@ rm -f "$STAMP_FILE"
 # 13. 別のプロジェクト名のスタンプがあっても影響しない
 WRONG_STAMP="/tmp/.other-project-diagnose-active"
 touch "$WRONG_STAMP"
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | bash "$HOOK")
 assert_allowed "別プロジェクトのスタンプでは反応しない → allow" "$OUTPUT"
 rm -f "$WRONG_STAMP"
 
@@ -166,15 +166,15 @@ YAML
 touch "$STAMP_FILE"
 
 # 14. diagnose セクションなしでもデフォルトの保護が有効
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/sync-gate.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/sync-gate.sh"}}' | bash "$HOOK")
 assert_blocked "diagnose セクションなしでもデフォルトの hooks/*.sh 保護 → deny" "$OUTPUT"
 
 # 15. デフォルトで MVV.md も保護
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | bash "$HOOK")
 assert_blocked "diagnose セクションなしでもデフォルトの MVV.md 保護 → deny" "$OUTPUT"
 
 # 16. デフォルトで通常ファイルは通す
-OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/src/app.ts"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/src/app.ts"}}' | bash "$HOOK")
 assert_allowed "diagnose セクションなしでも通常ファイルは → allow" "$OUTPUT"
 
 # --- クリーンアップ ---
