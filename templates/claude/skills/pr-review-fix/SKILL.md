@@ -111,7 +111,7 @@ gh api graphql -f query='
 - `isResolved == false` かつ先頭コメントが CodeRabbit のスレッドのみ抽出
 - 各スレッドの `id`（thread node ID）は却下時の resolve mutation で使用する
 
-**未解決0件 → 「未解決コメントなし」と報告してステップ7（auto-merge確認）へ。**
+**未解決0件 → 「未解決コメントなし」と報告して正常終了。**
 **未解決あり → ステップ6へ。**
 
 ### 6. 指摘の修正
@@ -183,37 +183,20 @@ gh api graphql -f query='
 git push
 ```
 
-### 7. auto-merge 状態の確認
-
-auto-merge が設定されているか確認する:
-
-```bash
-gh pr view {pr_number} --json autoMergeRequest --jq '.autoMergeRequest'
-```
-
-- auto-merge 設定済み → ステップ8へ
-- auto-merge 未設定 → 設定する:
-
-```bash
-gh pr merge {pr_number} --squash --auto
-```
-
-### 8. 結果報告
+### 7. 結果報告
 
 ```text
-## /pr-review-loop 完了
+## /pr-review-fix 完了
 
 - PR: #{pr_number}
-- 状態: {OPEN / MERGED}
 - 修正: {n}件
 - 却下: {n}件
-- auto-merge: 設定済み
 ```
 
 **マージ済みの場合:**
 
 ```text
-## /pr-review-loop 完了
+## /pr-review-fix 完了
 
 - PR: #{pr_number}
 - 状態: マージ済み
@@ -222,21 +205,10 @@ gh pr merge {pr_number} --squash --auto
 **未解決コメントなしの場合:**
 
 ```text
-## /pr-review-loop 完了
+## /pr-review-fix 完了
 
 - PR: #{pr_number}
 - 未解決コメント: なし
-- auto-merge: 設定済み（CI パス + approve 後に GitHub が自動マージします）
-```
-
-**CodeRabbit 無効時（`coderabbit.enabled: false`）の結果報告:**
-
-```text
-## /pr-review-loop 完了
-
-- CodeRabbit: 無効（vibecorp.yml で coderabbit.enabled: false）
-- auto-merge: 設定済み
-- 注意: Require approvals が有効な場合、人間による approve が必要です
 ```
 
 ## 制約
