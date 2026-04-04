@@ -63,7 +63,7 @@ path/to/vibecorp/install.sh --update
 
 | プリセット | スキル | フック | エージェント | ユースケース |
 |---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
 | **full** | 上記 + /diagnose | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
@@ -107,7 +107,7 @@ your-project/
 
 ## スキル一覧
 
-### minimal プリセット（13スキル）
+### minimal プリセット（14スキル）
 
 | スキル | 説明 |
 |---|---|
@@ -118,7 +118,8 @@ your-project/
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
 | `/review-loop` | レビュー → 検証 → 修正を指摘ゼロになるまで繰り返す（最大5回） |
 | `/pr` | GitHub PR を作成・更新。ブランチ名から Issue 番号を自動抽出し、auto-merge を設定 |
-| `/pr-review-loop` | PR 作成後、CodeRabbit レビュー待ち → 指摘修正 → CI 待ちのループを自動実行。マージは auto-merge に委ねる |
+| `/pr-review-fix` | PR の未解決コメントを1回修正して push する。単発実行用 |
+| `/pr-review-loop` | `/pr-review-fix` を5分間隔で定期実行し、マージまで自動で指摘対応を繰り返す |
 | `/commit` | 変更を分析し、Conventional Commits 形式で自動コミット |
 | `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票 |
 | `/branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
