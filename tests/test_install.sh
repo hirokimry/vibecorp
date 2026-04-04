@@ -2443,6 +2443,7 @@ if [ "$EXIT_CODE" -eq 0 ] && [ -f "$LOCK" ]; then
 else
   fail "AH2: 空リスト lock がある状態で --update が正常に動作する (exit=$EXIT_CODE)"
 fi
+cleanup
 
 # AH3. 非空リスト時はインデント付きリスト項目（"    - "）が出力される
 create_test_repo
