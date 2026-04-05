@@ -73,7 +73,37 @@ gh label list --json name --jq '.[].name' --limit 100
 1. `.claude/vibecorp.yml` に `issue.default_assignee` が定義されていればその値を使用
 2. 未定義の場合はリポジトリオーナー（手順1で取得）を使用
 
-### 5. 🚀 Issue 起票
+### 5. 🛡️ CPO プロダクト整合チェック（standard 以上）
+
+vibecorp.yml が存在する場合のみ preset を確認する。
+
+```bash
+if [ -f "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml" ]; then
+  awk '/^preset:/ { print $2 }' "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml"
+fi
+```
+
+preset が `standard` または `full` の場合のみ、CPO エージェント（`.claude/agents/cpo.md`）に以下を依頼する:
+
+```text
+以下の Issue がプロダクト方針に合致するかチェックしてください:
+
+タイトル: <タイトル>
+本文: <本文>
+
+判定基準:
+- MVV.md のバリューに沿っているか
+- docs/specification.md / docs/design-philosophy.md と矛盾していないか
+- プリセットスコープの整合（full 専用機能が適切にスコープされているか）
+
+判定: OK または 却下（理由を明記）
+```
+
+- CPO が「OK」→ ステップ6（起票）へ進む
+- CPO が「却下」→ 却下理由をユーザーに提示して終了する（起票しない）
+- preset が `minimal`、vibecorp.yml が存在しない場合、または preset キーが未定義の場合 → このステップをスキップ
+
+### 6. 🚀 Issue 起票
 
 ```bash
 gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee "<assignee>" --label "<label1>" --label "<label2>"
@@ -81,7 +111,7 @@ gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee
 
 ラベルなしの場合は `--label` オプションを省略する。
 
-### 6. ✅ 結果報告
+### 7. ✅ 結果報告
 
 起票した Issue の URL を返す。
 
@@ -94,9 +124,19 @@ gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee
 
 ## 📤 返却フォーマット
 
+### 通過時
+
 ```text
 <Issue URL>
 タイトル: <emoji> <type>: <subject>
 ラベル: <付与したラベル一覧（なしの場合は「なし」）>
 担当者: <assignee>
+```
+
+### 却下時（CPO ゲート）
+
+```text
+❌ 起票を見送りました
+理由: <CPOの却下理由>
+MVV観点: <どのバリューに抵触したか>
 ```
