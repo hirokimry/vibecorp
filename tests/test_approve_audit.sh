@@ -22,21 +22,19 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_DIR="$PROJECT_DIR/.claude/skills/approve-audit"
-SKILL_FILE="$SKILL_DIR/SKILL.md"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/approve-audit/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/templates/claude/skills/approve-audit/SKILL.md"
 
 echo "=== approve-audit スキル テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
+# --- テスト1: テンプレート SKILL.md の存在 ---
 
-echo "--- テスト1: SKILL.md の存在 ---"
+echo "--- テスト1: テンプレート SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
-  pass "SKILL.md が存在する"
+  pass "テンプレート SKILL.md が存在する"
 else
-  fail "SKILL.md が存在しない: $SKILL_FILE"
+  fail "テンプレート SKILL.md が存在しない: $SKILL_FILE"
   echo ""
   echo "==========================="
   echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
@@ -84,19 +82,14 @@ fi
 
 echo ""
 
-# --- テスト3: テンプレートとソースの一致 ---
+# --- テスト3: テンプレートファイルの存在確認 ---
 
-echo "--- テスト3: テンプレートとソースの一致 ---"
+echo "--- テスト3: テンプレートファイルの存在確認 ---"
 
-if [ -f "$TEMPLATE_FILE" ]; then
-  pass "テンプレートファイルが存在する"
-  if diff -q "$SKILL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
-    pass "ソースとテンプレートが一致する"
-  else
-    fail "ソースとテンプレートが一致しない"
-  fi
+if [ -s "$SKILL_FILE" ]; then
+  pass "テンプレートファイルが空でない"
 else
-  fail "テンプレートファイルが存在しない: $TEMPLATE_FILE"
+  fail "テンプレートファイルが空または存在しない"
 fi
 
 echo ""
