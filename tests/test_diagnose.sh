@@ -100,6 +100,12 @@ assert_file_contains "CISO フィルタリングがある" "$SKILL_MD" "CISO"
 # 9. CPO フィルタリングがある
 assert_file_contains "CPO フィルタリングがある" "$SKILL_MD" "CPO"
 
+# 9.1 CPO によるプロダクト整合分析（4c）がある
+assert_file_contains "CPO プロダクト整合分析がある" "$SKILL_MD" "プロダクト整合分析"
+
+# 9.2 3つの並行実行の記述がある
+assert_file_contains "3つの並行実行がある" "$SKILL_MD" "3つを並行して実行する"
+
 # 10. 起票上限チェックがある
 assert_file_contains "起票上限チェックがある" "$SKILL_MD" "max_issues_per_run"
 
