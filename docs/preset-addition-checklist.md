@@ -49,18 +49,21 @@ esac
 ```bash
 case "$PRESET" in
   minimal)
+    # 既存の除外条件に and で新しいフックを追加する
     new_settings=$(echo "$new_settings" | jq '
       .hooks.PreToolUse |= [
         .[]
         | .hooks |= [.[] | select(
-            (.command | contains("新しいフック") | not)  # ← 追加
+            (.command | contains("既存フック1") | not)
+            and (.command | contains("既存フック2") | not)
+            and (.command | contains("新しいフック") | not)
           )]
         | select((.hooks | length) > 0)
       ]
     ')
     ;;
   standard)
-    # standard で不要なら同様に追加
+    # standard で不要なら同様に and で追加
     ;;
 esac
 ```
