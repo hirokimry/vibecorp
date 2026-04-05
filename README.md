@@ -121,7 +121,7 @@ your-project/
 | `/pr-review-fix` | PR の未解決コメントを1回修正して push する。単発実行用 |
 | `/pr-review-loop` | `/pr-review-fix` を5分間隔で定期実行し、マージまで自動で指摘対応を繰り返す |
 | `/commit` | 変更を分析し、Conventional Commits 形式で自動コミット |
-| `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票 |
+| `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票。standard 以上では起票前に CPO エージェントが MVV・プロダクト方針との整合をチェックし、方針に合致しない場合は起票を見送る |
 | `/branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
 | `/worktree` | git worktree のライフサイクル管理。`list`（一覧）、`clean`（マージ済み削除）、`remove`（手動削除） |
 | `/approve-audit` | コマンドログを棚卸しし、`settings.local.json` の allow リストへの追加を提案・実行 |
