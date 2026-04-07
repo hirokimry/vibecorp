@@ -17,16 +17,12 @@ description: "コマンドログを棚卸しし、settings.local.json の allow 
 
 ## 1. ログファイルの読み込み
 
-プロジェクト名を取得し、ログファイルを読み込む。
+ログファイルを読み込む。
+
+ログファイルパス: `$CLAUDE_PROJECT_DIR/.claude/state/command-log`
 
 ```bash
-awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
-```
-
-ログファイルパス: `/tmp/.{project}-command-log`
-
-```bash
-cat "/tmp/.{project}-command-log"
+cat "$CLAUDE_PROJECT_DIR/.claude/state/command-log"
 ```
 
 ログファイルが存在しない、または空の場合は「記録されたコマンドがありません」と報告して終了する。
@@ -117,7 +113,7 @@ cat "$CLAUDE_PROJECT_DIR"/.claude/settings.local.json
 ユーザーに「ログファイルを削除しますか？」と確認し、承認された場合のみ削除する:
 
 ```bash
-rm -f "/tmp/.{project}-command-log"
+rm -f "$CLAUDE_PROJECT_DIR/.claude/state/command-log"
 ```
 
 ## 8. 結果報告

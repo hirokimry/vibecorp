@@ -1288,7 +1288,7 @@ generate_claude_gitignore() {
   local target="${REPO_ROOT}/.claude/.gitignore"
 
   # vibecorp が管理する除外エントリ
-  local entries=("plans/" "vibecorp-base/" "lib/")
+  local entries=("plans/" "vibecorp-base/" "lib/" "state/")
 
   if [[ -f "$target" ]]; then
     # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
@@ -1312,6 +1312,8 @@ plans/
 vibecorp-base/
 # フック共通ライブラリ（テンプレートからコピーされる生成物）
 lib/
+# hooks/skills のランタイム state（worktree ごとに分離されるマーカー・ログ）
+state/
 GITIGNORE
   log_info ".claude/.gitignore を生成"
 }

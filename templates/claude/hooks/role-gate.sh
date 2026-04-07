@@ -1,6 +1,6 @@
 #!/bin/bash
 # role-gate.sh — エージェントが管轄外のファイルを編集することをブロックするフック
-# ロールファイル(/tmp/.{{PROJECT_NAME}}-agent-role)にロール名が書かれている場合のみ動作
+# ロールファイル($CLAUDE_PROJECT_DIR/.claude/state/agent-role)にロール名が書かれている場合のみ動作
 # ロールファイルが存在しなければスキップ（通常セッション＝人間操作時は制約なし）
 
 set -euo pipefail
@@ -12,14 +12,8 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# 共通ライブラリ読み込み
-HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=../lib/common.sh
-source "${HOOK_DIR}/../lib/common.sh"
-PROJECT_NAME=$(get_project_name)
-
 # ロールファイルからロール名を読み取る
-ROLE_FILE="/tmp/.${PROJECT_NAME}-agent-role"
+ROLE_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/state/agent-role"
 if [ ! -f "$ROLE_FILE" ]; then
   exit 0
 fi

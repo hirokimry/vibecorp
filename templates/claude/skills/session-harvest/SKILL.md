@@ -110,7 +110,8 @@ mkdir -p .claude/knowledge/{role}/
 全エージェントの処理が完了したら、必ずスタンプを発行する（反映の有無に関わらず）:
 
 ```bash
-touch /tmp/.{{PROJECT_NAME}}-session-harvest-ok
+mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
+touch "$CLAUDE_PROJECT_DIR/.claude/state/session-harvest-ok"
 ```
 
 このスタンプがないと session-harvest-gate フックにより `gh pr merge` がブロックされる。

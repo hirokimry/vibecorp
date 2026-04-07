@@ -48,7 +48,7 @@ assert_allowed() {
 # --- テスト用の vibecorp.yml を準備 ---
 
 TMPDIR_TEST=$(mktemp -d)
-mkdir -p "${TMPDIR_TEST}/.claude"
+mkdir -p "${TMPDIR_TEST}/.claude/state"
 cat > "${TMPDIR_TEST}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
 preset: full
@@ -66,12 +66,11 @@ diagnose:
 YAML
 
 export CLAUDE_PROJECT_DIR="$TMPDIR_TEST"
-STAMP_FILE="/tmp/.test-project-diagnose-active"
+STAMP_FILE="${TMPDIR_TEST}/.claude/state/diagnose-active"
 
 # --- クリーンアップ ---
 
 cleanup() {
-  rm -f "$STAMP_FILE"
   rm -rf "$TMPDIR_TEST"
 }
 trap cleanup EXIT
@@ -138,19 +137,20 @@ assert_allowed "diagnose 実行中でも docs/ 配下は → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{}}' | bash "$HOOK")
 assert_allowed "file_path が空 → allow" "$OUTPUT"
 
-# --- スタンプ名のプロジェクト名動的生成テスト ---
+# --- 別プロジェクトの state ディレクトリ分離テスト ---
 
-echo "--- プロジェクト名動的生成テスト ---"
+echo "--- worktree 分離テスト ---"
 
 # スタンプを削除して別プロジェクトとして試す
 rm -f "$STAMP_FILE"
 
-# 13. 別のプロジェクト名のスタンプがあっても影響しない
-WRONG_STAMP="/tmp/.other-project-diagnose-active"
-touch "$WRONG_STAMP"
+# 13. 別の CLAUDE_PROJECT_DIR にスタンプがあっても影響しない（worktree 分離）
+ALT_DIR=$(mktemp -d)
+mkdir -p "${ALT_DIR}/.claude/state"
+touch "${ALT_DIR}/.claude/state/diagnose-active"
 OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh"}}' | bash "$HOOK")
-assert_allowed "別プロジェクトのスタンプでは反応しない → allow" "$OUTPUT"
-rm -f "$WRONG_STAMP"
+assert_allowed "別の CLAUDE_PROJECT_DIR の state は影響しない → allow" "$OUTPUT"
+rm -rf "$ALT_DIR"
 
 # --- デフォルト forbidden_targets テスト ---
 

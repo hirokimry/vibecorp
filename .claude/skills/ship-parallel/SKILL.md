@@ -172,7 +172,8 @@ project=$(basename "$(pwd)")
 git worktree add "../${project}.worktrees/dev_${Issue番号}_${要約}" -b "dev/${Issue番号}_${要約}"
 
 # .claude/ ディレクトリを同期（skills, hooks, settings.json 等）
-rsync -a .claude/ "../${project}.worktrees/dev_${Issue番号}_${要約}/.claude/"
+# state/ は worktree ごとに独自に作成・管理されるため除外（main の state を持ち込まない）
+rsync -a --exclude=state/ .claude/ "../${project}.worktrees/dev_${Issue番号}_${要約}/.claude/"
 ```
 
 worktree 作成の確認:

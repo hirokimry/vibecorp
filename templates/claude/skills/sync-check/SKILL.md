@@ -117,7 +117,8 @@ git diff --name-only
 **総合判定が ✅ の場合のみ** スタンプを発行する:
 
 ```bash
-touch /tmp/.{{PROJECT_NAME}}-sync-ok
+mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
+touch "$CLAUDE_PROJECT_DIR/.claude/state/sync-ok"
 ```
 
 ⚠️ または ❌ がある場合はスタンプを発行しない。`/sync-edit` による修正後、再度 `/sync-check` を実行すること。
