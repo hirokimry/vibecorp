@@ -152,7 +152,7 @@ your-project/
 |---|---|---|---|
 | `protect-files.sh` | minimal 以上 | `Edit`/`Write` | `vibecorp.yml` の `protected_files` で指定したファイルの編集をブロック。MVV.md はデフォルトで保護対象 |
 | `protect-branch.sh` | minimal 以上 | `Edit`/`Write`/`Bash`（git commit） | メインブランチ（base_branch）での Edit/Write/git commit をブロック |
-| `role-gate.sh` | full | `Edit`/`Write` | エージェントの管轄外ファイルの編集をブロック。ロールファイル（`/tmp/.{project}-agent-role`）に書かれたロール名で判定。通常セッション（人間操作時）は制約なし |
+| `role-gate.sh` | full | `Edit`/`Write` | エージェントの管轄外ファイルの編集をブロック。ロールファイル（`$CLAUDE_PROJECT_DIR/.claude/state/agent-role`）に書かれたロール名で判定。通常セッション（人間操作時）は制約なし |
 | `diagnose-guard.sh` | full | `Edit`/`Write` | `/diagnose` 実行中に hooks/*.sh, vibecorp.yml, MVV.md, diagnose-guard.sh 自身への変更をブロック |
 
 ### ワークフローゲート型
@@ -174,7 +174,7 @@ your-project/
 
 | フック | プリセット | トリガー | 説明 |
 |---|---|---|---|
-| `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`/tmp/.{project}-command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
+| `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`$CLAUDE_PROJECT_DIR/.claude/state/command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
 
 ### 自動承認型
 
@@ -188,14 +188,14 @@ your-project/
 
 ## ゲートフックとスタンプ
 
-ゲートフックはスタンプファイル（`/tmp/.{project}-*`）で状態管理する。対応するスキルを実行するとスタンプが発行され、ゲートが通過可能になる。スタンプは確認後に自動削除される（ワンタイム）。
+ゲートフックはステートファイル（`$CLAUDE_PROJECT_DIR/.claude/state/*`）で状態管理する。対応するスキルを実行するとステートが発行され、ゲートが通過可能になる。ステートは確認後に自動削除される（ワンタイム）。`CLAUDE_PROJECT_DIR` が worktree ごとに異なるため、ブランチ単位で自動的に分離される。
 
-| ゲートフック | ブロック対象 | 解除スキル | スタンプファイル |
+| ゲートフック | ブロック対象 | 解除スキル | ステートファイル |
 |---|---|---|---|
-| `sync-gate.sh` | `git push` | `/sync-check` | `/tmp/.{project}-sync-ok` |
-| `review-to-rules-gate.sh` | `gh pr merge` | `/review-to-rules` | `/tmp/.{project}-review-to-rules-ok` |
-| `session-harvest-gate.sh` | `gh pr merge` | `/session-harvest` | `/tmp/.{project}-session-harvest-ok` |
-| `review-gate.sh` | `gh pr create` | `/review-loop` または `/review` | `/tmp/.{project}-review-ok` |
+| `sync-gate.sh` | `git push` | `/sync-check` | `$CLAUDE_PROJECT_DIR/.claude/state/sync-ok` |
+| `review-to-rules-gate.sh` | `gh pr merge` | `/review-to-rules` | `$CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok` |
+| `session-harvest-gate.sh` | `gh pr merge` | `/session-harvest` | `$CLAUDE_PROJECT_DIR/.claude/state/session-harvest-ok` |
+| `review-gate.sh` | `gh pr create` | `/review-loop` または `/review` | `$CLAUDE_PROJECT_DIR/.claude/state/review-ok` |
 
 ゲートフックは `vibecorp.yml` の `hooks:` セクションで個別に無効化できる。
 
@@ -431,6 +431,12 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Bash|Write|Edit|Read|Glob|Grep",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/team-auto-approve.sh", "timeout": 5 }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh" },
@@ -452,6 +458,7 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-to-rules-gate.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-harvest-gate.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-gate.sh" }
         ]
       }
@@ -461,8 +468,6 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
 ```
 
 上記は `settings.json.tpl` の全内容。プリセットに応じて不要なフックエントリが自動除外される。vibecorp.yml の `hooks:` でトグルした場合も同様に反映される。
-
-> **注**: `session-harvest-gate.sh` と `team-auto-approve.sh` は settings.json ではなく、install.sh の generate_settings_json 関数で動的に登録される。
 
 ## リポジトリインフラ設定
 

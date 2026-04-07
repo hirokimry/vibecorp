@@ -102,11 +102,12 @@ fi
 
 ### ログファイルのパス命名規則
 
-ログファイルは `/tmp/.{project}-command-log` に出力する:
+ログファイルは `$CLAUDE_PROJECT_DIR/.claude/state/command-log` に出力する:
 
-- `/tmp/` を使うことでセッション終了時に自動削除され、機密コマンドが永続しない
-- プロジェクト名プレフィックスにより複数プロジェクトのログが混在しない
-- プロジェクト名のサニタイズはスタンプファイルと同じ `tr -cs 'A-Za-z0-9._-' '_'` を適用する
+- `$CLAUDE_PROJECT_DIR` 配下に置くことで worktree ごとに自動分離される（同じプロジェクトの別 worktree でログが混在しない）
+- `.claude/state/` は `.gitignore` 対象なのでログがコミット対象にならない
+- プロジェクト名をパスに含める必要がないため、命名規則のサニタイズも不要
+- 書き込み前に `mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"` で state ディレクトリを確実に作成する
 
 ### /approve-audit スキルとの連携
 
