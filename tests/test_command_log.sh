@@ -37,7 +37,8 @@ assert_eq() {
 
 setup_project_dir() {
   TMPDIR_ROOT=$(mktemp -d)
-  mkdir -p "${TMPDIR_ROOT}/.claude/state"
+  # state/ は意図的に作らない — command-log.sh の mkdir -p 動作を検証するため
+  mkdir -p "${TMPDIR_ROOT}/.claude"
   cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
 preset: minimal
@@ -66,20 +67,33 @@ echo "=== A. command-log.sh 基本テスト ==="
 # --- A1. Bash コマンドがログに記録される ---
 echo "--- A1. Bash コマンドがログに記録される ---"
 setup_project_dir
-rm -f $LOG_FILE
+
+# 事前条件: state ディレクトリが存在しないこと（hook 側の mkdir -p 動作を検証する）
+if [ ! -d "${TMPDIR_ROOT}/.claude/state" ]; then
+  pass "A1 事前条件: state ディレクトリが事前に存在しない"
+else
+  fail "A1 事前条件: state ディレクトリが事前に存在してはならない（mkdir -p 検証のため）"
+fi
 
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"npm run build"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1)
 EXIT_CODE=$?
 
 assert_eq "A1: exit code が 0" "0" "$EXIT_CODE"
 
-if [ -f $LOG_FILE ]; then
+# hook が state ディレクトリを自動作成したことを確認
+if [ -d "${TMPDIR_ROOT}/.claude/state" ]; then
+  pass "A1: hook が state ディレクトリを自動作成した（mkdir -p）"
+else
+  fail "A1: hook が state ディレクトリを作成していない"
+fi
+
+if [ -f "$LOG_FILE" ]; then
   pass "A1: ログファイルが作成された"
 else
   fail "A1: ログファイルが作成されていない"
 fi
 
-if grep -q "npm run build" $LOG_FILE; then
+if grep -q "npm run build" "$LOG_FILE"; then
   pass "A1: コマンドがログに記録された"
 else
   fail "A1: コマンドがログに記録されていない"

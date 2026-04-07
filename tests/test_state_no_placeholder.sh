@@ -27,33 +27,54 @@ fail() {
   echo "  FAIL: $1"
 }
 
+# check_pattern_absent — grep の終了コードを明示的に判定して exit 0/1/その他を分離する
+# 引数: $1=ラベル, $2=パターン, $3..=検索対象パス
+# 終了コード: 0 → fail（パターン検出）/ 1 → pass（パターン未検出）/ その他 → fail（grep エラー）
+check_pattern_absent() {
+  local label="$1"
+  local pattern="$2"
+  shift 2
+  # local 宣言と $? キャプチャを混ぜると local builtin が $? を上書きするため分離する
+  local match
+  local code
+  match=$(grep -rEn "$pattern" "$@" 2>&1)
+  code=$?
+  case "$code" in
+    0)
+      fail "$label が残存している"
+      printf '    検出箇所:\n'
+      printf '%s\n' "$match" | sed 's/^/      /'
+      ;;
+    1)
+      pass "$label は存在しない"
+      ;;
+    *)
+      fail "$label の検査で grep エラー（exit $code）: $match"
+      ;;
+  esac
+}
+
 # --- 1. {{PROJECT_NAME}} placeholder の不在 ---
 
 echo "=== {{PROJECT_NAME}} placeholder 検出 ==="
 
-if grep -rn '{{PROJECT_NAME}}' \
-    "${SCRIPT_DIR}/templates/claude/hooks" \
-    "${SCRIPT_DIR}/templates/claude/skills" 2>/dev/null; then
-  fail "{{PROJECT_NAME}} placeholder が hooks/skills に残存している"
-else
-  pass "{{PROJECT_NAME}} placeholder は hooks/skills に存在しない"
-fi
+check_pattern_absent \
+  "{{PROJECT_NAME}} placeholder（hooks/skills）" \
+  '\{\{PROJECT_NAME\}\}' \
+  "${SCRIPT_DIR}/templates/claude/hooks" \
+  "${SCRIPT_DIR}/templates/claude/skills"
 
 # --- 2. /tmp/.${PROJECT_NAME} 参照の不在 ---
 
 echo ""
 echo "=== /tmp/ スタンプファイル参照検出 ==="
 
-# /tmp/.${PROJECT_NAME}-* もしくは /tmp/.{{PROJECT_NAME}}-* 形式
-# プロジェクト名を含む /tmp/ スタンプ参照を検出
-TMP_PATTERN='/tmp/\.\${PROJECT_NAME}\|/tmp/\.{{PROJECT_NAME}}\|/tmp/\.{project}'
-if grep -rn "$TMP_PATTERN" \
-    "${SCRIPT_DIR}/templates/claude/hooks" \
-    "${SCRIPT_DIR}/templates/claude/skills" 2>/dev/null; then
-  fail "/tmp/.\${PROJECT_NAME} 参照が hooks/skills に残存している"
-else
-  pass "/tmp/.\${PROJECT_NAME} 参照は hooks/skills に存在しない"
-fi
+# /tmp/.${PROJECT_NAME}-* / /tmp/.{{PROJECT_NAME}}-* / /tmp/.{project}-* を一括検出
+check_pattern_absent \
+  "/tmp/.\${PROJECT_NAME} 参照（hooks/skills）" \
+  '/tmp/\.(\$\{PROJECT_NAME\}|\{\{PROJECT_NAME\}\}|\{project\})' \
+  "${SCRIPT_DIR}/templates/claude/hooks" \
+  "${SCRIPT_DIR}/templates/claude/skills"
 
 # --- 3. PROJECT_NAME 変数定義の不在（hooks 限定） ---
 # hooks では get_project_name 呼び出しが消滅しているはず
@@ -62,12 +83,11 @@ fi
 echo ""
 echo "=== hooks の PROJECT_NAME 変数定義検出 ==="
 
-if grep -rn 'PROJECT_NAME=\$(get_project_name)' \
-    "${SCRIPT_DIR}/templates/claude/hooks" 2>/dev/null; then
-  fail "hooks に PROJECT_NAME=\$(get_project_name) が残存している"
-else
-  pass "hooks に PROJECT_NAME=\$(get_project_name) は存在しない"
-fi
+# PROJECT_NAME=$(get_project_name) と PROJECT_NAME="$(get_project_name)" 両方を検出
+check_pattern_absent \
+  'hooks の PROJECT_NAME=$(get_project_name)' \
+  'PROJECT_NAME=("|'"'"')?\$\(get_project_name\)' \
+  "${SCRIPT_DIR}/templates/claude/hooks"
 
 # ============================================
 echo ""
