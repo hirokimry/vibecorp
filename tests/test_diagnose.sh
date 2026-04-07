@@ -155,12 +155,15 @@ assert_file_contains "jq の string interpolation 禁止がある" "$SKILL_MD" '
 # 20. コマンドそのまま実行の制約がある
 assert_file_contains "コマンドそのまま実行の制約がある" "$SKILL_MD" "コマンドをそのまま実行する"
 
-# --- プレースホルダー ---
+# --- state ファイル参照 ---
 
-echo "--- プレースホルダー ---"
+echo "--- state ファイル参照 ---"
 
-# 21. PROJECT_NAME プレースホルダーがある
-assert_file_contains "PROJECT_NAME プレースホルダーがある" "$SKILL_MD" "{{PROJECT_NAME}}"
+# 21. diagnose-active state ファイルを touch する
+assert_file_contains "diagnose-active state ファイルを touch する" "$SKILL_MD" '\$CLAUDE_PROJECT_DIR/.claude/state/diagnose-active'
+
+# 22. diagnose-active state ファイルを rm -f する
+assert_file_contains "diagnose-active state ファイルを rm -f する" "$SKILL_MD" 'rm -f "\$CLAUDE_PROJECT_DIR/.claude/state/diagnose-active"'
 
 # ============================================
 echo ""

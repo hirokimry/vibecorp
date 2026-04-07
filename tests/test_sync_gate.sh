@@ -48,21 +48,20 @@ assert_allowed() {
 # --- テスト用の vibecorp.yml を準備 ---
 
 TMPDIR_TEST=$(mktemp -d)
-mkdir -p "${TMPDIR_TEST}/.claude"
+mkdir -p "${TMPDIR_TEST}/.claude/state"
 cat > "${TMPDIR_TEST}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
 preset: standard
 language: ja
 YAML
 
-# CLAUDE_PROJECT_DIR を設定してスタンプ名の動的生成をテスト
+# CLAUDE_PROJECT_DIR を設定して state ディレクトリ分離をテスト
 export CLAUDE_PROJECT_DIR="$TMPDIR_TEST"
-STAMP_FILE="/tmp/.test-project-sync-ok"
+STAMP_FILE="${TMPDIR_TEST}/.claude/state/sync-ok"
 
 # --- クリーンアップ ---
 
 cleanup() {
-  rm -f "$STAMP_FILE"
   rm -rf "$TMPDIR_TEST"
 }
 trap cleanup EXIT
@@ -125,14 +124,13 @@ assert_blocked "絶対パス付き (/usr/bin/git push) → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | "$HOOK")
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
-# 13. スタンプ名が vibecorp.yml の name から動的生成される
-# STAMP_FILE は "test-project" から生成される "/tmp/.test-project-sync-ok"
+# 13. STAMP_FILE は CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される
 touch "$STAMP_FILE"
 if [ -f "$STAMP_FILE" ]; then
   OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | "$HOOK")
-  assert_allowed "スタンプ名が vibecorp.yml の name から動的生成される" "$OUTPUT"
+  assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される" "$OUTPUT"
 else
-  fail "スタンプ名が vibecorp.yml の name から動的生成される (スタンプが見つからない)"
+  fail "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される (スタンプが見つからない)"
 fi
 
 # ============================================

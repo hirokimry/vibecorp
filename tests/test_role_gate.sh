@@ -52,7 +52,7 @@ run_hook() {
 
 setup_project_dir() {
   TMPDIR_ROOT=$(mktemp -d)
-  mkdir -p "${TMPDIR_ROOT}/.claude"
+  mkdir -p "${TMPDIR_ROOT}/.claude/state"
   export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"
 }
 
@@ -67,20 +67,13 @@ YAML
 
 write_role_file() {
   local role="$1"
-  echo "$role" > "/tmp/.test-project-agent-role"
+  echo "$role" > "${TMPDIR_ROOT}/.claude/state/agent-role"
 }
 
 cleanup() {
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT"
   fi
-  rm -f /tmp/.test-project-agent-role
-  rm -f /tmp/.vibecorp-project-agent-role
-  rm -f /tmp/.my-project-agent-role
-  # サニタイズ名のクリーンアップ
-  local sanitized
-  sanitized=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
-  rm -f "/tmp/.${sanitized}-agent-role"
 }
 trap cleanup EXIT
 
@@ -223,7 +216,7 @@ assert_allowed "docs/ 外のファイル(install.sh) → 許可" "$OUTPUT"
 echo ""
 echo "--- ロールファイル未設定 ---"
 
-rm -f /tmp/.test-project-agent-role
+rm -f "${TMPDIR_ROOT}/.claude/state/agent-role"
 
 # 20. ロールファイルなし → 許可（通常セッション）
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
@@ -233,7 +226,7 @@ assert_allowed "ロールファイル未設定 → 許可" "$OUTPUT"
 echo ""
 echo "--- ロールファイル空 ---"
 
-echo "" > /tmp/.test-project-agent-role
+echo "" > "${TMPDIR_ROOT}/.claude/state/agent-role"
 
 # 21. ロールファイルが空 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
@@ -311,46 +304,36 @@ else
   fail "deny メッセージにロール名が含まれる (実際: $REASON)"
 fi
 
-# --- vibecorp.yml がない場合 ---
+# --- ROLE_FILE のパス ---
 echo ""
-echo "--- vibecorp.yml 異常系 ---"
+echo "--- ROLE_FILE のパス ---"
 
-# 31. vibecorp.yml なし → デフォルト名でロールファイル参照
-mv "${TMPDIR_ROOT}/.claude/vibecorp.yml" "${TMPDIR_ROOT}/.claude/vibecorp.yml.bak"
-echo "cpo" > /tmp/.vibecorp-project-agent-role
-OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
-assert_blocked "vibecorp.yml なし → デフォルト名で deny" "$OUTPUT"
-rm -f /tmp/.vibecorp-project-agent-role
-mv "${TMPDIR_ROOT}/.claude/vibecorp.yml.bak" "${TMPDIR_ROOT}/.claude/vibecorp.yml"
+# 31. ROLE_FILE は $CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される
+write_role_file "cpo"
+if [ -f "${TMPDIR_ROOT}/.claude/state/agent-role" ]; then
+  pass "ROLE_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される"
+else
+  fail "ROLE_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される (見つからない)"
+fi
 
-# 32. vibecorp.yml からプロジェクト名取得
-cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
-name: my-project
-preset: full
-YAML
-echo "cpo" > /tmp/.my-project-agent-role
-OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
-assert_blocked "vibecorp.yml からプロジェクト名取得 → ロールファイル名一致" "$OUTPUT"
-rm -f /tmp/.my-project-agent-role
-
-# 33. プロジェクト名のサニタイズ
-cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
-name: hello world!@#
-preset: full
-YAML
-SANITIZED_NAME=$(printf '%s' "hello world!@#" | tr -cs 'A-Za-z0-9._-' '_')
-echo "cpo" > "/tmp/.${SANITIZED_NAME}-agent-role"
-OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
-assert_blocked "プロジェクト名のサニタイズ → ロールファイル名に不正文字なし" "$OUTPUT"
-rm -f "/tmp/.${SANITIZED_NAME}-agent-role"
+# 32. 別の CLAUDE_PROJECT_DIR では別の ROLE_FILE が参照される（worktree 分離の核心）
+ALT_DIR=$(mktemp -d)
+mkdir -p "${ALT_DIR}/.claude/state"
+echo "cto" > "${ALT_DIR}/.claude/state/agent-role"
+ORIG_DIR="$CLAUDE_PROJECT_DIR"
+export CLAUDE_PROJECT_DIR="$ALT_DIR"
+# CTO は docs/specification.md を編集できるが docs/screen-flow.md は不可
+OUTPUT=$(echo '{"tool_input":{"file_path":"docs/screen-flow.md"}}' | run_hook role-gate.sh)
+assert_blocked "別の CLAUDE_PROJECT_DIR の ROLE_FILE が参照される（worktree 分離）" "$OUTPUT"
+export CLAUDE_PROJECT_DIR="$ORIG_DIR"
+rm -rf "$ALT_DIR"
 
 # --- CLAUDE_PROJECT_DIR 未設定 ---
 echo ""
 echo "--- CLAUDE_PROJECT_DIR 未設定 ---"
 
-# 34. CLAUDE_PROJECT_DIR 未設定時に異常終了しない
+# 33. CLAUDE_PROJECT_DIR 未設定時に異常終了しない
 unset CLAUDE_PROJECT_DIR
-rm -f /tmp/.vibecorp-project-agent-role
 EMPTY_DIR=$(mktemp -d)
 set +e
 OUTPUT=$(cd "$EMPTY_DIR" && echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh 2>/dev/null)

@@ -11,13 +11,7 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# 共通ライブラリ読み込み
-HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=../lib/common.sh
-source "${HOOK_DIR}/../lib/common.sh"
-PROJECT_NAME=$(get_project_name)
-
-STAMP_FILE="/tmp/.${PROJECT_NAME}-diagnose-active"
+STAMP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/state/diagnose-active"
 
 # diagnose-active スタンプが存在しない場合は何もしない
 if [ ! -f "$STAMP_FILE" ]; then

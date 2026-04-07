@@ -56,7 +56,8 @@ description: >
 ## 最初にやること（必須）
 以下のコマンドを実行してロールを宣言してください。これにより管轄ファイルの編集権限が付与されます。
 
-echo "{role_id}" > /tmp/.{{PROJECT_NAME}}-agent-role
+mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
+echo "{role_id}" > "$CLAUDE_PROJECT_DIR/.claude/state/agent-role"
 
 role_id: cto / cpo / legal / accounting / coo
 
@@ -78,7 +79,7 @@ role_id: cto / cpo / legal / accounting / coo
 ## 終了時（必須）
 編集完了後、ロールファイルを削除してください。
 
-rm -f /tmp/.{{PROJECT_NAME}}-agent-role
+rm -f "$CLAUDE_PROJECT_DIR/.claude/state/agent-role"
 
 ## 出力
 - 編集したファイルと変更内容の要約

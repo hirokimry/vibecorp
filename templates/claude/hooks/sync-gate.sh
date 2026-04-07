@@ -26,10 +26,7 @@ if echo "$REST" | grep -qE '(^| )(--delete|-d)( |$)'; then
   exit 0
 fi
 
-# vibecorp.yml からプロジェクト名を取得（共通関数を使用）
-PROJECT_NAME=$(get_project_name)
-
-STAMP_FILE="/tmp/.${PROJECT_NAME}-sync-ok"
+STAMP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/state/sync-ok"
 
 if [ -f "$STAMP_FILE" ]; then
   rm -f "$STAMP_FILE"

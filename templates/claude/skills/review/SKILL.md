@@ -66,15 +66,15 @@ review:
 レビューが完了したら、PR 作成を許可するスタンプを生成する。
 
 ```bash
-PROJECT_NAME="$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml | tr -cs 'A-Za-z0-9._-' '_')"
-touch "/tmp/.${PROJECT_NAME}-review-ok"
+mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
+touch "$CLAUDE_PROJECT_DIR/.claude/state/review-ok"
 ```
 
 worktree モードの場合:
 
 ```bash
-PROJECT_NAME="$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*$/, ""); print; exit }' "<path>"/.claude/vibecorp.yml | tr -cs 'A-Za-z0-9._-' '_')"
-touch "/tmp/.${PROJECT_NAME}-review-ok"
+mkdir -p "<path>/.claude/state"
+touch "<path>/.claude/state/review-ok"
 ```
 
 ## 4. 結果報告
