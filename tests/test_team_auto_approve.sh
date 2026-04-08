@@ -217,6 +217,42 @@ assert_not_auto_approved "cd && git push --force → 自動承認しない" "$OU
 
 # ============================================
 echo ""
+echo "=== team-auto-approve.sh: Bash（quote 内の ; や && の誤分割）==="
+# ============================================
+# Issue #252: quote 内の ; を segment 区切りとして誤認識していた。
+# クォート保護された ; / && は分割してはならない。
+
+# awk の action ブロック内の ;（シングルクォート内）→ 自動承認
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"awk '\''/^preset:/ { sub(/^preset:/, \"\"); print; exit }'\'' .claude/vibecorp.yml"}}' | run_hook)
+assert_auto_approved "awk '{...; print; exit}' → 自動承認（quote 内 ;）" "$OUTPUT"
+
+# sed の複数コマンド（シングルクォート内 ;）→ 自動承認
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"sed '\''s/a/b/; s/c/d/'\'' file.txt"}}' | run_hook)
+assert_auto_approved "sed 's/a/b/; s/c/d/' → 自動承認（quote 内 ;）" "$OUTPUT"
+
+# echo 'a; b' → 自動承認（シングルクォート内 ;）
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"echo '\''a; b'\''"}}' | run_hook)
+assert_auto_approved "echo 'a; b' → 自動承認（quote 内 ;）" "$OUTPUT"
+
+# echo "a; b" → 自動承認（ダブルクォート内 ;）
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"echo \"a; b\""}}' | run_hook)
+assert_auto_approved 'echo "a; b" → 自動承認（quote 内 ;）' "$OUTPUT"
+
+# echo 'a && b' → 自動承認（シングルクォート内 &&）
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"echo '\''a && b'\''"}}' | run_hook)
+assert_auto_approved "echo 'a && b' → 自動承認（quote 内 &&）" "$OUTPUT"
+
+# quote 内に rm -rf を書いても、シェルは実行しない（単なる文字列）→ 自動承認
+# ただしこの hook は文字列判定なので rm 検出で弾くのも許容。ここでは弾かれないことを確認する。
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"echo '\''hello world'\''"}}' | run_hook)
+assert_auto_approved "echo 'hello world' → 自動承認" "$OUTPUT"
+
+# 重要な安全確認: quote の外にある rm は検出されなければならない（保護処理がバイパスを生まないこと）
+OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"echo '\''safe text'\'' && rm -rf /tmp/x"}}' | run_hook)
+assert_not_auto_approved "echo 'safe' && rm -rf → 自動承認しない（quote 外 rm を検出）" "$OUTPUT"
+
+# ============================================
+echo ""
 echo "=== team-auto-approve.sh: Bash（||, |, コマンド置換） ==="
 # ============================================
 
