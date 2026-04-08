@@ -155,13 +155,54 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   fi
 
   # && や ; で連結されたコマンドを各セグメントに分割し、全セグメントを検証
+  # quote（'...' や "..."）内の ; / && は区切り文字として扱わない。
+  # 単純な文字列 split（sed 's/;/\n/g'）だと awk '{print; exit}' のような quote 内の ; を
+  # 誤って segment 境界と認識してしまうため、quote 状態を追跡しながら分割する。
   all_safe=true
   while IFS= read -r segment; do
     if ! is_safe_segment "$segment"; then
       all_safe=false
       break
     fi
-  done < <(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g')
+  done < <(echo "$COMMAND" | awk '
+    BEGIN { sq = "\047"; dq = "\042" }
+    {
+      s = $0
+      out = ""
+      in_single = 0
+      in_double = 0
+      i = 1
+      len = length(s)
+      while (i <= len) {
+        c = substr(s, i, 1)
+        if (!in_double && c == sq) {
+          in_single = !in_single
+          out = out c
+          i++
+          continue
+        }
+        if (!in_single && c == dq) {
+          in_double = !in_double
+          out = out c
+          i++
+          continue
+        }
+        if (!in_single && !in_double && c == ";") {
+          out = out "\n"
+          i++
+          continue
+        }
+        if (!in_single && !in_double && c == "&" && substr(s, i+1, 1) == "&") {
+          out = out "\n"
+          i += 2
+          continue
+        }
+        out = out c
+        i++
+      }
+      print out
+    }
+  ')
 
   if [ "$all_safe" = true ]; then
     jq -n '{
