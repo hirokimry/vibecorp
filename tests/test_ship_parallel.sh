@@ -247,6 +247,20 @@ else
   fail "Agent プロンプトに SendMessage での報告指示がない"
 fi
 
+# 8-4: Agent プロンプトに compound command 分割指示がある（#258）
+if grep -q '1 コマンド 1 呼び出し' "$SKILL_FILE"; then
+  pass "Agent プロンプトに compound command 分割指示がある"
+else
+  fail "Agent プロンプトに compound command 分割指示がない"
+fi
+
+# 8-5: Agent プロンプトに built-in check の禁止理由が明示されている（#258）
+if grep -q 'path resolution bypass' "$SKILL_FILE"; then
+  pass "Agent プロンプトに path resolution bypass の禁止理由が明示されている"
+else
+  fail "Agent プロンプトに path resolution bypass の禁止理由が明示されていない"
+fi
+
 echo ""
 
 # --- テスト9: アーキテクチャが方式I になっている ---

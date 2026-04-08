@@ -207,6 +207,7 @@ git worktree list
 注意:
 - 全操作は worktree パス内で実行されます（/ship --worktree が自動処理）
 - PR のベースブランチは <ベースブランチ> を指定してください
+- Bash は 1 コマンド 1 呼び出しに分割すること。`cd ... && cmd1 && cmd2 | head` のように cd + パイプ + リダイレクトを含む compound command は Claude Code 本体の built-in security check（path resolution bypass 検出）に引っかかり permission 確認が出るため、別々の Bash 呼び出しに分ける（参照: #258）
 
 完了したら SendMessage でチームリーダーに以下を報告してください:
 - PR URL
