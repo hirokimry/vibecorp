@@ -121,6 +121,6 @@
 
 ### 2026-04-08: compound command の分割を SKILL.md で制約（Issue #258）
 
-- **判断**: Claude Code built-in security check（`cd` + リダイレクトの複合コマンドをブロックする）は hook で override 不可。対策として ship / ship-parallel の SKILL.md に「複数コマンドは `&&` で繋がず個別の Bash ツール呼び出しに分割する」旨の制約を追加する
+- **判断**: Claude Code built-in security check（`cd` + パイプ + リダイレクトの複合コマンドをブロックする）は hook で override 不可。対策として ship / ship-parallel の SKILL.md に「`cd` + パイプ + リダイレクトを含む compound command は避け、個別の Bash 呼び出しに分割する」旨の制約を追加する。単純な `cd && git ...` のような harmless な命令チェーンは対象外
 - **根拠**: hook の後段で動く built-in check は `permissionDecision: "allow"` を無視する。hook 側での解決は不可能であり、コマンドを生成するエージェント（teammate）への指示で上流から防ぐのが唯一の実用策
 - **代替案**: built-in check を無効化する設定を探したが、そのような設定は存在しない（2026年4月時点）
