@@ -256,6 +256,20 @@ else
   fail "コマンド実行制約がない"
 fi
 
+# 制約セクションに compound command 分割指示がある（#258）
+if grep -q '1 コマンド 1 呼び出し' "$SKILL_FILE"; then
+  pass "制約セクションに compound command 分割指示がある"
+else
+  fail "制約セクションに compound command 分割指示がない"
+fi
+
+# 制約セクションに built-in check の禁止理由が明示されている（#258）
+if grep -q 'path resolution bypass' "$SKILL_FILE"; then
+  pass "制約セクションに path resolution bypass の禁止理由が明示されている"
+else
+  fail "制約セクションに path resolution bypass の禁止理由が明示されていない"
+fi
+
 echo ""
 
 # --- テスト10: テンプレートとローカルの一致 ---
