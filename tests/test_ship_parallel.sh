@@ -262,6 +262,13 @@ else
   fail "Agent プロンプトに path resolution bypass の禁止理由が明示されていない"
 fi
 
+# 8-6: Agent 起動に mode: "dontAsk" の指定がある（#260）
+if grep -q 'dontAsk' "$SKILL_FILE"; then
+  pass "Agent 起動に dontAsk mode の指定がある"
+else
+  fail "Agent 起動に dontAsk mode の指定がない"
+fi
+
 echo ""
 
 # --- テスト9: アーキテクチャが方式I になっている ---

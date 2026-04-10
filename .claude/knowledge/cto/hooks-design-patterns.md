@@ -138,3 +138,31 @@ Compound command contains cd with output redirection - manual approval required 
 ```
 
 このログが書き出されていれば「hook は発火しているが allow を返していない」。ログが書き出されていなければ「hook が発火していない（設定登録の問題 or マッチャーのミス）」と切り分けできる。デバッグ完了後は必ずログ行を削除すること。
+
+## Agent の permission mode と team-auto-approve.sh の関係
+
+Claude Code の Agent ツールは `mode` パラメータで permission の扱い方を制御する。
+
+### mode パラメータの選択肢
+
+`acceptEdits`, `auto`, `bypassPermissions`, `default`, `dontAsk`, `plan`
+
+### team-auto-approve.sh が機能しないケースと対処
+
+Agent の `mode` が未指定（`default`）の場合、teammate のツール呼び出しは親セッション（チームリーダー）に承認要求を上げる。この場合、以下の条件が全て揃っていても `team-auto-approve.sh` の `permissionDecision: "allow"` が Agent の permission レイヤーに上書きされて効かない:
+
+- worktree に `team-auto-approve.sh` が正しくコピーされている
+- `settings.json` のマッチャーが正しく設定されている
+- hook が発火している（`fired.log` で確認済み）
+
+**対処**: Agent 起動時に `mode: "dontAsk"` を指定する。これにより hook が permission を完全に制御できるようになる。
+
+### bypassPermissions との違い
+
+| mode | hook の動作 | 安全性 |
+|------|-------------|--------|
+| `default` | hook は発火するが allow が無視される | 承認ダイアログが出続ける |
+| `dontAsk` | hook が permission を制御する | hook のロジックで安全性を担保 |
+| `bypassPermissions` | hook を含む全 permission check をスキップ | vibecorp では使用禁止 |
+
+`bypassPermissions` はファウンダー方針（Issue #252）で使用禁止。`dontAsk` を使うことで hook の制御を保ちつつ承認ダイアログを排除できる。
