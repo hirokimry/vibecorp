@@ -112,3 +112,15 @@
 - **判断**: `/issue`（minimal プリセットに含まれるスキル）の内部で `vibecorp.yml` の preset を確認し、`standard` または `full` の場合のみ CPO エージェントをゲートとして呼び出す設計を採用する
 - **根拠**: プリセット自己完結の原則（「スキルが参照するコマンド・スキルは同じプリセットに必ず存在すること」）との整合を保ちつつ、上位プリセットで追加のガードレールを有効にする唯一の手段が条件分岐による runtime 判定だった。`minimal` ではゲートをスキップするためプリセット自己完結の原則には反しない。CPO エージェント自体は standard 以上にのみ存在するが、スキルはその存在を前提にせず preset 確認の結果として呼び出す構造にした
 - **代替案**: `/issue` を preset ごとに別スキルとして用意する案（`/issue-minimal`, `/issue-standard`）も検討したが、スキル名の一貫性が失われ「導入の手軽さ」に反するため却下した。また、CPO ゲートを standard 専用スキルとして外出しする案は、ユーザーが明示的に呼び出す必要があり規律の自動化に反するため採用しなかった
+
+### 2026-04-08: team-auto-approve.sh — quote-aware セグメント分割への置き換え（Issue #252）
+
+- **判断**: `sed 's/&&/\n/g; s/;/\n/g'` による単純分割を廃止し、awk で `in_single`/`in_double` フラグを管理する quote-aware 分割に置き換える
+- **根拠**: `awk '/^key:/ { sub(...); print; exit }' file` のような正当なコマンドが `;` の位置で誤分割され、safe list 判定に漏れて permission ダイアログが毎回表示される問題が発生した。quote 内の区切り文字を無視しない実装はバグと同等であり、フックの信頼性を損なう
+- **代替案**: 対象外コマンドを early-exit で弾く方式も有効（分割コスト不要）だが、汎用性が低く新しいコマンドパターンへの対応漏れが起きやすい。awk による state-tracking の方が根本解決として採用した
+
+### 2026-04-08: compound command の分割を SKILL.md で制約（Issue #258）
+
+- **判断**: Claude Code built-in security check（`cd` + リダイレクトの複合コマンドをブロックする）は hook で override 不可。対策として ship / ship-parallel の SKILL.md に「複数コマンドは `&&` で繋がず個別の Bash ツール呼び出しに分割する」旨の制約を追加する
+- **根拠**: hook の後段で動く built-in check は `permissionDecision: "allow"` を無視する。hook 側での解決は不可能であり、コマンドを生成するエージェント（teammate）への指示で上流から防ぐのが唯一の実用策
+- **代替案**: built-in check を無効化する設定を探したが、そのような設定は存在しない（2026年4月時点）

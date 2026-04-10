@@ -112,3 +112,29 @@ fi
 ### /approve-audit スキルとの連携
 
 `/approve-audit` スキルがログを読み取り、allow リストへの追加要否を棚卸しする。フック自体はログ記録のみを担い、allow リスト更新の判断をスキルに委譲することで責務を分離している。
+
+## Claude Code built-in security check の限界
+
+Claude Code 本体は hook とは独立した built-in security check を持つ。hook で `permissionDecision: "allow"` を返しても、built-in check が阻止するケースがある。
+
+確認された例:
+
+```text
+Compound command contains cd with output redirection - manual approval required to prevent path resolution bypass
+```
+
+`cd ... && cmd > /dev/null` のような複合コマンド（cd + リダイレクト）に対して Claude Code が自動でダイアログを出す。この check は hook の後段で動いており、hook 側で override する方法は存在しない。
+
+**対策**: hook でのカバーに限界があるケースは、teammate への指示（SKILL.md のプロンプト等）で「そのようなコマンドを生成しないよう」制約するのが唯一の実用的な対応。具体的には「`&&` で複数コマンドを繋ぐ場合は個別の Bash ツール呼び出しに分割する」旨を SKILL.md に明記する。
+
+## hook デバッグ: fired.log による発火確認
+
+「hook は登録されているが permission ダイアログが出続ける」問題の切り分けには、一時的なログ行を hook の冒頭に仕込む方法が有効。
+
+```bash
+{
+  echo "$(date '+%Y-%m-%dT%H:%M:%S') TOOL=$TOOL_NAME PID=$$ PPID=$PPID CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR:-unset}"
+} >> /tmp/team-auto-approve-fired.log 2>&1
+```
+
+このログが書き出されていれば「hook は発火しているが allow を返していない」。ログが書き出されていなければ「hook が発火していない（設定登録の問題 or マッチャーのミス）」と切り分けできる。デバッグ完了後は必ずログ行を削除すること。
