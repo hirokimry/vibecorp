@@ -190,6 +190,8 @@ git worktree list
 並列グループ内の各 Issue に対して、Agent ツールを起動する。
 **同一グループの全 Agent は1つのメッセージで同時に起動する**（並列実行を最大化）。
 
+Agent 起動時は `mode: "dontAsk"` を指定する。デフォルト mode では teammate のツール呼び出しが親セッションに承認要求を送り、hook の `permissionDecision: "allow"` が上書きされるため。`dontAsk` により hook（`team-auto-approve.sh`）が permission を制御する（参照: #260）。
+
 各 Agent に渡すプロンプト:
 
 ```text
