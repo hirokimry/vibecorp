@@ -7,3 +7,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# ランタイムロックファイル
+.claude/scheduled_tasks.lock
