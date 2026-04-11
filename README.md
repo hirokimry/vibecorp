@@ -137,12 +137,13 @@ your-project/
 | `/harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（2スキル）
+### full プリセットで追加（3スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能 |
+| `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
 ## フック一覧
 
@@ -365,6 +366,15 @@ COO エージェントが Issue 群の依存関係を分析し、TeamCreate + wo
 ```
 
 コードベースを自律的に診断し、改善点を GitHub Issue として起票する。実装は行わない（起票と実装の分離で暴走を防止）。full プリセット専用。
+
+### /spike-loop — ship-parallel E2E 自動検証
+
+```bash
+/spike-loop <Issue URL 1> <Issue URL 2> [...]
+/spike-loop <Issue URL 1> <Issue URL 2> --max-runs 5    # 最大5回ループ（デフォルト: 3）
+```
+
+ヘッドレス Claude で `/ship-parallel` を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。
 
 ### /harvest-all — 全量棚卸し
 

@@ -121,7 +121,7 @@ vibecorp が生成した skills, rules, hooks を protect-files フックで保�
 
 - **minimal**: /review, /review-loop, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop
 - **standard**: 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all
-- **full**: 上記（スキル追加なし）
+- **full**: 上記 + /spike-loop
 
 ## フック設計パターン
 
