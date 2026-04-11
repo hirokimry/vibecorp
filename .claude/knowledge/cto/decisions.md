@@ -166,3 +166,24 @@
 - **判断**: spike-loop SKILL.md が宣言している制約（`--force`/`-D` 禁止、Bash 1 コマンド 1 呼び出し、`2>/dev/null`・`|| echo` 等のフォールバック禁止）を、自身の例示コードで違反していた。プロセス kill・worktree 削除・ブランチ削除のコマンドを `pgrep` / `git worktree remove <path>`（force なし）/ `git branch -d <branch>`（小文字）に修正。uncommitted 変更や未マージブランチは安全に削除できないため手動対応とする設計を採用した。合わせて `headless-claude.md` のサンプルコードも同制約に合わせて修正（`kill "$pid" 2>/dev/null || true` → `kill "$pid"`、パイプを使った `last_ts` 取得 → `awk 'END { print $1 }' "$COMMAND_LOG"` に置き換え）
 - **根拠**: ドキュメント内の制約とサンプルコードが矛盾しているとエージェントが誤ったパターンを学習する。ルールとサンプルの整合性はドキュメントの信頼性の基本
 - **代替案**: フォールバックを許容して制約を緩める案も検討したが、spike-loop の制約は Claude Code built-in security check への対策として設計されたものであり（Issue #258）、緩めることは安全性の低下につながるため採用しなかった
+
+### 2026-04-11: docker/claude-sandbox/ のリポジトリトップレベル配置判断（Issue #266）
+
+- **判断**: コンテナ隔離環境のイメージ定義（`Dockerfile` / `entrypoint.sh` / `seccomp.json` / `README.md` / `.dockerignore`）を `docker/claude-sandbox/` としてリポジトリトップレベルに配置する。`.claude/` 配下には置かない
+- **根拠**:
+  - `docker/` は Docker エコシステムの業界標準配置パターンであり、他リポジトリや外部利用者から発見しやすい
+  - `.claude/` は Claude Code 規約パスのための予約空間であり、Docker 関連ファイルを混入させると規約の意味が希薄になる
+  - `docs/file-placement.md` が禁じているのは `.claude/vibecorp/` のような Claude Code 規約外の独自 namespace の作成であり、リポジトリトップへの新規ディレクトリ追加は別論点
+  - `templates/` は `install.sh` で配布先にコピーされる source of truth であり、コンテナ定義は配布先でも vibecorp ソースと同じ構造を保ちたい（`templates/` 配下ではない）
+- **代替案**:
+  - `.claude/docker/` 配置案 → 却下。Claude Code 規約空間の汚染になり、規約と独自要素の境界が曖昧になる
+  - `templates/docker/` 配置案 → 却下。`templates/` は配布先コピー用であり、vibecorp 本体の開発時点でイメージを使うユースケース（CI でのビルドテスト等）に対応しづらい
+
+### 2026-04-11: seccomp プロファイルを ALLOW デフォルト + 特定 syscall denial 構成で実装（Issue #266）
+
+- **判断**: `docker/claude-sandbox/seccomp.json` を `defaultAction: SCMP_ACT_ALLOW` + `ptrace` / `mount` / `pivot_root` / `bpf` / `unshare` / `setns` / `reboot` / `kexec_load` / `swapon` / `swapoff` / `init_module` / `perf_event_open` の明示的な `SCMP_ACT_ERRNO` 拒否で構成する。Docker default seccomp profile（800 行超の allowlist）は同梱しない
+- **根拠**:
+  - Docker default profile を同梱すると常に Docker 最新版との乖離リスクを抱えることになり、メンテナンスコストが高い
+  - 本イメージは `--cap-drop ALL` + `--cap-add NET_ADMIN` + `setpriv` による bounding set drop + `--read-only` + `no-new-privileges` + `--pids-limit` 等の多層防御を前提としており、seccomp は追加防御層として位置付けられる
+  - 攻撃面として最も危険な syscall 群（コンテナエスケープ経路、debugger 介入、カーネル操作）を明示的に拒否することで、ALLOW デフォルトでも実質的な isolation を維持できる
+- **代替案**: Docker default profile をベースにして同梱する案 → 却下（保守性の問題）。Phase 2 以降で厳格化の必要性が出た場合は再評価する

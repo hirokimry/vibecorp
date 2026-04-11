@@ -1,0 +1,93 @@
+{
+    "defaultAction": "SCMP_ACT_ALLOW",
+    "archMap": [
+        {
+            "architecture": "SCMP_ARCH_X86_64",
+            "subArchitectures": [
+                "SCMP_ARCH_X86",
+                "SCMP_ARCH_X32"
+            ]
+        },
+        {
+            "architecture": "SCMP_ARCH_AARCH64",
+            "subArchitectures": [
+                "SCMP_ARCH_ARM"
+            ]
+        }
+    ],
+    "syscalls": [
+        {
+            "names": [
+                "ptrace",
+                "process_vm_readv",
+                "process_vm_writev"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "debugger / 他プロセスメモリアクセス禁止"
+        },
+        {
+            "names": [
+                "mount",
+                "umount",
+                "umount2",
+                "pivot_root",
+                "chroot",
+                "fsmount",
+                "fsopen",
+                "move_mount",
+                "open_tree"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "ファイルシステム名前空間操作の禁止"
+        },
+        {
+            "names": [
+                "bpf"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "eBPF プログラム操作の禁止"
+        },
+        {
+            "names": [
+                "unshare",
+                "setns"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "名前空間の脱出や再構成を禁止（CLONE_NEWUSER/NEWNS/NEWNET 等の経路を遮断）"
+        },
+        {
+            "names": [
+                "reboot",
+                "kexec_load",
+                "kexec_file_load"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "ホストの再起動 / カーネル入れ替え禁止"
+        },
+        {
+            "names": [
+                "swapon",
+                "swapoff"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "swap 操作禁止"
+        },
+        {
+            "names": [
+                "init_module",
+                "finit_module",
+                "delete_module",
+                "create_module"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "カーネルモジュール操作禁止"
+        },
+        {
+            "names": [
+                "perf_event_open"
+            ],
+            "action": "SCMP_ACT_ERRNO",
+            "comment": "perf_event は情報漏洩・権限昇格の経路になり得る"
+        }
+    ]
+}
