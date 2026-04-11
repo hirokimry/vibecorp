@@ -20,3 +20,20 @@ else
   exit 1
 fi
 ```
+
+## trap cleanup EXIT でのリソース解放
+
+`set -euo pipefail` 下のテストスクリプトで `trap cleanup EXIT` を使う場合、cleanup 内でのリソース解放コマンドはテスト結果に影響させてはならない。
+
+- Docker イメージ・コンテナ・一時ファイルの削除は失敗しても終了コードに影響させない
+- サブシェル `( set +e; ... )` で失敗を隔離するか、リダイレクト `>/dev/null 2>&1` で抑制する
+
+```bash
+cleanup() {
+  # サブシェルで隔離（set +e がサブシェル内にのみ適用される）
+  ( set +e; docker rmi -f "$IMAGE_TAG" >/dev/null 2>&1 )
+}
+trap cleanup EXIT
+```
+
+この失敗抑制はテストのフォールバック禁止ルールの対象外。cleanup の目的はリソース解放であり、失敗しても後続テストへの影響はないため。
