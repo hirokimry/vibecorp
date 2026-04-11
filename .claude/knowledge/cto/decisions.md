@@ -148,3 +148,21 @@
 - **判断**: spike-loop は full プリセット専用とし、standard 以下のプリセットへの配布は行わない
 - **根拠**: spike-loop は内部で `/ship-parallel` を呼び出し、ship-parallel は COO エージェントが担うチームオーケストレーションに依存する。COO エージェントは full プリセットにのみ含まれるため、プリセット自己完結の原則に従うと spike-loop も full 専用となる
 - **代替案**: preset 条件分岐型（`/issue` の CPO ゲートと同パターン）で standard では COO なしで動作させる案も検討したが、spike-loop の本質的な価値（ship-parallel の自動 E2E 検証）は COO なしでは成立しないため条件分岐による回避は意味をなさない
+
+### 2026-04-11: --dangerously-skip-permissions のコンテナ化隔離方式の評価
+
+- **判断**: Docker（bind mount）方式を推奨。gVisor/Firecracker は現時点では過剰。vibecorp 本体の必須要件にはせず、オプション機能として位置づける
+- **根拠**:
+  - コンテナ化が守るのは「ホスト環境への波及防止」であり「コンテナ内操作の安全化」ではない。この区別が重要
+  - Docker bind mount は ship-parallel の手動 worktree・spike-loop の PID 管理・Team 機能の Agent 間通信すべてと整合する
+  - gVisor は syscall 互換レイヤーで Claude Code CLI / spike-loop の `kill $pid` に影響が出る可能性があり、E2E 検証コストが高い
+  - Firecracker はVMオーバーヘッドが大きく、インタラクティブワークフローのホストには不適
+  - コンテナ化を必須にすると MVV「導入の手軽さ」と衝突する
+- **実装要件**: `--init`（tini）フラグ必須（spike-loop の子プロセス zombie 対策）、`~/.gitconfig` と `~/.config/gh/` は ro マウント、`~/.claude/` はコンテナ専用ディレクトリで分離、`CLAUDE_PROJECT_DIR` を明示設定
+- **代替案**: gVisor（隔離強度は高いが互換性未検証）、macOS sandbox-exec（補完的用途のみ）
+
+### 2026-04-11: spike-loop SKILL.md の kill+cleanup セクションを自己矛盾のない手順に書き換え（PR #264）
+
+- **判断**: spike-loop SKILL.md が宣言している制約（`--force`/`-D` 禁止、Bash 1 コマンド 1 呼び出し、`2>/dev/null`・`|| echo` 等のフォールバック禁止）を、自身の例示コードで違反していた。プロセス kill・worktree 削除・ブランチ削除のコマンドを `pgrep` / `git worktree remove <path>`（force なし）/ `git branch -d <branch>`（小文字）に修正。uncommitted 変更や未マージブランチは安全に削除できないため手動対応とする設計を採用した。合わせて `headless-claude.md` のサンプルコードも同制約に合わせて修正（`kill "$pid" 2>/dev/null || true` → `kill "$pid"`、パイプを使った `last_ts` 取得 → `awk 'END { print $1 }' "$COMMAND_LOG"` に置き換え）
+- **根拠**: ドキュメント内の制約とサンプルコードが矛盾しているとエージェントが誤ったパターンを学習する。ルールとサンプルの整合性はドキュメントの信頼性の基本
+- **代替案**: フォールバックを許容して制約を緩める案も検討したが、spike-loop の制約は Claude Code built-in security check への対策として設計されたものであり（Issue #258）、緩めることは安全性の低下につながるため採用しなかった
