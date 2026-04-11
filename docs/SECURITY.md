@@ -48,5 +48,5 @@
 9. **resource limit**: `--memory` / `--cpus` / `--pids-limit` を必ず指定する
 10. **イメージの定期更新と脆弱性スキャン**: ベースイメージ・依存パッケージを定期的に更新し、`trivy` 等で CVE スキャンを実施する
 
-参考実装: `docker/claude-sandbox/` （Issue #266 / Phase 1-1）
+参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること（Issue #266 / Phase 1-1）
 参考判断記録: `.claude/knowledge/ciso/decisions.md` の `2026-04-11: --dangerously-skip-permissions のコンテナ隔離構想 評価`
