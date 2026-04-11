@@ -32,3 +32,21 @@
 ## インシデント対応
 
 （セキュリティインシデント発生時の対応手順を記載）
+
+## コンテナ隔離の最低条件
+
+`--dangerously-skip-permissions` を伴う無人実行（`full` プリセットの spike-loop / ship-parallel / autopilot 等）は以下の最低条件を全て満たしたコンテナ環境で実行しなければならない（MUST）。1 項目でも欠ける場合は NO-GO とする。
+
+1. **docker.sock を非マウント**: `/var/run/docker.sock` のマウントは絶対禁止（コンテナエスケープの直接経路になる）
+2. **egress allowlist**: `api.anthropic.com` / `api.github.com` / `github.com` のみ許可し、それ以外への外部通信を遮断する
+3. **secrets の環境変数渡し禁止**: GitHub token / Anthropic API key は Docker secrets または `/run/secrets/` への読み取り専用 bind mount で注入する。`docker run -e ANTHROPIC_API_KEY=...` のような host 側からの env 渡しは禁止
+4. **.ssh / .gnupg の非マウント**: `~/.ssh` および `~/.gnupg` はマウントしない。必要な場合は操作専用の使い捨て deploy key を用いる
+5. **GitHub token の最小スコープ**: fine-grained token で対象リポジトリ・対象操作のみに制限する
+6. **read-only rootfs**: `--read-only` を有効化し、書き込み可能領域は `/workspace`（bind mount）/ `/state`（tmpfs）/ `/tmp`（tmpfs）/ `/home/$USER/.cache`（tmpfs）に限定する
+7. **非 root 実行**: init 完了後のワークロードプロセスは UID 0 で実行しない。entrypoint は起動直後に root で iptables allowlist 設定等の特権セットアップを行った上で、`setpriv --reuid=1000 --regid=1000 --clear-groups --inh-caps=-all --bounding-set=-all` により UID 1000 へ降格し、capability bounding set 全体を drop する（降格後の NET_ADMIN / SETUID / SETGID 等の再取得を物理的に不可能にする）。`--user 1000:1000` による事前降格は iptables 設定不可となり egress allowlist が機能しないため禁止する
+8. **seccomp プロファイル**: `ptrace` / `mount` / `umount2` / `pivot_root` / `chroot` / `bpf` / `unshare(CLONE_NEW*)` / `setns` / `reboot` / `kexec_load` / `swapon` / `swapoff` / `init_module` / `perf_event_open` を拒否する
+9. **resource limit**: `--memory` / `--cpus` / `--pids-limit` を必ず指定する
+10. **イメージの定期更新と脆弱性スキャン**: ベースイメージ・依存パッケージを定期的に更新し、`trivy` 等で CVE スキャンを実施する
+
+参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること。entrypoint 実装は `docker/claude-sandbox/entrypoint.sh` を参照（Issue #266 / Phase 1-1）
+参考判断記録: `.claude/knowledge/cto/decisions.md` の `2026-04-11: docker/claude-sandbox/ のリポジトリトップレベル配置判断` および `2026-04-11: seccomp プロファイルを ALLOW デフォルト + 特定 syscall denial 構成で実装`
