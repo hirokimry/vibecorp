@@ -105,25 +105,49 @@ git worktree list > "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/run_{N}/worktr
 
 ### 5. kill + cleanup
 
-stuck したプロセスと残存リソースを削除する。
+stuck したプロセスと残存リソースを削除する。**各コマンドは 1 呼び出し単位で実行し、パイプで連結しない。** `--force` / `-D` は使用せず、安全に削除できないリソースは手動対応する。
+
+**5-1. ヘッドレス Claude プロセスを kill**（PID を記録しているもの）
 
 ```bash
-# ヘッドレス Claude プロセスを kill（PID を記録しているもの）
 kill <PID>
-
-# 残存 teammate プロセスを kill
-ps aux | grep 'claude.*agent-id' | grep -v grep | awk '{print $2}' | xargs kill
-
-# worktree を削除
-git worktree list --porcelain | grep '^worktree' | grep 'worktrees/' | awk '{print $2}' | while read -r wt; do
-  git worktree remove "$wt" --force
-done
-
-# ブランチを削除
-git branch | grep 'dev/' | while read -r branch; do
-  git branch -D "$branch"
-done
 ```
+
+**5-2. 残存 teammate プロセスの PID を取得**
+
+```bash
+pgrep -f 'claude.*agent-id'
+```
+
+取得した PID を 1 件ずつ `kill <PID>` で終了する（xargs 等のパイプラインは使わない）。
+
+**5-3. worktree の一覧を取得**
+
+```bash
+git worktree list --porcelain
+```
+
+一覧から spike-loop の対象となる worktree（`worktrees/` 配下で `dev/` ブランチを持つもの）を特定し、1 件ずつ削除する:
+
+```bash
+git worktree remove <path>
+```
+
+`git worktree remove` は uncommitted 変更があると失敗する。失敗時はスナップショット（ステップ 4）で内容を保全してから、ユーザーに手動対応を求める（`--force` は使用しない）。
+
+**5-4. dev/ ブランチの一覧を取得**
+
+```bash
+git branch --list 'dev/*'
+```
+
+各ブランチを 1 件ずつ削除する:
+
+```bash
+git branch -d <branch>
+```
+
+`git branch -d` はマージ済みブランチのみ削除できる。未マージのブランチは削除失敗となるため、ユーザーに手動対応を求める（`-D` は使用しない）。
 
 ### 6. 結果確認
 

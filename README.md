@@ -65,7 +65,7 @@ path/to/vibecorp/install.sh --update
 |---|---|---|---|---|
 | **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
-| **full** | 上記 + /diagnose, /autopilot | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
+| **full** | 上記 + /diagnose, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
