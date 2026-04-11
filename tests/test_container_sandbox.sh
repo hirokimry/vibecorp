@@ -165,7 +165,7 @@ echo ""
 echo "=== resource limit 検証 ==="
 # ============================================
 
-# ケース 8: --memory / --pids-limit が docker inspect で反映されている
+# ケース 8: --memory / --cpus / --pids-limit が docker inspect で反映されている
 LIMITS_NAME="vibecorp-sandbox-limits-$$"
 docker run -d --rm \
     --memory 2g --cpus 2 --pids-limit 512 \
@@ -173,17 +173,18 @@ docker run -d --rm \
     --name "$LIMITS_NAME" \
     "$IMAGE_TAG" sleep 30 >/dev/null
 
-# インスペクトして memory / pids-limit を取得
-INSPECT=$(docker inspect "$LIMITS_NAME" --format '{{.HostConfig.Memory}} {{.HostConfig.PidsLimit}}')
+# インスペクトして memory / pids-limit / nanocpus を取得
+INSPECT=$(docker inspect "$LIMITS_NAME" --format '{{.HostConfig.Memory}} {{.HostConfig.PidsLimit}} {{.HostConfig.NanoCpus}}')
 EXPECTED_MEM=$((2 * 1024 * 1024 * 1024))
+EXPECTED_CPUS_NANO=$((2 * 1000000000))
 
 # クリーンアップ
 docker stop "$LIMITS_NAME" >/dev/null
 
-if [ "$INSPECT" = "${EXPECTED_MEM} 512" ]; then
+if [ "$INSPECT" = "${EXPECTED_MEM} 512 ${EXPECTED_CPUS_NANO}" ]; then
     pass "resource limit が期待値と一致 (${INSPECT})"
 else
-    fail "resource limit が期待値と不一致 (実際: ${INSPECT}, 期待: ${EXPECTED_MEM} 512)"
+    fail "resource limit が期待値と不一致 (実際: ${INSPECT}, 期待: ${EXPECTED_MEM} 512 ${EXPECTED_CPUS_NANO})"
 fi
 
 # ============================================

@@ -43,10 +43,10 @@
 4. **.ssh / .gnupg の非マウント**: `~/.ssh` および `~/.gnupg` はマウントしない。必要な場合は操作専用の使い捨て deploy key を用いる
 5. **GitHub token の最小スコープ**: fine-grained token で対象リポジトリ・対象操作のみに制限する
 6. **read-only rootfs**: `--read-only` を有効化し、書き込み可能領域は `/workspace`（bind mount）/ `/state`（tmpfs）/ `/tmp`（tmpfs）/ `/home/$USER/.cache`（tmpfs）に限定する
-7. **非 root 実行**: UID 0 でプロセスを起動しない。entrypoint で iptables 設定後に `setpriv` で UID 1000 に降格し、同時に capability bounding set 全体を drop する（降格後の NET_ADMIN / SETUID / SETGID 等の再取得を物理的に不可能にする）
+7. **非 root 実行**: init 完了後のワークロードプロセスは UID 0 で実行しない。entrypoint は起動直後に root で iptables allowlist 設定等の特権セットアップを行った上で、`setpriv --reuid=1000 --regid=1000 --clear-groups --inh-caps=-all --bounding-set=-all` により UID 1000 へ降格し、capability bounding set 全体を drop する（降格後の NET_ADMIN / SETUID / SETGID 等の再取得を物理的に不可能にする）。`--user 1000:1000` による事前降格は iptables 設定不可となり egress allowlist が機能しないため禁止する
 8. **seccomp プロファイル**: `ptrace` / `mount` / `umount2` / `pivot_root` / `chroot` / `bpf` / `unshare(CLONE_NEW*)` / `setns` / `reboot` / `kexec_load` / `swapon` / `swapoff` / `init_module` / `perf_event_open` を拒否する
 9. **resource limit**: `--memory` / `--cpus` / `--pids-limit` を必ず指定する
 10. **イメージの定期更新と脆弱性スキャン**: ベースイメージ・依存パッケージを定期的に更新し、`trivy` 等で CVE スキャンを実施する
 
-参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること（Issue #266 / Phase 1-1）
-参考判断記録: `.claude/knowledge/ciso/decisions.md` の `2026-04-11: --dangerously-skip-permissions のコンテナ隔離構想 評価`
+参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること。entrypoint 実装は `docker/claude-sandbox/entrypoint.sh` を参照（Issue #266 / Phase 1-1）
+参考判断記録: `.claude/knowledge/cto/decisions.md` の `2026-04-11: docker/claude-sandbox/ のリポジトリトップレベル配置判断` および `2026-04-11: seccomp プロファイルを ALLOW デフォルト + 特定 syscall denial 構成で実装`

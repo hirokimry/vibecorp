@@ -51,7 +51,7 @@ docker run --rm \
 
 ### 補足
 
-- `--user` は指定しない。entrypoint.sh が root で iptables 設定後、`setpriv --reuid=1000 --regid=1000 --bounding-set=-cap_net_admin,-cap_net_raw,-cap_sys_admin` で降格する。事前に `--user 1000:1000` を指定すると iptables の OUTPUT 書き換えが行えなくなり egress allowlist が機能しないため禁止
+- `--user` は指定しない。entrypoint.sh が root で iptables 設定後、`setpriv --reuid=1000 --regid=1000 --clear-groups --inh-caps=-all --bounding-set=-all` で降格する。事前に `--user 1000:1000` を指定すると iptables の OUTPUT 書き換えが行えなくなり egress allowlist が機能しないため禁止
 - `CLAUDE_PROJECT_DIR` は Dockerfile の `ENV` で `/workspace` に設定済み
 - `docker run` には `--secret` フラグが存在しないため、`--mount type=bind ... target=/run/secrets/...,readonly` でシークレットを注入する。`docker compose` 利用時は `secrets:` セクションを使用する（後述）
 - `--network bridge` を前提とする。`--network=host` や `--network=none` では Docker 内部 DNS（`127.0.0.11:53`）前提が崩れる
