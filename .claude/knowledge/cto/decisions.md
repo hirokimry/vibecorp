@@ -130,3 +130,39 @@
 - **判断**: ship-parallel で Agent (teammate) を起動する際に `mode: "dontAsk"` を指定する
 - **根拠**: Agent の mode が未指定（`default`）の場合、teammate のツール呼び出しが親セッション（チームリーダー）に承認要求を上げる。この場合、worktree に `team-auto-approve.sh` が存在し settings.json のマッチャーも正しくコピーされていても、hook の `permissionDecision: "allow"` が Agent の permission レイヤーに上書きされて効かない。`dontAsk` を指定することで hook が permission を完全に制御できるようになる
 - **代替案**: `bypassPermissions` はファウンダー方針（Issue #252）で使用禁止。`dontAsk` はこの方針に矛盾せず、hook が引き続き動作するため安全性を維持できる
+
+### 2026-04-11: ヘッドレス Claude を子プロセスとして起動し PID 管理するアーキテクチャパターンの採用（spike-loop）
+
+- **判断**: spike-loop では `claude -p --permission-mode dontAsk --verbose` を Bash の `run_in_background: true` で起動し、返却された PID を記録して kill・監視に使用する
+- **根拠**: #260 で採用した `dontAsk` モードの応用として、ヘッドレス Claude を外部プロセスとして管理することで、スキルから ship-parallel の E2E 実行を完全に自律制御できる。PID を記録することで stuck 時の強制終了とクリーンアップが確実に行える
+- **代替案**: Agent ツールで子エージェントとして起動する案も検討したが、長時間実行の監視・強制終了・再起動がツール API では制御できないため採用しなかった
+
+### 2026-04-11: command-log ベースの stuck 検出（10分閾値）と 30 秒間隔ポーリングの採用（spike-loop）
+
+- **判断**: command-log の最終タイムスタンプを `tail -1` で取得し 30 秒間隔でポーリングする。最終タイムスタンプから 10 分以上更新がなければ stuck と判定する
+- **根拠**: Monitor ツールはプロセスの stdout イベントを通知するが、長時間監視では通知が多量発生してコンテキストを圧迫する。30 秒間隔の明示的なポーリングであればコンテキスト消費が予測可能で、stuck 検出の精度（10分）も ship-parallel の平均的なステップ所要時間に対して妥当な閾値である
+- **代替案**: Monitor ツールによるイベント駆動監視は通知過多でコンテキスト圧迫のリスクがあり採用しなかった。command-log のポーリングは既存の hook インフラ（command-log.sh）を再利用でき追加インフラ不要の点でも優れる
+
+### 2026-04-11: spike-loop を full プリセット専用とした判断（Issue #263 前提）
+
+- **判断**: spike-loop は full プリセット専用とし、standard 以下のプリセットへの配布は行わない
+- **根拠**: spike-loop は内部で `/ship-parallel` を呼び出し、ship-parallel は COO エージェントが担うチームオーケストレーションに依存する。COO エージェントは full プリセットにのみ含まれるため、プリセット自己完結の原則に従うと spike-loop も full 専用となる
+- **代替案**: preset 条件分岐型（`/issue` の CPO ゲートと同パターン）で standard では COO なしで動作させる案も検討したが、spike-loop の本質的な価値（ship-parallel の自動 E2E 検証）は COO なしでは成立しないため条件分岐による回避は意味をなさない
+
+### 2026-04-11: --dangerously-skip-permissions のコンテナ化隔離方式の評価
+
+- **判断**: Docker（bind mount）方式を推奨。gVisor/Firecracker は現時点では過剰。vibecorp 本体の必須要件にはせず、オプション機能として位置づける
+- **根拠**:
+  - コンテナ化が守るのは「ホスト環境への波及防止」であり「コンテナ内操作の安全化」ではない。この区別が重要
+  - Docker bind mount は ship-parallel の手動 worktree・spike-loop の PID 管理・Team 機能の Agent 間通信すべてと整合する
+  - gVisor は syscall 互換レイヤーで Claude Code CLI / spike-loop の `kill $pid` に影響が出る可能性があり、E2E 検証コストが高い
+  - Firecracker はVMオーバーヘッドが大きく、インタラクティブワークフローのホストには不適
+  - コンテナ化を必須にすると MVV「導入の手軽さ」と衝突する
+- **実装要件**: `--init`（tini）フラグ必須（spike-loop の子プロセス zombie 対策）、`~/.gitconfig` と `~/.config/gh/` は ro マウント、`~/.claude/` はコンテナ専用ディレクトリで分離、`CLAUDE_PROJECT_DIR` を明示設定
+- **代替案**: gVisor（隔離強度は高いが互換性未検証）、macOS sandbox-exec（補完的用途のみ）
+
+### 2026-04-11: spike-loop SKILL.md の kill+cleanup セクションを自己矛盾のない手順に書き換え（PR #264）
+
+- **判断**: spike-loop SKILL.md が宣言している制約（`--force`/`-D` 禁止、Bash 1 コマンド 1 呼び出し、`2>/dev/null`・`|| echo` 等のフォールバック禁止）を、自身の例示コードで違反していた。プロセス kill・worktree 削除・ブランチ削除のコマンドを `pgrep` / `git worktree remove <path>`（force なし）/ `git branch -d <branch>`（小文字）に修正。uncommitted 変更や未マージブランチは安全に削除できないため手動対応とする設計を採用した。合わせて `headless-claude.md` のサンプルコードも同制約に合わせて修正（`kill "$pid" 2>/dev/null || true` → `kill "$pid"`、パイプを使った `last_ts` 取得 → `awk 'END { print $1 }' "$COMMAND_LOG"` に置き換え）
+- **根拠**: ドキュメント内の制約とサンプルコードが矛盾しているとエージェントが誤ったパターンを学習する。ルールとサンプルの整合性はドキュメントの信頼性の基本
+- **代替案**: フォールバックを許容して制約を緩める案も検討したが、spike-loop の制約は Claude Code built-in security check への対策として設計されたものであり（Issue #258）、緩めることは安全性の低下につながるため採用しなかった
