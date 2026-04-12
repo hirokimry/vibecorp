@@ -280,3 +280,8 @@
   - read-only マウントの場合、OAuth token refresh 時に書き込みエラーが発生するリスクがある
   - fine-grained PAT は refresh 不要のため、`GH_TOKEN` のみで安定動作する
 - **代替案**: `.config/gh` を read-only マウント → 不要と判断（`GH_TOKEN` が優先されるため冗長）
+### 2026-04-12: container-worktree.md のスコープを Phase 2-2 まで拡張（ドキュメント整合）
+
+- **判断**: `docs/design/container-worktree.md` のスコープ宣言を Phase 2-1 のみから Phase 2-2（#269）まで含める形に拡張。ship 単体の `VIBECORP_IN_CONTAINER` ネスト防止設計と autopilot のコンテナ化設計を「Phase 2-2」セクションとして追記した
+- **根拠**: sync-check で設計ドキュメントと実装の不整合が検出された。Phase 2-1 設計（worktree 2 マウント方式）と Phase 2-2 設計（全スキルコンテナ統合）は密接に関連しており、同一ドキュメントで管理するのが適切
+- **代替案**: 別ファイル（`container-ship.md` 等）に分割する案も検討したが、コンテナ起動方式まとめ表の管理が分散するため既存ファイルに追記する方式を採用した

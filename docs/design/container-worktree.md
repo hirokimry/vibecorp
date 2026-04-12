@@ -1,11 +1,13 @@
 # worktree ↔ コンテナマウント設計
 
-> Phase 2-1 / Issue [#268](https://github.com/hirokimry/vibecorp/issues/268)
+> Phase 2-1 / Issue [#268](https://github.com/hirokimry/vibecorp/issues/268) ・ Phase 2-2 / Issue [#269](https://github.com/hirokimry/vibecorp/issues/269)
 > 親 Issue: [#265](https://github.com/hirokimry/vibecorp/issues/265)
 
 ## 概要
 
 ship-parallel は `git worktree add` でリポジトリ外にディレクトリを展開する。コンテナ内でこの worktree を正しく動作させるためのマウント設計を定義する。
+
+Phase 2-2（#269）では全ヘッドレス実行のコンテナ統合を実施する。ship-parallel に加えて、ship 単体実行時のコンテナモードと autopilot のコンテナ化の設計も本ドキュメントに含める。
 
 ## 前提
 
@@ -280,3 +282,38 @@ docker run -d \
 - `docs/worktree-patterns.md` — worktree モードの設計パターン
 - `docs/SECURITY.md` — CISO 最低条件
 - `.claude/knowledge/cto/decisions.md` — 設計判断記録
+
+## Phase 2-2: 全ヘッドレス実行のコンテナ統合（#269）
+
+### ship 単体のコンテナモード
+
+単体 `/ship` を直接呼んだ場合も、コンテナ内で実行する。
+
+**ネスト防止設計**: `VIBECORP_IN_CONTAINER=1` 環境変数で二重起動を防ぐ。
+
+| 条件 | 動作 |
+|------|------|
+| `VIBECORP_IN_CONTAINER=1` が設定済み | コンテナ起動をスキップし、通常のワークフローを実行 |
+| worktree モード（`--worktree`）あり | コンテナ起動をスキップ（ship-parallel がコンテナを管理） |
+| 上記以外（通常の単体 `/ship`） | ブランチ作成後、docker run でコンテナを起動して自身を再実行 |
+
+worktree モードでない通常起動時は、リポジトリルート（`$CLAUDE_PROJECT_DIR`）を `/workspace:rw` にマウントし、`VIBECORP_IN_CONTAINER=1` を渡してコンテナを起動する。コンテナ内の `/ship` が同じフラグを検出してスキップするため、再帰的なコンテナ起動は発生しない。
+
+コンテナ命名規則: `vibecorp-ship-<ISSUE_NUMBER>-<SESSION_ID>`（ship-parallel と同じパターン）
+
+### autopilot のコンテナ化設計
+
+autopilot のメインループ自体をコンテナ内で実行する。ship と同じ `VIBECORP_IN_CONTAINER=1` によるネスト防止パターンを踏襲する。
+
+コンテナ命名規則: `vibecorp-autopilot-<SESSION_ID>`
+
+`/workspace:rw` にリポジトリルートをマウントし、コンテナ内でそのまま `/autopilot --auto` を再実行する。コンテナ内では `VIBECORP_IN_CONTAINER=1` が設定済みのため、コンテナ起動ステップをスキップして診断・ship フローに進む。
+
+### 各スキルのコンテナ起動方式まとめ
+
+| スキル | コンテナ名パターン | `/workspace` マウント元 | `GIT_DIR` / `GIT_WORK_TREE` | ネスト防止 |
+|--------|-----------------|------------------------|-------------------------------|----------|
+| spike-loop | `vibecorp-spike-loop-<SESSION>-<RUN>` | リポジトリルート | 不要 | なし（直列ループ） |
+| ship（単体） | `vibecorp-ship-<ISSUE>-<SESSION>` | リポジトリルート | 不要 | `VIBECORP_IN_CONTAINER=1` |
+| ship-parallel | `vibecorp-ship-<ISSUE>-<SESSION>` | worktree ディレクトリ | 必要（2マウント方式） | `VIBECORP_IN_CONTAINER=1` |
+| autopilot | `vibecorp-autopilot-<SESSION>` | リポジトリルート | 不要 | `VIBECORP_IN_CONTAINER=1` |
