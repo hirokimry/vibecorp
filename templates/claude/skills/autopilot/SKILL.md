@@ -95,18 +95,18 @@ gh issue list --label "diagnose" --state open --json number,title --jq '.[] | "#
 ### 6. Issue がない場合 → diagnose 実行
 
 open な diagnose Issue が0件の場合、`/diagnose` を実行して Issue を起票する。
-起票後、そのままステップ5に進む（起票した Issue を ship する）。
+起票後、そのままステップ7に進む（起票した Issue を ship する）。
 
 ### 7. COO による並列判定
 
-COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ3と同じ）。
+COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ4と同じ）。
 
 COO の分析結果に基づき、並列グループ・直列チェーン・保留に分類する。
 保留と判定された Issue は候補から除外する。
 
 ### 8. ship 確認・実行
 
-#### 6a. デフォルト（確認あり）
+#### 8a. デフォルト（確認あり）
 
 COO の分析結果と候補一覧をユーザーに提示する:
 
@@ -127,7 +127,7 @@ AskUserQuestion でユーザーの選択を取得する。
 - `skip` → 「スキップしました」で終了
 - 番号指定 or `all` → 選択された Issue を `/ship-parallel` で実行
 
-#### 6b. `--auto` モード
+#### 8b. `--auto` モード
 
 ユーザー確認なしで、全 diagnose Issue を `/ship-parallel` に渡す。
 
