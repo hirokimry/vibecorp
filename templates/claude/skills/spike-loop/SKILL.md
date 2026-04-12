@@ -73,7 +73,13 @@ mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop"
 ```
 
 ```bash
-test -f "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/.current-session" || date +%s > "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/.current-session"
+ls "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/.current-session"
+```
+
+ファイルが存在しない場合のみ、次のコマンドで作成する:
+
+```bash
+date +%s > "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/.current-session"
 ```
 
 ```bash

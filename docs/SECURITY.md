@@ -20,7 +20,7 @@
 
 - シークレット・APIキー・パスワードをリポジトリにコミットしない
 - 環境変数またはシークレットマネージャーで管理する
-- コンテナ環境では `/secrets/` ディレクトリへの read-only bind mount 方式でシークレットを注入する。`docker run -e` による環境変数渡しは禁止する（`docker run --mount type=bind,source=/host/secrets/,target=/run/secrets/,readonly` を使用する）
+- コンテナ環境では `/run/secrets/` への read-only bind mount 方式でシークレットを注入する。`docker run -e` による環境変数渡しは禁止する（`docker run --mount type=bind,source=./secrets/anthropic_api_key,target=/run/secrets/anthropic_api_key,readonly` を使用する）
 
 ### 個人情報
 
