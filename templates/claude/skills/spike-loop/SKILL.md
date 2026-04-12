@@ -1,6 +1,6 @@
 ---
 name: spike-loop
-description: "ship-parallel の E2E 検証を自動化する。コンテナ化されたヘッドレス Claude で ship-parallel を起動し、docker logs ベースで stuck 検出 → 診断 → kill → 再起動をループする。「/spike-loop」「並列検証」と言った時に使用。"
+description: "ship-parallel の E2E 検証を自動化する。コンテナ化されたヘッドレス Claude で ship-parallel を起動し、docker logs --since の無音カウンタで stuck 検出 → 診断 → 強制停止 → 再起動をループする。「/spike-loop」「並列検証」と言った時に使用。"
 ---
 
 **ultrathink**

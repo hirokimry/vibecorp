@@ -300,9 +300,9 @@ if [[ "$DOCKER_AVAILABLE" = true ]]; then
     fail "docker run -d で container が起動しない"
   fi
 
-  # 8-2: docker logs --since=30s で出力行数カウントが取得できる
-  LINE_COUNT=$(docker logs --since=30s "$SPIKE_TEST_NAME" 2>/dev/null | wc -l)
-  if [[ "$LINE_COUNT" -ge 0 ]]; then
+  # 8-2: docker logs --since=30s で行数カウントが取得できる
+  if LINE_COUNT=$(docker logs --since=30s "$SPIKE_TEST_NAME" 2>/dev/null | wc -l) \
+      && [[ "$LINE_COUNT" =~ ^[0-9]+$ ]]; then
     pass "docker logs --since=30s で行数カウントが取得できる (${LINE_COUNT}行)"
   else
     fail "docker logs --since=30s で行数カウントが取得できない"
