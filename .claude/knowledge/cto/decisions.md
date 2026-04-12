@@ -214,3 +214,34 @@
   - ファイル経由で SESSION_ID を共有することで、shell 再生成の影響を受けずに全 run_N を同一セッションに束ねられる
   - 孤立コンテナクリーンアップ時に `--filter "name=vibecorp-spike-loop-${SESSION_ID}"` で自セッションの container のみ対象にでき、並列 spike-loop 実行時も安全
 - **代替案**: `uuidgen` による UUID 方式 → 却下（追加依存。epoch で十分一意化できる）
+
+### 2026-04-12: worktree ↔ コンテナの 2 マウント + GIT_DIR 環境変数方式（Issue #268 / Phase 2-1）
+
+- **判断**: worktree 作業ディレクトリを `/workspace`（RW）、リポジトリの `.git/` を `/repo-git`（RO）にマウントし、`GIT_DIR` / `GIT_WORK_TREE` 環境変数で git メタデータの場所を指定する
+- **根拠**:
+  - worktree 内の `.git` は `gitdir: <絶対パス>` のポインタファイルであり、コンテナ内でホスト側の絶対パスが解決できない
+  - 環境変数方式はホスト側ファイルの書き換えが不要で、並列実行時の競合が発生しない
+  - コンテナ終了後のクリーンアップも不要
+- **代替案**:
+  - `.git` ポインタファイル書き換え → 却下（ホスト側変更が必要、並列競合リスク）
+  - `git clone --shared` → 却下（余分な I/O、ブランチ同期の複雑さ）
+
+### 2026-04-12: git push に gh CLI HTTPS token 方式を採用、deploy key 不要（Issue #268 / Phase 2-1）
+
+- **判断**: `git push` は gh CLI の credential helper 経由で HTTPS + fine-grained PAT で認証する。deploy key は不要
+- **根拠**:
+  - gh CLI は `git credential helper` として登録されており、`git push` 時に自動で `GH_TOKEN` を使って HTTPS 認証する
+  - SSH プロトコルを使わないため `.ssh` マウント禁止（CISO #4）と矛盾しない
+  - deploy key は生成→登録→削除の運用が複雑で、GitHub API rate limit リスクもある
+- **代替案**:
+  - 使い捨て deploy key → 却下（運用複雑、rate limit リスク）
+  - 永続 deploy key → 却下（SSH agent or `GIT_SSH_COMMAND` が必要、CISO #4 との整合が微妙）
+
+### 2026-04-12: gh CLI 認証は GH_TOKEN 環境変数のみ、.config/gh マウント不要（Issue #268 / Phase 2-1）
+
+- **判断**: `$HOME/.config/gh` のマウントを省略し、`/run/secrets/github_token` からの `GH_TOKEN` 展開のみで gh CLI を運用する
+- **根拠**:
+  - gh CLI は `GH_TOKEN` 環境変数を `hosts.yml` より優先するため、設定ファイルのマウントが不要
+  - read-only マウントの場合、OAuth token refresh 時に書き込みエラーが発生するリスクがある
+  - fine-grained PAT は refresh 不要のため、`GH_TOKEN` のみで安定動作する
+- **代替案**: `.config/gh` を read-only マウント → 不要と判断（`GH_TOKEN` が優先されるため冗長）
