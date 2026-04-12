@@ -11,6 +11,7 @@ AIエージェントを組織化してプロダクト開発を回すプラグイ
 - [jq](https://jqlang.github.io/jq/)
 - [GitHub CLI (`gh`)](https://cli.github.com/)
 - [Claude Code](https://claude.ai/code)
+- **[Docker](https://docs.docker.com/get-docker/)（full プリセット使用時のみ必須）** — Docker CLI + デーモンが起動していること。未導入の場合、full プリセット選択時にインストーラーが案内を表示して終了する
 
 ### インストール
 
@@ -290,6 +291,11 @@ diagnose:
 #     - testing
 #     - performance
 #     - dx
+# container:                # full プリセット専用: Docker コンテナの設定
+#   image: vibecorp/claude-sandbox:dev  # 使用するイメージ名
+#   memory: "4g"            # コンテナのメモリ上限（例: 4g, 2048m）
+#   cpus: "2"               # CPU 割り当て数
+#   pids_limit: 512         # プロセス数上限
 ```
 
 #### protected_files
