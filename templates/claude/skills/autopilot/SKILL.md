@@ -22,6 +22,9 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 
 - **full プリセット専用**（`/diagnose` と `/ship-parallel` が必要）
 - main ブランチにいること
+- **Docker** がインストール・起動済みであること
+- **`vibecorp/claude-sandbox:dev` イメージ** がビルド済みであること
+- **`secrets/anthropic_api_key` ファイル** と **`secrets/github_token` ファイル** が準備されていること
 
 ## ワークフロー
 
@@ -41,27 +44,69 @@ git branch --show-current
 
 main でない場合は「main ブランチに切り替えてください」と報告して終了。
 
-### 3. open な diagnose Issue を確認
+### 3. コンテナ前提条件チェック
+
+```bash
+command -v docker
+```
+
+```bash
+docker info
+```
+
+```bash
+docker image inspect vibecorp/claude-sandbox:dev
+```
+
+```bash
+ls "$CLAUDE_PROJECT_DIR/secrets/anthropic_api_key"
+```
+
+```bash
+ls "$CLAUDE_PROJECT_DIR/secrets/github_token"
+```
+
+いずれかが失敗した場合は「コンテナモードが必須です。`docker build -t vibecorp/claude-sandbox:dev docker/claude-sandbox/` でビルドしてから再実行してください」と報告して終了。
+
+### 4. コンテナ起動
+
+autopilot のメインループ自体をコンテナ内で実行する。`VIBECORP_IN_CONTAINER=1` が設定されている場合はコンテナ起動をスキップし、そのまま診断・ship フローに進む。
+
+```bash
+date +%s
+```
+
+取得した値を `SESSION_ID` として使用する。
+
+```bash
+docker run -d --name "vibecorp-autopilot-<SESSION_ID>" --init --read-only --tmpfs /tmp:rw,size=256m --tmpfs /home/claude/.cache:rw,size=256m --tmpfs /home/claude/.claude:rw,size=256m,uid=1000,gid=1000 --cap-drop ALL --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID --security-opt "seccomp=$CLAUDE_PROJECT_DIR/docker/claude-sandbox/seccomp.json" --security-opt no-new-privileges --memory 2g --cpus 2 --pids-limit 512 --network bridge -e VIBECORP_IN_CONTAINER=1 -v "$CLAUDE_PROJECT_DIR:/workspace:rw" --mount type=bind,source="$HOME/.gitconfig",target=/home/claude/.gitconfig,readonly --mount type=bind,source="$CLAUDE_PROJECT_DIR/secrets/anthropic_api_key",target=/run/secrets/anthropic_api_key,readonly --mount type=bind,source="$CLAUDE_PROJECT_DIR/secrets/github_token",target=/run/secrets/github_token,readonly vibecorp/claude-sandbox:dev claude -p --permission-mode dontAsk --verbose "/autopilot --auto"
+```
+
+コンテナ命名規則: `vibecorp-autopilot-<SESSION_ID>`
+
+コンテナ起動後は `docker logs --since=30s` で監視し、完了またはstuck（10分無音）を検出する。stuck 時は `docker stop -t 10` + `docker rm` で停止し、ユーザーに報告する。正常完了時はコンテナを `docker rm` で削除する。
+
+### 5. open な diagnose Issue を確認
 
 ```bash
 gh issue list --label "diagnose" --state open --json number,title --jq '.[] | "#" + (.number | tostring) + ": " + .title'
 ```
 
-### 4. Issue がない場合 → diagnose 実行
+### 6. Issue がない場合 → diagnose 実行
 
 open な diagnose Issue が0件の場合、`/diagnose` を実行して Issue を起票する。
-起票後、そのままステップ5に進む（起票した Issue を ship する）。
+起票後、そのままステップ7に進む（起票した Issue を ship する）。
 
-### 5. COO による並列判定
+### 7. COO による並列判定
 
-COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ3と同じ）。
+COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ4と同じ）。
 
 COO の分析結果に基づき、並列グループ・直列チェーン・保留に分類する。
 保留と判定された Issue は候補から除外する。
 
-### 6. ship 確認・実行
+### 8. ship 確認・実行
 
-#### 6a. デフォルト（確認あり）
+#### 8a. デフォルト（確認あり）
 
 COO の分析結果と候補一覧をユーザーに提示する:
 
@@ -82,11 +127,11 @@ AskUserQuestion でユーザーの選択を取得する。
 - `skip` → 「スキップしました」で終了
 - 番号指定 or `all` → 選択された Issue を `/ship-parallel` で実行
 
-#### 6b. `--auto` モード
+#### 8b. `--auto` モード
 
 ユーザー確認なしで、全 diagnose Issue を `/ship-parallel` に渡す。
 
-### 7. 結果報告
+### 9. 結果報告
 
 ```text
 ## /autopilot 完了

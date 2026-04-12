@@ -111,8 +111,8 @@ your-project/
 
 | スキル | 説明 |
 |---|---|
-| `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行 |
-| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し同時進行 |
+| `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行。コンテナモードあり（Docker / `vibecorp/claude-sandbox:dev` / `secrets/` が前提） |
+| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し、docker run コンテナ方式で同時進行 |
 | `/plan` | Issue の実装方針を策定し、計画ファイルとして `.claude/plans/` に出力 |
 | `/plan-review-loop` | 実装計画に対するレビュー → 修正の自動ループ。問題0件まで繰り返す |
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
@@ -347,7 +347,7 @@ hooks:
 /ship <Issue URL> --worktree <path>
 ```
 
-ブランチ作成 → 計画 → レビュー → 実装 → PR → auto-merge 設定までを一気通貫で実行する。最も頻繁に使うスキル。
+ブランチ作成 → 計画 → レビュー → 実装 → PR → auto-merge 設定までを一気通貫で実行する。最も頻繁に使うスキル。コンテナモードでの実行には Docker / `vibecorp/claude-sandbox:dev` イメージ / `secrets/` ディレクトリが必要。
 
 ### /ship-parallel — 複数 Issue を並列出荷
 
@@ -356,7 +356,7 @@ hooks:
 /ship-parallel --all
 ```
 
-COO エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。全プリセットで利用可能。
+COO エージェントが Issue 群の依存関係を分析し、docker run コンテナ方式で同時進行する。全プリセットで利用可能。
 
 ### /diagnose — コードベース自律診断
 
