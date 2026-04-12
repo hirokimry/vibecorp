@@ -187,3 +187,30 @@
   - 本イメージは `--cap-drop ALL` + `--cap-add NET_ADMIN` + `setpriv` による bounding set drop + `--read-only` + `no-new-privileges` + `--pids-limit` 等の多層防御を前提としており、seccomp は追加防御層として位置付けられる
   - 攻撃面として最も危険な syscall 群（コンテナエスケープ経路、debugger 介入、カーネル操作）を明示的に拒否することで、ALLOW デフォルトでも実質的な isolation を維持できる
 - **代替案**: Docker default profile をベースにして同梱する案 → 却下（保守性の問題）。Phase 2 以降で厳格化の必要性が出た場合は再評価する
+
+### 2026-04-12: spike-loop container integration — PID 管理からコンテナ ID 管理への移行（Issue #267 / Phase 1-2）
+
+- **判断**: spike-loop のヘッドレス Claude 起動を `run_in_background` PID ベースから `docker run -d` container ベースに完全移行する。PID 管理パターン・`command-log` ベース stuck 検出・ホスト直接実行フォールバックは SKILL.md から完全削除する
+- **根拠**:
+  - CISO 最低条件の read-only rootfs / egress allowlist / non-root 実行を spike-loop にも適用する必要がある
+  - PID ベースでは `kill <PID>` + `pgrep` でプロセス終了を管理するが、コンテナでは `docker stop` で一括管理でき簡潔になる
+  - Phase 2-3 (#270) で install.sh が `full` プリセット時に Docker 必須化する方針と整合する
+- **代替案**: Docker 未導入環境向けにホスト直接実行フォールバックを残す案 → 却下。2 モード混在はメンテナンスコストが高く、受け入れ基準「コンテナライフサイクルで動作」と矛盾する
+
+### 2026-04-12: docker logs --since 無音カウンタ方式の採用（Issue #267 / Phase 1-2）
+
+- **判断**: stuck 検出を `command-log` 最終タイムスタンプ比較から `docker logs --since=30s | wc -l` の無音カウンタ方式に変更する。30 秒間隔でポーリングし、0 行が 10 分（600 秒）続いたら stuck と判定する
+- **根拠**:
+  - Phase 1-1 のコンテナイメージは vibecorp の command-log hook を持たないため、command-log は container 内に存在しない
+  - `docker logs --since=30s` はタイムスタンプ parse 不要で、BSD/GNU `date` の互換性問題を回避できる
+  - 起動直後のログ空状態も自然に処理できる（最初の 600 秒は待機扱い）
+- **代替案**: `docker logs --timestamps` のタイムスタンプを parse して経過時間を計算する案 → 却下（BSD/GNU `date -d` 互換問題が発生する）
+
+### 2026-04-12: SESSION_ID ファイル永続化による孤立コンテナ検出設計（Issue #267 / Phase 1-2）
+
+- **判断**: spike-loop セッション開始時に `.current-session` ファイルに `$(date +%s)` を保存し、全 run_N の container 名を `vibecorp-spike-loop-${SESSION_ID}-${RUN_N}` で一意化する
+- **根拠**:
+  - Bash ツールは呼び出しごとに shell を再生成するため `$$`（PID）が呼び出しごとに変わり、container 名の prefix として使えない
+  - ファイル経由で SESSION_ID を共有することで、shell 再生成の影響を受けずに全 run_N を同一セッションに束ねられる
+  - 孤立コンテナクリーンアップ時に `--filter "name=vibecorp-spike-loop-${SESSION_ID}"` で自セッションの container のみ対象にでき、並列 spike-loop 実行時も安全
+- **代替案**: `uuidgen` による UUID 方式 → 却下（追加依存。epoch で十分一意化できる）

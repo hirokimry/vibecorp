@@ -133,9 +133,19 @@ secrets:
 - `@anthropic-ai/claude-code` は `@latest` で再ビルドすることで自動更新される（再現性が必要な運用ではイメージタグを固定する）
 - 脆弱性スキャンは `trivy image vibecorp/claude-sandbox:dev` 等を利用（自動化は別 Issue）
 
-## TODO（本 Issue スコープ外）
+## spike-loop 統合（Phase 1-2 / #267）
 
-- spike-loop 統合（Phase 1-2 / #267）
+spike-loop スキルは Phase 1-2 でコンテナベースに移行した。
+
+- 起動: `docker run -d --name vibecorp-spike-loop-<SESSION_ID>-<RUN_N>` でヘッドレス Claude をコンテナ起動
+- stuck 検出: `docker logs --since=30s` の無音カウンタ方式（10 分間 stdout 出力なしで stuck 判定）
+- 強制停止: `docker stop -t 10` + `docker rm`。孤立コンテナは SESSION_ID ベースの filter で検出・削除
+- RW bind mount は `/state/run`（`.claude/state/spike-loop/run_N/`）のみ。それ以外は read-only
+- 詳細は `templates/claude/skills/spike-loop/SKILL.md` を参照
+
+## TODO
+
+- ~~spike-loop 統合（Phase 1-2 / #267）~~ ✅ 完了
 - worktree ↔ コンテナマウント設計と deploy key 方式による GitHub push（Phase 2-1 / #268）
 - 全ヘッドレス実行のコンテナ統合（Phase 2-2 / #269）
 - `install.sh` 統合と `full` プリセット条件付き必須化（Phase 2-3 / #270）

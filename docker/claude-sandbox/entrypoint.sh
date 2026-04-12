@@ -4,8 +4,8 @@
 # 処理順序:
 #   1. root 権限で iptables OUTPUT allowlist を設定
 #   2. /run/secrets/ からシークレットを読み取り env に展開
-#   3. setpriv で UID/GID 1000 に降格し、capability bounding set から
-#      NET_ADMIN / NET_RAW / SYS_ADMIN を drop（降格後の再取得を不可能にする）
+#   3. setpriv で UID/GID 1000 に降格し、capability bounding set を全て drop
+#      （降格後は全 capability の再取得が物理的に不可能）
 #
 # 参照: Issue #266 / .claude/knowledge/ciso/decisions.md
 set -euo pipefail
@@ -108,6 +108,9 @@ main() {
         --inh-caps=-all \
         --bounding-set=-all \
         -- "$@"
+    # exec が失敗した場合のみ到達（set -e により即終了するが、明示的にも終了する）
+    echo "FATAL: setpriv による降格に失敗しました" >&2
+    exit 1
 }
 
 main "$@"
