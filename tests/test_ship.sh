@@ -294,6 +294,40 @@ fi
 
 echo ""
 
+# --- テスト11: コンテナモード ---
+
+echo "--- テスト11: コンテナモード ---"
+
+# 11-1: docker run の言及
+if grep -q 'docker run' "$SKILL_FILE"; then
+  pass "docker run への言及がある"
+else
+  fail "docker run への言及がない"
+fi
+
+# 11-2: vibecorp/claude-sandbox:dev イメージの言及
+if grep -q 'vibecorp/claude-sandbox:dev' "$SKILL_FILE"; then
+  pass "vibecorp/claude-sandbox:dev イメージへの言及がある"
+else
+  fail "vibecorp/claude-sandbox:dev イメージへの言及がない"
+fi
+
+# 11-3: VIBECORP_IN_CONTAINER の言及
+if grep -q 'VIBECORP_IN_CONTAINER' "$SKILL_FILE"; then
+  pass "VIBECORP_IN_CONTAINER への言及がある"
+else
+  fail "VIBECORP_IN_CONTAINER への言及がない"
+fi
+
+# 11-4: vibecorp-ship- コンテナ命名規則の言及
+if grep -q 'vibecorp-ship-' "$SKILL_FILE"; then
+  pass "vibecorp-ship- コンテナ命名規則への言及がある"
+else
+  fail "vibecorp-ship- コンテナ命名規則への言及がない"
+fi
+
+echo ""
+
 # --- 結果 ---
 
 echo "==========================="

@@ -241,25 +241,25 @@ else
   fail "isolation: \"worktree\" がパラメータとして使われている（方式I では不要）"
 fi
 
-# 8-3: Agent プロンプトに SendMessage での報告指示がある
-if grep -q 'SendMessage.*チームリーダー' "$SKILL_FILE"; then
-  pass "Agent プロンプトに SendMessage での報告指示がある"
+# 8-3: docker run によるコンテナ起動への言及がある（#269 でコンテナ化移行）
+if grep -q 'docker run' "$SKILL_FILE"; then
+  pass "docker run によるコンテナ起動への言及がある"
 else
-  fail "Agent プロンプトに SendMessage での報告指示がない"
+  fail "docker run によるコンテナ起動への言及がない"
 fi
 
-# 8-4: Agent プロンプトに compound command 分割指示がある（#258）
-if grep -q '1 コマンド 1 呼び出し' "$SKILL_FILE"; then
-  pass "Agent プロンプトに compound command 分割指示がある"
+# 8-4: docker logs による監視への言及がある
+if grep -q 'docker logs' "$SKILL_FILE"; then
+  pass "docker logs による監視への言及がある"
 else
-  fail "Agent プロンプトに compound command 分割指示がない"
+  fail "docker logs による監視への言及がない"
 fi
 
-# 8-5: Agent プロンプトに built-in check の禁止理由が明示されている（#258）
-if grep -q 'path resolution bypass' "$SKILL_FILE"; then
-  pass "Agent プロンプトに path resolution bypass の禁止理由が明示されている"
+# 8-5: VIBECORP_IN_CONTAINER によるコンテナ内実行判定への言及がある
+if grep -q 'VIBECORP_IN_CONTAINER' "$SKILL_FILE"; then
+  pass "VIBECORP_IN_CONTAINER によるコンテナ内実行判定への言及がある"
 else
-  fail "Agent プロンプトに path resolution bypass の禁止理由が明示されていない"
+  fail "VIBECORP_IN_CONTAINER によるコンテナ内実行判定への言及がない"
 fi
 
 # 8-6: Agent 起動に mode: "dontAsk" の指定がある（#260）
@@ -356,6 +356,68 @@ if [ -f "$LOCAL_FILE" ]; then
   fi
 else
   pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
+fi
+
+echo ""
+
+# --- テスト13: コンテナモード ---
+
+echo "--- テスト13: コンテナモード ---"
+
+# 13-1: docker run の言及
+if grep -q 'docker run' "$SKILL_FILE"; then
+  pass "docker run への言及がある"
+else
+  fail "docker run への言及がない"
+fi
+
+# 13-2: vibecorp/claude-sandbox:dev イメージの言及
+if grep -q 'vibecorp/claude-sandbox:dev' "$SKILL_FILE"; then
+  pass "vibecorp/claude-sandbox:dev イメージへの言及がある"
+else
+  fail "vibecorp/claude-sandbox:dev イメージへの言及がない"
+fi
+
+# 13-3: GIT_DIR の言及
+if grep -q 'GIT_DIR' "$SKILL_FILE"; then
+  pass "GIT_DIR への言及がある"
+else
+  fail "GIT_DIR への言及がない"
+fi
+
+# 13-4: GIT_WORK_TREE の言及
+if grep -q 'GIT_WORK_TREE' "$SKILL_FILE"; then
+  pass "GIT_WORK_TREE への言及がある"
+else
+  fail "GIT_WORK_TREE への言及がない"
+fi
+
+# 13-5: vibecorp-ship- コンテナ命名規則の言及
+if grep -q 'vibecorp-ship-' "$SKILL_FILE"; then
+  pass "vibecorp-ship- コンテナ命名規則への言及がある"
+else
+  fail "vibecorp-ship- コンテナ命名規則への言及がない"
+fi
+
+# 13-6: SESSION_ID の言及
+if grep -q 'SESSION_ID' "$SKILL_FILE"; then
+  pass "SESSION_ID への言及がある"
+else
+  fail "SESSION_ID への言及がない"
+fi
+
+# 13-7: docker logs --since による stuck 監視の言及
+if grep -q 'docker logs --since' "$SKILL_FILE"; then
+  pass "docker logs --since による stuck 監視への言及がある"
+else
+  fail "docker logs --since による stuck 監視への言及がない"
+fi
+
+# 13-8: docker stop によるクリーンアップの言及
+if grep -q 'docker stop' "$SKILL_FILE"; then
+  pass "docker stop によるクリーンアップへの言及がある"
+else
+  fail "docker stop によるクリーンアップへの言及がない"
 fi
 
 echo ""

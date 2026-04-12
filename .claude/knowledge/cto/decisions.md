@@ -237,6 +237,41 @@
   - 使い捨て deploy key → 却下（運用複雑、rate limit リスク）
   - 永続 deploy key → 却下（SSH agent or `GIT_SSH_COMMAND` が必要、CISO #4 との整合が微妙）
 
+### 2026-04-12: ship-parallel のコンテナ化 — TeamCreate + Agent から docker run への移行（Issue #269 / Phase 2-2）
+
+- **判断**: ship-parallel の並列実行アーキテクチャを TeamCreate + Agent + SendMessage から docker run + docker logs に完全移行する。各 worktree を個別コンテナにマウントして `/ship --worktree` を実行する
+- **根拠**:
+  - TeamCreate + Agent はコンテナ境界を越えてホスト側のツール API にアクセスでき、隔離が不完全
+  - docker run 方式では各 `/ship` が物理的にコンテナ内に閉じ込められ、CISO 最低条件（read-only rootfs, non-root, seccomp）を自動的に満たす
+  - spike-loop（Phase 1-2）で確立した docker logs --since 無音カウンタ方式を流用でき、監視ロジックが統一される
+- **代替案**: TeamCreate + Agent をコンテナ内から呼び出す案 → 却下（Agent ツールはホスト側の Claude Code プロセスと通信するため、コンテナ内からの利用は設計上不整合）
+
+### 2026-04-12: ship 単体実行のコンテナ化 — VIBECORP_IN_CONTAINER によるネスト防止（Issue #269 / Phase 2-2）
+
+- **判断**: `/ship` を直接呼んだ場合もコンテナ内で実行する。ship-parallel 経由で既にコンテナ内にいる場合は `VIBECORP_IN_CONTAINER=1` 環境変数で検出してコンテナ起動をスキップする
+- **根拠**:
+  - 単体 `/ship` もヘッドレス実行の経路であり、コンテナ隔離の対象
+  - ネスト防止がないと docker-in-docker が発生し、セキュリティモデルが複雑化する
+  - 環境変数による判定はシンプルで、worktree モード（`--worktree`）との組み合わせも自然に処理できる
+- **代替案**: docker socket をコンテナ内にマウントして docker-in-docker を許可する案 → 却下（docker socket マウントはコンテナエスケープの代表的ベクター）
+
+### 2026-04-12: autopilot のコンテナ化 — メインループ自体をコンテナ内で実行（Issue #269 / Phase 2-2）
+
+- **判断**: autopilot の diagnose → ship-parallel サイクル全体をコンテナ内で実行する。`VIBECORP_IN_CONTAINER=1` が設定されている場合はコンテナ起動をスキップ
+- **根拠**:
+  - autopilot は `--auto` モードで完全自律実行が可能であり、ホスト環境への影響を最小化すべき
+  - コンテナ内の autopilot が ship-parallel を呼ぶと、ship-parallel はさらにコンテナを起動する（docker-in-docker にはならない、ship-parallel のコンテナ起動は worktree マウントのためホスト側から実行）
+- **代替案**: autopilot はホスト側で実行し、ship-parallel のみコンテナ化する案 → 却下（autopilot 自体もヘッドレス実行であり、一貫した隔離ポリシーが必要）
+
+### 2026-04-12: Team 機能経由のサブエージェントはコンテナ化により自動的に境界内に閉じ込められる設計判断（Issue #269 / Phase 2-2）
+
+- **判断**: ship-parallel が docker run で各 `/ship` をコンテナとして起動する設計に移行したことで、Team 機能（TeamCreate + Agent + SendMessage）はコンテナ内から利用されなくなる。各コンテナ内の Claude プロセスは物理的にコンテナ境界を越えられない
+- **根拠**:
+  - TeamCreate/SendMessage は Claude Code のプロセス間通信機能であり、コンテナ内のプロセスがホスト側のプロセスと通信するには明示的なネットワーク設定が必要
+  - コンテナは `--cap-drop ALL` + `no-new-privileges` で起動されるため、権限昇格によるコンテナエスケープも防止される
+  - 追加の SKILL.md 変更や hooks は不要であり、コンテナ化の副産物として自然に実現される
+- **代替案**: 明示的に TeamCreate/SendMessage を禁止する hooks を追加する案 → 不要（コンテナ境界が物理的に防止するため、ソフトウェア的なブロックは冗長）
+
 ### 2026-04-12: gh CLI 認証は GH_TOKEN 環境変数のみ、.config/gh マウント不要（Issue #268 / Phase 2-1）
 
 - **判断**: `$HOME/.config/gh` のマウントを省略し、`/run/secrets/github_token` からの `GH_TOKEN` 展開のみで gh CLI を運用する
