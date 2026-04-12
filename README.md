@@ -374,7 +374,7 @@ COO エージェントが Issue 群の依存関係を分析し、TeamCreate + wo
 /spike-loop <Issue URL 1> <Issue URL 2> --max-runs 5    # 最大5回ループ（デフォルト: 3）
 ```
 
-コンテナ化されたヘッドレス Claude で `/ship-parallel` を起動し、`docker logs --since` の無音カウンタで stuck 検出 → 診断スナップショット → 強制停止 → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。Docker 必須（`vibecorp/claude-sandbox:dev` イメージをビルドしておくこと）。
+コンテナ化されたヘッドレス Claude で `/ship-parallel` を起動し、`docker logs --since` の無音カウンタで stuck 検出 → 診断スナップショット → 強制停止 → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。Docker 必須（`vibecorp/claude-sandbox:dev` イメージをビルドしておくこと。また `secrets/anthropic_api_key` ファイルの準備が必須。フォールバックは存在せず、Docker 未導入環境では動作しない）。
 
 ### /harvest-all — 全量棚卸し
 

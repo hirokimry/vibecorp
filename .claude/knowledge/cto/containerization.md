@@ -62,3 +62,6 @@ Phase 2 以降で要再評価。
 
 - 2026-04-11: docker/claude-sandbox/ のリポジトリトップレベル配置判断
 - 2026-04-11: seccomp プロファイルを ALLOW デフォルト + 特定 syscall denial 構成で実装
+- 2026-04-12: spike-loop container integration — PID 管理からコンテナ ID 管理への移行（Issue #267 / Phase 1-2）
+- 2026-04-12: docker logs --since 無音カウンタ方式の採用（Issue #267 / Phase 1-2）
+- 2026-04-12: SESSION_ID ファイル永続化による孤立コンテナ検出設計（Issue #267 / Phase 1-2）
