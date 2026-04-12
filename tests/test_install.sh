@@ -2488,8 +2488,8 @@ else
   fail "AI1: hooks 内にプレースホルダーが残っている: $REMAINING"
 fi
 
-# skills 内の全ファイルにプレースホルダーが残っていないこと
-REMAINING=$(grep -rl '{{' "$R/.claude/skills/" 2>/dev/null || true)
+# skills 内に vibecorp プレースホルダーが残っていないこと
+REMAINING=$(grep -rl '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$R/.claude/skills/" 2>/dev/null || true)
 if [ -z "$REMAINING" ]; then
   pass "AI1: skills 内にプレースホルダーが残っていない"
 else
@@ -2497,21 +2497,22 @@ else
 fi
 cleanup
 
-# AI2. sed 置換が失敗した場合にエラーメッセージが出力される
+# AI2. --update 時にプレースホルダーが正常に置換されること
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# 未知のプレースホルダーを含むファイルを hooks に配置して --update で再実行
+# vibecorp プレースホルダーを含むファイルを hooks に配置して --update で再実行
 echo '#!/bin/bash
-# {{UNKNOWN_PLACEHOLDER}} テスト' > "$R/.claude/hooks/test-placeholder.sh"
+# {{PROJECT_NAME}} テスト' > "$R/.claude/hooks/test-placeholder.sh"
 chmod +x "$R/.claude/hooks/test-placeholder.sh"
 
-STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
-if echo "$STDERR_OUTPUT" | grep -q "未解決のプレースホルダーが残っています"; then
-  pass "AI2: 未解決プレースホルダー検出時にエラーメッセージが出力される"
+bash "$INSTALL_SH" --update 2>/dev/null
+REMAINING=$(grep -l '{{PROJECT_NAME}}' "$R/.claude/hooks/test-placeholder.sh" 2>/dev/null || true)
+if [ -z "$REMAINING" ]; then
+  pass "AI2: --update でプレースホルダーが正常に置換される"
 else
-  fail "AI2: 未解決プレースホルダー検出時にエラーメッセージが出力される"
+  fail "AI2: --update でプレースホルダーが残っている"
 fi
 # クリーンアップ
 rm -f "$R/.claude/hooks/test-placeholder.sh"

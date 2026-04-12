@@ -10,3 +10,6 @@ Thumbs.db
 
 # ランタイムロックファイル
 .claude/scheduled_tasks.lock
+
+# コンテナ用シークレット（host 側ファイル注入）
+/secrets/

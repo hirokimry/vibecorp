@@ -143,7 +143,7 @@ your-project/
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能 |
-| `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
+| `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。コンテナ化されたヘッドレス Claude で ship-parallel を起動し、`docker logs --since` の無音カウンタで stuck 検出 → 診断スナップショット → 強制停止 → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
 ## フック一覧
 
@@ -374,7 +374,7 @@ COO エージェントが Issue 群の依存関係を分析し、TeamCreate + wo
 /spike-loop <Issue URL 1> <Issue URL 2> --max-runs 5    # 最大5回ループ（デフォルト: 3）
 ```
 
-ヘッドレス Claude で `/ship-parallel` を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。
+コンテナ化されたヘッドレス Claude で `/ship-parallel` を起動し、`docker logs --since` の無音カウンタで stuck 検出 → 診断スナップショット → 強制停止 → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。Docker 必須（`vibecorp/claude-sandbox:dev` イメージをビルドしておくこと。また `secrets/anthropic_api_key` ファイルの準備が必須。フォールバックは存在せず、Docker 未導入環境では動作しない）。
 
 ### /harvest-all — 全量棚卸し
 
