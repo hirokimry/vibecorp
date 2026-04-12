@@ -146,7 +146,7 @@ spike-loop スキルは Phase 1-2 でコンテナベースに移行した。
 ## TODO
 
 - ~~spike-loop 統合（Phase 1-2 / #267）~~ ✅ 完了
-- worktree ↔ コンテナマウント設計と deploy key 方式による GitHub push（Phase 2-1 / #268）
+- ~~worktree ↔ コンテナマウント設計と deploy key 方式による GitHub push（Phase 2-1 / #268）~~ ✅ 完了 → `docs/design/container-worktree.md`
 - 全ヘッドレス実行のコンテナ統合（Phase 2-2 / #269）
 - `install.sh` 統合と `full` プリセット条件付き必須化（Phase 2-3 / #270）
 - 脆弱性スキャンの自動化（別 Issue）
