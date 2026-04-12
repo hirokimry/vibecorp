@@ -42,7 +42,6 @@ docker run --rm \
     --network bridge \
     -v "$(pwd)/workspace:/workspace:rw" \
     --mount type=bind,source="$HOME/.gitconfig",target=/home/claude/.gitconfig,readonly \
-    --mount type=bind,source="$HOME/.config/gh",target=/home/claude/.config/gh,readonly \
     --mount type=bind,source="$PWD/secrets/anthropic_api_key",target=/run/secrets/anthropic_api_key,readonly \
     --mount type=bind,source="$PWD/secrets/github_token",target=/run/secrets/github_token,readonly \
     vibecorp/claude-sandbox:dev \
@@ -85,7 +84,6 @@ services:
     volumes:
       - ./workspace:/workspace:rw
       - ${HOME}/.gitconfig:/home/claude/.gitconfig:ro
-      - ${HOME}/.config/gh:/home/claude/.config/gh:ro
     secrets:
       - anthropic_api_key
       - github_token
@@ -146,7 +144,7 @@ spike-loop スキルは Phase 1-2 でコンテナベースに移行した。
 ## TODO
 
 - ~~spike-loop 統合（Phase 1-2 / #267）~~ ✅ 完了
-- worktree ↔ コンテナマウント設計と deploy key 方式による GitHub push（Phase 2-1 / #268）
+- ~~worktree ↔ コンテナマウント設計と deploy key 方式による GitHub push（Phase 2-1 / #268）~~ ✅ 完了 → `docs/design/container-worktree.md`
 - 全ヘッドレス実行のコンテナ統合（Phase 2-2 / #269）
 - `install.sh` 統合と `full` プリセット条件付き必須化（Phase 2-3 / #270）
 - 脆弱性スキャンの自動化（別 Issue）

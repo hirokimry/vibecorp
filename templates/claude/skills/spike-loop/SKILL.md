@@ -107,7 +107,7 @@ echo "vibecorp-spike-loop-<SESSION_ID>-1" > "$CLAUDE_PROJECT_DIR/.claude/state/s
 **2-3. コンテナ起動**
 
 ```bash
-docker run -d --name "vibecorp-spike-loop-<SESSION_ID>-1" --init --read-only --tmpfs /tmp:rw,size=256m --tmpfs /home/claude/.cache:rw,size=256m --tmpfs /home/claude/.claude:rw,size=256m,uid=1000,gid=1000 --cap-drop ALL --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID --security-opt "seccomp=$CLAUDE_PROJECT_DIR/docker/claude-sandbox/seccomp.json" --security-opt no-new-privileges --memory 2g --cpus 2 --pids-limit 512 --network bridge -v "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/run_1:/state/run:rw" --mount type=bind,source="$HOME/.gitconfig",target=/home/claude/.gitconfig,readonly --mount type=bind,source="$HOME/.config/gh",target=/home/claude/.config/gh,readonly --mount type=bind,source="$CLAUDE_PROJECT_DIR/secrets/anthropic_api_key",target=/run/secrets/anthropic_api_key,readonly vibecorp/claude-sandbox:dev claude -p --permission-mode dontAsk --verbose "/ship-parallel <Issue URL 1> <Issue URL 2>"
+docker run -d --name "vibecorp-spike-loop-<SESSION_ID>-1" --init --read-only --tmpfs /tmp:rw,size=256m --tmpfs /home/claude/.cache:rw,size=256m --tmpfs /home/claude/.claude:rw,size=256m,uid=1000,gid=1000 --cap-drop ALL --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID --security-opt "seccomp=$CLAUDE_PROJECT_DIR/docker/claude-sandbox/seccomp.json" --security-opt no-new-privileges --memory 2g --cpus 2 --pids-limit 512 --network bridge -v "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/run_1:/state/run:rw" --mount type=bind,source="$HOME/.gitconfig",target=/home/claude/.gitconfig,readonly --mount type=bind,source="$CLAUDE_PROJECT_DIR/secrets/anthropic_api_key",target=/run/secrets/anthropic_api_key,readonly --mount type=bind,source="$CLAUDE_PROJECT_DIR/secrets/github_token",target=/run/secrets/github_token,readonly vibecorp/claude-sandbox:dev claude -p --permission-mode dontAsk --verbose "/ship-parallel <Issue URL 1> <Issue URL 2>"
 ```
 
 - `--init`: tini を PID 1 にして孤児プロセスを reap
@@ -117,7 +117,7 @@ docker run -d --name "vibecorp-spike-loop-<SESSION_ID>-1" --init --read-only --t
 - `seccomp.json`: `ptrace` / `mount` / `unshare` / `setns` 等を deny
 - `--memory 2g --cpus 2 --pids-limit 512`: resource limit
 - `-v "$CLAUDE_PROJECT_DIR/.claude/state/spike-loop/run_1:/state/run:rw"`: run_N のみ host と RW 共有
-- `--mount type=bind ... readonly`: ホスト側の `.gitconfig` / `gh` 設定 / API キーを read-only 注入
+- `--mount type=bind ... readonly`: ホスト側の `.gitconfig` / API キー / GitHub token を read-only 注入（`GH_TOKEN` は `entrypoint.sh` が `/run/secrets/github_token` から展開するため `.config/gh` マウント不要）
 - `claude -p --permission-mode dontAsk --verbose`: ヘッドレスモード、結果は stdout に出る
 
 **`--rm` を付けない理由**: stuck 検出後に `docker logs` / `docker inspect` を取得する必要があるため。明示的に `docker rm` する。
