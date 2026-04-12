@@ -2533,6 +2533,83 @@ fi
 cleanup
 
 # ============================================
+echo "=== D. Docker チェック ==="
+# ============================================
+
+# D1. full プリセット + Docker 未導入 → exit 1
+create_test_repo
+# PATH を制限して docker コマンドを見えなくする
+EXIT_CODE=0
+PATH_BACKUP="$PATH"
+PATH="/usr/bin:/bin"
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
+PATH="$PATH_BACKUP"
+assert_exit_code "D1: full + Docker 未導入で exit 1" "1" "$EXIT_CODE"
+cleanup
+
+# D2. full プリセット + Docker 未導入 → 案内メッセージが表示される
+create_test_repo
+STDERR_OUTPUT=""
+PATH_BACKUP="$PATH"
+PATH="/usr/bin:/bin"
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --name test-proj --preset full 2>&1 >/dev/null || true)
+PATH="$PATH_BACKUP"
+if echo "$STDERR_OUTPUT" | grep -q "full プリセットは Docker が必要です"; then
+  pass "D2: Docker 未導入時に案内メッセージが表示される"
+else
+  fail "D2: Docker 未導入時に案内メッセージが表示されない"
+fi
+cleanup
+
+# D3. standard プリセット + Docker 未導入 → exit 0（影響なし）
+create_test_repo
+EXIT_CODE=0
+PATH_BACKUP="$PATH"
+PATH="/usr/bin:/bin"
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null || EXIT_CODE=$?
+PATH="$PATH_BACKUP"
+assert_exit_code "D3: standard + Docker 未導入で exit 0" "0" "$EXIT_CODE"
+cleanup
+
+# D4. minimal プリセット + Docker 未導入 → exit 0（影響なし）
+create_test_repo
+EXIT_CODE=0
+PATH_BACKUP="$PATH"
+PATH="/usr/bin:/bin"
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null || EXIT_CODE=$?
+PATH="$PATH_BACKUP"
+assert_exit_code "D4: minimal + Docker 未導入で exit 0" "0" "$EXIT_CODE"
+cleanup
+
+# D5. full プリセット → vibecorp.yml に container セクションが含まれる
+create_test_repo
+# Docker が利用可能な環境でのみテスト
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+  assert_file_contains "D5: full で vibecorp.yml に container セクションがある" \
+    "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+  cleanup
+else
+  # Docker 未導入環境ではスキップ扱い
+  pass "D5: full で vibecorp.yml に container セクションがある (Docker 未導入のためスキップ)"
+  cleanup
+fi
+
+# D6. standard プリセット → vibecorp.yml に container セクションが含まれない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+assert_file_not_contains "D6: standard で vibecorp.yml に container セクションがない" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+cleanup
+
+# D7. minimal プリセット → vibecorp.yml に container セクションが含まれない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+assert_file_not_contains "D7: minimal で vibecorp.yml に container セクションがない" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+cleanup
+
+# ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 

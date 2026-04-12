@@ -386,6 +386,25 @@ check_prerequisites() {
   fi
 }
 
+check_docker() {
+  if [[ "$PRESET" != "full" ]]; then
+    return
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    log_error "full プリセットは Docker が必要です"
+    log_error "Docker インストール手順: https://docs.docker.com/get-docker/"
+    log_error "Docker なしで利用する場合: --preset standard を指定してください"
+    exit 1
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    log_error "Docker デーモンが起動していません"
+    log_error "Docker を起動してから再実行してください"
+    exit 1
+  fi
+}
+
 detect_repo_root() {
   if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
     log_error "git リポジトリ内で実行してください"
@@ -714,7 +733,44 @@ diagnose:
 #     - performance
 #     - dx
 YAML
+
+  if [[ "$PRESET" == "full" ]]; then
+    cat >> "$yml" <<YAML
+container:
+  image: vibecorp/claude-sandbox:dev
+  memory: 2g
+  cpus: 2
+  pids_limit: 512
+YAML
+  fi
+
   log_info "vibecorp.yml を生成"
+}
+
+prepare_docker_image() {
+  if [[ "$PRESET" != "full" ]]; then
+    return
+  fi
+
+  local image="vibecorp/claude-sandbox:dev"
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    log_skip "Docker イメージ ${image} は既存のためスキップ"
+    return
+  fi
+
+  local dockerfile_dir="${SCRIPT_DIR}/docker/claude-sandbox"
+  if [[ ! -f "${dockerfile_dir}/Dockerfile" ]]; then
+    log_info "Dockerfile が見つかりません: ${dockerfile_dir}/Dockerfile"
+    log_info "手動でビルドしてください: docker build -t ${image} <Dockerfile のパス>"
+    return
+  fi
+
+  log_info "Docker イメージをビルド中: ${image}"
+  if ! docker build -t "$image" "$dockerfile_dir"; then
+    log_error "Docker イメージのビルドに失敗しました"
+    exit 1
+  fi
+  log_info "Docker イメージをビルド完了: ${image}"
 }
 
 generate_coderabbit_yaml() {
@@ -1459,6 +1515,7 @@ main() {
   validate_name
   validate_preset
   validate_language
+  check_docker
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml
@@ -1467,6 +1524,7 @@ main() {
     update_vibecorp_yml
   fi
 
+  prepare_docker_image
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
