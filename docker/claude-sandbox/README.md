@@ -42,7 +42,6 @@ docker run --rm \
     --network bridge \
     -v "$(pwd)/workspace:/workspace:rw" \
     --mount type=bind,source="$HOME/.gitconfig",target=/home/claude/.gitconfig,readonly \
-    --mount type=bind,source="$HOME/.config/gh",target=/home/claude/.config/gh,readonly \
     --mount type=bind,source="$PWD/secrets/anthropic_api_key",target=/run/secrets/anthropic_api_key,readonly \
     --mount type=bind,source="$PWD/secrets/github_token",target=/run/secrets/github_token,readonly \
     vibecorp/claude-sandbox:dev \
@@ -85,7 +84,6 @@ services:
     volumes:
       - ./workspace:/workspace:rw
       - ${HOME}/.gitconfig:/home/claude/.gitconfig:ro
-      - ${HOME}/.config/gh:/home/claude/.config/gh:ro
     secrets:
       - anthropic_api_key
       - github_token

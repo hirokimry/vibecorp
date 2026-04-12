@@ -255,7 +255,7 @@ docker run -d \
 | `/workspace` マウント元 | リポジトリルート | worktree ディレクトリ |
 | `/repo-git` マウント | なし（リポジトリ直接マウント） | `.git/` を RO マウント |
 | `GIT_DIR` / `GIT_WORK_TREE` | 不要（リポジトリ直接） | 必要（worktree ポインタ解決） |
-| `.config/gh` マウント | あり（RO） | 不要（`GH_TOKEN` のみ） |
+| `.config/gh` マウント | 不要（`GH_TOKEN` のみ） | 不要（`GH_TOKEN` のみ） |
 | 並列数 | 1（直列ループ） | N（Issue 数） |
 
 ## CISO 最低条件との整合確認
