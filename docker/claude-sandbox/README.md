@@ -34,6 +34,7 @@ docker run --rm \
     --tmpfs /tmp:rw,size=256m \
     --tmpfs /state:rw,size=256m,uid=1000,gid=1000 \
     --tmpfs /home/claude/.cache:rw,size=256m \
+    --tmpfs /home/claude/.claude:rw,size=256m,uid=1000,gid=1000 \
     --cap-drop ALL \
     --cap-add NET_ADMIN \
     --cap-add SETUID \
@@ -83,6 +84,7 @@ services:
       - /tmp:size=256m
       - /state:size=256m,uid=1000,gid=1000
       - /home/claude/.cache:size=256m
+      - /home/claude/.claude:size=256m,uid=1000,gid=1000
     volumes:
       - ./workspace:/workspace:rw
       - ${HOME}/.gitconfig:/home/claude/.gitconfig:ro
