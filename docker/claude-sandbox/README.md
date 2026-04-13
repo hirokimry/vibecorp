@@ -1,5 +1,7 @@
 # claude-sandbox
 
+> **通常はスキル（`/ship`, `/ship-parallel`, `/autopilot`）が自動でコンテナを起動するため、手動での `docker run` は不要です。** 本ドキュメントはイメージの内部設計とデバッグ用の手動実行手順を記載しています。
+
 `claude` CLI を `--dangerously-skip-permissions` 付きで安全に実行するためのコンテナイメージ定義。
 
 - 親 Issue: [#265](https://github.com/hirokimry/vibecorp/issues/265)
