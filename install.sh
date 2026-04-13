@@ -664,12 +664,18 @@ copy_managed_files() {
       rm -rf "${skills_dir}/harvest-all"
       rm -rf "${skills_dir}/diagnose"
       rm -rf "${skills_dir}/context7"
+      rm -rf "${skills_dir}/autopilot"
+      rm -rf "${skills_dir}/ship-parallel"
+      rm -rf "${skills_dir}/spike-loop"
       rm -rf "${agents_dir}"
       ;;
     standard)
       rm -f "${hooks_dir}/role-gate.sh"
       rm -f "${hooks_dir}/diagnose-guard.sh"
       rm -rf "${skills_dir}/diagnose"
+      rm -rf "${skills_dir}/autopilot"
+      rm -rf "${skills_dir}/ship-parallel"
+      rm -rf "${skills_dir}/spike-loop"
       ;;
   esac
 
