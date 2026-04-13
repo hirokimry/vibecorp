@@ -1796,6 +1796,7 @@ cleanup
 
 # T5. 初回インストール時に yml の hooks トグルが反映される
 create_test_repo
+setup_mock_docker
 R="$TMPDIR_ROOT"
 mkdir -p "$R/.claude"
 cat > "$R/.claude/vibecorp.yml" <<'YML'
@@ -1820,6 +1821,7 @@ cleanup
 
 # T6. 無効化対象と同名のユーザーファイルが --update で削除されない
 create_test_repo
+setup_mock_docker
 R="$TMPDIR_ROOT"
 mkdir -p "$R/.claude/hooks" "$R/.claude/skills/commit"
 echo '#!/bin/bash' > "$R/.claude/hooks/block-api-bypass.sh"
