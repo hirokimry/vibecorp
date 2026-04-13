@@ -78,6 +78,8 @@ assert_file_contains() {
 
 # --- セットアップ / クリーンアップ ---
 
+MOCK_DOCKER_DIR=""
+
 create_test_repo() {
   TMPDIR_ROOT=$(mktemp -d)
   cd "$TMPDIR_ROOT"
@@ -87,7 +89,18 @@ create_test_repo() {
   git commit --allow-empty -m "initial" -q
 }
 
+setup_mock_docker() {
+  MOCK_DOCKER_DIR=$(mktemp -d)
+  printf '#!/bin/bash\nexit 0\n' > "$MOCK_DOCKER_DIR/docker"
+  chmod +x "$MOCK_DOCKER_DIR/docker"
+  export PATH="$MOCK_DOCKER_DIR:$PATH"
+}
+
 cleanup() {
+  if [ -n "$MOCK_DOCKER_DIR" ] && [ -d "$MOCK_DOCKER_DIR" ]; then
+    rm -rf "$MOCK_DOCKER_DIR"
+    MOCK_DOCKER_DIR=""
+  fi
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT"
   fi
@@ -140,6 +153,7 @@ cleanup
 
 # B3. full プリセットでは context7 が配置される
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 assert_dir_exists "full: context7 スキルが配置される" \
   "$TMPDIR_ROOT/.claude/skills/context7"

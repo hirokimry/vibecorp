@@ -271,6 +271,7 @@ if [[ "$DOCKER_AVAILABLE" = true ]]; then
   CAPS_ARGS=(--cap-drop ALL --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID)
   SPIKE_TEST_NAME="vibecorp-spike-loop-test-$$"
   SPIKE_TEST_RUN_DIR=$(mktemp -d)
+  chmod 777 "$SPIKE_TEST_RUN_DIR"
 
   cleanup_spike_test() {
     (
@@ -326,7 +327,7 @@ if [[ "$DOCKER_AVAILABLE" = true ]]; then
       "${CAPS_ARGS[@]}" \
       -v "$SPIKE_TEST_RUN_DIR:/state/run:rw" \
       vibecorp/claude-sandbox:dev \
-      sh -c 'echo ok > /state/run/write_test && cat /state/run/write_test')
+      sh -c 'echo ok > /state/run/write_test && cat /state/run/write_test') || true
   if [[ "$WRITE_OUTPUT" = "ok" ]]; then
     pass "/state/run への書き込みが成功する"
   else
