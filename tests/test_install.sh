@@ -125,16 +125,19 @@ setup_mock_docker() {
 }
 
 setup_no_docker_path() {
-  local tmpbin
+  local tmpbin name
   tmpbin=$(mktemp -d)
   local dir
   IFS=: read -ra dirs <<< "$PATH"
   for dir in "${dirs[@]}"; do
     [ -d "$dir" ] || continue
     for cmd in "$dir"/*; do
+      [ -f "$cmd" ] || continue
       [ -x "$cmd" ] || continue
-      [ "$(basename "$cmd")" = "docker" ] && continue
-      ln -sf "$cmd" "$tmpbin/" 2>/dev/null
+      name=$(basename "$cmd")
+      [ "$name" = "docker" ] && continue
+      [ -e "$tmpbin/$name" ] && continue
+      ln -s "$cmd" "$tmpbin/$name" 2>/dev/null
     done
   done
   MOCK_DOCKER_DIR="$tmpbin"
@@ -2594,7 +2597,9 @@ PATH_BACKUP="$PATH"
 setup_no_docker_path
 STDERR_OUTPUT=$(bash "$INSTALL_SH" --name test-proj --preset full 2>&1 >/dev/null || true)
 PATH="$PATH_BACKUP"
-if echo "$STDERR_OUTPUT" | grep -q "full プリセットは Docker が必要です"; then
+if echo "$STDERR_OUTPUT" | grep -q "full プリセットは Docker が必要です" \
+  && echo "$STDERR_OUTPUT" | grep -q "Docker インストール手順" \
+  && echo "$STDERR_OUTPUT" | grep -q -- "--preset standard"; then
   pass "D2: Docker 未導入時に案内メッセージが表示される"
 else
   fail "D2: Docker 未導入時に案内メッセージが表示されない"
@@ -2627,6 +2632,14 @@ setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 assert_file_contains "D5: full で vibecorp.yml に container セクションがある" \
   "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+assert_file_contains "D5: container.image がある" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "image:"
+assert_file_contains "D5: container.memory がある" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "memory:"
+assert_file_contains "D5: container.cpus がある" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "cpus:"
+assert_file_contains "D5: container.pids_limit がある" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "pids_limit:"
 cleanup
 
 # D6. standard プリセット → vibecorp.yml に container セクションが含まれない

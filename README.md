@@ -293,8 +293,8 @@ diagnose:
 #     - dx
 # container:                # full プリセット専用: Docker コンテナの設定
 #   image: vibecorp/claude-sandbox:dev  # 使用するイメージ名
-#   memory: "4g"            # コンテナのメモリ上限（例: 4g, 2048m）
-#   cpus: "2"               # CPU 割り当て数
+#   memory: 2g              # コンテナのメモリ上限（install.sh のデフォルト値）
+#   cpus: 2                 # CPU 割り当て数（install.sh のデフォルト値）
 #   pids_limit: 512         # プロセス数上限
 ```
 

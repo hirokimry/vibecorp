@@ -747,6 +747,24 @@ YAML
   log_info "vibecorp.yml を生成"
 }
 
+sync_container_section() {
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  if [[ "$PRESET" == "full" ]]; then
+    if ! grep -q '^container:' "$yml"; then
+      cat >> "$yml" <<'YAML'
+container:
+  image: vibecorp/claude-sandbox:dev
+  memory: 2g
+  cpus: 2
+  pids_limit: 512
+YAML
+      log_info "vibecorp.yml に container セクションを追加"
+    fi
+  fi
+}
+
 prepare_docker_image() {
   if [[ "$PRESET" != "full" ]]; then
     return
@@ -760,9 +778,9 @@ prepare_docker_image() {
 
   local dockerfile_dir="${SCRIPT_DIR}/docker/claude-sandbox"
   if [[ ! -f "${dockerfile_dir}/Dockerfile" ]]; then
-    log_info "Dockerfile が見つかりません: ${dockerfile_dir}/Dockerfile"
-    log_info "手動でビルドしてください: docker build -t ${image} <Dockerfile のパス>"
-    return
+    log_error "Dockerfile が見つかりません: ${dockerfile_dir}/Dockerfile"
+    log_error "full プリセットでは Docker イメージ準備が必須です"
+    exit 1
   fi
 
   log_info "Docker イメージをビルド中: ${image}"
@@ -1522,6 +1540,7 @@ main() {
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
+    sync_container_section
   fi
 
   prepare_docker_image
