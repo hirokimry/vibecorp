@@ -405,6 +405,68 @@ check_docker() {
   fi
 }
 
+setup_secrets() {
+  if [[ "$PRESET" != "full" ]]; then
+    return
+  fi
+
+  local secrets_dir="${REPO_ROOT}/secrets"
+  mkdir -p "$secrets_dir"
+
+  # Anthropic API キー
+  local api_key_file="${secrets_dir}/anthropic_api_key"
+  if [[ -f "$api_key_file" ]]; then
+    log_skip "secrets/anthropic_api_key は既存のためスキップ"
+  else
+    if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+      printf '%s' "$ANTHROPIC_API_KEY" > "$api_key_file"
+      log_info "環境変数から secrets/anthropic_api_key を作成"
+    elif [[ -t 0 ]]; then
+      printf '\033[33m[INPUT]\033[0m    Anthropic API キーを入力してください: ' >&2
+      local api_key
+      read -rs api_key
+      printf '\n' >&2
+      if [[ -z "$api_key" ]]; then
+        log_error "API キーが空です"
+        exit 1
+      fi
+      printf '%s' "$api_key" > "$api_key_file"
+      log_info "secrets/anthropic_api_key を作成"
+    else
+      log_error "ANTHROPIC_API_KEY 環境変数を設定するか、対話モードで実行してください"
+      exit 1
+    fi
+    chmod 600 "$api_key_file"
+  fi
+
+  # GitHub トークン
+  local token_file="${secrets_dir}/github_token"
+  if [[ -f "$token_file" ]]; then
+    log_skip "secrets/github_token は既存のためスキップ"
+  else
+    local token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    if [[ -n "$token" ]]; then
+      printf '%s' "$token" > "$token_file"
+      log_info "環境変数から secrets/github_token を作成"
+    elif [[ -t 0 ]]; then
+      printf '\033[33m[INPUT]\033[0m    GitHub トークンを入力してください: ' >&2
+      local gh_token
+      read -rs gh_token
+      printf '\n' >&2
+      if [[ -z "$gh_token" ]]; then
+        log_error "GitHub トークンが空です"
+        exit 1
+      fi
+      printf '%s' "$gh_token" > "$token_file"
+      log_info "secrets/github_token を作成"
+    else
+      log_error "GH_TOKEN または GITHUB_TOKEN 環境変数を設定するか、対話モードで実行してください"
+      exit 1
+    fi
+    chmod 600 "$token_file"
+  fi
+}
+
 detect_repo_root() {
   if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
     log_error "git リポジトリ内で実行してください"
@@ -1454,6 +1516,17 @@ ${CONFLICT_FILES}
 
 CONFLICT
   fi
+
+  if [[ "$PRESET" == "full" ]]; then
+    cat >&2 <<'FULL_USAGE'
+コンテナ隔離モードで利用できます:
+
+  claude -p "/ship <Issue URL>"          # Issue を自動 ship
+  claude -p "/ship-parallel <URL> ..."   # 複数 Issue を並列 ship
+  claude -p "/autopilot"                 # 自律改善ループ
+
+FULL_USAGE
+  fi
 }
 
 # ── バージョン管理 ──────────────────────────────────────
@@ -1540,6 +1613,7 @@ main() {
   validate_preset
   validate_language
   check_docker
+  setup_secrets
   remove_managed_files
   copy_managed_files
   generate_vibecorp_yml

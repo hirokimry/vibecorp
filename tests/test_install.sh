@@ -151,8 +151,18 @@ cleanup_mock_docker() {
   fi
 }
 
+setup_mock_secrets() {
+  export ANTHROPIC_API_KEY="test-api-key"
+  export GH_TOKEN="test-gh-token"
+}
+
+cleanup_mock_secrets() {
+  unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN 2>/dev/null || true
+}
+
 cleanup() {
   cleanup_mock_docker
+  cleanup_mock_secrets
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT"
   fi
@@ -278,6 +288,7 @@ cleanup
 # C2. full → 成功
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → 成功" "0" "$EXIT_CODE"
 R="$TMPDIR_ROOT"
@@ -1739,6 +1750,7 @@ echo "=== T. スキル・hooks トグル ==="
 # T1. hooks セクションで false 指定した hook がインストールされない
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 # vibecorp.yml に hooks トグルを追加
@@ -1757,6 +1769,7 @@ cleanup
 # T2. skills セクションで false 指定した skill がインストールされない
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 cat >> "$R/.claude/vibecorp.yml" <<'YML'
@@ -1773,6 +1786,7 @@ cleanup
 # T3. 無効化した hook が settings.json に含まれない
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 cat >> "$R/.claude/vibecorp.yml" <<'YML'
@@ -1789,6 +1803,7 @@ cleanup
 # T4. トグルセクション省略時は全て有効（既存動作維持）
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 assert_file_exists "トグル省略時: hook がインストールされる" "$R/.claude/hooks/block-api-bypass.sh"
@@ -1800,6 +1815,7 @@ cleanup
 # T5. 初回インストール時に yml の hooks トグルが反映される
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 R="$TMPDIR_ROOT"
 mkdir -p "$R/.claude"
 cat > "$R/.claude/vibecorp.yml" <<'YML'
@@ -1825,6 +1841,7 @@ cleanup
 # T6. 無効化対象と同名のユーザーファイルが --update で削除されない
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 R="$TMPDIR_ROOT"
 mkdir -p "$R/.claude/hooks" "$R/.claude/skills/commit"
 echo '#!/bin/bash' > "$R/.claude/hooks/block-api-bypass.sh"
@@ -2522,6 +2539,7 @@ echo "=== AI. プレースホルダー置換エラーハンドリング ==="
 # AI1. 正常な置換後にプレースホルダーが残らない（既存テスト I と重複するが明示的に検証）
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
@@ -2629,6 +2647,7 @@ cleanup
 # D5. full プリセット → vibecorp.yml に container セクションが含まれる
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 assert_file_contains "D5: full で vibecorp.yml に container セクションがある" \
   "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
@@ -2654,6 +2673,137 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 assert_file_not_contains "D7: minimal で vibecorp.yml に container セクションがない" \
   "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+cleanup
+
+# ============================================
+# S: setup_secrets テスト
+# ============================================
+
+# S1. 環境変数から secrets ファイルが作成される
+create_test_repo
+setup_mock_docker
+export ANTHROPIC_API_KEY="test-api-key-123"
+export GH_TOKEN="test-gh-token-456"
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+if [[ -f "$TMPDIR_ROOT/secrets/anthropic_api_key" ]]; then
+  content=$(cat "$TMPDIR_ROOT/secrets/anthropic_api_key")
+  if [[ "$content" == "test-api-key-123" ]]; then
+    pass "S1a: 環境変数から secrets/anthropic_api_key が作成される"
+  else
+    fail "S1a: secrets/anthropic_api_key の内容が不正: $content"
+  fi
+else
+  fail "S1a: secrets/anthropic_api_key が作成されていない"
+fi
+if [[ -f "$TMPDIR_ROOT/secrets/github_token" ]]; then
+  content=$(cat "$TMPDIR_ROOT/secrets/github_token")
+  if [[ "$content" == "test-gh-token-456" ]]; then
+    pass "S1b: 環境変数から secrets/github_token が作成される"
+  else
+    fail "S1b: secrets/github_token の内容が不正: $content"
+  fi
+else
+  fail "S1b: secrets/github_token が作成されていない"
+fi
+unset ANTHROPIC_API_KEY GH_TOKEN
+cleanup
+
+# S2. secrets ファイルが既存の場合はスキップされる
+create_test_repo
+setup_mock_docker
+mkdir -p "$TMPDIR_ROOT/secrets"
+printf 'existing-key' > "$TMPDIR_ROOT/secrets/anthropic_api_key"
+printf 'existing-token' > "$TMPDIR_ROOT/secrets/github_token"
+export ANTHROPIC_API_KEY="should-not-overwrite"
+export GH_TOKEN="should-not-overwrite"
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+content_key=$(cat "$TMPDIR_ROOT/secrets/anthropic_api_key")
+content_token=$(cat "$TMPDIR_ROOT/secrets/github_token")
+if [[ "$content_key" == "existing-key" ]]; then
+  pass "S2a: 既存の secrets/anthropic_api_key は上書きされない"
+else
+  fail "S2a: secrets/anthropic_api_key が上書きされた: $content_key"
+fi
+if [[ "$content_token" == "existing-token" ]]; then
+  pass "S2b: 既存の secrets/github_token は上書きされない"
+else
+  fail "S2b: secrets/github_token が上書きされた: $content_token"
+fi
+unset ANTHROPIC_API_KEY GH_TOKEN
+cleanup
+
+# S3. 環境変数未設定 + 非対話でエラー終了する
+create_test_repo
+setup_mock_docker
+unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN 2>/dev/null
+EXIT_CODE=$(echo "" | bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null; echo $?)
+if [[ "$EXIT_CODE" -ne 0 ]]; then
+  pass "S3: 環境変数未設定 + 非対話でエラー終了する"
+else
+  fail "S3: 環境変数未設定 + 非対話でもエラーにならなかった"
+fi
+cleanup
+
+# S4. secrets ファイルのパーミッションが 600 である
+create_test_repo
+setup_mock_docker
+export ANTHROPIC_API_KEY="test-key"
+export GH_TOKEN="test-token"
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+if [[ "$(uname)" == "Darwin" ]]; then
+  perm_key=$(stat -f '%Lp' "$TMPDIR_ROOT/secrets/anthropic_api_key")
+  perm_token=$(stat -f '%Lp' "$TMPDIR_ROOT/secrets/github_token")
+else
+  perm_key=$(stat -c '%a' "$TMPDIR_ROOT/secrets/anthropic_api_key")
+  perm_token=$(stat -c '%a' "$TMPDIR_ROOT/secrets/github_token")
+fi
+if [[ "$perm_key" == "600" ]]; then
+  pass "S4a: secrets/anthropic_api_key のパーミッションが 600"
+else
+  fail "S4a: secrets/anthropic_api_key のパーミッションが $perm_key"
+fi
+if [[ "$perm_token" == "600" ]]; then
+  pass "S4b: secrets/github_token のパーミッションが 600"
+else
+  fail "S4b: secrets/github_token のパーミッションが $perm_token"
+fi
+unset ANTHROPIC_API_KEY GH_TOKEN
+cleanup
+
+# S5. minimal/standard プリセットでは secrets が作成されない
+create_test_repo
+export ANTHROPIC_API_KEY="test-key"
+export GH_TOKEN="test-token"
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+if [[ ! -d "$TMPDIR_ROOT/secrets" ]]; then
+  pass "S5a: minimal プリセットで secrets ディレクトリが作成されない"
+else
+  fail "S5a: minimal プリセットで secrets ディレクトリが作成された"
+fi
+cleanup
+
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+if [[ ! -d "$TMPDIR_ROOT/secrets" ]]; then
+  pass "S5b: standard プリセットで secrets ディレクトリが作成されない"
+else
+  fail "S5b: standard プリセットで secrets ディレクトリが作成された"
+fi
+unset ANTHROPIC_API_KEY GH_TOKEN
+cleanup
+
+# S6. full プリセットの完了メッセージにコンテナ使い方が含まれる
+create_test_repo
+setup_mock_docker
+export ANTHROPIC_API_KEY="test-key"
+export GH_TOKEN="test-token"
+STDERR_OUTPUT=$(bash "$INSTALL_SH" --name test-proj --preset full 2>&1 1>/dev/null)
+if echo "$STDERR_OUTPUT" | grep -q '/ship'; then
+  pass "S6: full プリセット完了メッセージに /ship の使い方が含まれる"
+else
+  fail "S6: full プリセット完了メッセージに /ship の使い方がない"
+fi
+unset ANTHROPIC_API_KEY GH_TOKEN
 cleanup
 
 # ============================================
