@@ -60,14 +60,10 @@ echo "=== docker-sandbox ビルド検証 ==="
 # ケース 1: ビルドが成功し 5 分以内に完了する
 echo "--- ビルド開始（5 分以内が受け入れ基準）---"
 BUILD_START=$(date +%s)
-if docker build -t "$IMAGE_TAG" "$DOCKER_DIR"; then
+if timeout 300 docker build -t "$IMAGE_TAG" "$DOCKER_DIR"; then
     BUILD_END=$(date +%s)
     BUILD_DURATION=$((BUILD_END - BUILD_START))
-    if [ "$BUILD_DURATION" -le 300 ]; then
-        pass "ビルドが 300 秒以内に完了 (${BUILD_DURATION}s)"
-    else
-        fail "ビルドが 300 秒を超過 (${BUILD_DURATION}s)"
-    fi
+    pass "ビルドが 300 秒以内に完了 (${BUILD_DURATION}s)"
 else
     fail "docker build が失敗"
     echo ""
@@ -185,6 +181,27 @@ if [ "$INSPECT" = "${EXPECTED_MEM} 512 ${EXPECTED_CPUS_NANO}" ]; then
     pass "resource limit が期待値と一致 (${INSPECT})"
 else
     fail "resource limit が期待値と不一致 (実際: ${INSPECT}, 期待: ${EXPECTED_MEM} 512 ${EXPECTED_CPUS_NANO})"
+fi
+
+# ============================================
+echo ""
+echo "=== secret 注入方式の検証 ==="
+# ============================================
+
+# ケース 10: -e ANTHROPIC_API_KEY=... で起動するとエラーで拒否される
+TOTAL=$((TOTAL + 1))
+if docker run --rm "${CAPS_ARGS[@]}" -e ANTHROPIC_API_KEY="test-key" "$IMAGE_TAG" echo "should not reach" 2>&1 | grep -q "env で注入されています"; then
+    pass "-e ANTHROPIC_API_KEY が拒否される"
+else
+    fail "-e ANTHROPIC_API_KEY が拒否されなかった"
+fi
+
+# ケース 11: -e GH_TOKEN=... で起動するとエラーで拒否される
+TOTAL=$((TOTAL + 1))
+if docker run --rm "${CAPS_ARGS[@]}" -e GH_TOKEN="test-token" "$IMAGE_TAG" echo "should not reach" 2>&1 | grep -q "env で注入されています"; then
+    pass "-e GH_TOKEN が拒否される"
+else
+    fail "-e GH_TOKEN が拒否されなかった"
 fi
 
 # ============================================

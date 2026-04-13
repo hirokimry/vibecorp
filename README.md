@@ -124,12 +124,11 @@ your-project/
 
 ## スキル一覧
 
-### minimal プリセット（14スキル）
+### minimal プリセット（13スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行。コンテナモードあり（Docker / `vibecorp/claude-sandbox:dev` / `secrets/` が前提） |
-| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し、docker run コンテナ方式で同時進行 |
 | `/plan` | Issue の実装方針を策定し、計画ファイルとして `.claude/plans/` に出力 |
 | `/plan-review-loop` | 実装計画に対するレビュー → 修正の自動ループ。問題0件まで繰り返す |
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
@@ -154,10 +153,11 @@ your-project/
 | `/harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（3スキル）
+### full プリセットで追加（4スキル）
 
 | スキル | 説明 |
 |---|---|
+| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し、docker run コンテナ方式で同時進行 |
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能 |
 | `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。コンテナ化されたヘッドレス Claude で ship-parallel を起動し、`docker logs --since` の無音カウンタで stuck 検出 → 診断スナップショット → 強制停止 → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |

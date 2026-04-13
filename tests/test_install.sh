@@ -119,7 +119,8 @@ MOCK_DOCKER_DIR=""
 
 setup_mock_docker() {
   MOCK_DOCKER_DIR=$(mktemp -d)
-  printf '#!/bin/bash\nexit 0\n' > "$MOCK_DOCKER_DIR/docker"
+  export MOCK_DOCKER_DIR
+  printf '#!/bin/bash\necho "$@" >> "%s/docker_calls.log"\nexit 0\n' "$MOCK_DOCKER_DIR" > "$MOCK_DOCKER_DIR/docker"
   chmod +x "$MOCK_DOCKER_DIR/docker"
   export PATH="$MOCK_DOCKER_DIR:$PATH"
 }
@@ -2673,6 +2674,22 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 assert_file_not_contains "D7: minimal で vibecorp.yml に container セクションがない" \
   "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+cleanup
+
+# D8. full プリセット → docker build が呼ばれる（イメージ未存在時）
+create_test_repo
+MOCK_DOCKER_DIR=$(mktemp -d)
+export MOCK_DOCKER_DIR
+printf '#!/bin/bash\necho "$@" >> "%s/docker_calls.log"\nif [ "$1" = "image" ] && [ "$2" = "inspect" ]; then exit 1; fi\nexit 0\n' "$MOCK_DOCKER_DIR" > "$MOCK_DOCKER_DIR/docker"
+chmod +x "$MOCK_DOCKER_DIR/docker"
+export PATH="$MOCK_DOCKER_DIR:$PATH"
+setup_mock_secrets
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+if [[ -f "$MOCK_DOCKER_DIR/docker_calls.log" ]] && grep -q "build" "$MOCK_DOCKER_DIR/docker_calls.log"; then
+  pass "D8: full プリセットで docker build が呼ばれる"
+else
+  fail "D8: full プリセットで docker build が呼ばれない"
+fi
 cleanup
 
 # ============================================

@@ -1,13 +1,13 @@
 ---
 name: ship-parallel
-description: "複数Issueを並列shipするオーケストレーションスキル。COOエージェントで並列判定し、TeamCreate + 手動worktree + Agentで同時実行する。「/ship-parallel」「並列シップ」「まとめてship」と言った時に使用。"
+description: "複数Issueを並列shipするオーケストレーションスキル。COOエージェントで依存関係を分析し、手動worktree + docker runコンテナ方式で同時実行する。「/ship-parallel」「並列シップ」「まとめてship」と言った時に使用。"
 ---
 
 **ultrathink**
 
 # 並列 ship オーケストレーション
 
-複数の Issue を並列に `/ship` 実行する。**COO エージェントが Issue 群の依存関係を分析**し、その結果に基づいてスキル実行者が TeamCreate + 手動 worktree + Agent で同時進行する。
+複数の Issue を並列に `/ship` 実行する。**COO エージェントが Issue 群の依存関係を分析**し、その結果に基づいてスキル実行者が手動 worktree + docker run コンテナ方式で同時進行する。
 
 **full プリセット専用**。COO エージェントによる並列判定が必要なため、standard 以下では利用不可。
 
@@ -253,7 +253,7 @@ docker run -d --name "vibecorp-ship-<ISSUE_NUMBER>-<SESSION_ID>" --init --read-o
 #### 5e. 直列チェーンの順序実行
 
 直列チェーンがある場合、前の Issue のコンテナが完了してから次の Issue のコンテナを起動する。
-`docker inspect --format '{{.State.Status}}'` で前のコンテナの完了を確認し、成功していれば次を起動する。
+`docker inspect --format '{{.State.ExitCode}}'` で前のコンテナの終了コードを確認し、0（成功）であれば次を起動する。0 以外の場合はチェーンを中断し、失敗した Issue を報告する。
 
 ### 7. stuck 監視・結果収集
 
@@ -295,10 +295,10 @@ docker rm "vibecorp-ship-<ISSUE_NUMBER>-<SESSION_ID>"
 
 #### 成功判定
 
-各 Issue URL から Issue 番号を抽出し、`dev/{番号}` パターンのブランチで PR が存在するか確認する。
+各 Issue URL から Issue 番号を抽出し、`dev/{番号}_` プレフィックスのブランチで PR が存在するか確認する。
 
 ```bash
-gh pr list --state open --head "dev/{番号}" --json number --jq '.[0].number'
+gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dev/{番号}_")) | .number'
 ```
 
 ### 8. 並列 PR コンフリクト検知

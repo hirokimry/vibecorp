@@ -31,13 +31,23 @@ configure_egress_allowlist() {
         ip6tables -A OUTPUT -o lo -j ACCEPT
     fi
 
-    # DNS 解決用（53/udp, 53/tcp）
-    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
-    iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
-    if command -v ip6tables >/dev/null; then
-        ip6tables -A OUTPUT -p udp --dport 53 -j ACCEPT
-        ip6tables -A OUTPUT -p tcp --dport 53 -j ACCEPT
-    fi
+    # DNS 解決用（/etc/resolv.conf の nameserver のみ許可）
+    local dns_ip
+    while read -r dns_ip; do
+        [[ -n "$dns_ip" ]] || continue
+        case "$dns_ip" in
+            *:*)
+                if command -v ip6tables >/dev/null; then
+                    ip6tables -A OUTPUT -p udp -d "$dns_ip" --dport 53 -j ACCEPT
+                    ip6tables -A OUTPUT -p tcp -d "$dns_ip" --dport 53 -j ACCEPT
+                fi
+                ;;
+            *)
+                iptables -A OUTPUT -p udp -d "$dns_ip" --dport 53 -j ACCEPT
+                iptables -A OUTPUT -p tcp -d "$dns_ip" --dport 53 -j ACCEPT
+                ;;
+        esac
+    done < <(awk '/^nameserver / { print $2 }' /etc/resolv.conf)
 
     # allowlist ホストを DNS 解決して ACCEPT ルール追加
     # 注: CDN IP ローテーション対策として ESTABLISHED,RELATED も許可する

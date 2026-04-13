@@ -51,5 +51,5 @@
 9. **resource limit**: `--memory` / `--cpus` / `--pids-limit` を必ず指定する
 10. **イメージの定期更新と脆弱性スキャン**: ベースイメージ・依存パッケージを定期的に更新し、`trivy` 等で CVE スキャンを実施する
 
-参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること。entrypoint 実装は `docker/claude-sandbox/entrypoint.sh` を参照（Issue #266 / Phase 1-1）。spike-loop のコンテナライフサイクル統合（container ID 管理・docker logs stuck 検出・SESSION_ID 孤立コンテナ検出）は Issue #267 / Phase 1-2 で実装済み（CI での Docker 統合テスト実行は Phase 2-3 / #270 の install.sh 統合で対応予定。現在は Docker 未導入環境ではテスト 8-9 がスキップされる）
+参考実装: `docker/claude-sandbox/` — コンテナ隔離を使用する場合は当該ディレクトリの `README.md` に記載された推奨 `docker run` コマンドを出発点とし、利用プロジェクトの要件に合わせてマウント・secrets 注入を調整すること。entrypoint 実装は `docker/claude-sandbox/entrypoint.sh` を参照。spike-loop のコンテナライフサイクル統合（container ID 管理・docker logs stuck 検出・SESSION_ID 孤立コンテナ検出）は実装済み。`install.sh` の `setup_secrets()` による secrets 自動生成と `prepare_docker_image()` による Docker イメージビルドも実装済み。`tests/test_container_sandbox.sh` で CISO 最低条件のテストを提供（Docker 未導入環境ではテスト 8-9 がスキップされる）
 参考判断記録: `.claude/knowledge/cto/decisions.md` の `2026-04-11: docker/claude-sandbox/ のリポジトリトップレベル配置判断` および `2026-04-11: seccomp プロファイルを ALLOW デフォルト + 特定 syscall denial 構成で実装`
