@@ -40,7 +40,7 @@ path/to/vibecorp/install.sh --name your-project --preset full
 claude -p "/ship <Issue URL>"
 ```
 
-環境変数が未設定の場合は対話的に入力を求める。Docker 未導入の場合は `--preset standard` への案内が表示される。
+環境変数が未設定の場合は対話的に入力を求める。`GH_TOKEN` を設定済みの場合はそちらも利用可能。Docker 未導入の場合は `--preset standard` への案内が表示される。
 
 ### バージョン指定インストール
 
