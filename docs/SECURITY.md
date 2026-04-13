@@ -21,6 +21,7 @@
 - シークレット・APIキー・パスワードをリポジトリにコミットしない
 - 環境変数またはシークレットマネージャーで管理する
 - コンテナ環境では `/run/secrets/` への read-only bind mount 方式でシークレットを注入する。`docker run -e` による環境変数渡しは禁止する（`docker run --mount type=bind,source=./secrets/anthropic_api_key,target=/run/secrets/anthropic_api_key,readonly` を使用する）
+- `install.sh --preset full` を実行すると、`secrets/anthropic_api_key` と `secrets/github_token` が自動生成される。優先順位は「環境変数（`ANTHROPIC_API_KEY` / `GH_TOKEN` / `GITHUB_TOKEN`）→ 対話入力 → エラー終了」。ファイルが既存の場合はスキップされる。生成されたファイルには `chmod 600` が適用される
 
 ### 個人情報
 

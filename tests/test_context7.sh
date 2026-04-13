@@ -96,7 +96,17 @@ setup_mock_docker() {
   export PATH="$MOCK_DOCKER_DIR:$PATH"
 }
 
+setup_mock_secrets() {
+  export ANTHROPIC_API_KEY="test-api-key"
+  export GH_TOKEN="test-gh-token"
+}
+
+cleanup_mock_secrets() {
+  unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN 2>/dev/null || true
+}
+
 cleanup() {
+  cleanup_mock_secrets
   if [ -n "$MOCK_DOCKER_DIR" ] && [ -d "$MOCK_DOCKER_DIR" ]; then
     rm -rf "$MOCK_DOCKER_DIR"
     MOCK_DOCKER_DIR=""
@@ -154,6 +164,7 @@ cleanup
 # B3. full プリセットでは context7 が配置される
 create_test_repo
 setup_mock_docker
+setup_mock_secrets
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 assert_dir_exists "full: context7 スキルが配置される" \
   "$TMPDIR_ROOT/.claude/skills/context7"
