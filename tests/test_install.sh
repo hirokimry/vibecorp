@@ -115,7 +115,41 @@ run_install() {
   echo "$exit_code"
 }
 
+MOCK_DOCKER_DIR=""
+
+setup_mock_docker() {
+  MOCK_DOCKER_DIR=$(mktemp -d)
+  printf '#!/bin/bash\nexit 0\n' > "$MOCK_DOCKER_DIR/docker"
+  chmod +x "$MOCK_DOCKER_DIR/docker"
+  export PATH="$MOCK_DOCKER_DIR:$PATH"
+}
+
+setup_no_docker_path() {
+  local tmpbin
+  tmpbin=$(mktemp -d)
+  local dir
+  IFS=: read -ra dirs <<< "$PATH"
+  for dir in "${dirs[@]}"; do
+    [ -d "$dir" ] || continue
+    for cmd in "$dir"/*; do
+      [ -x "$cmd" ] || continue
+      [ "$(basename "$cmd")" = "docker" ] && continue
+      ln -sf "$cmd" "$tmpbin/" 2>/dev/null
+    done
+  done
+  MOCK_DOCKER_DIR="$tmpbin"
+  export PATH="$tmpbin"
+}
+
+cleanup_mock_docker() {
+  if [ -n "$MOCK_DOCKER_DIR" ] && [ -d "$MOCK_DOCKER_DIR" ]; then
+    rm -rf "$MOCK_DOCKER_DIR"
+    MOCK_DOCKER_DIR=""
+  fi
+}
+
 cleanup() {
+  cleanup_mock_docker
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT"
   fi
@@ -240,6 +274,7 @@ cleanup
 
 # C2. full → 成功
 create_test_repo
+setup_mock_docker
 EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → 成功" "0" "$EXIT_CODE"
 R="$TMPDIR_ROOT"
@@ -1700,6 +1735,7 @@ echo "=== T. スキル・hooks トグル ==="
 
 # T1. hooks セクションで false 指定した hook がインストールされない
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 # vibecorp.yml に hooks トグルを追加
@@ -1717,6 +1753,7 @@ cleanup
 
 # T2. skills セクションで false 指定した skill がインストールされない
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 cat >> "$R/.claude/vibecorp.yml" <<'YML'
@@ -1732,6 +1769,7 @@ cleanup
 
 # T3. 無効化した hook が settings.json に含まれない
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 cat >> "$R/.claude/vibecorp.yml" <<'YML'
@@ -1747,6 +1785,7 @@ cleanup
 
 # T4. トグルセクション省略時は全て有効（既存動作維持）
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 assert_file_exists "トグル省略時: hook がインストールされる" "$R/.claude/hooks/block-api-bypass.sh"
@@ -2477,6 +2516,7 @@ echo "=== AI. プレースホルダー置換エラーハンドリング ==="
 
 # AI1. 正常な置換後にプレースホルダーが残らない（既存テスト I と重複するが明示的に検証）
 create_test_repo
+setup_mock_docker
 bash "$INSTALL_SH" --name test-proj --preset full --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
@@ -2538,10 +2578,9 @@ echo "=== D. Docker チェック ==="
 
 # D1. full プリセット + Docker 未導入 → exit 1
 create_test_repo
-# PATH を制限して docker コマンドを見えなくする
-EXIT_CODE=0
 PATH_BACKUP="$PATH"
-PATH="/usr/bin:/bin"
+setup_no_docker_path
+EXIT_CODE=0
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
 PATH="$PATH_BACKUP"
 assert_exit_code "D1: full + Docker 未導入で exit 1" "1" "$EXIT_CODE"
@@ -2549,9 +2588,8 @@ cleanup
 
 # D2. full プリセット + Docker 未導入 → 案内メッセージが表示される
 create_test_repo
-STDERR_OUTPUT=""
 PATH_BACKUP="$PATH"
-PATH="/usr/bin:/bin"
+setup_no_docker_path
 STDERR_OUTPUT=$(bash "$INSTALL_SH" --name test-proj --preset full 2>&1 >/dev/null || true)
 PATH="$PATH_BACKUP"
 if echo "$STDERR_OUTPUT" | grep -q "full プリセットは Docker が必要です"; then
@@ -2563,9 +2601,9 @@ cleanup
 
 # D3. standard プリセット + Docker 未導入 → exit 0（影響なし）
 create_test_repo
-EXIT_CODE=0
 PATH_BACKUP="$PATH"
-PATH="/usr/bin:/bin"
+setup_no_docker_path
+EXIT_CODE=0
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null || EXIT_CODE=$?
 PATH="$PATH_BACKUP"
 assert_exit_code "D3: standard + Docker 未導入で exit 0" "0" "$EXIT_CODE"
@@ -2573,9 +2611,9 @@ cleanup
 
 # D4. minimal プリセット + Docker 未導入 → exit 0（影響なし）
 create_test_repo
-EXIT_CODE=0
 PATH_BACKUP="$PATH"
-PATH="/usr/bin:/bin"
+setup_no_docker_path
+EXIT_CODE=0
 bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null || EXIT_CODE=$?
 PATH="$PATH_BACKUP"
 assert_exit_code "D4: minimal + Docker 未導入で exit 0" "0" "$EXIT_CODE"
@@ -2583,17 +2621,11 @@ cleanup
 
 # D5. full プリセット → vibecorp.yml に container セクションが含まれる
 create_test_repo
-# Docker が利用可能な環境でのみテスト
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
-  assert_file_contains "D5: full で vibecorp.yml に container セクションがある" \
-    "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
-  cleanup
-else
-  # Docker 未導入環境ではスキップ扱い
-  pass "D5: full で vibecorp.yml に container セクションがある (Docker 未導入のためスキップ)"
-  cleanup
-fi
+setup_mock_docker
+bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
+assert_file_contains "D5: full で vibecorp.yml に container セクションがある" \
+  "$TMPDIR_ROOT/.claude/vibecorp.yml" "container:"
+cleanup
 
 # D6. standard プリセット → vibecorp.yml に container セクションが含まれない
 create_test_repo
