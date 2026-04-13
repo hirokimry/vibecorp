@@ -60,7 +60,15 @@ echo "=== docker-sandbox ビルド検証 ==="
 # ケース 1: ビルドが成功し 5 分以内に完了する
 echo "--- ビルド開始（5 分以内が受け入れ基準）---"
 BUILD_START=$(date +%s)
-if timeout 300 docker build -t "$IMAGE_TAG" "$DOCKER_DIR"; then
+TIMEOUT_CMD="timeout"
+if ! command -v timeout >/dev/null 2>&1; then
+    if command -v gtimeout >/dev/null 2>&1; then
+        TIMEOUT_CMD="gtimeout"
+    else
+        TIMEOUT_CMD=""
+    fi
+fi
+if ${TIMEOUT_CMD:+$TIMEOUT_CMD 300} docker build -t "$IMAGE_TAG" "$DOCKER_DIR"; then
     BUILD_END=$(date +%s)
     BUILD_DURATION=$((BUILD_END - BUILD_START))
     pass "ビルドが 300 秒以内に完了 (${BUILD_DURATION}s)"
@@ -189,16 +197,18 @@ echo "=== secret 注入方式の検証 ==="
 # ============================================
 
 # ケース 10: -e ANTHROPIC_API_KEY=... で起動するとエラーで拒否される
-TOTAL=$((TOTAL + 1))
-if docker run --rm "${CAPS_ARGS[@]}" -e ANTHROPIC_API_KEY="test-key" "$IMAGE_TAG" echo "should not reach" 2>&1 | grep -q "env で注入されています"; then
+SECRET_OUTPUT=$(docker run --rm --read-only --tmpfs /tmp --tmpfs /state --tmpfs /home/claude/.cache \
+    "${CAPS_ARGS[@]}" -e ANTHROPIC_API_KEY="test-key" "$IMAGE_TAG" echo "should not reach" 2>&1 || true)
+if echo "$SECRET_OUTPUT" | grep -q "env で注入されています"; then
     pass "-e ANTHROPIC_API_KEY が拒否される"
 else
     fail "-e ANTHROPIC_API_KEY が拒否されなかった"
 fi
 
 # ケース 11: -e GH_TOKEN=... で起動するとエラーで拒否される
-TOTAL=$((TOTAL + 1))
-if docker run --rm "${CAPS_ARGS[@]}" -e GH_TOKEN="test-token" "$IMAGE_TAG" echo "should not reach" 2>&1 | grep -q "env で注入されています"; then
+SECRET_OUTPUT=$(docker run --rm --read-only --tmpfs /tmp --tmpfs /state --tmpfs /home/claude/.cache \
+    "${CAPS_ARGS[@]}" -e GH_TOKEN="test-token" "$IMAGE_TAG" echo "should not reach" 2>&1 || true)
+if echo "$SECRET_OUTPUT" | grep -q "env で注入されています"; then
     pass "-e GH_TOKEN が拒否される"
 else
     fail "-e GH_TOKEN が拒否されなかった"
