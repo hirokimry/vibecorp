@@ -137,3 +137,54 @@ esac
 | 5 | `README.md` | テーブル・セクションを更新 | 常に必須 |
 | 6 | `tests/test_*.sh` | テストケースを追加 | 常に必須 |
 | 7 | `templates/` | テンプレートファイルを配置 | 常に必須 |
+
+## full プリセット限定: Docker 依存機能を追加する場合
+
+full プリセット専用の機能が Docker CLI・デーモン・イメージに依存する場合、以下の追加チェックが必要です。
+
+### 8. install.sh — check_docker() の呼び出し確認
+
+**対象**: Docker CLI またはデーモンを実行時に必要とする機能
+
+`install.sh` の `check_docker()` は full プリセット時に自動で呼ばれる。新機能が Docker に依存するなら、この関数が以下を満たしているか確認する:
+
+- Docker CLI (`docker` コマンド) の存在確認
+- Docker デーモンの起動確認 (`docker info`)
+- 未導入・未起動の場合は案内メッセージを出力して `exit 1` する
+
+新機能向けに追加の CLI ツールや権限が必要な場合は `check_docker()` 内に確認ロジックを追加する。
+
+### 9. install.sh — prepare_docker_image() の対象確認
+
+**対象**: インストール時にビルドが必要な Docker イメージを使う機能
+
+`install.sh` の `prepare_docker_image()` は full プリセット時に `docker/claude-sandbox/` からイメージをビルドする。新機能が別のイメージを必要とする場合:
+
+- `docker/` 配下に対応するイメージ定義ディレクトリを追加する
+- `prepare_docker_image()` に追加のビルド処理を追記する
+- ビルドはインストール時（`install.sh` 実行時）に行う。スキル実行時の遅延ビルドは採用しない
+
+```bash
+# prepare_docker_image() 内への追記パターン
+docker build -t "vibecorp/新しいイメージ:dev" \
+  "${SCRIPT_DIR}/docker/新しいイメージ" \
+  || { echo "エラー: Docker イメージのビルドに失敗しました" >&2; exit 1; }
+```
+
+### 10. install.sh — generate_vibecorp_yml() の container セクション確認
+
+**対象**: `vibecorp.yml` に `container:` セクションが必要な機能
+
+full プリセット時、`generate_vibecorp_yml()` は `container:` セクションを生成する。新機能がコンテナ設定を参照する場合:
+
+- `container:` セクションに必要なキーが含まれているか確認する
+- スキル側でコンテナ名・イメージ名を参照する場合は `vibecorp.yml` の対応するキーを追加する
+- minimal / standard プリセットでは `container:` セクションが存在しないことを前提にスキルを設計する
+
+## まとめ: Docker 依存機能の追加チェックリスト（full プリセット）
+
+| # | 確認事項 | 必須条件 |
+|---|---------|---------|
+| 8 | `check_docker()` の確認ロジックが新機能の依存を網羅しているか | Docker CLI / デーモンを使う場合 |
+| 9 | `prepare_docker_image()` にビルド処理が追加されているか | 新規 Docker イメージを使う場合 |
+| 10 | `generate_vibecorp_yml()` の `container:` セクションに必要なキーがあるか | スキルが `vibecorp.yml` のコンテナ設定を参照する場合 |

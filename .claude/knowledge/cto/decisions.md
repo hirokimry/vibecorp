@@ -285,3 +285,9 @@
 - **判断**: `docs/design/container-worktree.md` のスコープ宣言を Phase 2-1 のみから Phase 2-2（#269）まで含める形に拡張。ship 単体の `VIBECORP_IN_CONTAINER` ネスト防止設計と autopilot のコンテナ化設計を「Phase 2-2」セクションとして追記した
 - **根拠**: sync-check で設計ドキュメントと実装の不整合が検出された。Phase 2-1 設計（worktree 2 マウント方式）と Phase 2-2 設計（全スキルコンテナ統合）は密接に関連しており、同一ドキュメントで管理するのが適切
 - **代替案**: 別ファイル（`container-ship.md` 等）に分割する案も検討したが、コンテナ起動方式まとめ表の管理が分散するため既存ファイルに追記する方式を採用した
+
+### 2026-04-13: install.sh への Docker チェック・イメージビルド統合（Issue #270 / Phase 2-3）
+
+- **判断**: `install.sh` に `check_docker()` と `prepare_docker_image()` を追加し、full プリセット時のみ実行。Docker CLI 不在・デーモン停止時は案内メッセージ + exit 1。`generate_vibecorp_yml()` は full 時に `container:` セクションを追記。ビルドタイミングはインストール時に固定
+- **根拠**: Phase 2-2 で全スキルのコンテナ化が完了し、full プリセットで Docker は必須依存。スキル実行時の遅延ビルドではなくインストール時に早期検出する方が MVV「導入の手軽さ」に合致する
+- **代替案**: スキル実行時チェック → 却下（重複・一貫性欠如）。遅延ビルド → 却下（並列実行での競合リスク）
