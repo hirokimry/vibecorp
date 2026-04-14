@@ -2533,6 +2533,52 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== BILLING. 課金警告（Issue #286） ==="
+# ============================================
+
+# BILLING1. full プリセット install 時に課金警告が stderr に表示される
+create_test_repo
+STDERR_OUT=$(bash "$INSTALL_SH" --name test-proj --preset full 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q "課金モデル"; then
+  pass "BILLING1: full → stderr に課金警告が表示される"
+else
+  fail "BILLING1: full → stderr に課金警告が表示されない"
+fi
+if echo "$STDERR_OUT" | grep -q "ANTHROPIC_API_KEY"; then
+  pass "BILLING1b: full → 警告に ANTHROPIC_API_KEY の言及がある"
+else
+  fail "BILLING1b: full → 警告に ANTHROPIC_API_KEY の言及がない"
+fi
+cleanup
+
+# BILLING2. minimal プリセットでは課金警告が出ない
+create_test_repo
+STDERR_OUT=$(bash "$INSTALL_SH" --name test-proj --preset minimal 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q "課金モデルに関する注意"; then
+  fail "BILLING2: minimal → 課金警告が誤って表示されている"
+else
+  pass "BILLING2: minimal → 課金警告は表示されない"
+fi
+cleanup
+
+# BILLING3. standard プリセットでは課金警告が出ない
+create_test_repo
+STDERR_OUT=$(bash "$INSTALL_SH" --name test-proj --preset standard 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q "課金モデルに関する注意"; then
+  fail "BILLING3: standard → 課金警告が誤って表示されている"
+else
+  pass "BILLING3: standard → 課金警告は表示されない"
+fi
+cleanup
+
+# BILLING4. docs/cost-analysis.md に「実行モード別の課金モデル」セクションが存在する
+assert_file_contains "BILLING4: cost-analysis.md に実行モード別の課金モデル見出しが存在" "$SCRIPT_DIR/docs/cost-analysis.md" "実行モード別の課金モデル"
+
+# BILLING5. README.md のプリセット比較表に「課金モデル」列が追加されている
+assert_file_contains "BILLING5: README.md に課金モデル列が追加されている" "$SCRIPT_DIR/README.md" "課金モデル"
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
