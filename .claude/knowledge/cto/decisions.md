@@ -291,3 +291,9 @@
 - **判断**: `install.sh` に `check_docker()` と `prepare_docker_image()` を追加し、full プリセット時のみ実行。Docker CLI 不在・デーモン停止時は案内メッセージ + exit 1。`generate_vibecorp_yml()` は full 時に `container:` セクションを追記。ビルドタイミングはインストール時に固定
 - **根拠**: Phase 2-2 で全スキルのコンテナ化が完了し、full プリセットで Docker は必須依存。スキル実行時の遅延ビルドではなくインストール時に早期検出する方が MVV「導入の手軽さ」に合致する
 - **代替案**: スキル実行時チェック → 却下（重複・一貫性欠如）。遅延ビルド → 却下（並列実行での競合リスク）
+
+### 2026-04-14: install.sh から `gh auth token` フォールバックを削除（revert）
+
+- **判断**: PR #282 で追加した `gh auth token` による GitHub トークン自動取得フォールバックを削除。トークン取得の優先順を「既存ファイル → 環境変数 → 対話入力 → エラー終了」に戻す
+- **根拠**: CISO セキュリティ評価により、`gh auth token` が返す classic OAuth トークンは broad scope（repo, workflow 等）を持ち、SECURITY.md 最低条件5番（fine-grained token 要件）と矛盾すると判断された。自動取得は利便性があるものの、過剰権限のトークンがシークレットとして書き込まれるリスクを許容できない
+- **結論**: GitHub トークンはユーザーが fine-grained PAT を手動発行して設定する方式を維持する
