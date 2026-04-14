@@ -448,9 +448,6 @@ setup_secrets() {
     if [[ -n "$token" ]]; then
       printf '%s' "$token" > "$token_file"
       log_info "環境変数から secrets/github_token を作成"
-    elif command -v gh >/dev/null && token=$(gh auth token 2>/dev/null) && [[ -n "$token" ]]; then
-      printf '%s' "$token" > "$token_file"
-      log_info "gh auth token から secrets/github_token を作成"
     elif [[ -t 0 ]]; then
       printf '\033[33m[INPUT]\033[0m    GitHub トークンを入力してください: ' >&2
       local gh_token
