@@ -31,7 +31,7 @@ path/to/vibecorp/install.sh --name your-project
 ```bash
 # Anthropic API キーと GitHub トークンを環境変数に設定
 export ANTHROPIC_API_KEY="sk-ant-..."
-export GITHUB_TOKEN="ghp_..."
+export GITHUB_TOKEN="github_pat_..."
 
 # インストール（Docker チェック + イメージビルド + シークレット配置を自動実行）
 path/to/vibecorp/install.sh --name your-project --preset full

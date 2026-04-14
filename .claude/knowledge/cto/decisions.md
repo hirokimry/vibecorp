@@ -297,3 +297,4 @@
 - **判断**: PR #282 で追加した `gh auth token` による GitHub トークン自動取得フォールバックを削除。トークン取得の優先順を「既存ファイル → 環境変数 → 対話入力 → エラー終了」に戻す
 - **根拠**: CISO セキュリティ評価により、`gh auth token` が返す classic OAuth トークンは broad scope（repo, workflow 等）を持ち、SECURITY.md 最低条件5番（fine-grained token 要件）と矛盾すると判断された。自動取得は利便性があるものの、過剰権限のトークンがシークレットとして書き込まれるリスクを許容できない
 - **結論**: GitHub トークンはユーザーが fine-grained PAT を手動発行して設定する方式を維持する
+- **Issue #281 の未達要件**: Phase 2（`~/.claude/` mount による Anthropic API キー自動化）および Phase 3（secrets/ 廃止）は技術的に実現不可のため見送り。CLI アップストリームで非対話 OAuth がサポートされるまで再検討しない
