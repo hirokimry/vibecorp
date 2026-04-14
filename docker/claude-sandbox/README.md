@@ -56,6 +56,7 @@ docker run --rm \
 - `--user` は指定しない。entrypoint.sh が root で iptables 設定後、`setpriv --reuid=1000 --regid=1000 --clear-groups --inh-caps=-all --bounding-set=-all` で降格する。事前に `--user 1000:1000` を指定すると iptables の OUTPUT 書き換えが行えなくなり egress allowlist が機能しないため禁止
 - `CLAUDE_PROJECT_DIR` は Dockerfile の `ENV` で `/workspace` に設定済み
 - `docker run` には `--secret` フラグが存在しないため、`--mount type=bind ... target=/run/secrets/...,readonly` でシークレットを注入する。`docker compose` 利用時は `secrets:` セクションを使用する（後述）
+- `secrets/github_token` は `install.sh` が自動配置する。`gh auth login` 済みなら `gh auth token` から自動取得されるため、手動でのトークン配置は通常不要
 - `--network bridge` を前提とする。`--network=host` や `--network=none` では Docker 内部 DNS（`127.0.0.11:53`）前提が崩れる
 
 ### docker compose での例
