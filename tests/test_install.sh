@@ -161,33 +161,9 @@ cleanup_mock_secrets() {
   unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN 2>/dev/null || true
 }
 
-setup_mock_gh() {
-  MOCK_GH_DIR=$(mktemp -d)
-  export MOCK_GH_DIR
-  printf '#!/bin/bash\necho "$@" >> "%s/gh_calls.log"\nif [ "$1" = "auth" ] && [ "$2" = "token" ]; then echo "gho_mock_token_12345"; exit 0; fi\nexit 0\n' "$MOCK_GH_DIR" > "$MOCK_GH_DIR/gh"
-  chmod +x "$MOCK_GH_DIR/gh"
-  export PATH="$MOCK_GH_DIR:$PATH"
-}
-
-setup_mock_gh_fail() {
-  MOCK_GH_DIR=$(mktemp -d)
-  export MOCK_GH_DIR
-  printf '#!/bin/bash\necho "$@" >> "%s/gh_calls.log"\nexit 1\n' "$MOCK_GH_DIR" > "$MOCK_GH_DIR/gh"
-  chmod +x "$MOCK_GH_DIR/gh"
-  export PATH="$MOCK_GH_DIR:$PATH"
-}
-
-cleanup_mock_gh() {
-  if [ -n "${MOCK_GH_DIR:-}" ] && [ -d "$MOCK_GH_DIR" ]; then
-    rm -rf "$MOCK_GH_DIR"
-    MOCK_GH_DIR=""
-  fi
-}
-
 cleanup() {
   cleanup_mock_docker
   cleanup_mock_secrets
-  cleanup_mock_gh
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT"
   fi
@@ -2776,7 +2752,6 @@ cleanup
 # S3. 環境変数未設定 + 非対話でエラー終了する
 create_test_repo
 setup_mock_docker
-setup_mock_gh_fail
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN 2>/dev/null
 EXIT_CODE=$(echo "" | bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null; echo $?)
 if [[ "$EXIT_CODE" -ne 0 ]]; then
@@ -2846,83 +2821,6 @@ else
   fail "S6: full プリセット完了メッセージに /ship の使い方がない"
 fi
 unset ANTHROPIC_API_KEY GH_TOKEN
-cleanup
-
-# ============================================
-echo ""
-echo "=== S7: gh auth token 自動取得テスト ==="
-# ============================================
-
-# S7a. gh auth token が成功する場合、環境変数未設定でもトークンが配置される
-create_test_repo
-setup_mock_docker
-setup_mock_gh
-unset GH_TOKEN GITHUB_TOKEN 2>/dev/null
-export ANTHROPIC_API_KEY="test-api-key"
-bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
-if [[ -f "$TMPDIR_ROOT/secrets/github_token" ]]; then
-  content=$(cat "$TMPDIR_ROOT/secrets/github_token")
-  if [[ "$content" == "gho_mock_token_12345" ]]; then
-    pass "S7a: gh auth token から secrets/github_token が作成される"
-  else
-    fail "S7a: secrets/github_token の内容が不正: $content"
-  fi
-else
-  fail "S7a: secrets/github_token が作成されていない"
-fi
-unset ANTHROPIC_API_KEY
-cleanup
-
-# S7b. gh auth token が失敗し gh も使えない場合、非対話でエラー終了する
-create_test_repo
-setup_mock_docker
-setup_mock_gh_fail
-unset GH_TOKEN GITHUB_TOKEN 2>/dev/null
-export ANTHROPIC_API_KEY="test-api-key"
-EXIT_CODE=$(echo "" | bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null; echo $?)
-if [[ "$EXIT_CODE" -ne 0 ]]; then
-  pass "S7b: gh auth token 失敗 + 非対話でエラー終了する"
-else
-  fail "S7b: gh auth token 失敗 + 非対話でもエラーにならなかった"
-fi
-unset ANTHROPIC_API_KEY
-cleanup
-
-# S7c. 環境変数が設定済みの場合、gh auth token は呼ばれない
-create_test_repo
-setup_mock_docker
-setup_mock_gh
-export ANTHROPIC_API_KEY="test-api-key"
-export GH_TOKEN="env-token-value"
-bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
-content=$(cat "$TMPDIR_ROOT/secrets/github_token")
-if [[ "$content" == "env-token-value" ]]; then
-  if [[ -f "$MOCK_GH_DIR/gh_calls.log" ]] && grep -q "auth token" "$MOCK_GH_DIR/gh_calls.log"; then
-    fail "S7c: 環境変数設定済みなのに gh auth token が呼ばれた"
-  else
-    pass "S7c: 環境変数が優先され gh auth token は呼ばれない"
-  fi
-else
-  fail "S7c: secrets/github_token の内容が環境変数と一致しない: $content"
-fi
-unset ANTHROPIC_API_KEY GH_TOKEN
-cleanup
-
-# S7d. gh コマンドが PATH にない場合でも非対話でエラー終了する
-create_test_repo
-setup_mock_docker
-unset GH_TOKEN GITHUB_TOKEN 2>/dev/null
-export ANTHROPIC_API_KEY="test-api-key"
-SAVED_PATH="$PATH"
-export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v -E '(gh|homebrew|linuxbrew)' | tr '\n' ':')
-EXIT_CODE=$(echo "" | bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null; echo $?)
-export PATH="$SAVED_PATH"
-if [[ "$EXIT_CODE" -ne 0 ]]; then
-  pass "S7d: gh が PATH にない場合 + 非対話でエラー終了する"
-else
-  fail "S7d: gh が PATH にない場合でもエラーにならなかった"
-fi
-unset ANTHROPIC_API_KEY
 cleanup
 
 # ============================================

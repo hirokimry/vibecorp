@@ -29,18 +29,18 @@ path/to/vibecorp/install.sh --name your-project
 ### full プリセット（コンテナ隔離で自律実行）
 
 ```bash
-# Anthropic API キーを環境変数に設定
+# Anthropic API キーと GitHub トークンを環境変数に設定
 export ANTHROPIC_API_KEY="sk-ant-..."
+export GITHUB_TOKEN="github_pat_..."
 
 # インストール（Docker チェック + イメージビルド + シークレット配置を自動実行）
-# GitHub トークンは gh auth login 済みなら自動取得される
 path/to/vibecorp/install.sh --name your-project --preset full
 
 # Issue を自動 ship（コンテナ内で実行される）
 claude -p "/ship <Issue URL>"
 ```
 
-GitHub トークンは `gh auth login` 済みなら `gh auth token` から自動取得される。`GH_TOKEN` / `GITHUB_TOKEN` 環境変数での明示指定も可能。Anthropic API キーは環境変数未設定の場合に対話的に入力を求める。Docker 未導入の場合は `--preset standard` への案内が表示される。
+環境変数が未設定の場合は対話的に入力を求める。`GH_TOKEN` を設定済みの場合はそちらも利用可能。Docker 未導入の場合は `--preset standard` への案内が表示される。
 
 ### バージョン指定インストール
 

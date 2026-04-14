@@ -84,3 +84,9 @@
 - **判断**: `install.sh` に `setup_secrets()` 関数を追加し、full プリセット選択時に `secrets/anthropic_api_key` と `secrets/github_token` を自動生成する。優先順位は「環境変数（ANTHROPIC_API_KEY / GH_TOKEN / GITHUB_TOKEN）→ 対話入力 → エラー終了」。生成ファイルには chmod 600 を適用。既存ファイルはスキップ。`print_completion()` に full プリセットの使い方案内を追加。
 - **根拠**: spike-loop の前提条件として `secrets/anthropic_api_key` がコンテナ実行に必須（2026-04-12 承認済み）。ユーザーが手動でシークレットファイルを作成する工程は「導入の手軽さ」バリュー（「ワンコマンドで完結する。設定の迷いをなくす」）に反する。install.sh が一括セットアップを担う設計思想に沿い、シークレット配置もインストーラーの責務とした。GH_TOKEN / GITHUB_TOKEN の両方を受け付けるのは、CI 環境・ローカル環境で変数名が異なるケースへの対応であり「設定の迷いをなくす」に合致する。
 - **代替案**: README にシークレットファイルの作成手順を記載するだけの方式は「導入の手軽さ」に反するため却下。シークレットが未設定の場合に警告のみで続行する方式は、後続の spike-loop 実行時に API 呼び出しエラーになり原因が不明瞭になるため却下し、エラー終了を選択。
+
+### 2026-04-14: `gh auth token` 自動取得を install.sh から revert
+
+- **判断**: install.sh の full プリセットにおける GitHub トークン取得を、`gh auth token` 自動取得からユーザーの手動設定（環境変数 → 対話入力 → エラー終了）に戻した。README.md のクイックスタートに `export GITHUB_TOKEN="ghp_..."` の手動設定手順を復元した
+- **根拠**: CISO 評価により、`gh auth token` が返す classic OAuth トークンは broad scope（repo 全権限等）を持ち、最小権限要件（SECURITY.md）に違反するリスクがある。MVV Value 1「導入の手軽さ」よりセキュリティ上の最小権限要件を優先する判断。fine-grained token を手動発行させることで、ユーザーが必要な権限のみを付与できる
+- **代替案**: `gh auth token` をフォールバックとして残しつつ警告を表示する案も検討されたが、警告を読まずに進むユーザーが多く、broad scope トークンが意図せず使われるリスクが残るため却下。UX への影響（full プリセット導入時にトークン手動設定が必要）はセキュリティ上やむを得ない
