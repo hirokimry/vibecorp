@@ -70,7 +70,7 @@ assert_file_contains() {
   local desc="$1"
   local path="$2"
   local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
+  if grep -q -e "$pattern" "$path" 2>/dev/null; then
     pass "$desc"
   else
     fail "$desc (パターン '$pattern' がファイルに含まれない: $path)"
@@ -81,7 +81,7 @@ assert_file_not_contains() {
   local desc="$1"
   local path="$2"
   local pattern="$3"
-  if ! grep -q "$pattern" "$path" 2>/dev/null; then
+  if ! grep -q -e "$pattern" "$path" 2>/dev/null; then
     pass "$desc"
   else
     fail "$desc (パターン '$pattern' がファイルに含まれている: $path)"
@@ -2604,6 +2604,97 @@ assert_file_contains "BILLING4: cost-analysis.md に実行モード別の課金�
 
 # BILLING5. README.md のプリセット比較表に「課金モデル」列が追加されている
 assert_file_contains "BILLING5: README.md に課金モデル列が追加されている" "$SCRIPT_DIR/README.md" "課金モデル"
+
+# ============================================
+echo ""
+echo "=== PLAN. プリセット別 plan.review_agents デフォルト ==="
+# ============================================
+
+# PLAN1. minimal プリセット: vibecorp.yml の plan.review_agents は architect のみ
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+assert_file_contains "PLAN1a: minimal vibecorp.yml に plan: セクションが存在" "$R/.claude/vibecorp.yml" "^plan:"
+assert_file_contains "PLAN1b: minimal vibecorp.yml に review_agents: が存在" "$R/.claude/vibecorp.yml" "review_agents:"
+assert_file_contains "PLAN1c: minimal vibecorp.yml の review_agents に architect が含まれる" "$R/.claude/vibecorp.yml" "- architect"
+assert_file_not_contains "PLAN1d: minimal vibecorp.yml の review_agents に security が含まれない" "$R/.claude/vibecorp.yml" "- security"
+assert_file_not_contains "PLAN1e: minimal vibecorp.yml の review_agents に cost が含まれない" "$R/.claude/vibecorp.yml" "- cost"
+assert_file_not_contains "PLAN1f: minimal vibecorp.yml の review_agents に legal が含まれない" "$R/.claude/vibecorp.yml" "- legal"
+cleanup
+
+# PLAN2. standard プリセット: architect / security / testing の 3 つ
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+assert_file_contains "PLAN2a: standard vibecorp.yml の review_agents に architect が含まれる" "$R/.claude/vibecorp.yml" "- architect"
+assert_file_contains "PLAN2b: standard vibecorp.yml の review_agents に security が含まれる" "$R/.claude/vibecorp.yml" "- security"
+assert_file_contains "PLAN2c: standard vibecorp.yml の review_agents に testing が含まれる" "$R/.claude/vibecorp.yml" "- testing"
+assert_file_not_contains "PLAN2d: standard vibecorp.yml の review_agents に performance が含まれない" "$R/.claude/vibecorp.yml" "- performance"
+assert_file_not_contains "PLAN2e: standard vibecorp.yml の review_agents に cost が含まれない" "$R/.claude/vibecorp.yml" "- cost"
+assert_file_not_contains "PLAN2f: standard vibecorp.yml の review_agents に legal が含まれない" "$R/.claude/vibecorp.yml" "- legal"
+cleanup
+
+# PLAN3. full プリセット: architect / security / testing / performance / dx / cost / legal の 7 つ
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+assert_file_contains "PLAN3a: full vibecorp.yml の review_agents に architect が含まれる" "$R/.claude/vibecorp.yml" "- architect"
+assert_file_contains "PLAN3b: full vibecorp.yml の review_agents に security が含まれる" "$R/.claude/vibecorp.yml" "- security"
+assert_file_contains "PLAN3c: full vibecorp.yml の review_agents に testing が含まれる" "$R/.claude/vibecorp.yml" "- testing"
+assert_file_contains "PLAN3d: full vibecorp.yml の review_agents に performance が含まれる" "$R/.claude/vibecorp.yml" "- performance"
+assert_file_contains "PLAN3e: full vibecorp.yml の review_agents に dx が含まれる" "$R/.claude/vibecorp.yml" "- dx"
+assert_file_contains "PLAN3f: full vibecorp.yml の review_agents に cost が含まれる" "$R/.claude/vibecorp.yml" "- cost"
+assert_file_contains "PLAN3g: full vibecorp.yml の review_agents に legal が含まれる" "$R/.claude/vibecorp.yml" "- legal"
+cleanup
+
+# PLAN4. full プリセット: plan-cost.md / plan-legal.md が .claude/agents/ に配置される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset full > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+if [ -f "$R/.claude/agents/plan-cost.md" ]; then
+  pass "PLAN4a: full プリセットで plan-cost.md が配置される"
+else
+  fail "PLAN4a: full プリセットで plan-cost.md が配置されていない"
+fi
+if [ -f "$R/.claude/agents/plan-legal.md" ]; then
+  pass "PLAN4b: full プリセットで plan-legal.md が配置される"
+else
+  fail "PLAN4b: full プリセットで plan-legal.md が配置されていない"
+fi
+cleanup
+
+# PLAN5. standard プリセット: plan-cost.md / plan-legal.md は削除される（他の plan-* は残る）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+if [ ! -f "$R/.claude/agents/plan-cost.md" ]; then
+  pass "PLAN5a: standard プリセットで plan-cost.md は削除される"
+else
+  fail "PLAN5a: standard プリセットで plan-cost.md が削除されていない"
+fi
+if [ ! -f "$R/.claude/agents/plan-legal.md" ]; then
+  pass "PLAN5b: standard プリセットで plan-legal.md は削除される"
+else
+  fail "PLAN5b: standard プリセットで plan-legal.md が削除されていない"
+fi
+# 既存 plan-* は残ること
+if [ -f "$R/.claude/agents/plan-architect.md" ]; then
+  pass "PLAN5c: standard プリセットで plan-architect.md は保持される"
+else
+  fail "PLAN5c: standard プリセットで plan-architect.md が失われている"
+fi
+cleanup
+
+# PLAN6. minimal プリセット: agents ディレクトリ自体が存在しない
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1
+R="$TMPDIR_ROOT"
+if [ ! -d "$R/.claude/agents" ]; then
+  pass "PLAN6: minimal プリセットで agents/ ディレクトリは存在しない"
+else
+  fail "PLAN6: minimal プリセットで agents/ ディレクトリが存在している"
+fi
+cleanup
 
 # ============================================
 echo ""
