@@ -53,13 +53,27 @@ awk '
 
 ### エージェント名とファイルの対応
 
-| 設定名 | エージェントファイル |
-|--------|-------------------|
-| `architect` | `.claude/agents/plan-architect.md` |
-| `security` | `.claude/agents/plan-security.md` |
-| `testing` | `.claude/agents/plan-testing.md` |
-| `performance` | `.claude/agents/plan-performance.md` |
-| `dx` | `.claude/agents/plan-dx.md` |
+| 設定名 | エージェントファイル | プリセット |
+|--------|-------------------|-----------|
+| `architect` | `.claude/agents/plan-architect.md` | 全プリセット |
+| `security` | `.claude/agents/plan-security.md` | standard 以上 |
+| `testing` | `.claude/agents/plan-testing.md` | standard 以上 |
+| `performance` | `.claude/agents/plan-performance.md` | standard 以上（デフォルトは full で有効） |
+| `dx` | `.claude/agents/plan-dx.md` | standard 以上（デフォルトは full で有効） |
+| `cost` | `.claude/agents/plan-cost.md` | **full 限定** |
+| `legal` | `.claude/agents/plan-legal.md` | **full 限定** |
+
+### プリセット別デフォルト
+
+`install.sh` が生成する `vibecorp.yml` の `plan.review_agents` デフォルト:
+
+| プリセット | デフォルト値 |
+|-----------|------------|
+| minimal | `[architect]` |
+| standard | `[architect, security, testing]` |
+| full | `[architect, security, testing, performance, dx, cost, legal]` |
+
+ユーザーは `vibecorp.yml` で個別に追加・削除可能。
 
 ### フォールバック
 
@@ -121,12 +135,61 @@ Issue 完了条件: {completion_criteria}」
 
 ### フィードバック統合（専門家エージェントモード時）
 
-各エージェントのレビュー結果を以下のルールで統合する:
+各エージェントのレビュー結果を以下のルールで統合する（2 段階）:
+
+#### 第 1 段階: 平社員層統合
+
+`plan.review_agents` に設定された専門家エージェント（plan-architect 等）の結果を統合する。
 
 1. **重複排除**: 複数エージェントが同じ問題を指摘した場合、1件にまとめる
 2. **優先順位付け**: セキュリティ指摘 > その他の指摘
 3. **矛盾解決**: エージェント間の意見が矛盾した場合は Issue の完了条件を優先基準とする
 4. **好みレベル除外**: 好みレベルの改善提案は問題として扱わない
+
+#### 第 2 段階: C\*O メタレビュー（full プリセット限定）
+
+後述の「C\*O メタレビュー層」セクションで条件起動された C\*O エージェントが、平社員層統合結果をメタレビューする。
+
+- C\*O が「指摘妥当」と判定 → 平社員指摘を採用
+- C\*O が「指摘不要」と判定 → 該当指摘を除外（理由を記録）
+- C\*O が新規懸念を提起 → 追加問題として扱う
+- C\*O 間の矛盾 → Issue 完了条件を優先基準とする
+
+## C\*O メタレビュー層（full プリセット限定）
+
+full プリセットでは、計画ファイルが管轄領域に触れる場合に該当 C\*O を条件起動し、平社員層の指摘をメタレビューする。
+
+### 起動条件
+
+- `vibecorp.yml` の `preset: full` であること
+- 計画ファイル内で下表のキーワードパターンがヒットすること（複数ヒット時は該当全 C\*O を並列起動）
+
+### 起動トリガー & キーワード検出表
+
+| 領域 | キーワードパターン（計画ファイル内で検出） | 起動 C\*O | 平社員合議 |
+|---|---|---|---|
+| 課金影響 | `API call`, `model:`, `claude -p`, `ANTHROPIC_API_KEY`, `rate limit`, `従量`, `トークン消費` | CFO | accounting-analyst×3 |
+| セキュリティ | `auth`, `token`, `secret`, `encrypt`, `permission`, `credential`, `暗号` | CISO | security-analyst×3 |
+| 法務 | `dependency`, `LICENSE`, `third-party`, `規約`, `プライバシー`, `第三者` | CLO | legal-analyst×3 |
+| 組織運営 | `agents/`, `hooks/`, `rules/`, `skills/` | COO | （単独） |
+| 仕様 | `MVV.md`, `specification.md`, `UX` | CPO | （単独） |
+| 技術選定 | `architecture`, `技術選定`, 新規依存バージョン | CTO | （単独） |
+
+### 検出方法
+
+計画ファイルをキーワードパターンで検査する:
+
+```bash
+grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY|rate limit|従量|トークン消費' "$plan_file"
+```
+
+該当領域の C\*O と平社員合議（accounting / security / legal analyst ×3）を並列起動する。
+
+### フォールバック
+
+- `preset: full` 以外（minimal / standard）では C\*O メタレビュー層を起動しない
+- キーワードが一つもヒットしない場合も C\*O メタレビュー層を起動しない（平社員層のみで完了）
+- preset 取得コマンド: `awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' .claude/vibecorp.yml`
 
 #### 出力形式
 
