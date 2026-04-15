@@ -37,6 +37,54 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 
 分析員は C-Level エージェントから呼び出され、結果を報告する。分析員が各管轄の docs/ ファイルを直接編集する権限を持つ（role-gate フックで制御）。
 
+## ワークフロー × C*O ゲート マトリクス
+
+`/ship` 等の自動化ワークフローでは、**そのフェーズで判断に必要な情報が揃う最初のタイミングで、判断を管轄する C*O（または平社員合議）を入れる**ことを原則とする。C*O は常時起動せず、**管轄領域に触れた差分を検知した時のみ起動**する。
+
+### フェーズ × ゲート対応
+
+| フェーズ | 対象スキル | 対象プリセット | 入れる役職 | 起動条件 |
+|---|---|---|---|---|
+| 1. Issue 起票 | `/issue` | standard / full | CPO | 常時 |
+| 2. autopilot 候補フィルタ | `/diagnose` `/autopilot` | full | CPO + COO + CISO | 常時（3者承認） |
+| 3a. 設計レビュー（平社員層） | `/plan-review-loop` | プリセット別デフォルト | plan-architect, plan-security, plan-testing, plan-performance, plan-dx, plan-cost, plan-legal | プリセット別 |
+| 3b. 設計レビュー（C*O メタ層） | `/plan-review-loop` | full | CFO / CISO / CLO / COO / CPO / CTO | 条件起動（下記トリガー表） |
+| 4. 実装 | `/ship` 内 | — | なし | — |
+| 5. 実装レビュー（平社員合議） | `/review-loop` | full | security-analyst×3, accounting-analyst×3, legal-analyst×3 | 差分検知で条件起動 |
+| 6. 実装レビュー（C*O メタ層） | `/review-loop` | full | 該当 C*O | 平社員合議で Major 以上 |
+| 7. PR レビュー | `/pr-review-loop` | 全プリセット | CodeRabbit のみ | — |
+| 8. マージゲート | `/sync-check` | full（standard は CTO/CPO のみ） | CTO / CPO / CFO / CISO / CLO / COO | 管轄領域に触れた時のみ |
+| 9. 事後監査 | `/audit-cost` `/audit-security` | full | CFO（週次コスト）/ CISO（月次セキュリティ） | 定期 |
+
+### `plan.review_agents` のプリセット別デフォルト
+
+`install.sh` が `vibecorp.yml` 生成時に以下を出力する（ユーザーは個別に追加・削除可能）。
+
+| プリセット | デフォルト `plan.review_agents` |
+|---|---|
+| minimal | `[architect]` |
+| standard | `[architect, security, testing]` |
+| full | `[architect, security, testing, performance, dx, cost, legal]` |
+
+### C*O 起動トリガー表（フェーズ 3b・5・6・8 共通／full プリセット限定）
+
+| トリガー | 起動 C*O | 平社員合議 |
+|---|---|---|
+| 実行モード / モデル / API 呼び出し変更、課金影響 | **CFO** | accounting-analyst×3 |
+| 認証 / 権限 / 暗号 / secrets / データフロー変更 | **CISO** | security-analyst×3 |
+| 依存追加・LICENSE / 規約・第三者リポジトリ参照 | **CLO** | legal-analyst×3 |
+| エージェント定義 / hooks / rules / skills 変更 | **COO** | （単独） |
+| 仕様 / UX / MVV 影響 | **CPO** | （単独） |
+| アーキ / 技術選定 / 依存バージョン | **CTO** | （単独） |
+
+### 設計の要点
+
+- **C*O は常時起動しない**：差分検知に基づく条件起動でオーバーヘッドを抑える
+- **平社員 → C*O の2段階**：平社員（×3 合議や plan-* 専門家）が一次フィルタ、C*O はメタレビューに専念
+- **`plan-cost` と `plan-legal`**：CFO / CLO の代弁者として設計フェーズで起動
+- **Issue 起票時は CPO のみ**：この段階で CFO / CISO / CLO を呼んでも判断材料不足
+- **autopilot は 3 者承認**（CPO + COO + CISO）：自律実行は「やる価値 × 自動化適性 × 安全性」の 3 軸が必要
+
 ## 権限モデル
 
 ### 管轄ファイルの更新権限
