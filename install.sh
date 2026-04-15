@@ -616,7 +616,9 @@ copy_managed_files() {
   local placeholder_errors=0
   for dir in "${target_dirs[@]}"; do
     while IFS= read -r f; do
-      if grep -q '{{' "$f" 2>/dev/null; then
+      # vibecorp が管理する 3 つのプレースホルダーのみを対象にする
+      # （docker inspect の {{.State.Status}} 等、テンプレート構文を含む正当なコンテンツを誤検知しないため）
+      if grep -q '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$f" 2>/dev/null; then
         local tmp
         tmp="$(mktemp "$(dirname "$f")/.${f##*/}.XXXXXX")"
         if sed \
@@ -630,8 +632,8 @@ copy_managed_files() {
           rm -f "$tmp"
           placeholder_errors=$((placeholder_errors + 1))
         fi
-        # 置換後も未解決のプレースホルダーが残っていないか検証
-        if grep -q '{{' "$f" 2>/dev/null; then
+        # 置換後も vibecorp プレースホルダーが残っていないか検証
+        if grep -q '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$f" 2>/dev/null; then
           log_error "未解決のプレースホルダーが残っています: $f"
           placeholder_errors=$((placeholder_errors + 1))
         fi
