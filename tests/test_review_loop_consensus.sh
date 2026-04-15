@@ -102,6 +102,20 @@ else
   fail "複数領域ヒット時の並列起動記述が存在しない"
 fi
 
+# 複数該当時に該当全 C*O を並列起動する明示的記述
+if grep -q -e '複数該当時は該当全 C\*O を並列起動' "$SKILL_FILE"; then
+  pass "複数該当時に該当全 C*O を並列起動する記述が存在する"
+else
+  fail "複数該当時に該当全 C*O を並列起動する記述が存在しない"
+fi
+
+# 複数領域該当時の analyst×3 並列実行（実装セクション）
+if grep -q -e '複数領域が該当.*analyst×3.*並列' "$SKILL_FILE" || grep -q -e '複数領域.*同時並列' "$SKILL_FILE"; then
+  pass "複数領域該当時の analyst×3 並列実行記述が存在する"
+else
+  fail "複数領域該当時の analyst×3 並列実行記述が存在しない"
+fi
+
 echo ""
 
 # --- テスト4: 領域別キーワード ---
