@@ -39,6 +39,8 @@ AGENT_FILES=(
   "plan-testing.md"
   "plan-performance.md"
   "plan-dx.md"
+  "plan-cost.md"
+  "plan-legal.md"
 )
 
 for agent_file in "${AGENT_FILES[@]}"; do
@@ -227,7 +229,7 @@ echo ""
 echo "--- テスト6: エージェント名の一致確認 ---"
 
 # vibecorp.yml 設定名とエージェントファイル名の対応を確認
-AGENT_NAMES=("architect" "security" "testing" "performance" "dx")
+AGENT_NAMES=("architect" "security" "testing" "performance" "dx" "cost" "legal")
 
 for name in "${AGENT_NAMES[@]}"; do
   agent_file="plan-${name}.md"
@@ -307,6 +309,106 @@ for existing in "${EXISTING_AGENTS[@]}"; do
     fail "既存エージェント ${existing} が失われている"
   fi
 done
+
+echo ""
+
+# --- テスト9: plan-cost / plan-legal の権限境界記述 ---
+
+echo "--- テスト9: plan-cost / plan-legal の権限境界記述 ---"
+
+if [ -f "$AGENTS_DIR/plan-cost.md" ]; then
+  if grep -q '## 権限境界' "$AGENTS_DIR/plan-cost.md"; then
+    pass "plan-cost.md に権限境界セクションが存在する"
+  else
+    fail "plan-cost.md に権限境界セクションが存在しない"
+  fi
+  if grep -q 'CFO' "$AGENTS_DIR/plan-cost.md"; then
+    pass "plan-cost.md に CFO 管轄区分の言及がある"
+  else
+    fail "plan-cost.md に CFO 管轄区分の言及がない"
+  fi
+fi
+
+if [ -f "$AGENTS_DIR/plan-legal.md" ]; then
+  if grep -q '## 権限境界' "$AGENTS_DIR/plan-legal.md"; then
+    pass "plan-legal.md に権限境界セクションが存在する"
+  else
+    fail "plan-legal.md に権限境界セクションが存在しない"
+  fi
+  if grep -q 'CLO' "$AGENTS_DIR/plan-legal.md"; then
+    pass "plan-legal.md に CLO 管轄区分の言及がある"
+  else
+    fail "plan-legal.md に CLO 管轄区分の言及がない"
+  fi
+fi
+
+echo ""
+
+# --- テスト10: SKILL.md の C*O メタレビュー層セクション ---
+
+echo "--- テスト10: SKILL.md の C*O メタレビュー層セクション ---"
+
+if grep -q 'C\*O メタレビュー層' "$SKILL_FILE" || grep -q 'C\\\*O メタレビュー層' "$SKILL_FILE"; then
+  pass "SKILL.md に C*O メタレビュー層セクションが存在する"
+else
+  fail "SKILL.md に C*O メタレビュー層セクションが存在しない"
+fi
+
+# full プリセット限定の記述
+if grep -q 'full プリセット' "$SKILL_FILE"; then
+  pass "SKILL.md に full プリセット限定の記述がある"
+else
+  fail "SKILL.md に full プリセット限定の記述がない"
+fi
+
+# トリガー表の主要 C*O
+META_COS=("CFO" "CISO" "CLO" "COO" "CPO" "CTO")
+for co in "${META_COS[@]}"; do
+  if grep -q "$co" "$SKILL_FILE"; then
+    pass "SKILL.md にトリガー表の ${co} が存在する"
+  else
+    fail "SKILL.md にトリガー表の ${co} が存在しない"
+  fi
+done
+
+# 平社員合議の言及
+if grep -q 'accounting-analyst' "$SKILL_FILE"; then
+  pass "SKILL.md に accounting-analyst×3 合議の言及がある"
+else
+  fail "SKILL.md に accounting-analyst×3 合議の言及がない"
+fi
+
+if grep -q 'security-analyst' "$SKILL_FILE"; then
+  pass "SKILL.md に security-analyst×3 合議の言及がある"
+else
+  fail "SKILL.md に security-analyst×3 合議の言及がない"
+fi
+
+if grep -q 'legal-analyst' "$SKILL_FILE"; then
+  pass "SKILL.md に legal-analyst×3 合議の言及がある"
+else
+  fail "SKILL.md に legal-analyst×3 合議の言及がない"
+fi
+
+echo ""
+
+# --- テスト11: SKILL.md のプリセット別デフォルト記述 ---
+
+echo "--- テスト11: SKILL.md のプリセット別デフォルト記述 ---"
+
+# プリセット別デフォルト表
+if grep -q 'プリセット別デフォルト' "$SKILL_FILE"; then
+  pass "SKILL.md にプリセット別デフォルト記述が存在する"
+else
+  fail "SKILL.md にプリセット別デフォルト記述が存在しない"
+fi
+
+# full プリセットに cost, legal が含まれる記述
+if grep -q 'architect, security, testing, performance, dx, cost, legal' "$SKILL_FILE"; then
+  pass "SKILL.md に full プリセットのデフォルト review_agents 全列挙が存在する"
+else
+  fail "SKILL.md に full プリセットのデフォルト review_agents 全列挙が存在しない"
+fi
 
 echo ""
 
