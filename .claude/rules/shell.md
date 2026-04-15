@@ -13,6 +13,15 @@
   - 絶対パス/相対パスを `basename` で正規化
 - 正規化せずに文字列比較すると簡単にバイパスされる
 
+## `grep` で `-` 始まりのパターンを検索する場合
+
+- `grep -q "$pattern"` で `$pattern` が `-` 始まりだと、grep がパターンをオプションと誤認する
+  - 例: `grep -q "- architect" file` は `-` を未知のオプションとしてエラーになる
+- **必ず `-e` または `--` でパターン終端を明示する**:
+  - `grep -q -e "$pattern" "$path"`
+  - `grep -q -- "$pattern" "$path"`
+- 共通のアサート関数（`assert_file_contains` 等）で任意のパターンを受ける場合は特に必須
+
 ## `sed -i` を使わない（BSD/GNU 互換）
 
 - `sed -i` は macOS (BSD) と Linux (GNU) で引数の形式が異なり、移植性がない
