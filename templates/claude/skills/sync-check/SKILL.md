@@ -36,22 +36,44 @@ git diff --name-only
 変更内容に基づき、関連する職種のエージェントを **Agent ツールで並列起動** する。
 各エージェントは **自分の管轄ファイルだけ** を読み取りチェックする。
 
-#### エージェントと管轄の対応
+#### プリセット検出
 
-**デフォルト（CTO / CPO）:**
+`.claude/vibecorp.yml` から `preset` を取得する:
+
+```bash
+awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' .claude/vibecorp.yml
+```
+
+- `minimal` / `standard` → デフォルト（CTO / CPO のみ）
+- `full` → デフォルト + 差分キーワードにヒットした C*O を自動起動
+
+#### デフォルト管轄（全プリセット共通）
+
+CTO / CPO は常時起動する。
 
 | エージェント | 管轄ファイル | 起動条件 |
 |-------------|------------|---------|
 | CTO | `docs/` 内の技術設計ドキュメント、`knowledge/cto/` | アーキテクチャ・技術設計・エージェント定義・hooks・スキル関連の変更 |
 | CPO | `docs/specification.md`、`knowledge/cpo/`、`README.md` | 仕様・UI・プロンプト・スキル・フック・エージェント・README 関連の変更 |
 
-**拡張時（上記に加えて追加可能）:**
+#### full プリセット時の自動起動
 
-| エージェント | 管轄ファイル | 起動条件 |
-|-------------|------------|---------|
-| 法務 | `docs/POLICY.md`、`knowledge/legal/` | 認証・プライバシー・利用規約関連の変更 |
-| 経理 | `docs/cost-analysis.md`、`knowledge/accounting/` | 課金・コスト・API利用量関連の変更 |
-| COO | `docs/ai-organization.md`、`knowledge/coo/` | エージェント定義・ルール・hooks 関連の変更 |
+`preset: full` の場合、以下のトリガー表に従い `git diff main...HEAD -U0` に対してキーワード検出する。ヒットした領域の C*O を CTO / CPO に **加えて** 並列起動する（Phase 3 `/review-loop` と同一のトリガー表）。
+
+| 領域 | diff 内キーワード | 起動 C*O | 管轄ファイル |
+|---|---|---|---|
+| 課金影響 | `API call`, `model:`, `claude -p`, `ANTHROPIC_API_KEY`, `rate limit`, `従量`, `トークン消費`, `npx`, `bunx` | CFO | `docs/cost-analysis.md`, `knowledge/accounting/` |
+| セキュリティ | `auth`, `token`, `secret`, `encrypt`, `permission`, `credential`, `curl`, `wget`, `eval`, `exec` | CISO | `docs/SECURITY.md`, `knowledge/security/` |
+| 法務 | `dependency`, `LICENSE`, `third-party`, `規約`, `プライバシー`, `第三者`, `package.json`, `requirements.txt`, `go.mod` | CLO | `docs/POLICY.md`, `knowledge/legal/` |
+| 組織運営 | `.claude/agents/`, `.claude/hooks/`, `.claude/rules/`, `.claude/skills/` | COO | `docs/ai-organization.md`, `knowledge/coo/` |
+
+検出コマンド例（課金領域）:
+
+```bash
+git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY|rate limit|従量|トークン消費|npx|bunx'
+```
+
+該当した領域のみ起動する（複数ヒット時は該当全 C*O を並列）。`standard` / `minimal` プリセットでは C*O の自動起動は行わない（既存挙動維持）。
 
 #### 起動方法
 
@@ -103,8 +125,11 @@ git diff --name-only
 #### CPO（プロダクト）
 - docs/specification.md: ✅ OK
 
-#### 法務（拡張時のみ）
-- （対象外）
+#### CFO / CISO / CLO / COO（full プリセットかつキーワードヒット時のみ）
+- docs/cost-analysis.md: ✅ OK
+- docs/SECURITY.md: ✅ OK
+- docs/POLICY.md: ✅ OK
+- docs/ai-organization.md: ✅ OK
 
 ### 総合判定
 - ✅ 問題なし → push してよい
