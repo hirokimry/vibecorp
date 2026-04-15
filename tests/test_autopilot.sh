@@ -59,10 +59,10 @@ else
 fi
 
 # 2-2: name フィールド
-if awk '/^---$/{c++; next} c==1' "$SKILL_FILE" | grep -q '^name:'; then
-  pass "frontmatter に name フィールドがある"
+if awk '/^---$/{c++; next} c==1' "$SKILL_FILE" | grep -Eq '^name:[[:space:]]*autopilot[[:space:]]*$'; then
+  pass "frontmatter の name が autopilot である"
 else
-  fail "frontmatter に name フィールドがない"
+  fail "frontmatter の name が autopilot ではない"
 fi
 
 # 2-3: description フィールド
