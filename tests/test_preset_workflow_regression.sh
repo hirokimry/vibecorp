@@ -95,6 +95,7 @@ done
 assert_not_contains "$STANDARD_OUT" "cost" "standard に cost が含まれない"
 assert_not_contains "$STANDARD_OUT" "legal" "standard に legal が含まれない"
 assert_not_contains "$STANDARD_OUT" "performance" "standard に performance が含まれない"
+assert_not_contains "$STANDARD_OUT" "dx" "standard に dx が含まれない"
 
 FULL_OUT="$(run_generate full)"
 for a in architect security testing performance dx cost legal; do

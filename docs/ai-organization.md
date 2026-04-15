@@ -53,7 +53,8 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 | 5. 実装レビュー（平社員合議） | `/review-loop` | full | security-analyst×3, accounting-analyst×3, legal-analyst×3 | 差分検知で条件起動 |
 | 6. 実装レビュー（C*O メタ層） | `/review-loop` | full | 該当 C*O | 平社員合議で Major 以上 |
 | 7. PR レビュー | `/pr-review-loop` | 全プリセット | CodeRabbit のみ | — |
-| 8. マージゲート | `/sync-check` | full（standard は CTO/CPO のみ） | CTO / CPO / CFO / CISO / CLO / COO | 管轄領域に触れた時のみ |
+| 8a. マージゲート（standard） | `/sync-check` | standard | CTO / CPO | 管轄領域に触れた時のみ |
+| 8b. マージゲート（full） | `/sync-check` | full | CTO / CPO / CFO / CISO / CLO / COO | 管轄領域に触れた時のみ |
 | 9. 事後監査 | `/audit-cost` `/audit-security` | full | CFO（週次コスト）/ CISO（月次セキュリティ） | 定期 |
 
 ### `plan.review_agents` のプリセット別デフォルト
@@ -66,7 +67,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 | standard | `[architect, security, testing]` |
 | full | `[architect, security, testing, performance, dx, cost, legal]` |
 
-### C*O 起動トリガー表（フェーズ 3b・5・6・8 共通／full プリセット限定）
+### C*O 起動トリガー表（フェーズ 3b・5・6・8b 共通／full プリセット限定）
 
 | トリガー | 起動 C*O | 平社員合議 |
 |---|---|---|
@@ -80,7 +81,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 ### 設計の要点
 
 - **C*O は常時起動しない**：差分検知に基づく条件起動でオーバーヘッドを抑える
-- **平社員 → C*O の2段階**：平社員（×3 合議や plan-* 専門家）が一次フィルタ、C*O はメタレビューに専念
+- **平社員 → C*O の2段階**：平社員（×3 合議や `plan-*` 専門家）が一次フィルタ、C*O はメタレビューに専念
 - **`plan-cost` と `plan-legal`**：CFO / CLO の代弁者として設計フェーズで起動
 - **Issue 起票時は CPO のみ**：この段階で CFO / CISO / CLO を呼んでも判断材料不足
 - **autopilot は 3 者承認**（CPO + COO + CISO）：自律実行は「やる価値 × 自動化適性 × 安全性」の 3 軸が必要
