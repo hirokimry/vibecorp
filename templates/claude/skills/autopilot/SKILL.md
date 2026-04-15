@@ -22,6 +22,8 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 
 - **full プリセット専用**（`/diagnose` と `/ship-parallel` が必要）
 - main ブランチにいること
+- `/diagnose` が起票した diagnose Issue は **CISO + CPO + COO の3者承認ゲート**（rules/autonomous-restrictions.md）を通過済みのため、不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）が自動除外されている
+- 手動起票された Issue（diagnose ラベルなし）はこのスキルの対象外
 
 ## ワークフロー
 
