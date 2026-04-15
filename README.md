@@ -61,11 +61,11 @@ path/to/vibecorp/install.sh --update
 
 組織規模に応じた3つのプリセットを用意している。
 
-| プリセット | スキル | フック | エージェント | ユースケース |
-|---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | 個人〜小規模 |
-| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | チーム開発 |
-| **full** | 上記 + /diagnose, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | AI企業・コンプライアンス重視 |
+| プリセット | スキル | フック | エージェント | 課金モデル | ユースケース |
+|---|---|---|---|---|---|
+| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | Claude Max 定額内 | 個人〜小規模 |
+| **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
+| **full** | 上記 + /diagnose, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 

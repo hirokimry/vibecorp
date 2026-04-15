@@ -1374,6 +1374,25 @@ ${CONFLICT_FILES}
 
 CONFLICT
   fi
+
+  # full プリセット選択時の課金警告
+  # 背景: full プリセットは C-suite + 分析員（計 14 ロール）を並列起動するため、
+  # Claude Max のレート制限に到達すると ANTHROPIC_API_KEY 従量課金に自動フォールバックする。
+  # 想定外の請求を防ぐため、install 完了時に課金モデルを明示する。
+  if [[ "$PRESET" == "full" ]]; then
+    cat >&2 <<BILLING
+💰 課金モデルに関する注意（full プリセット）
+
+  full プリセットは C-suite と分析員が並列で起動するため、
+  Claude Max 定額プランのレート制限に到達しやすくなります。
+  ANTHROPIC_API_KEY が設定されている場合、レート制限到達後は通知なしで
+  API 従量課金（Anthropic 公式価格）にフォールバックします。
+
+  詳細は docs/cost-analysis.md の「実行モード別の課金モデル」を参照してください。
+  Anthropic Console (https://console.anthropic.com/) で使用量アラートの有効化を推奨します。
+
+BILLING
+  fi
 }
 
 # ── バージョン管理 ──────────────────────────────────────
