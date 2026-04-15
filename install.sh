@@ -1383,7 +1383,7 @@ CONFLICT
     cat >&2 <<BILLING
 💰 課金モデルに関する注意（full プリセット）
 
-  full プリセットは C-suite + 分析員の計 14 ロールが並列で起動するため、
+  full プリセットは C-suite と分析員が並列で起動するため、
   Claude Max 定額プランのレート制限に到達しやすくなります。
   ANTHROPIC_API_KEY が設定されている場合、レート制限到達後は通知なしで
   API 従量課金（Anthropic 公式価格）にフォールバックします。
