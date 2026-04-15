@@ -672,10 +672,33 @@ copy_managed_files() {
       rm -f "${hooks_dir}/role-gate.sh"
       rm -f "${hooks_dir}/diagnose-guard.sh"
       rm -rf "${skills_dir}/diagnose"
+      # plan-cost / plan-legal は full プリセット限定
+      rm -f "${agents_dir}/plan-cost.md"
+      rm -f "${agents_dir}/plan-legal.md"
       ;;
   esac
 
   log_info "テンプレートをコピー (preset: ${PRESET})"
+}
+
+generate_plan_yaml_section() {
+  # プリセット別に plan.review_agents デフォルトを出力する
+  # minimal:  architect のみ
+  # standard: architect / security / testing
+  # full:     architect / security / testing / performance / dx / cost / legal
+  echo "plan:"
+  echo "  review_agents:"
+  case "$PRESET" in
+    minimal)
+      echo "    - architect"
+      ;;
+    standard)
+      printf '    - architect\n    - security\n    - testing\n'
+      ;;
+    full)
+      printf '    - architect\n    - security\n    - testing\n    - performance\n    - dx\n    - cost\n    - legal\n'
+      ;;
+  esac
 }
 
 generate_vibecorp_yml() {
@@ -708,13 +731,7 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
-# plan:
-#   review_agents:
-#     - architect
-#     - security
-#     - testing
-#     - performance
-#     - dx
+$(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
 }
