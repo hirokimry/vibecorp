@@ -95,6 +95,13 @@ for analyst in "${ANALYSTS[@]}"; do
   fi
 done
 
+# 複数領域ヒット時の並列起動要件
+if grep -q -e '複数該当.*並列起動' "$SKILL_FILE"; then
+  pass "複数領域ヒット時の並列起動記述が存在する"
+else
+  fail "複数領域ヒット時の並列起動記述が存在しない"
+fi
+
 echo ""
 
 # --- テスト4: 領域別キーワード ---
