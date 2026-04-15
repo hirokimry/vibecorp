@@ -32,3 +32,29 @@
 ## インシデント対応
 
 （セキュリティインシデント発生時の対応手順を記載）
+
+## 事後監査
+
+`/audit-security`（full プリセット限定）で CISO による月次セキュリティ監査を自動化できる。直近30日間のコード変更を分析し、`knowledge/security/audit-YYYY-MM-DD.md` にレポートを保存する。Critical / Major 指摘がある場合は自動で `audit` + `security` ラベル付き Issue を起票する。
+
+### 定期実行例
+
+```bash
+# 毎月1日 09:00 JST に実行
+/schedule monthly "0 0 1 * *" /audit-security
+```
+
+または cron で:
+
+```bash
+# crontab -e
+0 0 1 * * cd /path/to/repo && claude -p "/audit-security"
+```
+
+### 監査観点
+
+- 認証・認可ロジックの変更
+- 新規依存パッケージの追加
+- hooks のガードレール変更
+- secrets / credentials 扱い箇所の変更
+- OWASP Top 10 該当変更の有無
