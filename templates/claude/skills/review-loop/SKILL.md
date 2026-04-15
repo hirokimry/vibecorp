@@ -66,6 +66,8 @@ git diff main...HEAD -U0 | grep -iE 'auth|token|secret|encrypt|permission|creden
 
 該当領域の analyst を Agent tool で **同一プロンプト・独立に 3 回** 同時並列で起動する（必須）。
 
+複数領域が該当した場合、各領域の analyst×3 と対応する C*O を同時並列で起動する（例: 課金 + セキュリティなら accounting-analyst×3 + CFO と security-analyst×3 + CISO を並列実行）。
+
 - 課金影響 → `.claude/agents/accounting-analyst.md` を ×3
 - セキュリティ → `.claude/agents/security-analyst.md` を ×3
 - 法務 → `.claude/agents/legal-analyst.md` を ×3
