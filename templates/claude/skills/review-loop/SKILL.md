@@ -64,7 +64,7 @@ git diff main...HEAD -U0 | grep -iE 'auth|token|secret|encrypt|permission|creden
 
 #### 平社員 ×3 起動
 
-該当領域の analyst を Agent tool で **同一プロンプト・独立に 3 回** 起動する（同時並列推奨）。
+該当領域の analyst を Agent tool で **同一プロンプト・独立に 3 回** 同時並列で起動する（必須）。
 
 - 課金影響 → `.claude/agents/accounting-analyst.md` を ×3
 - セキュリティ → `.claude/agents/security-analyst.md` を ×3
