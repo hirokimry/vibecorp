@@ -197,7 +197,7 @@ Phase 1 既知制約（S-003 ネットワーク全許可、S-004/T-002 process-e
 | P318-M-003 | Medium | `tests/test_install_isolation.sh` F テスト L676-690 | `bash -c "source ... && echo \"\$PATH\""` で呼び出し元の PATH が継承される。テスト環境の PATH に既に `.claude/bin` 相当のパスがある場合、重複チェック（F2）が誤検知する | 未対応 |
 | P318-L-001 | Low | `README.md` L37 | 永続化案内で絶対パス source を推奨しているが、リポジトリ移動・削除後の PATH 残骸リスクへの注意書きがない | 未対応 |
 | P318-L-002 | Low | `install.sh` / `generate_activate_script()` L280 | `chmod +x "$activate"` が source 専用スクリプトに実行権限を付与している。直接実行しても効果がなくユーザーを混乱させる | 未対応 |
-| P318-L-003 | Low | `tests/test_install_isolation.sh` L565 | `cleanup()` 内の `cd "$SCRIPT_DIR"` に `|| true` がない。`.claude/rules/testing.md` の cleanup 規約違反 | 未対応 |
+| P318-L-003 | Low | `tests/test_install_isolation.sh` L565 | `cleanup()` 内の `cd "$SCRIPT_DIR"` に `\|\| true` がない。`.claude/rules/testing.md` の cleanup 規約違反 | 未対応 |
 
 ### SECURITY.md 準拠確認
 
@@ -231,7 +231,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 - `templates/claude/sandbox/claude.sb`（sandbox 境界拡張）
 - `install.sh`（`setup_claude_real_symlink()` 追加）
 - `tests/test_install_claude_real.sh`（新規）
-- `tests/test_isolation_macos.sh`（テスト [9][10] 追加）
+- `tests/test_isolation_macos.sh`（テスト 9・10 追加）
 - `docs/SECURITY.md`（境界・制約表更新）
 - `.claude/knowledge/ciso/decisions.md`（CISO 判定エントリ追加）
 
@@ -239,7 +239,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 
 | ID | 重要度 | 対象ファイル:行 | 内容 | 対応状況 |
 |----|--------|--------------|------|---------|
-| P320-2-001 | Info | `install.sh` `setup_claude_real_symlink()` L231 | `resolved=$(cd "$p" && readlink claude || echo "$p/claude")` でラッパー除外判定に用いる `resolved` 変数が相対パスになる場合がある（`readlink` は macOS でパスを正規化しない）。`"$resolved" == *"/.claude/bin/claude"` のパターンマッチが機能しない可能性。ただしフォールバックが `echo "$p/claude"` と絶対パスになるため実害は限定的 | 未対応（Info） |
+| P320-2-001 | Info | `install.sh` `setup_claude_real_symlink()` L231 | `resolved=$(cd "$p" && readlink claude \|\| echo "$p/claude")` でラッパー除外判定に用いる `resolved` 変数が相対パスになる場合がある（`readlink` は macOS でパスを正規化しない）。`"$resolved" == *"/.claude/bin/claude"` のパターンマッチが機能しない可能性。ただしフォールバックが `echo "$p/claude"` と絶対パスになるため実害は限定的 | 未対応（Info） |
 | P320-2-002 | Info | `tests/test_install_claude_real.sh` テスト F | ラッパー symlink 除外の検証ロジックが `readlink` の挙動（相対 vs 絶対）に依存しており、macOS と Linux で異なる結果になる場合がある。ただしテストファイル冒頭で Darwin 以外は skip されるため、実際の CI への影響はない | 未対応（Info） |
 | P320-2-003 | Info | `tests/test_isolation_macos.sh` テスト [10] L675 | `expect -c` に渡す文字列内で `$HOME`、`${REAL_BIN}`、`${TMPDIR}` 等を直接展開しているが、これらにシングルクォートや特殊文字が含まれる場合 expect スクリプトの構文が破損する。HOME・TMPDIR は通常の macOS 環境では発生しないが、ユーザー設定によっては問題になりうる | 未対応（Info） |
 
@@ -281,7 +281,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 - `templates/claude/sandbox/claude.sb`（sandbox 境界拡張: ~/.local/share/claude RO / ~/.claude.json RW / /dev ioctl）
 - `install.sh`（`setup_claude_real_symlink()` 追加）
 - `tests/test_install_claude_real.sh`（新規テスト）
-- `tests/test_isolation_macos.sh`（テスト [9][10] 追加）
+- `tests/test_isolation_macos.sh`（テスト 9・10 追加）
 - `docs/SECURITY.md`（境界・制約表更新）
 - `.claude/knowledge/ciso/decisions.md`（CISO 判定エントリ追加）
 
@@ -289,7 +289,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 
 | ID | 重要度 | 対象ファイル:行 | 内容 | 対応状況 |
 |----|--------|--------------|------|---------|
-| P320-1-001 | Minor | `install.sh` setup_claude_real_symlink L230 | `resolved=$(cd "$p" && readlink claude || echo "$p/claude")` で `readlink` が相対パスを返した場合、`*/.claude/bin/claude` のパターンマッチがすり抜ける。悪意ある経路が通る方向ではなく、正規ラッパーが除外されない方向の失敗だが、SECURITY.md の `.claude/rules/shell.md` の「外部入力を使う場合はサニタイズ」に対する部分的な軽微違反 | 未対応（Minor） |
+| P320-1-001 | Minor | `install.sh` setup_claude_real_symlink L230 | `resolved=$(cd "$p" && readlink claude \|\| echo "$p/claude")` で `readlink` が相対パスを返した場合、`*/.claude/bin/claude` のパターンマッチがすり抜ける。悪意ある経路が通る方向ではなく、正規ラッパーが除外されない方向の失敗だが、SECURITY.md の `.claude/rules/shell.md` の「外部入力を使う場合はサニタイズ」に対する部分的な軽微違反 | 未対応（Minor） |
 | P320-1-002 | Info | `install.sh` setup_claude_real_symlink L225 | `local IFS=":"` の同一行代入は bash 3.2 で local の終了コードが 0 に上書きされる既知の挙動。機能には影響しないが shell.md の bash 3.2 互換ルールに照らすと要注意 | 未対応（Info） |
 | P320-1-003 | Info | `tests/test_isolation_macos.sh` テスト [10] L675 | expect スクリプト内で `$HOME`・`${REAL_BIN}`・`$SHIM` を直接展開しており、パスに特殊文字が含まれる場合に構文破損の可能性。通常環境では発生しないが、テスト堅牢性として認識しておくべきリスク | 未対応（Info） |
 
@@ -324,7 +324,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 - `templates/claude/sandbox/claude.sb`（sandbox 境界拡張）
 - `install.sh`（`setup_claude_real_symlink()` 追加）
 - `tests/test_install_claude_real.sh`（新規）
-- `tests/test_isolation_macos.sh`（テスト [9][10] 追加）
+- `tests/test_isolation_macos.sh`（テスト 9・10 追加）
 - `docs/SECURITY.md`（境界・制約表更新）
 - `.claude/knowledge/ciso/decisions.md`（CISO 判定エントリ追加）
 
@@ -333,7 +333,7 @@ CISO エスカレーション対象: P318-H-001、P318-H-002
 | ID | 重要度 | 対象ファイル:行 | 内容 | 対応状況 |
 |----|--------|--------------|------|---------|
 | P320-3-001 | Low | `tests/test_isolation_macos.sh` L673-676 | `expect -c` ヒアストリング内で `$HOME`、`$SHIM`、`$REAL_BIN`、`$TMPDIR` が bash によりインライン展開される。パスにスペースが含まれると引数分割が発生する可能性がある。本番コードへの影響はなく、テストの誤動作リスクに限定される | 未対応（テストコードのみ） |
-| P320-3-002 | Low | `install.sh` L230 | `resolved=$(cd "$p" && readlink claude || echo "$p/claude")` で `readlink` 失敗時のフォールバックが `$p/claude` となり、symlink かどうかを検証せずに正当なバイナリとして扱う。SECURITY.md「PATH 汚染はスコープ外」に包含されるため実害は限定的 | 未対応（Phase 1 スコープ外） |
+| P320-3-002 | Low | `install.sh` L230 | `resolved=$(cd "$p" && readlink claude \|\| echo "$p/claude")` で `readlink` 失敗時のフォールバックが `$p/claude` となり、symlink かどうかを検証せずに正当なバイナリとして扱う。SECURITY.md「PATH 汚染はスコープ外」に包含されるため実害は限定的 | 未対応（Phase 1 スコープ外） |
 
 ### SECURITY.md 準拠確認
 
