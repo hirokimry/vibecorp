@@ -22,7 +22,7 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 
 - **full プリセット専用**（`/diagnose` と `/ship-parallel` が必要）
 - main ブランチにいること
-- `/diagnose` が起票した diagnose Issue は **CISO + CPO + COO の3者承認ゲート**（rules/autonomous-restrictions.md）を通過済みのため、不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）が自動除外されている
+- `/diagnose` が起票した diagnose Issue は **CISO + CPO + SM の3者承認ゲート**（rules/autonomous-restrictions.md）を通過済みのため、不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）が自動除外されている
 - 手動起票された Issue（diagnose ラベルなし）はこのスキルの対象外
 
 ## ワークフロー
@@ -54,18 +54,18 @@ gh issue list --label "diagnose" --state open --json number,title --jq '.[] | "#
 open な diagnose Issue が0件の場合、`/diagnose` を実行して Issue を起票する。
 起票後、そのままステップ5に進む（起票した Issue を ship する）。
 
-### 5. COO による並列判定
+### 5. SM による並列判定
 
-COO エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ3と同じ）。
+SM エージェントに Issue 群の並列実行可否を判定させる（`/ship-parallel` のステップ3と同じ）。
 
-COO の分析結果に基づき、並列グループ・直列チェーン・保留に分類する。
+SM の分析結果に基づき、並列グループ・直列チェーン・保留に分類する。
 保留と判定された Issue は候補から除外する。
 
 ### 6. ship 確認・実行
 
 #### 6a. デフォルト（確認あり）
 
-COO の分析結果と候補一覧をユーザーに提示する:
+SM の分析結果と候補一覧をユーザーに提示する:
 
 ```text
 ## /autopilot 改善候補

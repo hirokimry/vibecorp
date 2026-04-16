@@ -61,7 +61,7 @@ is_allowed() {
     security)
       [[ "$path" == *docs/SECURITY.md ]] && return 0
       ;;
-    # coo・統括職（cfo/clo/ciso）は docs/ 配下の直接編集権限なし
+    # sm・統括職（cfo/clo/ciso）は docs/ 配下の直接編集権限なし
     # 未知のロールも docs/ 配下はブロック
   esac
 

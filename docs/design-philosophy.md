@@ -27,7 +27,7 @@ docs/（Source of Truth・仕様書群）
 
 持続的アイデンティティ + 自律判断 + knowledge蓄積を持つエンティティ:
 
-- **C-suite**: CTO, CPO, COO, CFO, CLO, CISO -- MVVに基づいて判断する専門家
+- **C-suite + SM**: CTO, CPO, CFO, CLO, CISO, SM -- MVVに基づいて判断する専門家
 - **チーム分析員**: accounting, legal, security -- 3回独立実行し、C-suiteがレビュー
 
 特徴:

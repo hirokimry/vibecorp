@@ -119,10 +119,10 @@ echo ""
 
 echo "--- テスト4: ワークフローステップの網羅性 ---"
 
-if grep -q 'COO' "$SKILL_FILE"; then
-  pass "COO 分析への言及がある"
+if grep -q 'SM' "$SKILL_FILE"; then
+  pass "SM 分析への言及がある"
 else
-  fail "COO 分析への言及がない"
+  fail "SM 分析への言及がない"
 fi
 
 if grep -q 'worktree' "$SKILL_FILE"; then
