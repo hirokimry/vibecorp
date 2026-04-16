@@ -84,3 +84,13 @@ BEGIN { in_s=0; in_d=0; seg="" }
   if (seg != "") print seg
 }'
 ```
+
+## bash 3.2（macOS デフォルト）でのマルチバイト文字と変数展開
+
+- macOS のデフォルト bash は 3.2 であり、UTF-8 マルチバイト文字を変数名境界として扱えない
+- `$status（` のように変数の直後に全角文字（例: `（` = `EF BC 88`）が続くと、bash 3.2 が UTF-8 バイト列を変数名の一部として解釈し unbound variable エラーになる
+  - 例: `echo "ステータス: $status（完了）"` → `status\xef\xbc\x88: unbound variable`
+- **変数展開には必ずブレース `${}` を使う**:
+  - NG: `$status（完了）`
+  - OK: `${status}（完了）`
+- テストスクリプト・フックスクリプトは macOS の bash 3.2 で動作確認が必要

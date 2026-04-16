@@ -141,7 +141,7 @@ your-project/
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
-| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（隔離レイヤが full でしか効かないため） |
+| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（課金リスクを伴う大規模並列実行のため） |
 | `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能。full プリセット専用 |
 | `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
@@ -356,7 +356,7 @@ hooks:
 /ship-parallel --all
 ```
 
-SM エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。full プリセット専用（隔離レイヤが full でしか効かないため、誤爆リスクを抑える目的で minimal/standard では物理配置されない）。
+SM エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。full プリセット専用（課金リスクを伴う大規模並列実行のため、誤爆リスクを抑える目的で minimal/standard では物理配置されない）。
 
 ### /diagnose — コードベース自律診断
 
