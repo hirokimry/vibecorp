@@ -223,3 +223,11 @@
 - **判断**: 境界・制約の詳細は実装ファイル（例: `.claude/sandbox/claude.sb`）の **全体（ヘッダコメント + SBPL ルール本文）** を正典とし、設計ドキュメント（`docs/design-philosophy.md`）では思想のみを記述してパス列挙・ルール詳細の重複を避ける
 - **根拠**: 同じパス一覧やルール詳細を 2 箇所に書くと、実装を更新したときにドキュメント側の更新が漏れて乖離が発生する。「正典は 1 箇所」の原則（Single Source of Truth）を維持しつつ、設計ドキュメントには「詳細は当該ファイルを参照」と参照先を明記することで両方の役割を成立させる。`literal` / `subpath` の使い分け、`file-ioctl` の独立性、network/process 制約等の本文側ルールも正典範囲に含める
 - **適用範囲**: sandbox プロファイルの許可/拒否パス一覧・SBPL ルールに限らず、設定ファイル・テンプレートのキー一覧など「実装が正」になる詳細全般に適用できる汎用パターン
+
+### 2026-04-17: ゲートスタンプの保存先を `.claude/` 外に切り出し（Issue #326）
+
+- **判断**: `/sync-check`、`/session-harvest`、`/review-to-rules`、`/review-loop` が発行するスタンプを `.claude/state/<name>-ok` から `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/<name>-ok` に移動。`<repo-id>` は basename（サニタイズ済み）+ 同パスの sha256 先頭 8 文字
+- **根拠**: Claude Code は `--dangerously-skip-permissions` 起動時でも `.claude/` 配下への書込みで確認プロンプトを発生させる仕様があり、ゲートスタンプ発行が連続するスキルワークフローの UX を阻害していた。XDG 仕様準拠の場所に切り出すことで本体側の保護対象から外れる
+- **重要設計**: gate hook の `STAMP_FILE` 評価は早期 exit **後** に移動。PreToolUse は全ツール呼び出しで発火するため、無関係コマンドで `git rev-parse` + `shasum` を走らせない
+- **脅威モデル**: 同一ユーザー内の任意プロセスからのスタンプ偽造はスコープ外（信頼境界 = ユーザーアカウント）。`chmod 700` で他ユーザー保護のみ実施。HMAC/PID 埋め込みは v1 では採用しない
+- **代替案**: (a) `.claude/` 内のままで bypass 例外を厳密化 → 本体側仕様に依存し根本解決にならず却下、(b) PID/HMAC 埋め込みでスタンプ内容検証 → 信頼境界の越境ではなくコスト見合いせず却下

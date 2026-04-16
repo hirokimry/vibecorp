@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# 共通ユーティリティ読み込み（vibecorp_stamp_path 用）
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../lib/common.sh
+source "${HOOK_DIR}/../lib/common.sh"
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
@@ -34,7 +39,9 @@ if [ "$CMD_HEAD" != "gh pr create" ]; then
   exit 0
 fi
 
-STAMP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/state/review-ok"
+# 対象コマンドの場合のみスタンプパスを解決（早期 exit 後に評価することで
+# 無関係コマンドで git rev-parse + shasum を走らせない）
+STAMP_FILE="$(vibecorp_stamp_path review)"
 
 if [ -f "$STAMP_FILE" ]; then
   rm -f "$STAMP_FILE"

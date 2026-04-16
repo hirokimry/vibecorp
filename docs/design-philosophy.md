@@ -331,6 +331,32 @@ OS 判定を `vibecorp-sandbox` に閉じ込め、Phase 1 では Darwin（macOS 
 
 macOS sandbox-exec プロファイルの許可・拒否境界（書込許可パス・読取許可パス・ioctl 許可デバイス、`literal` / `subpath` の使い分け、network/process 制約等）の詳細は `.claude/sandbox/claude.sb` の全体（ヘッダコメント + SBPL ルール本文）を正として参照すること。本セクションは設計思想の記述であり、個々のパス・ルールを逐次列挙するスコープではない。
 
+## ゲートスタンプの保存先
+
+### `.claude/` 外への切り出し
+
+`/sync-check`、`/session-harvest`、`/review-to-rules`、`/review-loop` が発行するゲートスタンプは XDG Base Directory 仕様に準拠し `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/` 配下に配置する。`.claude/` 配下への書込みは Claude Code の `--dangerously-skip-permissions` でも確認プロンプトが発生するため、スタンプ発行が連続するスキルワークフロー（PR 作成からマージまで最大 4 回）の UX を阻害する。
+
+### `<repo-id>` 構成
+
+`<sanitized-basename>-<sha8>` 形式。basename は `git rev-parse --show-toplevel` の basename を `tr -cs 'A-Za-z0-9._-' '_'` でサニタイズ、sha8 は同 toplevel パスの SHA-256 先頭 8 文字。multi-repo 共存時の衝突を回避する。
+
+### 脅威モデル
+
+スタンプは存在チェックのみで内容検証を行わない。同一ユーザー内の任意プロセスからの偽造は本設計のスコープ外（信頼境界 = ユーザーアカウント）。ディレクトリは `chmod 700` で他ユーザーからの偽造のみブロックする。HMAC や PID 埋め込みは v1 では採用しない。
+
+### デバッグ手順
+
+スタンプの実体パスを確認するには:
+
+```bash
+source .claude/lib/common.sh
+vibecorp_stamp_dir
+# → /Users/me/.cache/vibecorp/state/vibecorp-a1b2c3d4
+```
+
+gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有無で原因を切り分けられる。
+
 ## ガードレール
 
 - **Public Ready**: セキュリティ情報・特定プロダクト名・ローカルパス依存の混入禁止

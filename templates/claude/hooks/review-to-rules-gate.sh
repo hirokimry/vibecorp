@@ -20,7 +20,9 @@ if [ "$CMD_HEAD" != "gh pr merge" ]; then
   exit 0
 fi
 
-STAMP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/state/review-to-rules-ok"
+# 対象コマンドの場合のみスタンプパスを解決（早期 exit 後に評価することで
+# 無関係コマンドで git rev-parse + shasum を走らせない）
+STAMP_FILE="$(vibecorp_stamp_path review-to-rules)"
 
 if [ -f "$STAMP_FILE" ]; then
   rm -f "$STAMP_FILE"

@@ -139,11 +139,12 @@ git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY
 
 ### 5. スタンプ発行
 
-**総合判定が ✅ の場合のみ** スタンプを発行する:
+**総合判定が ✅ の場合のみ** スタンプを発行する。スタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に作成され、`.claude/` 配下への書込確認プロンプトを回避する:
 
 ```bash
-mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
-touch "$CLAUDE_PROJECT_DIR/.claude/state/sync-ok"
+. "$CLAUDE_PROJECT_DIR/.claude/lib/common.sh"
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+touch "${STAMP_DIR}/sync-ok"
 ```
 
 ⚠️ または ❌ がある場合はスタンプを発行しない。`/sync-edit` による修正後、再度 `/sync-check` を実行すること。
