@@ -166,3 +166,43 @@ Agent の `mode` が未指定（`default`）の場合、teammate のツール呼
 | `bypassPermissions` | hook を含む全 permission check をスキップ | vibecorp では使用禁止 |
 
 `bypassPermissions` はファウンダー方針（Issue #252）で使用禁止。`dontAsk` を使うことで hook の制御を保ちつつ承認ダイアログを排除できる。
+
+## PreToolUse フックでの早期 exit パターン
+
+PreToolUse フックは **全ツール呼び出しで発火**する。対象コマンド以外での副作用を防ぐため、コマンド判定（early exit）を副作用のあるパス計算より前に置く設計が必須。
+
+```bash
+# NG: 全ツール呼び出しで git rev-parse + shasum が走る
+STAMP_DIR="$(vibecorp_stamp_mkdir)"   # 外部プロセス 2 回
+tool_name="$CLAUDE_TOOL_NAME"
+if [ "$tool_name" != "Bash" ]; then exit 0; fi
+# ... コマンド判定 ...
+
+# OK: 早期 exit の後でコストの高い処理を行う
+tool_name="$CLAUDE_TOOL_NAME"
+if [ "$tool_name" != "Bash" ]; then exit 0; fi
+# ... コマンド判定（文字列比較のみ）...
+# 対象コマンドと確定してからスタンプパス計算
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+```
+
+ゲート系フック（sync-gate, session-harvest-gate 等）はこのパターンに従うこと。
+
+## 共通ヘルパー関数の重複呼び出し回避
+
+`vibecorp_stamp_path` が内部で `vibecorp_stamp_dir`（`git rev-parse` + `shasum`）を呼ぶ設計の場合、同一スクリプト内で複数回 `vibecorp_stamp_path` を呼ぶと外部プロセスが同回数走る。
+
+**一度取得して変数に保持する**パターンに統一する:
+
+```bash
+# NG: git rev-parse + shasum が 2 回走る
+touch "$(vibecorp_stamp_path sync)"
+if [ -f "$(vibecorp_stamp_path review)" ]; then ...
+
+# OK: ディレクトリを 1 回だけ取得して再利用
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+touch "${STAMP_DIR}/sync-ok"
+if [ -f "${STAMP_DIR}/review-ok" ]; then ...
+```
+
+スキル側でスタンプを発行する際も、ループや複数ファイル操作の場合は `STAMP_DIR` を先頭で1回だけ取得する。

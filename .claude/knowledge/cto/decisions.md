@@ -231,3 +231,19 @@
 - **重要設計**: gate hook の `STAMP_FILE` 評価は早期 exit **後** に移動。PreToolUse は全ツール呼び出しで発火するため、無関係コマンドで `git rev-parse` + `shasum` を走らせない
 - **脅威モデル**: 同一ユーザー内の任意プロセスからのスタンプ偽造はスコープ外（信頼境界 = ユーザーアカウント）。`chmod 700` で他ユーザー保護のみ実施。HMAC/PID 埋め込みは v1 では採用しない
 - **代替案**: (a) `.claude/` 内のままで bypass 例外を厳密化 → 本体側仕様に依存し根本解決にならず却下、(b) PID/HMAC 埋め込みでスタンプ内容検証 → 信頼境界の越境ではなくコスト見合いせず却下
+
+### 2026-04-16: ゲートスタンプ XDG 移行に伴う実装上の技術判断（PR #327）
+
+- **判断**: (a) `basename | tr` パターンには `printf '%s'` で trailing newline を除去する。(b) PreToolUse フックのスタンプパス計算は early exit の後に置く。(c) 共通ヘルパーの重複呼び出しは `STAMP_DIR` 変数で1回取得・再利用に統一。(d) sandbox subpath 外の親ディレクトリは sandbox-exec より前（install.sh / pre-launch）に事前作成する
+- **根拠**:
+  - `basename "$root" | tr -cs ...` は basename の trailing `\n` も `_` に変換して末尾に付く。PR #327 でリポジトリ ID 生成が `<name>_` になる不具合として発現
+  - PreToolUse は Read/Write/Bash 全呼び出しで発火するため、early exit より前に `git rev-parse + shasum` を置くと無関係なツール呼び出しで毎回外部プロセスが 2 つ走る
+  - `vibecorp_stamp_path` が内部で `vibecorp_stamp_dir` を呼ぶ設計の場合、複数回呼ぶと同回数 `git rev-parse + shasum` が実行される。STAMP_DIR を一度取得して再利用することで O(N) → O(1) になる
+  - `(allow file-write* (subpath "~/.cache/vibecorp"))` は存在しない中間ディレクトリの作成権限を含まない。macOS sandbox-exec の `subpath` は対象パスが存在するディレクトリの配下のみをカバーする
+- **代替案**: `basename` の newline 除去に `tr -d '\n'` を `basename` と `tr -cs` の間に挟む方法も機能するが、`printf '%s'` の方がコマンド置換の標準的な newline 除去慣用句として可読性が高い
+
+### 2026-04-16: `git pull` による意図しない merge commit 混入の扱い
+
+- **判断**: workflow.md への追記は COO 管轄（rules/ の追記は管轄内だが今回は見送り）。`git pull --ff-only` または `git pull --rebase` を CI / install.sh で呼ぶ箇所に限定的に強制する。開発者向けのグローバル設定（`pull.ff = only`）の推奨は README に記載を推奨する（CPO・COO 判断に委ねる）
+- **根拠**: local main が divergent 状態（origin にない commit を持つ等）のとき `git pull origin main` を素直に実行すると merge commit が生まれ、PR のコミット履歴が汚染される。vibecorp の install.sh は `git pull origin main` を実行するパスがあるため影響を受ける。ただし `pull.ff = only` を rules/ に書くと全開発者の git グローバル設定に干渉する恐れがあり、スコープを install.sh / CI 内コマンドに限定する
+- **代替案**: `pull.rebase = true` の git config 推奨を rules/ に追記する案も検討したが、既存の git ワークフローへの干渉リスクがあり今回は見送り
