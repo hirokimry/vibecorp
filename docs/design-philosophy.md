@@ -329,7 +329,7 @@ OS 判定を `vibecorp-sandbox` に閉じ込め、Phase 1 では Darwin（macOS 
 
 ### 境界定義の正典
 
-macOS sandbox-exec プロファイルの許可・拒否境界（書込許可パス・読取許可パス・ioctl 許可デバイス等）の詳細は `.claude/sandbox/claude.sb` のコメントを正として参照すること。本セクションは設計思想の記述であり、個々のパスを逐次列挙するスコープではない。
+macOS sandbox-exec プロファイルの許可・拒否境界（書込許可パス・読取許可パス・ioctl 許可デバイス、`literal` / `subpath` の使い分け、network/process 制約等）の詳細は `.claude/sandbox/claude.sb` の全体（ヘッダコメント + SBPL ルール本文）を正として参照すること。本セクションは設計思想の記述であり、個々のパス・ルールを逐次列挙するスコープではない。
 
 ## ガードレール
 
