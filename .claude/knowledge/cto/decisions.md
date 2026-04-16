@@ -166,3 +166,9 @@
 - **判断**: spike-loop SKILL.md が宣言している制約（`--force`/`-D` 禁止、Bash 1 コマンド 1 呼び出し、`2>/dev/null`・`|| echo` 等のフォールバック禁止）を、自身の例示コードで違反していた。プロセス kill・worktree 削除・ブランチ削除のコマンドを `pgrep` / `git worktree remove <path>`（force なし）/ `git branch -d <branch>`（小文字）に修正。uncommitted 変更や未マージブランチは安全に削除できないため手動対応とする設計を採用した。合わせて `headless-claude.md` のサンプルコードも同制約に合わせて修正（`kill "$pid" 2>/dev/null || true` → `kill "$pid"`、パイプを使った `last_ts` 取得 → `awk 'END { print $1 }' "$COMMAND_LOG"` に置き換え）
 - **根拠**: ドキュメント内の制約とサンプルコードが矛盾しているとエージェントが誤ったパターンを学習する。ルールとサンプルの整合性はドキュメントの信頼性の基本
 - **代替案**: フォールバックを許容して制約を緩める案も検討したが、spike-loop の制約は Claude Code built-in security check への対策として設計されたものであり（Issue #258）、緩めることは安全性の低下につながるため採用しなかった
+
+### 2026-04-16: ship-parallel / autopilot を full プリセット専用に格下げ（Issue #308）
+
+- **判断**: `/ship-parallel` と `/autopilot` を minimal/standard プリセットから物理的に除外し、full プリセット専用とする。install.sh の minimal/standard ブロックに `rm -rf` を追加するハード制限方式を採用。SKILL.md 内のソフトガード（preset 判定ロジック）は defense-in-depth として残す
+- **根拠**: #293 隔離レイヤ計画で「隔離は full プリセットのみ」が確定した。隔離が効かない minimal/standard でヘッドレス並列スキルを開放すると、誤爆リスク（意図しないファイル変更・ブランチ汚染）が防止できない。ソフトガードのみに依存するとスキルファイルの手動配置やテンプレート直接コピーでバイパスされるため、install.sh での物理削除がハード制限の本筋
+- **代替案**: SKILL.md のソフトガードのみで制御する案（物理削除なし）も検討したが、install.sh で配置してしまう以上、ソフトガードのバイパスリスクが残る。物理削除 + ソフトガード併存の defense-in-depth が最も堅牢

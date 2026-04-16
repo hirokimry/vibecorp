@@ -63,9 +63,9 @@ path/to/vibecorp/install.sh --update
 
 | プリセット | スキル | フック | エージェント | 課金モデル | ユースケース |
 |---|---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /ship-parallel, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | Claude Max 定額内 | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | Claude Max 定額内 | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
-| **full** | 上記 + /diagnose, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
+| **full** | 上記 + /diagnose, /ship-parallel, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
@@ -107,12 +107,11 @@ your-project/
 
 ## スキル一覧
 
-### minimal プリセット（14スキル）
+### minimal プリセット（13スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行 |
-| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し同時進行 |
 | `/plan` | Issue の実装方針を策定し、計画ファイルとして `.claude/plans/` に出力 |
 | `/plan-review-loop` | 実装計画に対するレビュー → 修正の自動ループ。問題0件まで繰り返す |
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
@@ -137,12 +136,13 @@ your-project/
 | `/harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（3スキル）
+### full プリセットで追加（4スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
-| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能 |
+| `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。COO エージェントで依存関係を分析し同時進行。full プリセット専用（隔離レイヤが full でしか効かないため） |
+| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能。full プリセット専用 |
 | `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
 ## フック一覧
@@ -356,7 +356,7 @@ hooks:
 /ship-parallel --all
 ```
 
-COO エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。全プリセットで利用可能。
+COO エージェントが Issue 群の依存関係を分析し、TeamCreate + worktree で同時進行する。full プリセット専用（隔離レイヤが full でしか効かないため、誤爆リスクを抑える目的で minimal/standard では物理配置されない）。
 
 ### /diagnose — コードベース自律診断
 

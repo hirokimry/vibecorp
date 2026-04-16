@@ -104,21 +104,47 @@ done
 
 echo ""
 
-# --- テスト3: autopilot が full プリセット限定であることを明示している ---
+# --- テスト3: ヘッドレス並列スキルが full プリセット限定であることを明示している ---
 
-echo "--- テスト3: /autopilot の full プリセット限定ガード ---"
+echo "--- テスト3: ヘッドレス並列スキルの full プリセット限定記述 ---"
 
-if grep -q "full プリセット専用" "$AUTOPILOT_SKILL"; then
-  pass "autopilot SKILL.md に full 限定の記述がある"
-else
-  fail "autopilot SKILL.md に full プリセット専用の記述がない"
-fi
+SHIP_PARALLEL_SKILL="$PROJECT_DIR/templates/claude/skills/ship-parallel/SKILL.md"
+SPIKE_LOOP_SKILL="$PROJECT_DIR/templates/claude/skills/spike-loop/SKILL.md"
 
-if grep -qE "awk.*preset.*vibecorp\.yml" "$AUTOPILOT_SKILL"; then
-  pass "autopilot SKILL.md に preset 判定ロジックがある"
-else
-  fail "autopilot SKILL.md に preset 判定ロジックがない"
-fi
+for skill_file in "$AUTOPILOT_SKILL" "$SHIP_PARALLEL_SKILL" "$SPIKE_LOOP_SKILL"; do
+  if [[ ! -f "$skill_file" ]]; then
+    fail "$skill_file が存在しない"
+    continue
+  fi
+  if grep -q "full プリセット専用" "$skill_file"; then
+    pass "$(basename "$(dirname "$skill_file")") SKILL.md に full 限定の記述がある"
+  else
+    fail "$(basename "$(dirname "$skill_file")") SKILL.md に full プリセット専用の記述がない"
+  fi
+done
+
+echo ""
+
+# --- テスト3b: install.sh がヘッドレス並列スキルを minimal/standard で物理削除する ---
+
+echo "--- テスト3b: install.sh による minimal/standard でのスキル物理削除 ---"
+
+# minimal ブロック内に 3 スキルの rm エントリがあることを確認
+MINIMAL_BLOCK="$(awk '/^    minimal\)$/,/^      ;;$/' "$INSTALL_SCRIPT")"
+STANDARD_BLOCK="$(awk '/^    standard\)$/,/^      ;;$/' "$INSTALL_SCRIPT")"
+
+for skill in ship-parallel autopilot spike-loop; do
+  if echo "$MINIMAL_BLOCK" | grep -qE "rm -rf .*skills_dir.*/${skill}\""; then
+    pass "install.sh minimal ブロックが ${skill} を削除する"
+  else
+    fail "install.sh minimal ブロックに ${skill} の削除がない"
+  fi
+  if echo "$STANDARD_BLOCK" | grep -qE "rm -rf .*skills_dir.*/${skill}\""; then
+    pass "install.sh standard ブロックが ${skill} を削除する"
+  else
+    fail "install.sh standard ブロックに ${skill} の削除がない"
+  fi
+done
 
 echo ""
 
