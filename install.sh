@@ -666,12 +666,20 @@ copy_managed_files() {
       rm -rf "${skills_dir}/harvest-all"
       rm -rf "${skills_dir}/diagnose"
       rm -rf "${skills_dir}/context7"
+      # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
+      rm -rf "${skills_dir}/ship-parallel"
+      rm -rf "${skills_dir}/autopilot"
+      rm -rf "${skills_dir}/spike-loop"
       rm -rf "${agents_dir}"
       ;;
     standard)
       rm -f "${hooks_dir}/role-gate.sh"
       rm -f "${hooks_dir}/diagnose-guard.sh"
       rm -rf "${skills_dir}/diagnose"
+      # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
+      rm -rf "${skills_dir}/ship-parallel"
+      rm -rf "${skills_dir}/autopilot"
+      rm -rf "${skills_dir}/spike-loop"
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
