@@ -101,6 +101,35 @@ kernel: (Sandbox) deny(1) file-ioctl /dev/ttys003
 kernel: (Sandbox) deny(1) file-read-data /Users/xxx/.local/share/claude/versions/1.2.3/node_modules/...
 ```
 
+### sandbox 適用確認の複数プローブ検証（Issue #322 セッションで確立）
+
+`VIBECORP_ISOLATION=1` 配下で sandbox-exec が本当に適用されているかを確認する際、単一プローブでは OS デフォルトの挙動と区別しづらい。複数の許可・拒否プローブを組み合わせて全体像を把握する手法が有効。
+
+**拒否境界の確認（sandbox 適用の強い証拠）**:
+
+```bash
+# ps 実行 → "Operation not permitted" になれば sandbox 適用の強い証拠
+ps aux 2>&1 | head -3
+
+# $HOME 直下への書込み → "Operation not permitted"（書込拒否境界の検証）
+touch "$HOME/sandbox_test_probe" 2>&1
+```
+
+**許可境界の確認（誤ってブロックしていないか）**:
+
+```bash
+# /tmp 書込み → 成功するはず
+touch /tmp/sandbox_test_ok 2>&1
+
+# /etc/hosts 読取り → 成功するはず（/private/etc は RO 許可）
+head -1 /etc/hosts 2>&1
+
+# ネットワーク疎通 → 成功するはず（network* 全許可）
+curl -s --max-time 2 https://example.com > /dev/null 2>&1 && echo "ok"
+```
+
+**判定ロジック**: 拒否すべきもの（$HOME 直書き）が拒否され、許可すべきもの（/tmp 書き込み・ネット）が通る場合に sandbox が正しく機能していると判断できる。
+
 ## sandbox 経由でのバイナリテスト戦略
 
 ### FAKE_HOME vs 実 HOME の役割分担（Issue #320 で確立）
