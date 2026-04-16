@@ -30,21 +30,76 @@ PROFILE="${SCRIPT_DIR}/../sandbox/claude.sb"
 
 OS="$(uname -s)"
 
+# パス値の検証（sandbox-exec の -D 引数に渡す前に sanitize する）
+#
+# 目的:
+#   $PWD / $HOME / $TMPDIR は外部（シェル・CI 環境・親プロセス）から汚染されうる。
+#   これらを sandbox-exec の (param "KEY") に無検証で渡すと、
+#   プロファイル内の `(subpath (param "WORKTREE"))` が `/` や `$HOME` 全体に展開され、
+#   sandbox の書込境界が崩壊する。
+#
+# 参照: .claude/rules/shell.md「ファイル名に外部入力を使う場合」
+validate_abs_path() {
+  local value="$1"
+  local name="$2"
+  if [[ -z "$value" ]]; then
+    echo "vibecorp-sandbox: $name が空です" >&2
+    exit 1
+  fi
+  if [[ "$value" != /* ]]; then
+    echo "vibecorp-sandbox: $name は絶対パスである必要があります: $value" >&2
+    exit 1
+  fi
+  if [[ "$value" == "/" ]]; then
+    echo "vibecorp-sandbox: $name をルート(/)にはできません: $value" >&2
+    exit 1
+  fi
+  if [[ "$value" == *".."* ]]; then
+    echo "vibecorp-sandbox: $name にパストラバーサル(..)が含まれています: $value" >&2
+    exit 1
+  fi
+  # 空白・クォート・セミコロン・バックスラッシュ・バッククォート等の危険文字を拒否
+  case "$value" in
+    *[[:space:]]*|*\"*|*\'*|*\;*|*\|*|*\&*|*\`*|*\$*|*\\*)
+      echo "vibecorp-sandbox: $name に危険文字が含まれています: $value" >&2
+      exit 1
+      ;;
+  esac
+}
+
 case "$OS" in
   Darwin)
     if [[ ! -f "$PROFILE" ]]; then
       echo "vibecorp-sandbox: sandbox プロファイルが見つかりません: $PROFILE" >&2
       exit 1
     fi
+
+    # sandbox-exec に渡す前に WORKTREE / HOME / DARWIN_TMPDIR を検証
+    WORKTREE_VALUE="$PWD"
+    HOME_VALUE="${HOME:-}"
+    DARWIN_TMPDIR_VALUE="${TMPDIR:-/tmp}"
+
+    validate_abs_path "$WORKTREE_VALUE" "WORKTREE"
+    validate_abs_path "$HOME_VALUE" "HOME"
+    validate_abs_path "$DARWIN_TMPDIR_VALUE" "DARWIN_TMPDIR"
+
+    # WORKTREE を HOME 自体にする設定は sandbox の書込境界を
+    # ホームディレクトリ全体に広げてしまうため拒否する
+    if [[ "$WORKTREE_VALUE" == "$HOME_VALUE" ]]; then
+      echo "vibecorp-sandbox: WORKTREE を HOME と同一にはできません: $WORKTREE_VALUE" >&2
+      exit 1
+    fi
+
     # macOS の sandbox-exec でコマンドを実行
     # - -f: プロファイルファイル
     # - -D KEY=VALUE: プロファイル内の (param "KEY") で参照される値
     # - env VIBECORP_SANDBOXED=1: 子プロセスに二重サンドボックス防止フラグを伝播
+    #   （env var は信頼境界ではない。claude シム側で PPID 検証と AND 取って判定する）
     exec /usr/bin/sandbox-exec \
       -f "$PROFILE" \
-      -D "WORKTREE=$PWD" \
-      -D "HOME=$HOME" \
-      -D "DARWIN_TMPDIR=${TMPDIR:-/tmp}" \
+      -D "WORKTREE=$WORKTREE_VALUE" \
+      -D "HOME=$HOME_VALUE" \
+      -D "DARWIN_TMPDIR=$DARWIN_TMPDIR_VALUE" \
       env VIBECORP_SANDBOXED=1 "$@"
     ;;
   Linux)

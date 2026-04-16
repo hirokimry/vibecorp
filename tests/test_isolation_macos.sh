@@ -196,16 +196,20 @@ fi
 
 # ============================================
 echo ""
-echo "=== [3] VIBECORP_SANDBOXED=1 で二重サンドボックス防止 ==="
+echo "=== [3] 外部からの VIBECORP_SANDBOXED=1 注入で sandbox はバイパスされない（ネガティブ） ==="
 # ============================================
-# VIBECORP_ISOLATION=1 かつ VIBECORP_SANDBOXED=1 のとき、shim は sandbox を介さず直行する
+# 祖先プロセスに sandbox-exec がいない状態で VIBECORP_SANDBOXED=1 だけを外部から注入しても、
+# claude シムの PPID 検証により passthrough しない。
+# 結果として VIBECORP_ISOLATION=1 経路に落ち、sandbox-exec 経由で起動され、
+# ~/.ssh への書込は sandbox が拒否するため denied.txt は生成されない。
+# 参照: audit-log.md S-005/S-009/T-001（外部注入バイパスの修正）
 rm -f "${FAKE_HOME}/.ssh/denied.txt"
 status=0
 (cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 VIBECORP_SANDBOXED=1 -- write-ssh) || status=$?
-if [[ "$status" -eq 0 && -f "${FAKE_HOME}/.ssh/denied.txt" ]]; then
-  pass "VIBECORP_SANDBOXED=1: 二重サンドボックスが防止され passthrough した"
+if [[ "${status}" -ne 0 && ! -f "${FAKE_HOME}/.ssh/denied.txt" ]]; then
+  pass "外部からの VIBECORP_SANDBOXED=1 注入では sandbox をバイパスできない (status=${status})"
 else
-  fail "VIBECORP_SANDBOXED=1: passthrough せず書込失敗 (status=$status, stderr=$(cat "$STDERR_LOG"))"
+  fail "外部からの VIBECORP_SANDBOXED=1 注入で sandbox がバイパスされた (status=${status}, file_exists=$([[ -f "${FAKE_HOME}/.ssh/denied.txt" ]] && echo yes || echo no))"
 fi
 
 # ============================================
