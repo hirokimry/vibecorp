@@ -10,3 +10,9 @@ plans/
 vibecorp-base/
 lib/
 state/
+
+# Claude Code per-user 設定
+settings.local.json
+
+# 隔離レイヤ — install.sh が生成するマシン固有 artifacts
+bin/claude-real
