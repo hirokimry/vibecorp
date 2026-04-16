@@ -166,7 +166,7 @@ else
 fi
 
 # パーミッション確認（macOS / Linux 両対応）
-PERM=$(stat -f '%Lp' "$CREATED_DIR" 2>/dev/null || stat -c '%a' "$CREATED_DIR" 2>/dev/null || echo "unknown")
+PERM=$(stat -c '%a' "$CREATED_DIR" 2>/dev/null || stat -f '%Lp' "$CREATED_DIR" 2>/dev/null || echo "unknown")
 assert_eq "chmod 700 が適用される" "700" "$PERM"
 
 # --- ケース 9: _vibecorp_sha256_short のフォールバック挙動 ---
