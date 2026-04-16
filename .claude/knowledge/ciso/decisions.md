@@ -149,7 +149,7 @@ activate.sh 内の `bin_abs="$(cd "$(dirname "$script_path")" && pwd)"` は sour
 | ID | 検出者 | 内容 | 採用根拠 |
 |----|--------|------|----------|
 | P318-001 | 全員一致（3/3） | `copy_isolation_templates` の `[[ -f "$src" ]]` がシンボリックリンクを通過する | 3名全員一致。`[[ ! -L "$src" ]]` の追加で排除可能 |
-| P318-003 | Analyst 3 単独 | `cleanup()` の `cd "$SCRIPT_DIR"` に `|| true` なし。`.claude/rules/testing.md` 規約違反 | 規約明記の Trivial。単独指摘だが testing.md に明記された MUST 事項のため採用 |
+| P318-003 | Analyst 3 単独 | `cleanup()` の `cd "$SCRIPT_DIR"` に `\|\| true` なし。`.claude/rules/testing.md` 規約違反 | 規約明記の Trivial。単独指摘だが testing.md に明記された MUST 事項のため採用 |
 
 ### 却下する指摘
 

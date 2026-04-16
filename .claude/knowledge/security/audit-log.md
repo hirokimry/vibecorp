@@ -197,7 +197,7 @@ Phase 1 既知制約（S-003 ネットワーク全許可、S-004/T-002 process-e
 | P318-M-003 | Medium | `tests/test_install_isolation.sh` F テスト L676-690 | `bash -c "source ... && echo \"\$PATH\""` で呼び出し元の PATH が継承される。テスト環境の PATH に既に `.claude/bin` 相当のパスがある場合、重複チェック（F2）が誤検知する | 未対応 |
 | P318-L-001 | Low | `README.md` L37 | 永続化案内で絶対パス source を推奨しているが、リポジトリ移動・削除後の PATH 残骸リスクへの注意書きがない | 未対応 |
 | P318-L-002 | Low | `install.sh` / `generate_activate_script()` L280 | `chmod +x "$activate"` が source 専用スクリプトに実行権限を付与している。直接実行しても効果がなくユーザーを混乱させる | 未対応 |
-| P318-L-003 | Low | `tests/test_install_isolation.sh` L565 | `cleanup()` 内の `cd "$SCRIPT_DIR"` に `|| true` がない。`.claude/rules/testing.md` の cleanup 規約違反 | 未対応 |
+| P318-L-003 | Low | `tests/test_install_isolation.sh` L565 | `cleanup()` 内の `cd "$SCRIPT_DIR"` に `\|\| true` がない。`.claude/rules/testing.md` の cleanup 規約違反 | 未対応 |
 
 ### SECURITY.md 準拠確認
 

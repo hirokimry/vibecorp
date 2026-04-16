@@ -72,6 +72,6 @@
 
 ### 2026-04-16: Phase 3a Issue（install.sh macOS 統合）をプロダクト方針に合致と判定
 
-- **判断**: Issue「Phase 3a - install.sh macOS 統合（隔離レイヤ #293 先行）」を OK と判定した。full プリセット限定での配置、minimal/standard では除外（rm -rf）する設計、Linux 分割は #310 完了後という段階的リリース戦略のいずれも方針に整合する
+- **判断**: Issue「Phase 3a - install.sh macOS 統合（隔離レイヤ #293 先行）」を OK と判定した。full プリセット限定での配置、minimal/standard では既知ファイルのみ `rm -f` で除外しディレクトリは `rmdir` で空のときだけ削除（ユーザー追加ファイル保護）という設計、Linux 分割は #310 完了後という段階的リリース戦略のいずれも方針に整合する
 - **根拠**: 「導入の手軽さ」バリュー（install.sh だけで隔離が動く状態の実現）および「段階的成長」バリュー（Linux 依存の完了を待たず macOS 分を先行）に合致。full 専用のハード制限は decisions.md 2026-04-16 (#308) の判断と一貫している。specification.md の「Phase 1 では install.sh 未連携」という記述も本 Issue 完了で更新される予定であり、透明性バリューの観点からも問題なし
 - **代替案**: Phase 3 本体 (#311) として一括実装する案も考えられるが、Linux bwrap (#310) への依存でブロックされ続けるため、macOS 先行分割が適切
