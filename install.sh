@@ -407,6 +407,10 @@ check_unsupported_os() {
 # 隔離レイヤの依存を確認する（full プリセット時のみ呼ばれる）
 # Darwin は sandbox-exec の存在を検証、Linux は現在未対応のためスキップ
 check_isolation_deps() {
+  # 隔離レイヤは full プリセット専用。minimal / standard では依存チェック不要
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
   case "$OS" in
     darwin)
       if ! command -v sandbox-exec >/dev/null 2>&1; then
