@@ -171,7 +171,7 @@ full プリセットでは、計画ファイルが管轄領域に触れる場合
 | 課金影響 | `API call`, `model:`, `claude -p`, `ANTHROPIC_API_KEY`, `rate limit`, `従量`, `トークン消費` | CFO | accounting-analyst×3 |
 | セキュリティ | `auth`, `token`, `secret`, `encrypt`, `permission`, `credential`, `暗号` | CISO | security-analyst×3 |
 | 法務 | `dependency`, `LICENSE`, `third-party`, `規約`, `プライバシー`, `第三者` | CLO | legal-analyst×3 |
-| 組織運営 | `agents/`, `hooks/`, `rules/`, `skills/` | COO | （単独） |
+| 組織運営 | `agents/`, `hooks/`, `rules/`, `skills/` | SM | （単独） |
 | 仕様 | `MVV.md`, `specification.md`, `UX` | CPO | （単独） |
 | 技術選定 | `architecture`, `技術選定`, 新規依存バージョン | CTO | （単独） |
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_autopilot_approval_gate.sh — Phase 5: 3者承認ゲート（CISO + CPO + COO）のテスト
+# test_autopilot_approval_gate.sh — Phase 5: 3者承認ゲート（CISO + CPO + SM）のテスト
 # 使い方: bash tests/test_autopilot_approval_gate.sh
 
 set -euo pipefail
@@ -76,15 +76,15 @@ else
   fail "認証キーワード（permission/auth）が記載されていない"
 fi
 
-# --- テスト4: diagnose SKILL.md の COO フィルタ ---
+# --- テスト4: diagnose SKILL.md の SM フィルタ ---
 
 echo ""
-echo "--- テスト4: diagnose COO フィルタ ---"
+echo "--- テスト4: diagnose SM フィルタ ---"
 
-if grep -q 'COO フィルタリング' "$DIAGNOSE_FILE"; then
-  pass "diagnose に COO フィルタリングセクションが存在する"
+if grep -q 'SM フィルタリング' "$DIAGNOSE_FILE"; then
+  pass "diagnose に SM フィルタリングセクションが存在する"
 else
-  fail "diagnose に COO フィルタリングセクションが存在しない"
+  fail "diagnose に SM フィルタリングセクションが存在しない"
 fi
 
 if grep -q 'autonomous-restrictions.md' "$DIAGNOSE_FILE"; then
@@ -116,15 +116,15 @@ else
   fail "既存の CPO フィルタリングが削除されている"
 fi
 
-# --- テスト6: 3者承認ゲートでの COO 除外カウント表示 ---
+# --- テスト6: 3者承認ゲートでの SM 除外カウント表示 ---
 
 echo ""
 echo "--- テスト6: 3者除外カウント ---"
 
-if grep -q 'COO 除外' "$DIAGNOSE_FILE"; then
-  pass "diagnose に「COO 除外」の表示項目が存在する"
+if grep -q 'SM 除外' "$DIAGNOSE_FILE"; then
+  pass "diagnose に「SM 除外」の表示項目が存在する"
 else
-  fail "diagnose に「COO 除外」の表示項目が存在しない"
+  fail "diagnose に「SM 除外」の表示項目が存在しない"
 fi
 
 # --- テスト7: autopilot の3者承認ゲート言及 ---
@@ -144,15 +144,15 @@ else
   fail "autopilot が autonomous-restrictions.md を参照していない"
 fi
 
-# --- テスト8: 前提条件に COO 追加 ---
+# --- テスト8: 前提条件に SM 追加 ---
 
 echo ""
 echo "--- テスト8: 前提条件 ---"
 
-if awk '/^## 前提条件/{f=1; next} f && /^## /{f=0} f' "$DIAGNOSE_FILE" | grep -q 'COO'; then
-  pass "diagnose 前提条件に COO が追加されている"
+if awk '/^## 前提条件/{f=1; next} f && /^## /{f=0} f' "$DIAGNOSE_FILE" | grep -q 'SM'; then
+  pass "diagnose 前提条件に SM が追加されている"
 else
-  fail "diagnose 前提条件に COO が追加されていない"
+  fail "diagnose 前提条件に SM が追加されていない"
 fi
 
 # --- テスト9: コードブロック言語指定 ---

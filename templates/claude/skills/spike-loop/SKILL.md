@@ -9,7 +9,7 @@ description: "ship-parallel の E2E 検証を自動化する。ヘッドレス C
 
 ヘッドレス Claude で `/ship-parallel` を実行し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートを自律的にループする。
 
-**full プリセット専用**。ship-parallel と同じく COO エージェントが必要なため。
+**full プリセット専用**。ship-parallel と同じく SM エージェントが必要なため。
 
 ## 使用方法
 

@@ -94,7 +94,7 @@ fi
 echo ""
 echo "--- テスト5: C*O トリガー表 ---"
 
-for role in CFO CISO CLO COO; do
+for role in CFO CISO CLO SM; do
   if grep -q "| $role |" "$SKILL_FILE"; then
     pass "トリガー表に $role が記載されている"
   else
@@ -209,7 +209,7 @@ fi
 echo ""
 echo "--- テスト11: 参照エージェントファイルの存在 ---"
 
-for agent in cfo ciso clo coo cpo cto; do
+for agent in cfo ciso clo sm cpo cto; do
   agent_file="$PROJECT_DIR/templates/claude/agents/${agent}.md"
   if [[ -f "$agent_file" ]]; then
     pass "${agent}.md が存在する"

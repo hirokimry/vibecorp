@@ -300,7 +300,7 @@ echo ""
 
 echo "--- テスト8: 既存エージェント定義との共存確認 ---"
 
-EXISTING_AGENTS=("cto.md" "cpo.md" "coo.md" "cfo.md" "ciso.md" "clo.md")
+EXISTING_AGENTS=("cto.md" "cpo.md" "sm.md" "cfo.md" "ciso.md" "clo.md")
 
 for existing in "${EXISTING_AGENTS[@]}"; do
   if [ -f "$AGENTS_DIR/$existing" ]; then
@@ -362,7 +362,7 @@ else
 fi
 
 # トリガー表の主要 C*O
-META_COS=("CFO" "CISO" "CLO" "COO" "CPO" "CTO")
+META_COS=("CFO" "CISO" "CLO" "SM" "CPO" "CTO")
 for co in "${META_COS[@]}"; do
   if grep -q "$co" "$SKILL_FILE"; then
     pass "SKILL.md にトリガー表の ${co} が存在する"

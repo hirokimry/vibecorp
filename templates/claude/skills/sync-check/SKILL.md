@@ -65,7 +65,7 @@ CTO / CPO は常時起動する。
 | 課金影響 | `API call`, `model:`, `claude -p`, `ANTHROPIC_API_KEY`, `rate limit`, `従量`, `トークン消費`, `npx`, `bunx` | CFO | `docs/cost-analysis.md`, `knowledge/accounting/` |
 | セキュリティ | `auth`, `token`, `secret`, `encrypt`, `permission`, `credential`, `curl`, `wget`, `eval`, `exec` | CISO | `docs/SECURITY.md`, `knowledge/security/` |
 | 法務 | `dependency`, `LICENSE`, `third-party`, `規約`, `プライバシー`, `第三者`, `package.json`, `requirements.txt`, `go.mod` | CLO | `docs/POLICY.md`, `knowledge/legal/` |
-| 組織運営 | `.claude/agents/`, `.claude/hooks/`, `.claude/rules/`, `.claude/skills/` | COO | `docs/ai-organization.md`, `knowledge/coo/` |
+| 組織運営 | `.claude/agents/`, `.claude/hooks/`, `.claude/rules/`, `.claude/skills/` | SM | `docs/ai-organization.md`, `knowledge/sm/` |
 
 検出コマンド例（課金領域）:
 
@@ -125,7 +125,7 @@ git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY
 #### CPO（プロダクト）
 - docs/specification.md: ✅ OK
 
-#### CFO / CISO / CLO / COO（full プリセットかつキーワードヒット時のみ）
+#### CFO / CISO / CLO / SM（full プリセットかつキーワードヒット時のみ）
 - docs/cost-analysis.md: ✅ OK
 - docs/SECURITY.md: ✅ OK
 - docs/POLICY.md: ✅ OK
