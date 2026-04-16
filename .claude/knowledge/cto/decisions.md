@@ -184,3 +184,12 @@
 - **判断**: PATH シム方式・opt-in 設計・二重サンドボックス防止・OS ディスパッチャ抽象化の 4 点を `docs/design-philosophy.md` の「プロセス隔離（Phase 1 PoC）」セクションとして追記した
 - **根拠**: PR #317 / Issue #309 で `templates/claude/bin/` 配下の隔離レイヤが追加されたが、設計思想ドキュメントに未反映だった。sync-check で検出された不整合を解消する。Phase 1 PoC の段階に見合った概略レベルの記述にとどめ、過剰な加筆を避けた
 - **代替案**: 既存のフック設計パターンセクションに混在させる案も検討したが、隔離はフックとは独立した関心事であり独立セクションとして分離した
+
+### 2026-04-16: vibecorp-sandbox に symlink 解決 + 2 段階検証と WORKTREE ⊇ HOME 拒否を追加（PR #317 第 2 回レビュー対応）
+
+- **判断**: `canonicalize_dir()` ヘルパ（`(cd "$p" && pwd -P)`）を追加し、raw バリデート → canonicalize → canonicalize 後に再度 `validate_abs_path` を実行する 2 段階検証を採用。加えて、canonicalize 後に `case "${HOME_VALUE}/" in "${WORKTREE_VALUE}/"*)` で WORKTREE が HOME を包含するケースを入口で拒否する
+- **根拠**:
+  - macOS の `$TMPDIR` は `/var/folders/...` で `/private/var/...` の symlink であり、解決前後の文字列を混在比較すると包含判定が崩れる。canonicalize 後に比較することで symlink の違いによる誤判定を防ぐ
+  - `WORKTREE=/Users` のような設定は sandbox-exec の `(subpath (param "WORKTREE"))` を通じて `~/.ssh` / `~/.aws` を RW 境界に含めてしまう。書込み境界が HOME 全体に広がるのを防ぐため、入口で拒否する
+  - WORKTREE ⊇ HOME 包含判定に bash の `case` 文を使った理由: macOS のデフォルト bash は 3.2 であり `[[ =~ ]]` の正規表現は使えないが、`case` の glob パターンは bash 3.2 でも安定して動作する。`case "${HOME}/" in "${WORKTREE}/"*)` でサフィックス `/` を付けることで完全パスセグメント単位の一致判定ができ、誤マッチを防げる
+- **代替案**: `[[ "$HOME_VALUE" == "$WORKTREE_VALUE"/* ]]` のような bash 4+ の二重ブラケット glob 展開も機能するが、macOS 3.2 互換性を確保するため `case` 文を採用した

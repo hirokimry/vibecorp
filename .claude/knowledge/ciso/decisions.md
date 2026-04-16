@@ -66,3 +66,39 @@ VIBECORP_SANDBOXED=1 外部注入 → サンドボックス完全スキップ
 
 この経路は Phase 3（install.sh 配布）以降で全ユーザーに波及するため、
 Phase 1 で入口部分（サニタイズ・バイパス構造）を修正しておくことが重要。
+
+## 2026-04-16 — CR-001 CodeRabbit 第 2 回レビュー対応（WORKTREE ⊇ HOME 攻撃経路）
+
+### 判定
+
+承認（Phase 1 防御強化として対処済み）
+
+### 対象
+
+- `templates/claude/bin/vibecorp-sandbox`（境界検証ロジック）
+- `tests/test_isolation_macos.sh`（ネガティブテスト [8] 追加）
+
+### 合議状況
+
+CodeRabbit 第 2 回レビューで CR-001（Critical）として検出。
+S-001/S-011/T-003（WORKTREE の未サニタイズ注入）の追加攻撃経路として位置づける。
+
+### 攻撃チェーン分析
+
+WORKTREE ⊇ HOME 注入（`WORKTREE=/Users` / `$HOME/subdir` / symlink 経由）
+→ `(subpath (param "WORKTREE"))` が `~/.ssh`・`~/.aws`・`~/.gnupg` を RW 範囲に包含
+→ sandbox 境界崩壊
+→ SSH 鍵 / AWS クレデンシャル / GPG 鍵への書込
+
+初回レビュー（S-001/S-011/T-003）での等値比較バリデーションでは、symlink 経由・包含関係の攻撃経路を検出できなかった。
+
+### 修正内容と根拠
+
+- `canonicalize_dir()` で symlink を解決し、raw バリデーション → canonicalize → canonicalize 後の再バリデーションという 2 段階検証を実装
+- WORKTREE ⊇ HOME の包含チェックを `case` 文で実装し、包含が検出された場合は起動を拒否
+- 設計変更レベルではなく境界検証ロジックの精度向上と判断。Phase 1 スコープ内で対処が妥当
+- `test_isolation_macos.sh [8]` のネガティブテストにより攻撃チェーン封鎖の根拠を確認（13/13 passed）
+
+### 過去判断との一貫性
+
+初回判断（2026-04-16 Issue #309）の S-001/S-011/T-003「$WORKTREE/$HOME 未サニタイズ注入」の追加対応。矛盾なし。Phase 2 以降の制約（ネットワーク全許可、process-exec 無制限等）は引き続き Phase 2 で追跡予定。
