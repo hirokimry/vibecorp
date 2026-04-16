@@ -129,6 +129,22 @@ else
   fail "別 repo で同じディレクトリが生成された (${DIR_A})"
 fi
 
+# --- ケース 5b: 同 basename・別パスでも sha8 が異なる（worktree 想定） ---
+
+echo "Test 5b: 同 basename・別パスで sha8 が異なる"
+REPO_SAME_A="${TMPDIR_ROOT}/proj/repo"
+REPO_SAME_B="${TMPDIR_ROOT}/other/repo"
+mkdir -p "$REPO_SAME_A" "$REPO_SAME_B"
+( cd "$REPO_SAME_A" && git init -q . )
+( cd "$REPO_SAME_B" && git init -q . )
+DIR_SAME_A=$( cd "$REPO_SAME_A" && CLAUDE_PROJECT_DIR="$REPO_SAME_A" vibecorp_stamp_dir )
+DIR_SAME_B=$( cd "$REPO_SAME_B" && CLAUDE_PROJECT_DIR="$REPO_SAME_B" vibecorp_stamp_dir )
+if [ "$DIR_SAME_A" != "$DIR_SAME_B" ]; then
+  pass "同 basename・別パスで異なるディレクトリ生成 (A=${DIR_SAME_A##*/}, B=${DIR_SAME_B##*/})"
+else
+  fail "同 basename・別パスで同じディレクトリが生成された (${DIR_SAME_A})"
+fi
+
 # --- ケース 6: git 外（git toplevel 取得失敗）でフォールバック + stderr 警告 ---
 
 echo "Test 6: git 外で stderr 警告が出る"
@@ -187,6 +203,55 @@ if [ "$HASH" != "$HASH3" ]; then
 else
   fail "異なる入力で同じハッシュが生成された"
 fi
+
+# --- ケース 10: shasum → sha256sum → openssl フォールバック分岐の直接検証 ---
+#
+# PATH を fakebin に差し替え、各コマンドの可用性を段階的に切り替えて
+# _vibecorp_sha256_short が期待する順序でフォールバックすることを検証する。
+# システムの shasum/sha256sum/openssl が PATH から漏れ込むと fakebin より優先される
+# 可能性があるため、fakebin のみを PATH に置き、cut/awk のみ symlink で露出する。
+
+echo "Test 10: shasum → sha256sum → openssl フォールバック分岐"
+FAKEBIN="${TMPDIR_ROOT}/fakebin"
+mkdir -p "$FAKEBIN"
+
+# _vibecorp_sha256_short が使う非 builtin コマンドだけを露出させる
+ln -sf "$(command -v cut)" "${FAKEBIN}/cut"
+ln -sf "$(command -v awk)" "${FAKEBIN}/awk"
+
+# fake は #!/bin/bash を絶対パスで使用し、printf builtin で出力するだけ
+# （PATH に /bin, /usr/bin を含めずに済む）
+write_fake() {
+  local p="$1" line="$2"
+  {
+    printf '%s\n' "#!/bin/bash"
+    printf "printf '%%s\\\\n' %q\n" "$line"
+  } > "$p"
+  chmod +x "$p"
+}
+
+BASH_BIN="$(command -v bash)"
+run_short() {
+  PATH="$FAKEBIN" "$BASH_BIN" -c "source '${LIB}' && _vibecorp_sha256_short x"
+}
+
+# 10-1: shasum 優先
+write_fake "${FAKEBIN}/shasum" "aaaaaaaa  -"
+assert_eq "shasum 優先分岐" "aaaaaaaa" "$(run_short)"
+
+# 10-2: shasum 不在 → sha256sum へフォールバック
+rm -f "${FAKEBIN}/shasum"
+write_fake "${FAKEBIN}/sha256sum" "bbbbbbbb  -"
+assert_eq "sha256sum フォールバック分岐" "bbbbbbbb" "$(run_short)"
+
+# 10-3: shasum/sha256sum 不在 → openssl へフォールバック
+rm -f "${FAKEBIN}/sha256sum"
+write_fake "${FAKEBIN}/openssl" "SHA2-256(stdin)= ccccccccdddddddd"
+assert_eq "openssl フォールバック分岐" "cccccccc" "$(run_short)"
+
+# 10-4: 全不在 → "00000000" を返す
+rm -f "${FAKEBIN}/openssl"
+assert_eq "hash コマンド全不在で 00000000" "00000000" "$(run_short)"
 
 # --- 結果 ---
 
