@@ -101,3 +101,39 @@ fi
 ```
 
 理由: 絶対パスだと PATH を制限する形でテストから非存在状態を作り出せない。`command -v` なら `PATH=<minimal-bin>` で対象コマンドを含めない PATH を構成すれば「不在時の exit 動作」をテストできる（`tests/test_install_isolation.sh` の G セクションが実例）。
+
+## PATH 上の自分自身（ラッパー）を除外して本物バイナリを検索するパターン
+
+`command -v claude` は PATH 先頭のコマンドを返すため、vibecorp の PATH シム（`.claude/bin/claude`）が PATH に追加されている環境では、シム自身を返してしまう。
+
+`setup_claude_real_symlink()` のように「本物バイナリへの symlink を作る」処理では、自身が配置されているディレクトリを PATH から除外して再検索する必要がある。
+
+```bash
+setup_claude_real_symlink() {
+  local bin_dir="${REPO_ROOT}/.claude/bin"
+  local real_claude=""
+
+  # IFS=":" で PATH を分割して自身のディレクトリをスキップ
+  local IFS=":"
+  local p
+  for p in $PATH; do
+    [[ -z "$p" || "$p" == "$bin_dir" ]] && continue
+    if [[ -x "$p/claude" ]]; then
+      # symlink の場合はリンク先が振り返って vibecorp ラッパーを指していないか確認
+      local resolved
+      resolved=$(cd "$p" && readlink claude || echo "$p/claude")
+      [[ "$resolved" == *"/.claude/bin/claude" ]] && continue
+      real_claude="$p/claude"
+      break
+    fi
+  done
+
+  [[ -n "$real_claude" ]] && ln -sf "$real_claude" "${bin_dir}/claude-real"
+}
+```
+
+ポイント:
+
+- `bin_dir` と同じ PATH エントリはスキップ（`[[ "$p" == "$bin_dir" ]]`）
+- symlink 解決後のパスが再び vibecorp ラッパーを指していないかチェック（循環参照防止）
+- `readlink` が失敗するケース（非 symlink）は `|| echo "$p/claude"` でフォールバック
