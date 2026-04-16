@@ -311,11 +311,11 @@ assert_blocked "相対パス(./bin/gh) → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title \"test\" --body \"gh pr merge pattern\""}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "gh pr create (bodyにmerge含む) → 許可" "$OUTPUT"
 
-# 13. STAMP_FILE は $CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok に配置される
+# 13. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される
 write_vibecorp_yml
 touch "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok に配置される" "$OUTPUT"
+assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される" "$OUTPUT"
 
 # 14. 別の CLAUDE_PROJECT_DIR の state は影響しない（worktree 分離）
 ALT_DIR=$(mktemp -d)
@@ -428,11 +428,11 @@ assert_allowed "対象外コマンド(git commit) → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "対象外コマンド(git pull) → 許可" "$OUTPUT"
 
-# 17. STAMP_FILE は $CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される
+# 17. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される
 write_vibecorp_yml
 touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
-assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される" "$OUTPUT"
+assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される" "$OUTPUT"
 
 # 18. 別の CLAUDE_PROJECT_DIR の state は影響しない（worktree 分離）
 ALT_DIR=$(mktemp -d)

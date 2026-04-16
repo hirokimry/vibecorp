@@ -104,10 +104,11 @@ vibecorp_stamp_path() {
 # vibecorp_stamp_mkdir — スタンプディレクトリを 700 パーミッションで作成し、
 #                       作成したディレクトリパスを stdout に返す
 # スキル側のスタンプ発行ブロックで使用する。
+# 失敗（mkdir 拒否、ディスクフル等）は exit code で呼び出し元に伝播させる。
 vibecorp_stamp_mkdir() {
   local dir
-  dir="$(vibecorp_stamp_dir)"
-  mkdir -p "$dir"
+  dir="$(vibecorp_stamp_dir)" || return 1
+  mkdir -p "$dir" || return 1
   chmod 700 "$dir" 2>/dev/null || true
   printf '%s' "$dir"
 }
