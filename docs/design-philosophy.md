@@ -301,6 +301,24 @@ Claude Code のスキル実行アーキテクチャでは、コマンドの**終
 - 想定されるエラー（ファイルが存在しない等）は事前チェックで回避する
 - 回復不能なエラーはスキルを中断してユーザーに報告する
 
+## プロセス隔離（Phase 1 PoC）
+
+### PATH シム方式
+
+vibecorp は Claude Code 本体を書き換えず、ユーザーの PATH 先頭に薄いラッパー（`templates/claude/bin/claude`）を配置することでサンドボックスを挟み込む。本体ファイルの侵食がなく、UX や他のコマンドライフサイクルへの影響を最小限に留める。
+
+### opt-in 設計
+
+デフォルトは passthrough。`VIBECORP_ISOLATION=1` を明示した場合のみ sandbox 経由で起動する。Phase 1 PoC 段階のため、意図しない環境で隔離が有効になることを防ぐ。
+
+### 二重サンドボックス防止
+
+`VIBECORP_SANDBOXED=1` 環境変数と PPID チェーン検証の AND 条件で passthrough を判断する。環境変数単独では外部注入によるバイパスが可能なため、祖先プロセスに `sandbox-exec` が存在することをあわせて確認する。
+
+### OS ディスパッチャの抽象化
+
+OS 判定を `vibecorp-sandbox` に閉じ込め、Phase 1 では Darwin（macOS の sandbox-exec）のみ実装する。Linux 向けの bwrap 対応は Phase 2 以降の拡張余地として確保する。
+
 ## ガードレール
 
 - **Public Ready**: セキュリティ情報・特定プロダクト名・ローカルパス依存の混入禁止
