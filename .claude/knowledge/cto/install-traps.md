@@ -68,3 +68,36 @@ grep -q '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$f"
 3. `ls -lt .claude/hooks/` で mtime を確認し、最後に `install.sh` を走らせた時刻を把握する
 
 挙動が「テンプレートと違う」と感じたら、まず drift を疑って上記手順を試すこと。drift が実際の原因でなかった場合でも、同期を取った状態で調査を進められる。
+
+## ダウングレード時のユーザーファイル保護パターン
+
+プリセットダウングレード時（例: full → minimal）に vibecorp が配置したテンプレート由来ファイルを削除する際、以下のパターンを使う:
+
+```bash
+# 既知のテンプレート由来ファイルだけを個別に削除
+rm -f "${REPO_ROOT}/.claude/bin/claude"
+rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
+rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+# ディレクトリは rmdir で削除を試みる（非空なら失敗して残る）
+rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
+```
+
+ポイント:
+
+- **`rm -rf` 一括削除は禁止**: ユーザーが独自配置したファイル（例: `.claude/bin/my-custom-tool.sh`）を巻き込む
+- **`rmdir` はディレクトリが非空なら失敗する** — この性質を利用してユーザーファイルを自動保護する
+- テストで「ユーザー独自配置ファイルが保持される」ことを必ず検証する（`tests/test_install_isolation.sh` の E セクションが参考例）
+
+## テスト容易性のため外部依存は `command -v` で解決する
+
+install.sh が外部コマンド（`sandbox-exec` 等）の存在確認を行う場合、絶対パス（`/usr/bin/sandbox-exec`）ではなく `command -v sandbox-exec` を使う:
+
+```bash
+# 推奨: PATH モックでテスト可能
+if ! command -v sandbox-exec >/dev/null 2>&1; then
+  log_error "sandbox-exec が見つからない"
+  exit 1
+fi
+```
+
+理由: 絶対パスだと PATH を制限する形でテストから非存在状態を作り出せない。`command -v` なら `PATH=<minimal-bin>` で対象コマンドを含めない PATH を構成すれば「不在時の exit 動作」をテストできる（`tests/test_install_isolation.sh` の G セクションが実例）。
