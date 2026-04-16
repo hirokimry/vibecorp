@@ -207,3 +207,13 @@
   - `rm -rf` 一括削除: ユーザー独自ファイル保護ができないため却下
   - activate.sh を templates として配布: REPO_ROOT の動的埋め込みができないため却下
   - `SCRIPT_DIR` / `REPO_ROOT` の `pwd -P` 化（Analyst 2 が High 指摘）: リポジトリ改ざん前提の攻撃経路であり、Phase 1/2 sandbox 実行時防御が 2 段検証で保護するため Phase 2 追跡に格下げ（CISO メタレビュー判断）
+
+### 2026-04-16: claude TUI ハング修正 — sandbox-exec プロファイルへの `file-ioctl` 追加（Issue #320）
+
+- **判断**: `templates/claude/sandbox/claude.sb` に `(allow file-ioctl (subpath "/dev"))` を追加し、`~/.local/share/claude` RO 許可と `~/.claude.json` RW 許可（literal 限定）も追加する
+- **根拠**:
+  - `file-ioctl` は `file-read*` / `file-write*` とは独立した権限カテゴリ。`/dev` への read/write を許可しても ioctl は通過しない。claude（npm 配布）は TUI 起動時に `/dev/ttys*` への ioctl（TTY raw mode 切替）を実行するため、欠落するとプロセスは生きているが入力を受け付けない状態（TUI ハング）になる
+  - `~/.local/share/claude/versions/<version>/` は claude バイナリ実体の格納場所。RO 許可がなければ claude 自体が起動できない
+  - `~/.claude.json` は OAuth トークン・プロジェクト一覧を保存。RW 許可がなければ認証フローが機能しない
+  - 境界拡張の CR-001 観点での再評価（CISO メタレビュー 2026-04-16）: `/dev` ioctl 追加は既存の `file-read*/file-write-data` 許可の延長であり新たな攻撃面は限定的。`~/.local/share/claude` RO は `~/.npm` RO 許可と同等。`~/.claude.json` RW は既存の `~/.claude` 全 RW と同等の信頼境界
+- **代替案**: `file-ioctl` を特定の ioctl 番号に絞る方法も検討したが、ioctl 番号を SBPL で列挙する機能が存在しないため、`subpath "/dev"` への全 `file-ioctl` 許可が現実的な唯一の選択肢だった

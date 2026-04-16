@@ -75,3 +75,9 @@
 - **判断**: Issue「Phase 3a - install.sh macOS 統合（隔離レイヤ #293 先行）」を OK と判定した。full プリセット限定での配置、minimal/standard では既知ファイルのみ `rm -f` で除外しディレクトリは `rmdir` で空のときだけ削除（ユーザー追加ファイル保護）という設計、Linux 分割は #310 完了後という段階的リリース戦略のいずれも方針に整合する
 - **根拠**: 「導入の手軽さ」バリュー（install.sh だけで隔離が動く状態の実現）および「段階的成長」バリュー（Linux 依存の完了を待たず macOS 分を先行）に合致。full 専用のハード制限は decisions.md 2026-04-16 (#308) の判断と一貫している。specification.md の「Phase 1 では install.sh 未連携」という記述も本 Issue 完了で更新される予定であり、透明性バリューの観点からも問題なし
 - **代替案**: Phase 3 本体 (#311) として一括実装する案も考えられるが、Linux bwrap (#310) への依存でブロックされ続けるため、macOS 先行分割が適切
+
+### 2026-04-16: Issue #320 TUI ハング修正（claude.sb 境界拡張 + claude-real symlink）を OK と判定
+
+- **判断**: `dev/320_isolation_tui_fix` の変更（claude.sb への 4 境界追加、install.sh への `setup_claude_real_symlink()` 追加、SECURITY.md の既知制約更新）をプロダクト方針に合致と判定した
+- **根拠**: full + macOS のみで動作するハード制限が実装されており、decisions.md 2026-04-16 (#308) の「物理削除によるハード制限」方針と一貫。cleanup 処理への `claude-real` 除去追加でダウングレード残滓も防止。SECURITY.md に境界追加の根拠・既知制約・再検証推奨を明記しており「透明性」バリュー適合。specification.md L27 との整合も確認済み。Public Ready ガードレール違反なし
+- **代替案**: なし（バグ修正かつスコープ限定変更のため）

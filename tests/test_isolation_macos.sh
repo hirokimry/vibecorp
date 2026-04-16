@@ -293,6 +293,83 @@ fi
 
 # ============================================
 echo ""
+echo "=== [9] 実機 claude --version が sandbox 経由で通る（実機検証） ==="
+# ============================================
+# Issue #320 の修正検証: sandbox プロファイルが real claude のバイナリ実体読取
+# （~/.local/share/claude/**）と ~/.claude.json を許可しているかを確認する。
+#
+# このテストは実機の claude バイナリと実 HOME に依存するため、
+# ローカル開発環境専用の検証として位置付ける（CI では skip される）。
+#
+# テスト [1]〜[8] と異なり、ここでは FAKE_HOME ではなく実 HOME を使う。
+# 理由: real claude は ~/.local/share/claude/versions/<ver>/ を実 HOME 配下に
+# 配置するため、HOME を override すると本物 claude が見つからない。
+real_claude=""
+if command -v claude >/dev/null 2>&1; then
+  real_claude="$(command -v claude)"
+fi
+if [[ -z "$real_claude" || "$real_claude" == "$SHIM" || "$real_claude" == *"/.claude/bin/claude" ]]; then
+  echo "  SKIP: 実機 claude が見つからない（または vibecorp ラッパーのみ）ためスキップ"
+else
+  # 実 HOME を使う real-env テスト用の bin を別途用意し、claude-real だけを実機 claude に向ける
+  REAL_BIN="${TMPDIR_TEST}/real-bin"
+  REAL_WORKTREE="${TMPDIR_TEST}/real-worktree"
+  mkdir -p "$REAL_BIN" "$REAL_WORKTREE"
+  ln -sf "$real_claude" "${REAL_BIN}/claude-real"
+
+  status=0
+  (cd "$REAL_WORKTREE" && \
+    env -i \
+      HOME="$HOME" \
+      PATH="${REAL_BIN}:/usr/bin:/bin:/usr/sbin:/sbin" \
+      TMPDIR="${TMPDIR:-/tmp}" \
+      VIBECORP_ISOLATION=1 \
+      bash "$SHIM" --version \
+      > "$STDOUT_LOG" 2> "$STDERR_LOG") || status=$?
+
+  observed=$(cat "$STDOUT_LOG")
+  if [[ "$status" -eq 0 && "$observed" =~ [Cc]laude ]]; then
+    pass "実機 claude --version が sandbox 経由で通った (output='$observed')"
+  else
+    fail "実機 claude --version が sandbox 経由で失敗 (status=$status, stdout='$observed', stderr=$(cat "$STDERR_LOG"))"
+  fi
+fi
+
+# ============================================
+echo ""
+echo "=== [10] 実機 claude TUI が sandbox 経由で raw mode に入れる（expect） ==="
+# ============================================
+# Issue #320 の修正検証: sandbox プロファイルが /dev 配下の file-ioctl を許可しているか
+# （TTY raw mode 切替が拒否されないか）を確認する。
+#
+# expect で TUI を起動し、5 秒以内に ANSI エスケープシーケンス（TUI raw mode の証跡）が
+# 出力されることを検証する。expect 不在環境または実機 claude 不在環境では skip する。
+if ! command -v expect >/dev/null 2>&1; then
+  echo "  SKIP: expect がインストールされていないためスキップ"
+elif [[ -z "$real_claude" || "$real_claude" == "$SHIM" || "$real_claude" == *"/.claude/bin/claude" ]]; then
+  echo "  SKIP: 実機 claude が見つからないためスキップ"
+else
+  status=0
+  # expect スクリプトは raw mode 切替で出る ANSI ESC を検出した時点で成功とする
+  # （プロンプト内容や認証状態に依存しない最小限のシグナル）
+  expect -c "
+    set timeout 5
+    spawn env -i HOME=$HOME PATH=${REAL_BIN}:/usr/bin:/bin:/usr/sbin:/sbin TMPDIR=${TMPDIR:-/tmp} VIBECORP_ISOLATION=1 bash $SHIM
+    expect {
+      -re \"\\x1b\\\\\[\" { exit 0 }
+      timeout { exit 124 }
+      eof { exit 1 }
+    }
+  " > "$STDOUT_LOG" 2> "$STDERR_LOG" || status=$?
+  if [[ "$status" -eq 0 ]]; then
+    pass "実機 claude TUI が sandbox 経由で raw mode に入れた"
+  else
+    fail "実機 claude TUI が sandbox 経由で起動できない (status=$status, expect_log=$(tail -20 "$STDOUT_LOG"), stderr=$(cat "$STDERR_LOG"))"
+  fi
+fi
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [[ "$FAILED" -gt 0 ]]; then

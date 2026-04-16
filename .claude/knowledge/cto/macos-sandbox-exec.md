@@ -43,23 +43,89 @@ sandbox-exec -f "$profile" -D DARWIN_TMPDIR="$TMPDIR" -- claude ...
 (allow mach-lookup)
 ```
 
+### 4. `file-ioctl` は `file-read*` / `file-write*` と別の権限カテゴリ（Issue #320 で判明）
+
+`/dev` 配下に `file-read*` / `file-write-data` を許可しても、TTY raw mode の切替（`_IO('t', 20)` 等の ioctl）は通過しない。`file-ioctl` は独立した権限カテゴリとして明示的に許可が必要。
+
+claude（npm 配布）は TUI 起動時に `/dev/ttys*` への ioctl を実行するため、これが欠けると TUI がハングする（プロセス自体は生きているが入力を受け付けない状態）。
+
+```scheme
+;; file-read*/file-write* は ioctl をカバーしない
+(allow file-read* file-write-data
+  (subpath "/dev"))
+;; TTY raw mode 切替に必須
+(allow file-ioctl
+  (subpath "/dev"))
+```
+
+### 5. `literal` と `subpath` の使い分け
+
+- `(literal ...)` — 単一ファイルのみに適用。ディレクトリ配下には及ばない
+- `(subpath ...)` — ディレクトリ配下の全ファイル・ディレクトリに再帰的に適用
+
+単一ファイルへの限定許可（例: `~/.claude.json`）には `literal` を使い、意図せず広い範囲に権限を与えないようにする。
+
+```scheme
+;; ~/.claude.json 1ファイルのみ RW（~/.claude/ 全体には及ばない）
+(allow file-read* file-write*
+  (literal (string-append (param "HOME") "/.claude.json")))
+```
+
+HOME 相対パスは `(string-append (param "HOME") "/...")` で組み立てる。`~` 展開は SBPL では行われないため、`(literal "~/.claude.json")` は機能しない。
+
 ## デバッグ方法
+
+### `log show` vs `log stream`
 
 Sandbox の拒否ログは `/usr/bin/log` で確認する。zsh では `log` がビルトインに定義されているため、絶対パスを指定する。
 
-```bash
-/usr/bin/log show --predicate 'eventMessage CONTAINS "deny"' --last 5m
-```
-
-`sandbox` キーワードで絞り込むとノイズが減る:
+**`log stream` は使わない。** `log stream` はリアルタイムストリーミングだが、ログが大量に流れると処理が詰まって端末がフリーズすることがある。`log show --last` の方が安定して動作する。
 
 ```bash
-/usr/bin/log show --predicate 'eventMessage CONTAINS "deny" AND category == "sandbox"' --last 5m
+# 推奨: 直近 2 分の deny ログを一括取得（短時間指定でノイズを抑える）
+/usr/bin/log show --predicate 'process == "kernel" AND eventMessage CONTAINS "deny"' --last 2m
 ```
+
+`--last` の時間指定は短めにする（`2m`〜`5m` 程度）。長時間にするとシステム全体の deny ログが大量に混入してノイズになる。
+
+`sandbox` カテゴリで絞り込むとさらにノイズが減る:
+
+```bash
+/usr/bin/log show --predicate 'eventMessage CONTAINS "deny" AND category == "sandbox"' --last 2m
+```
+
+deny ログの典型的な形式:
+
+```text
+kernel: (Sandbox) deny(1) file-ioctl /dev/ttys003
+kernel: (Sandbox) deny(1) file-read-data /Users/xxx/.local/share/claude/versions/1.2.3/node_modules/...
+```
+
+## sandbox 経由でのバイナリテスト戦略
+
+### FAKE_HOME vs 実 HOME の役割分担（Issue #320 で確立）
+
+テスト用の一時 HOME（FAKE_HOME）を使うと、real binary が `~/.local/share/...` を参照するパスが存在しないため、実際の TUI 起動検証ができない。
+
+テストは目的によって HOME 戦略を分ける:
+
+| テスト種別 | HOME 戦略 | 目的 |
+|-----------|-----------|------|
+| sandbox 境界テスト（fake claude-real） | FAKE_HOME（テスト用一時ディレクトリ） | sandbox プロファイルの境界定義が正しいか。本物バイナリ不要 |
+| real binary E2E テスト | 実 HOME | 本物の claude が sandbox 経由で TUI 起動できるか |
+
+振り分けの実装例（`tests/test_isolation_macos.sh` の構造）:
+
+- テスト [1]〜[8]: FAKE_HOME で sandbox 境界・ラッパー動作を検証
+- テスト [9][10]: 実 HOME で実 claude バイナリの TUI 起動を検証（CI では skip）
+
+実 HOME を使うテストは CI（GitHub Actions）では `claude` 実機がないため skip が適切。ローカルでのみ実行する設計にする。
 
 ## vibecorp での位置づけ
 
 Phase 1 PoC（#309/#317）で `templates/claude/` 配下にテンプレートを配置し、Phase 3a（#318）で install.sh が `preset=full && OS=darwin` 時に自動配置するよう連携した。
+
+Issue #320 で TUI ハング問題（`file-ioctl` 欠落）を修正し、実用レベルに達した。
 
 現状の用途:
 
