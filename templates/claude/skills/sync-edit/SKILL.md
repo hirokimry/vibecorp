@@ -41,7 +41,7 @@ description: >
 |-------------|------------|---------|
 | 法務 | `docs/POLICY.md`、`.claude/knowledge/legal/` | 管轄のみ |
 | 経理 | `docs/cost-analysis.md`、`.claude/knowledge/accounting/` | 管轄のみ |
-| COO | `docs/ai-organization.md`、`.claude/knowledge/coo/` | 管轄のみ |
+| SM | `docs/ai-organization.md`、`.claude/knowledge/sm/` | 管轄のみ |
 
 **knowledge/ の記事** は、内容の領域に応じて該当する職種エージェントが編集する。
 
@@ -59,7 +59,7 @@ description: >
 mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
 echo "{role_id}" > "$CLAUDE_PROJECT_DIR/.claude/state/agent-role"
 
-role_id: cto / cpo / legal / accounting / coo
+role_id: cto / cpo / legal / accounting / sm
 
 ## あなたの管轄ファイル
 {管轄ファイルリスト}

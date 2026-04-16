@@ -166,15 +166,19 @@ assert_allowed "security が docs/SECURITY.md を編集 → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/cost-analysis.md"}}' | run_hook role-gate.sh)
 assert_blocked "security が docs/cost-analysis.md を編集 → deny" "$OUTPUT"
 
-# --- COO ロール（分析専用、docs/ 編集権限なし） ---
+# --- SM ロール（docs/ai-organization.md のみ編集可、他の docs/ は不可） ---
 echo ""
-echo "--- COO ロール ---"
+echo "--- SM ロール ---"
 
-write_role_file "coo"
+write_role_file "sm"
 
-# 14. COO が docs/ 配下を編集 → deny
+# 14. SM が docs/ai-organization.md を編集 → 許可
+OUTPUT=$(echo '{"tool_input":{"file_path":"docs/ai-organization.md"}}' | run_hook role-gate.sh)
+assert_allowed "SM が docs/ai-organization.md を編集 → 許可" "$OUTPUT"
+
+# 14b. SM が管轄外(docs/specification.md)を編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | run_hook role-gate.sh)
-assert_blocked "COO が docs/specification.md を編集 → deny" "$OUTPUT"
+assert_blocked "SM が docs/specification.md を編集 → deny" "$OUTPUT"
 
 # --- knowledge/ 配下 ---
 echo ""
@@ -192,11 +196,11 @@ write_role_file "cto"
 OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/cto/tech-principles.md"}}' | run_hook role-gate.sh)
 assert_allowed "CTO が knowledge/ 配下を編集 → 許可" "$OUTPUT"
 
-write_role_file "coo"
+write_role_file "sm"
 
-# 17. COO が knowledge/ 配下を編集 → 許可
-OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/coo/notes.md"}}' | run_hook role-gate.sh)
-assert_allowed "COO が knowledge/ 配下を編集 → 許可" "$OUTPUT"
+# 17. SM が knowledge/ 配下を編集 → 許可
+OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/sm/notes.md"}}' | run_hook role-gate.sh)
+assert_allowed "SM が knowledge/ 配下を編集 → 許可" "$OUTPUT"
 
 # --- docs/ 外のファイル ---
 echo ""

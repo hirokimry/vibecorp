@@ -146,8 +146,8 @@
 ### 2026-04-11: spike-loop を full プリセット専用とした判断（Issue #263 前提）
 
 - **判断**: spike-loop は full プリセット専用とし、standard 以下のプリセットへの配布は行わない
-- **根拠**: spike-loop は内部で `/ship-parallel` を呼び出し、ship-parallel は COO エージェントが担うチームオーケストレーションに依存する。COO エージェントは full プリセットにのみ含まれるため、プリセット自己完結の原則に従うと spike-loop も full 専用となる
-- **代替案**: preset 条件分岐型（`/issue` の CPO ゲートと同パターン）で standard では COO なしで動作させる案も検討したが、spike-loop の本質的な価値（ship-parallel の自動 E2E 検証）は COO なしでは成立しないため条件分岐による回避は意味をなさない
+- **根拠**: spike-loop は内部で `/ship-parallel` を呼び出し、ship-parallel は SM エージェントが担うチームオーケストレーションに依存する。SM エージェントは full プリセットにのみ含まれるため、プリセット自己完結の原則に従うと spike-loop も full 専用となる
+- **代替案**: preset 条件分岐型（`/issue` の CPO ゲートと同パターン）で standard では SM なしで動作させる案も検討したが、spike-loop の本質的な価値（ship-parallel の自動 E2E 検証）は SM なしでは成立しないため条件分岐による回避は意味をなさない
 
 ### 2026-04-11: --dangerously-skip-permissions のコンテナ化隔離方式の評価
 
