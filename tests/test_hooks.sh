@@ -256,12 +256,12 @@ echo "=== review-to-rules-gate.sh ==="
 write_vibecorp_yml
 
 # 1. スタンプなしで gh pr merge → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "スタンプなしで gh pr merge → deny" "$OUTPUT"
 
 # 2. スタンプありで gh pr merge → 許可
-touch ${STAMP_REVIEW_TO_RULES}
+touch "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "スタンプありで gh pr merge → 許可" "$OUTPUT"
 
@@ -273,37 +273,37 @@ OUTPUT=$(echo '{"tool_input":{"command":"gh pr view 80"}}' | run_hook review-to-
 assert_allowed "merge 以外(gh pr view) → 許可" "$OUTPUT"
 
 # 5. 先頭スペース付き merge → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"  gh pr merge 80 --squash"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "先頭スペース付き merge → deny" "$OUTPUT"
 
 # 6. 環境変数プレフィックス付き → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"GH_TOKEN=dummy gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
 # 7. 複数環境変数プレフィックス → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
 
 # 8. env ラッパー付き → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"env gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
 # 9. command ラッパー付き → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"command gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 
 # 10. 絶対パス(/usr/bin/gh) → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "絶対パス(/usr/bin/gh) → deny" "$OUTPUT"
 
 # 11. 相対パス(./bin/gh) → deny
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"./bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "相対パス(./bin/gh) → deny" "$OUTPUT"
 
@@ -334,7 +334,7 @@ rm -rf "$ALT_DIR"
 
 # 16. deny 出力の JSON 構造検証
 write_vibecorp_yml
-rm -f ${STAMP_REVIEW_TO_RULES}
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 VALID=true
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
@@ -354,12 +354,12 @@ echo "=== sync-gate.sh ==="
 write_vibecorp_yml
 
 # 1. スタンプなしで git push → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "スタンプなしで git push → deny" "$OUTPUT"
 
 # 2. スタンプありで git push → 許可
-touch ${STAMP_SYNC}
+touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "スタンプありで git push → 許可" "$OUTPUT"
 
@@ -367,52 +367,52 @@ assert_allowed "スタンプありで git push → 許可" "$OUTPUT"
 assert_file_not_exists "許可後にスタンプ削除確認" "${STAMP_SYNC}"
 
 # 4. git push（引数なし） → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push"}}' | run_hook sync-gate.sh)
 assert_blocked "git push（引数なし） → deny" "$OUTPUT"
 
 # 5. git push --delete → スタンプなしでも許可
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push --delete origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push --delete → スタンプなしでも許可" "$OUTPUT"
 
 # 6. git push -d → スタンプなしでも許可
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push -d origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push -d → スタンプなしでも許可" "$OUTPUT"
 
 # 7. 先頭スペース付き push → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"  git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "先頭スペース付き push → deny" "$OUTPUT"
 
 # 8. 環境変数プレフィックス付き → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"GIT_SSH_COMMAND=ssh git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
 # 9. 複数環境変数プレフィックス → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
 
 # 10. env ラッパー付き → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
 # 11. command ラッパー付き → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"command git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 
 # 12. 絶対パス(/usr/bin/git) → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "絶対パス(/usr/bin/git) → deny" "$OUTPUT"
 
 # 13. 相対パス(./bin/git) → deny
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"./bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "相対パス(./bin/git) → deny" "$OUTPUT"
 
@@ -450,7 +450,7 @@ rm -rf "$ALT_DIR"
 
 # 20. deny 出力の JSON 構造検証
 write_vibecorp_yml
-rm -f ${STAMP_SYNC}
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 VALID=true
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
