@@ -188,3 +188,97 @@ activate.sh 内の `bin_abs="$(cd "$(dirname "$script_path")" && pwd)"` は sour
 
 - #309 判断「Phase 3（install.sh 配布）以降で全ユーザーに波及するため、Phase 1 で入口部分（サニタイズ・バイパス構造）を修正しておくことが重要」に合致。Phase 3a として最低限の symlink 排除（P318-001）を適用する。
 - CR-001（WORKTREE ⊇ HOME 攻撃経路）の 2 段階検証は install.sh 配置後の sandbox 実行時に有効化されるため、Phase 3a の修正と干渉しない。
+
+## 2026-04-16 — Issue #320 Phase 1 sandbox 境界拡張（TUI ハング修正）
+
+### 判定
+
+条件付き承認（Phase D 実装時に 2 点の修正を反映後、Phase E-1 最終確認で承認）
+
+### 対象
+
+- `templates/claude/sandbox/claude.sb`（sandbox 境界拡張）
+- `install.sh`（`setup_claude_real_symlink` 追加）
+- `docs/SECURITY.md`（境界・制約表の更新）
+
+### 合議状況
+
+計画段階の事前 CISO レビュー。平社員層レビュー（単一モード・5件指摘）の妥当性評価を兼ねる。
+
+### 各境界拡張の評価
+
+**A: `~/.local/share/claude/**` RO 許可 — 条件付 OK**
+
+- バイナリ実体への RO のみ。書き換え不可。
+- 情報漏洩リスクは既存の `~/.npm` RO 許可と同等かそれ以下。
+- SECURITY.md 更新案の `.claude.json.lock` 残存（D-1 指摘）のみ要修正。
+
+**B: `~/.claude.json` / `.backup` RW 許可 — 条件付 OK**
+
+- `~/.claude` 全 RW 許可と同等の信頼境界。攻撃面は実質変わらない。
+- `(literal ...)` による単一ファイル限定は最小権限の観点で妥当。
+- SECURITY.md の既知制約表にこの評価根拠を一文追記することが条件（D-2 指摘）。
+
+**C: `/dev/**` file-ioctl 全許可 — 条件付 OK**
+
+- `/dev` への read/write-data は既に許可済み。ioctl 追加で新たな攻撃面は限定的。
+- `/dev/mem` は現代 macOS で無効化済み。IOKit との組み合わせは Phase 1 既知制約の範囲内。
+- 個別 ioctl 番号絞り込みは Phase 2 以降トラッキング。Phase 1 PoC として全許可は妥当。
+- SECURITY.md 既知制約表への追記が必要。
+
+### 平社員指摘の評価（全5件採用）
+
+1. `.claude.json.lock` 境界削除 — 採用。ただし SECURITY.md 更新案から `.lock` が除去されていない（D-1 指摘として別途修正が必要）。
+2. `-x` 単独検出条件 — 採用。セキュリティ観点で問題なし。
+3. minimal/standard 削除ブロック 2 箇所明記 — 採用。不完全な symlink 残存を防ぐために必須。
+4. `tests/test_install_claude_real.sh` 新規追加 — 採用。testing.md 規約必須。
+5. Phase B-3 検証を Phase B-4 テストでカバー — 採用。フェーズ対応の明確化として妥当。
+
+### 新規懸念
+
+- **D-1（SECURITY.md `.lock` 矛盾）:** 計画書の SECURITY.md 更新案（p.215 表）に `.claude.json.lock` が残存。Phase D-1 実装時に削除すること。
+- **D-2（B の評価根拠追記）:** `~/.claude.json` RW の既知制約説明に「`~/.claude` 全 RW と同等の信頼境界であり攻撃面は変わらない」旨を追記すること。
+- **D-3（`claude-real` symlink サプライチェーン）:** PATH 汚染環境での悪意バイナリ誤 symlink は Phase 1 許容範囲内。SECURITY.md の既知制約に「`claude-real` symlink 先の検証なし（PATH 汚染環境は対象外）」を追記推奨。
+
+### 攻撃チェーン分析
+
+今回の 3 境界拡張はいずれも Phase 1 既知制約（ネットワーク全許可・`~/.claude` 全 RW・process-exec 無制限）の範囲内にとどまる。CR-001 で封鎖した WORKTREE 境界・HOME 包含拒否の防御ロジックは `vibecorp-sandbox` スクリプト側に実装されており、`claude.sb` 境界拡張に影響されない。深刻度: 低。
+
+### 過去判断との一貫性
+
+- #309 および CR-001 判断と矛盾なし。Phase 1 スコープ内の境界拡張として整合している。
+- #318 の「Phase 3a 以降で全ユーザーに波及する」前提のもと、SECURITY.md へのドキュメント整合（D-1/D-2）が重要。
+
+### 最終評価（実装後）— 2026-04-16 Phase E-1
+
+#### 判定
+
+承認: セキュリティリスクなし
+
+#### D-1/D-2/D-3 反映確認
+
+- **D-1（`.lock` 除去）:** `claude.sb` に `.claude.json.lock` のエントリなし。SECURITY.md の書込境界表にも記載なし。反映済み。
+- **D-2（評価根拠追記）:** SECURITY.md の既知制約表の `~/.claude.json` 全 RW 許可行に「評価根拠: 既存の `~/.claude` 全 RW 許可と同等の信頼境界であり、攻撃面は実質変わらない（CISO メタレビュー 2026-04-16）」が明記されている。反映済み。
+- **D-3（symlink 検証なし）:** SECURITY.md の既知制約表に「`claude-real` symlink 先の検証なし」行として PATH 汚染環境はスコープ外である旨が追記されている。反映済み。
+
+#### 境界実装の整合性
+
+`claude.sb` を直接検証した。3 境界拡張（`~/.local/share/claude` RO / `~/.claude.json` `.backup` RW literal / `/dev` file-ioctl）はすべて計画通りに実装されており、計画段階で承認した範囲を超える権限追加は存在しない。
+
+#### テスト [9][10] の評価
+
+- テスト [9]: 実 HOME を使って sandbox 経由で `claude --version` を実行。`~/.local/share/claude` RO 許可と `~/.claude.json` RW 許可が破綻した場合に検出できる構造。
+- テスト [10]: `expect` で TUI を起動し ANSI エスケープ（raw mode 証跡）を検出。`/dev` file-ioctl 許可が破綻した場合に検出できる構造。
+- 両テストとも CI では実機 claude 不在により skip される設計で、SECURITY.md に明記済み。CI 偽陽性を生まない。
+
+#### CR-001 観点の再評価メモの一貫性
+
+SECURITY.md の再評価メモは攻撃チェーン分析と整合している。特に「CR-001 で封鎖した WORKTREE 境界・HOME 包含拒否の防御ロジックは `vibecorp-sandbox` スクリプト側に実装されており、`claude.sb` 境界拡張に影響されない」という記述は、境界拡張が防御ロジックを迂回しないことを明示しており妥当。
+
+#### 攻撃チェーン分析
+
+今回の実装によって新たな攻撃経路が生まれていないことを確認した。3 境界拡張はいずれも Phase 1 既知制約（ネットワーク全許可・`~/.claude` 全 RW・process-exec 無制限）の範囲内にとどまる。深刻度: 低。
+
+#### 過去判断との一貫性
+
+計画段階（条件付き承認）の条件がすべて充足された。矛盾なし。PR 作成に進んでよい。

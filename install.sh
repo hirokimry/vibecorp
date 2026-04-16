@@ -723,6 +723,7 @@ copy_managed_files() {
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
       rm -f "${REPO_ROOT}/.claude/bin/claude"
+      rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
@@ -743,6 +744,7 @@ copy_managed_files() {
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
       rm -f "${REPO_ROOT}/.claude/bin/claude"
+      rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
@@ -787,6 +789,52 @@ copy_isolation_templates() {
     cp "$src" "${sandbox_dir}/${name}"
     log_info "隔離レイヤを配置: .claude/sandbox/${name}"
   done
+}
+
+# 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full + Darwin のみ動作。
+# templates/claude/bin/claude は `exec claude-real "$@"` する設計のため、
+# ラッパー自身を除外して PATH 上の本物 claude を検出し、`.claude/bin/claude-real` に symlink する。
+# 検出失敗時は警告のみ出してインストールを続行する（passthrough は引き続き利用可能）。
+setup_claude_real_symlink() {
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+  if [[ "$OS" != "darwin" ]]; then
+    return 0
+  fi
+
+  local bin_dir="${REPO_ROOT}/.claude/bin"
+  local target="${bin_dir}/claude-real"
+  local real_claude=""
+
+  # PATH 上の本物 claude を検出する（自身のラッパーディレクトリは除外）
+  local IFS=":"
+  local p
+  for p in $PATH; do
+    [[ -z "$p" || "$p" == "$bin_dir" ]] && continue
+    if [[ -x "$p/claude" ]]; then
+      # symlink の場合は解決先が vibecorp ラッパーでないことを確認
+      local resolved
+      resolved=$(cd "$p" && readlink claude || echo "$p/claude")
+      [[ "$resolved" == *"/.claude/bin/claude" ]] && continue
+      real_claude="$p/claude"
+      break
+    fi
+  done
+
+  if [[ -z "$real_claude" ]]; then
+    log_skip "本物の claude が PATH 上に見つかりません。手動で symlink を貼ってください: ln -s <claude path> ${target}"
+    return 0
+  fi
+
+  # 既存の非 symlink ファイルは保持（ユーザーが手動配置した可能性があるため）
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    log_skip "${target} は既存ファイル（非 symlink）のため変更しません"
+    return 0
+  fi
+
+  ln -sf "$real_claude" "$target"
+  log_info "claude-real symlink を作成: .claude/bin/claude-real -> ${real_claude}"
 }
 
 # 隔離レイヤの activate スクリプトを生成する。full + Darwin のみ動作。
@@ -1659,6 +1707,7 @@ main() {
   remove_managed_files
   copy_managed_files
   copy_isolation_templates
+  setup_claude_real_symlink
   generate_activate_script
   generate_vibecorp_yml
 
