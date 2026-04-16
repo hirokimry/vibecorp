@@ -67,6 +67,27 @@ validate_abs_path() {
   esac
 }
 
+# ディレクトリを正規化する（symlink を解決して物理パスを返す）
+#
+# 目的:
+#   $PWD / $HOME / $TMPDIR が symlink 経由で別ディレクトリを指す場合でも、
+#   sandbox 境界の判定を canonical path で行うため。
+#   例: macOS の $TMPDIR は `/var/folders/.../T/` だが、これは `/private/var/...` の
+#   symlink。両者を混在比較すると包含判定が崩れる。
+canonicalize_dir() {
+  local p="$1"
+  local name="$2"
+  if [[ -z "$p" ]]; then
+    echo "vibecorp-sandbox: canonicalize_dir: $name が空です" >&2
+    exit 1
+  fi
+  if [[ ! -d "$p" ]]; then
+    echo "vibecorp-sandbox: $name のディレクトリが存在しません: $p" >&2
+    exit 1
+  fi
+  (cd "$p" && pwd -P)
+}
+
 case "$OS" in
   Darwin)
     if [[ ! -f "$PROFILE" ]]; then
@@ -75,20 +96,41 @@ case "$OS" in
     fi
 
     # sandbox-exec に渡す前に WORKTREE / HOME / DARWIN_TMPDIR を検証
-    WORKTREE_VALUE="$PWD"
-    HOME_VALUE="${HOME:-}"
-    DARWIN_TMPDIR_VALUE="${TMPDIR:-/tmp}"
+    # 1) raw 値の書式チェック（空文字 / 非絶対パス / ルート / .. / 危険文字）
+    WORKTREE_RAW="$PWD"
+    HOME_RAW="${HOME:-}"
+    DARWIN_TMPDIR_RAW="${TMPDIR:-/tmp}"
 
-    validate_abs_path "$WORKTREE_VALUE" "WORKTREE"
-    validate_abs_path "$HOME_VALUE" "HOME"
-    validate_abs_path "$DARWIN_TMPDIR_VALUE" "DARWIN_TMPDIR"
+    validate_abs_path "$WORKTREE_RAW" "WORKTREE"
+    validate_abs_path "$HOME_RAW" "HOME"
+    validate_abs_path "$DARWIN_TMPDIR_RAW" "DARWIN_TMPDIR"
 
-    # WORKTREE を HOME 自体にする設定は sandbox の書込境界を
-    # ホームディレクトリ全体に広げてしまうため拒否する
+    # 2) symlink を解決して canonical path に正規化
+    #    symlink 経由で HOME を別ディレクトリに飛ばして sandbox 境界をすり抜ける攻撃を防ぐ
+    WORKTREE_VALUE="$(canonicalize_dir "$WORKTREE_RAW" "WORKTREE")"
+    HOME_VALUE="$(canonicalize_dir "$HOME_RAW" "HOME")"
+    DARWIN_TMPDIR_VALUE="$(canonicalize_dir "$DARWIN_TMPDIR_RAW" "DARWIN_TMPDIR")"
+
+    # 3) canonicalize 後の値も危険文字・ルートを再検証
+    validate_abs_path "$WORKTREE_VALUE" "WORKTREE (canonicalized)"
+    validate_abs_path "$HOME_VALUE" "HOME (canonicalized)"
+    validate_abs_path "$DARWIN_TMPDIR_VALUE" "DARWIN_TMPDIR (canonicalized)"
+
+    # 4) WORKTREE を HOME 自体にする設定は sandbox の書込境界を
+    #    ホームディレクトリ全体に広げてしまうため拒否する
     if [[ "$WORKTREE_VALUE" == "$HOME_VALUE" ]]; then
       echo "vibecorp-sandbox: WORKTREE を HOME と同一にはできません: $WORKTREE_VALUE" >&2
       exit 1
     fi
+
+    # 5) WORKTREE が HOME を包含する（WORKTREE=/Users、WORKTREE が HOME の祖先 等）設定は、
+    #    (subpath (param "WORKTREE")) により ~/.ssh / ~/.aws / ~/.gnupg まで RW になるため拒否する
+    case "${HOME_VALUE}/" in
+      "${WORKTREE_VALUE}/"*)
+        echo "vibecorp-sandbox: WORKTREE が HOME を包含しています: WORKTREE=$WORKTREE_VALUE, HOME=$HOME_VALUE" >&2
+        exit 1
+        ;;
+    esac
 
     # macOS の sandbox-exec でコマンドを実行
     # - -f: プロファイルファイル

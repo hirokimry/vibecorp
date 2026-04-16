@@ -75,6 +75,13 @@ TMPDIR_TEST=$(mktemp -d -t vibecorp-isolation-XXXXXX)
 STDERR_LOG="${TMPDIR_TEST}/stderr.log"
 STDOUT_LOG="${TMPDIR_TEST}/stdout.log"
 
+# sandbox に DARWIN_TMPDIR として渡す専用ディレクトリ。
+# FAKE_HOME は TMPDIR_TEST 直下に作るため、ここと同じディレクトリを TMPDIR に設定すると
+# `(subpath (param "DARWIN_TMPDIR"))` の RW 許可で FAKE_HOME/.ssh までもが許可範囲になり、
+# 拒否テストが意味を失う。FAKE_HOME とは兄弟関係のサブディレクトリに分離する。
+SANDBOX_TMPDIR="${TMPDIR_TEST}/sandbox-tmp"
+mkdir -p "$SANDBOX_TMPDIR"
+
 cleanup() {
   rm -rf "$TMPDIR_TEST" || true
 }
@@ -151,7 +158,7 @@ run_shim() {
     env -i \
       HOME="$FAKE_HOME" \
       PATH="${FAKE_BIN}:/usr/bin:/bin:/usr/sbin:/sbin" \
-      TMPDIR="${TMPDIR:-/tmp}" \
+      TMPDIR="$SANDBOX_TMPDIR" \
       "${env_vars[@]}" \
       bash "$SHIM" "$@" \
       > "$STDOUT_LOG" 2> "$STDERR_LOG" || status=$?
@@ -159,7 +166,7 @@ run_shim() {
     env -i \
       HOME="$FAKE_HOME" \
       PATH="${FAKE_BIN}:/usr/bin:/bin:/usr/sbin:/sbin" \
-      TMPDIR="${TMPDIR:-/tmp}" \
+      TMPDIR="$SANDBOX_TMPDIR" \
       bash "$SHIM" "$@" \
       > "$STDOUT_LOG" 2> "$STDERR_LOG" || status=$?
   fi
@@ -263,6 +270,25 @@ if [[ "$status" -eq 0 && "$observed" == *"isolation-test"* ]]; then
   pass "sandbox 経由で ~/.gitconfig 読取成功"
 else
   fail "sandbox 経由で ~/.gitconfig 読取失敗 (status=$status, stdout='$observed', stderr=$(cat "$STDERR_LOG"))"
+fi
+
+# ============================================
+echo ""
+echo "=== [8] WORKTREE が HOME を包含する設定は vibecorp-sandbox が拒否する（ネガティブ） ==="
+# ============================================
+# WORKTREE（$PWD）が HOME の祖先だと (subpath (param "WORKTREE")) の RW 許可が
+# ~/.ssh / ~/.aws / ~/.gnupg まで広がってしまう。vibecorp-sandbox はこれを拒否するべき。
+# 参照: CodeRabbit PRRT_kwDORsBHcs57Uynh（Critical）/ audit-log.md 第4回レビュー
+#
+# TMPDIR_TEST（= canonicalized 共通親）を $PWD にして run_shim を起動すると、
+# FAKE_HOME（=${TMPDIR_TEST}/fake-home）が canonicalize 後に WORKTREE 配下となり
+# 包含判定に引っかかる。
+status=0
+(cd "$TMPDIR_TEST" && run_shim VIBECORP_ISOLATION=1 -- show-sandboxed) || status=$?
+if [[ "$status" -ne 0 && "$(cat "$STDERR_LOG")" == *"WORKTREE が HOME を包含"* ]]; then
+  pass "WORKTREE が HOME を包含する設定で vibecorp-sandbox が拒否 (status=${status})"
+else
+  fail "WORKTREE が HOME を包含する設定でも起動してしまった (status=${status}, stderr=$(cat "$STDERR_LOG"))"
 fi
 
 # ============================================

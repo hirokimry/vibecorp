@@ -28,10 +28,10 @@ macOS の `$TMPDIR` は `/var/folders/xx/.../T/` 形式で、`/tmp` や `/privat
 (allow file-read* file-write* (subpath (param "DARWIN_TMPDIR")))
 ```
 
-sandbox-exec 呼び出し時にパラメータとして渡す:
+sandbox-exec 呼び出し時にパラメータとして渡す（`-f` はプロファイルファイル、`-p` はプロファイル文字列）:
 
 ```bash
-sandbox-exec -p "$profile" -D DARWIN_TMPDIR="$TMPDIR" -- claude ...
+sandbox-exec -f "$profile" -D DARWIN_TMPDIR="$TMPDIR" -- claude ...
 ```
 
 ### 3. Mach IPC 系の許可
@@ -39,7 +39,7 @@ sandbox-exec -p "$profile" -D DARWIN_TMPDIR="$TMPDIR" -- claude ...
 `ipc-posix-shm` や `mach-lookup` など Mach IPC 系を許可しないと、Claude などのモダンなプロセスが起動できない。最低限以下が必要:
 
 ```scheme
-(allow ipc-posix-shm*)
+(allow ipc-posix-shm)
 (allow mach-lookup)
 ```
 
