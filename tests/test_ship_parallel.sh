@@ -125,6 +125,12 @@ else
   fail "SM 分析への言及がない"
 fi
 
+if ! grep -q 'COO' "$SKILL_FILE"; then
+  pass "COO への言及が残っていない（SM へ統一されている）"
+else
+  fail "COO への言及が残っている（SM へ統一されていない）"
+fi
+
 if grep -q 'worktree' "$SKILL_FILE"; then
   pass "worktree への言及がある"
 else

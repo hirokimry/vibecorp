@@ -27,12 +27,14 @@ AI組織構成は `docs/ai-organization.md` を参照すること。
 |--------|------------------------|
 | CTO | docs/specification.md（技術スタック部分） |
 | CPO | docs/specification.md（プロダクト仕様部分） |
-| SM | （docs/ 書き込み権限なし） |
+| SM | docs/ai-organization.md |
 | 分析員 legal | docs/POLICY.md |
 | 分析員 accounting | docs/cost-analysis.md |
 | 分析員 security | docs/SECURITY.md |
 
 統括職（CFO, CLO, CISO）は role-gate.sh に個別ケースを持たず、docs/ への直接書き込み権限がない。統括職は分析員チームのメタレビューを行う立場であり、docs/ の更新は分析員が実行する。
+
+SM は組織運営ドキュメント `docs/ai-organization.md` のみ書き込み可能。他の docs/ ファイルには権限を持たない。
 
 ### knowledge/ 書き込み権限
 

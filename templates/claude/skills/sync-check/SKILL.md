@@ -125,7 +125,7 @@ git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY
 #### CPO（プロダクト）
 - docs/specification.md: ✅ OK
 
-#### CFO / CISO / CLO / COO（full プリセットかつキーワードヒット時のみ）
+#### CFO / CISO / CLO / SM（full プリセットかつキーワードヒット時のみ）
 - docs/cost-analysis.md: ✅ OK
 - docs/SECURITY.md: ✅ OK
 - docs/POLICY.md: ✅ OK

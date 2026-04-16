@@ -166,13 +166,17 @@ assert_allowed "security が docs/SECURITY.md を編集 → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/cost-analysis.md"}}' | run_hook role-gate.sh)
 assert_blocked "security が docs/cost-analysis.md を編集 → deny" "$OUTPUT"
 
-# --- SM ロール（分析専用、docs/ 編集権限なし） ---
+# --- SM ロール（docs/ai-organization.md のみ編集可、他の docs/ は不可） ---
 echo ""
 echo "--- SM ロール ---"
 
 write_role_file "sm"
 
-# 14. SM が docs/ 配下を編集 → deny
+# 14. SM が docs/ai-organization.md を編集 → 許可
+OUTPUT=$(echo '{"tool_input":{"file_path":"docs/ai-organization.md"}}' | run_hook role-gate.sh)
+assert_allowed "SM が docs/ai-organization.md を編集 → 許可" "$OUTPUT"
+
+# 14b. SM が管轄外(docs/specification.md)を編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | run_hook role-gate.sh)
 assert_blocked "SM が docs/specification.md を編集 → deny" "$OUTPUT"
 
