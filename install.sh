@@ -766,7 +766,8 @@ copy_isolation_templates() {
 
   local src
   for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
-    [[ -f "$src" ]] || continue
+    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
+    [[ -f "$src" && ! -L "$src" ]] || continue
     local name
     name=$(basename "$src")
     cp "$src" "${bin_dir}/${name}"
@@ -775,7 +776,8 @@ copy_isolation_templates() {
   done
 
   for src in "${SCRIPT_DIR}/templates/claude/sandbox/"*; do
-    [[ -f "$src" ]] || continue
+    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
+    [[ -f "$src" && ! -L "$src" ]] || continue
     local name
     name=$(basename "$src")
     cp "$src" "${sandbox_dir}/${name}"

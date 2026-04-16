@@ -111,7 +111,8 @@ cleanup() {
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
     rm -rf "$TMPDIR_ROOT" || true
   fi
-  cd "$SCRIPT_DIR"
+  # trap cleanup EXIT 内での cd 失敗が set -e 下でテスト結果に影響しないよう無害化する
+  cd "$SCRIPT_DIR" || true
 }
 trap cleanup EXIT
 
