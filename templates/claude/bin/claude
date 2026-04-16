@@ -1,0 +1,36 @@
+#!/bin/bash
+# claude — PATH シム
+#
+# 目的:
+#   ユーザーの PATH 先頭に配置し、`claude` コマンドを透過的に
+#   vibecorp-sandbox 経由で起動するための薄いラッパー。
+#
+# 動作:
+#   - VIBECORP_SANDBOXED=1            → そのまま claude-real を exec（入れ子防止）
+#   - VIBECORP_ISOLATION が "1" 以外  → そのまま claude-real を exec（opt-in）
+#   - それ以外                        → vibecorp-sandbox claude-real ... を exec
+#
+# 制約:
+#   エラー抑制禁止（docs/design-philosophy.md）。
+#   2>/dev/null, || true 等は付けない。
+#
+# 参照: #293 / #309
+
+set -euo pipefail
+
+# 自身のディレクトリを解決（BSD/GNU 両対応のため readlink -f は使わない）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 1. サンドボックス内部から起動された場合は即 passthrough（二重サンドボックス防止）
+if [[ "${VIBECORP_SANDBOXED:-0}" == "1" ]]; then
+  exec claude-real "$@"
+fi
+
+# 2. opt-in が有効でない場合は passthrough
+#    （VIBECORP_ISOLATION が "1" 以外 — 0 / 未設定 / その他値 — はすべて素通し）
+if [[ "${VIBECORP_ISOLATION:-0}" != "1" ]]; then
+  exec claude-real "$@"
+fi
+
+# 3. 隔離モード: vibecorp-sandbox 経由で claude-real を起動
+exec "${SCRIPT_DIR}/vibecorp-sandbox" claude-real "$@"

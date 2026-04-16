@@ -1,0 +1,58 @@
+#!/bin/bash
+# vibecorp-sandbox — OS ディスパッチャ
+#
+# 目的:
+#   OS を判定し、対応するサンドボックス機構を使って引数で指定された
+#   コマンドを隔離実行する。Phase 1 では Darwin のみ実装する。
+#
+# 使い方:
+#   vibecorp-sandbox <command> [args...]
+#
+#   コマンドの解決は sandbox-exec 起動後の PATH に委ねる。
+#
+# 挙動:
+#   - Darwin: sandbox-exec -f <profile> -D ... env VIBECORP_SANDBOXED=1 "$@"
+#   - Linux:  stderr に Phase 2 未実装メッセージを出して exit 2
+#   - その他: 同上
+#
+# 参照: #293 / #309
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "vibecorp-sandbox: 使い方: vibecorp-sandbox <command> [args...]" >&2
+  exit 64
+fi
+
+# 自身のディレクトリを解決（sandbox profile を相対パスで特定するため）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE="${SCRIPT_DIR}/../sandbox/claude.sb"
+
+OS="$(uname -s)"
+
+case "$OS" in
+  Darwin)
+    if [[ ! -f "$PROFILE" ]]; then
+      echo "vibecorp-sandbox: sandbox プロファイルが見つかりません: $PROFILE" >&2
+      exit 1
+    fi
+    # macOS の sandbox-exec でコマンドを実行
+    # - -f: プロファイルファイル
+    # - -D KEY=VALUE: プロファイル内の (param "KEY") で参照される値
+    # - env VIBECORP_SANDBOXED=1: 子プロセスに二重サンドボックス防止フラグを伝播
+    exec /usr/bin/sandbox-exec \
+      -f "$PROFILE" \
+      -D "WORKTREE=$PWD" \
+      -D "HOME=$HOME" \
+      -D "DARWIN_TMPDIR=${TMPDIR:-/tmp}" \
+      env VIBECORP_SANDBOXED=1 "$@"
+    ;;
+  Linux)
+    echo "vibecorp-sandbox: Linux 向け実装は Phase 2 で追加されます（bwrap を使用予定）。" >&2
+    exit 2
+    ;;
+  *)
+    echo "vibecorp-sandbox: 未対応 OS: $OS（Phase 2 以降で検討）。" >&2
+    exit 2
+    ;;
+esac
