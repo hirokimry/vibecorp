@@ -57,6 +57,34 @@ path/to/vibecorp/install.sh --update
 
 `--name` と `--update` は同時に指定できない。
 
+### 隔離レイヤの有効化（full プリセット・macOS のみ）
+
+`full` プリセット + macOS 環境で `install.sh` を実行すると、`.claude/bin/` と `.claude/sandbox/` に macOS `sandbox-exec` ベースの隔離レイヤが自動配置される。
+
+有効化は opt-in（環境変数）で行う。bash / zsh のセッションで以下を実行する:
+
+```bash
+# PATH の先頭に .claude/bin を追加
+source .claude/bin/activate.sh
+
+# 隔離を有効化（Claude プロセスが sandbox-exec 経由で起動される）
+export VIBECORP_ISOLATION=1
+```
+
+永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する（プロジェクトの絶対パスで `source` する）。
+
+**動作確認:**
+
+```bash
+# shim のパスが返れば有効
+which claude
+# => /path/to/your-project/.claude/bin/claude
+```
+
+- fish 等の他シェルは未対応（bash / zsh のみ）
+- Windows ネイティブは非対応（WSL2 を使用）
+- Linux（bwrap 対応）は Phase 2 で対応予定
+
 ## プリセット
 
 組織規模に応じた3つのプリセットを用意している。

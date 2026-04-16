@@ -2698,6 +2698,127 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== T. OS 判定（Windows / unknown 非対応） ==="
+# ============================================
+# detect_os / check_unsupported_os の挙動を uname モックで検証する。
+# install.sh は set -e の下で uname -s を外部コマンドとして呼ぶため、
+# PATH 先頭にダミー uname を置けばモック可能。
+
+# T1. uname -s = Darwin なら続行（既存セットアップで動くことで検証済みだが、明示テスト）
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_darwin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "Darwin"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1 || EXIT_CODE=$?
+assert_exit_code "T1: uname=Darwin で install が成功する" "0" "$EXIT_CODE"
+
+# T2. uname -s = Linux なら続行
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_linux"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "Linux"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1 || EXIT_CODE=$?
+assert_exit_code "T2: uname=Linux で install が成功する" "0" "$EXIT_CODE"
+
+# T3. uname -s = MINGW64_NT-10.0-19045 なら exit 2（Windows ネイティブ）
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_mingw"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "MINGW64_NT-10.0-19045"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+ERR_LOG="$TMPDIR_ROOT/t3_err.log"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>"$ERR_LOG" || EXIT_CODE=$?
+assert_exit_code "T3: uname=MINGW64 で exit 2" "2" "$EXIT_CODE"
+assert_file_contains "T3: エラーメッセージに WSL2 案内が含まれる" "$ERR_LOG" "WSL2"
+
+# T4. uname -s = MSYS_NT-10.0 なら exit 2
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_msys"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "MSYS_NT-10.0"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1 || EXIT_CODE=$?
+assert_exit_code "T4: uname=MSYS_NT で exit 2" "2" "$EXIT_CODE"
+
+# T5. uname -s = CYGWIN_NT-10.0 なら exit 2
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_cygwin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "CYGWIN_NT-10.0"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>&1 || EXIT_CODE=$?
+assert_exit_code "T5: uname=CYGWIN_NT で exit 2" "2" "$EXIT_CODE"
+
+# T6. uname -s = FreeBSD なら exit 2（unknown OS）
+cleanup
+create_test_repo
+FAKE_BIN="$TMPDIR_ROOT/_fake_bin_freebsd"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/uname" <<'FAKESH'
+#!/bin/bash
+if [ "${1:-}" = "-s" ]; then
+  echo "FreeBSD"
+else
+  /usr/bin/uname "$@"
+fi
+FAKESH
+chmod +x "$FAKE_BIN/uname"
+EXIT_CODE=0
+ERR_LOG="$TMPDIR_ROOT/t6_err.log"
+PATH="${FAKE_BIN}:${PATH}" bash "$INSTALL_SH" --name test-proj --preset minimal > /dev/null 2>"$ERR_LOG" || EXIT_CODE=$?
+assert_exit_code "T6: uname=FreeBSD で exit 2" "2" "$EXIT_CODE"
+assert_file_contains "T6: エラーメッセージにサポート外の表記" "$ERR_LOG" "サポート外の OS"
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

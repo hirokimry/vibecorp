@@ -47,11 +47,31 @@ macOS 向けの Claude プロセス隔離レイヤ（Phase 1 PoC）を `template
 
 ### 有効化方法（opt-in）
 
+**full プリセット + macOS 環境**で `install.sh` を実行すると、導入先リポジトリに以下が自動配置される:
+
+- `.claude/bin/claude` — PATH シム
+- `.claude/bin/vibecorp-sandbox` — OS ディスパッチャ
+- `.claude/bin/activate.sh` — PATH 設定スクリプト
+- `.claude/sandbox/claude.sb` — sandbox-exec プロファイル
+
+導入先のリポジトリルートで bash / zsh セッションに以下を実行する:
+
 ```bash
+# PATH 先頭に .claude/bin を追加
+source .claude/bin/activate.sh
+
+# 隔離を有効化
 export VIBECORP_ISOLATION=1
 ```
 
-`VIBECORP_ISOLATION=1` を明示設定したときのみ sandbox 経由で起動する。未設定時は通常の claude 実行と同等。
+**動作確認:**
+
+```bash
+which claude
+# => /path/to/project/.claude/bin/claude
+```
+
+`VIBECORP_ISOLATION=1` を明示設定したときのみ sandbox 経由で起動する。未設定時は通常の claude 実行と同等。fish 等の他シェルは未対応（bash / zsh のみ）。Windows ネイティブは非対応（WSL2 を使用）。
 
 ### 書込・読取境界
 
@@ -86,7 +106,7 @@ export VIBECORP_ISOLATION=1
 | HOME 改ざん対策未実装 | CI 環境での `HOME` 変数改ざんに対する防御がない |
 | PROFILE の TOCTOU 対策未実装 | プロファイルファイルの読取から実行までの TOCTOU 競合に対する対策がない |
 
-これらは install.sh 連携（Phase 3）の前に Phase 2 で追跡予定。
+これらは Phase 2（Linux bwrap 統合、#310）以降で追跡予定。install.sh 連携は Phase 3a（#318）で実装済み。
 
 ## 事後監査
 

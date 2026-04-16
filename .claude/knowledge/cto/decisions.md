@@ -193,3 +193,17 @@
   - `WORKTREE=/Users` のような設定は sandbox-exec の `(subpath (param "WORKTREE"))` を通じて `~/.ssh` / `~/.aws` を RW 境界に含めてしまう。書込み境界が HOME 全体に広がるのを防ぐため、入口で拒否する
   - WORKTREE ⊇ HOME 包含判定に bash の `case` 文を使った理由: macOS のデフォルト bash は 3.2 であり `[[ =~ ]]` の正規表現は使えないが、`case` の glob パターンは bash 3.2 でも安定して動作する。`case "${HOME}/" in "${WORKTREE}/"*)` でサフィックス `/` を付けることで完全パスセグメント単位の一致判定ができ、誤マッチを防げる
 - **代替案**: `[[ "$HOME_VALUE" == "$WORKTREE_VALUE"/* ]]` のような bash 4+ の二重ブラケット glob 展開も機能するが、macOS 3.2 互換性を確保するため `case` 文を採用した
+
+### 2026-04-16: install.sh に macOS 隔離レイヤ配置ロジックを統合（Phase 3a / Issue #318）
+
+- **判断**: install.sh に `detect_os()` / `check_unsupported_os()` / `check_isolation_deps()` / `copy_isolation_templates()` / `generate_activate_script()` の 5 関数を追加し、`preset=full && OS=darwin` のときのみ `.claude/bin/{claude, vibecorp-sandbox, activate.sh}` と `.claude/sandbox/claude.sb` を自動配置する。minimal / standard へのダウングレード時は `rm -f` + `rmdir` でディレクトリを残したままユーザー独自配置ファイルを保護しつつ vibecorp 配置分のみ削除する
+- **根拠**:
+  - Phase 1（#309/#317）でテンプレートは templates/claude/ に存在するが install.sh からのコピー未実装だった。Phase 3 を一括で macOS + Linux にするのは #310（Linux bwrap）が未完了のためブロックされており、先に macOS だけ切り出す Phase 3a（#318）とすることで full プリセット + macOS ユーザーに最速で価値を届ける（「段階的成長」「導入の手軽さ」バリュー）
+  - `generate_activate_script` は templates としてファイル配布せず heredoc 生成する方式を採用。理由: activate.sh は `REPO_ROOT`（導入先ごとに異なる絶対パス）をスクリプト本文に埋め込む必要があり、静的テンプレートでは表現できないため
+  - ダウングレード時のクリーンアップは `rm -f` 既知ファイル + `rmdir` のみとする。`rm -rf` は「templates 由来ではないユーザー独自配置ファイル（例: `.claude/bin/my-custom-tool.sh`）」を巻き込む可能性があり、非空 `rmdir` が失敗することで非 vibecorp ファイルを自動的に保護できる設計とした
+  - symlink 検証（`[[ -f "$src" && ! -L "$src" ]]`）は security-analyst 3 名全員一致 Minor 指摘に基づく多層防御。Phase 1 sandbox 実行時の `canonicalize_dir()` + 包含チェックが本命の防御レイヤだが、入口（コピー時）で symlink を弾くことでサプライチェーン侵害時の配置経路を減らす
+- **代替案**:
+  - Phase 3 一括（macOS + Linux 同時対応）: #310 Linux bwrap 設計が未完のため待つ必要がある。CEO 承認のもと #318 で分割
+  - `rm -rf` 一括削除: ユーザー独自ファイル保護ができないため却下
+  - activate.sh を templates として配布: REPO_ROOT の動的埋め込みができないため却下
+  - `SCRIPT_DIR` / `REPO_ROOT` の `pwd -P` 化（Analyst 2 が High 指摘）: リポジトリ改ざん前提の攻撃経路であり、Phase 1/2 sandbox 実行時防御が 2 段検証で保護するため Phase 2 追跡に格下げ（CISO メタレビュー判断）

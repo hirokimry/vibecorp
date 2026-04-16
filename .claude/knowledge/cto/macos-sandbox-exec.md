@@ -59,11 +59,14 @@ Sandbox の拒否ログは `/usr/bin/log` で確認する。zsh では `log` が
 
 ## vibecorp での位置づけ
 
-decisions.md（2026-04-11）の記録通り、vibecorp では Docker（bind mount）方式を推奨としている。
-sandbox-exec は「補完的用途のみ」であり、必須要件には含めない。
+Phase 1 PoC（#309/#317）で `templates/claude/` 配下にテンプレートを配置し、Phase 3a（#318）で install.sh が `preset=full && OS=darwin` 時に自動配置するよう連携した。
 
-具体的には:
-- Docker が使えない環境でのローカル隔離テスト
-- CI 環境での軽量サンドボックス検証
+現状の用途:
 
-の用途に限定して使用する。
+- full プリセット + macOS 環境で install.sh を実行すると `.claude/bin/` / `.claude/sandbox/` が自動配置される
+- ユーザーが導入先リポジトリで `source .claude/bin/activate.sh && export VIBECORP_ISOLATION=1` を実行したときのみ sandbox 経由で claude が起動する（opt-in）
+- `VIBECORP_ISOLATION` 未設定時は通常の claude 実行と同等
+
+Phase 2（#310）で Linux bwrap を統合予定。Windows ネイティブは非対応（WSL2 を使用）。
+
+Docker（bind mount）方式との関係は decisions.md（2026-04-11）の記録通り「補完的用途」の位置づけを維持する。Docker が使えない macOS ホスト上で Phase 3a 連携により軽量な隔離が提供される形となる。

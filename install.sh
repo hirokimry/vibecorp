@@ -15,6 +15,9 @@ COPIED_KNOWLEDGE=""
 COPIED_RULES=""
 COPIED_ISSUE_TEMPLATES=""
 
+# OS 判定結果（detect_os で設定）。set -u 環境下で未初期化参照を防ぐため空文字で初期化する
+OS=""
+
 # ── ユーティリティ ─────────────────────────────────────
 
 log_info()     { printf '\033[32m[INFO]\033[0m     %s\n' "$*" >&2; }
@@ -375,6 +378,52 @@ validate_language() {
   fi
 }
 
+# uname -s の出力から OS 種別を返す純粋関数（副作用なし）
+detect_os() {
+  local kernel
+  kernel=$(uname -s)
+  case "$kernel" in
+    Darwin) echo "darwin" ;;
+    Linux)  echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    *)      echo "unknown" ;;
+  esac
+}
+
+# サポート外 OS の場合に exit 2（Windows ネイティブ・FreeBSD 等）
+check_unsupported_os() {
+  case "$OS" in
+    windows)
+      log_error "Windows ネイティブは非対応です。WSL2 を使用してください。"
+      exit 2
+      ;;
+    unknown)
+      log_error "サポート外の OS です（$(uname -s)）。macOS または Linux を使用してください。"
+      exit 2
+      ;;
+  esac
+}
+
+# 隔離レイヤの依存を確認する（full プリセット時のみ呼ばれる）
+# Darwin は sandbox-exec の存在を検証、Linux は現在未対応のためスキップ
+check_isolation_deps() {
+  # 隔離レイヤは full プリセット専用。minimal / standard では依存チェック不要
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+  case "$OS" in
+    darwin)
+      if ! command -v sandbox-exec >/dev/null 2>&1; then
+        log_error "sandbox-exec が見つかりません。インストールを中断します。"
+        exit 1
+      fi
+      ;;
+    linux)
+      log_skip "Linux 隔離レイヤは現在未対応のためスキップします"
+      ;;
+  esac
+}
+
 check_prerequisites() {
   if ! command -v jq >/dev/null 2>&1; then
     log_error "jq が必要です。インストール: brew install jq"
@@ -671,6 +720,14 @@ copy_managed_files() {
       rm -rf "${skills_dir}/autopilot"
       rm -rf "${skills_dir}/spike-loop"
       rm -rf "${agents_dir}"
+      # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
+      # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
+      rm -f "${REPO_ROOT}/.claude/bin/claude"
+      rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
+      rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
+      rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
     standard)
       rm -f "${hooks_dir}/role-gate.sh"
@@ -683,10 +740,95 @@ copy_managed_files() {
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
+      # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
+      # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
+      rm -f "${REPO_ROOT}/.claude/bin/claude"
+      rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
+      rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
+      rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
   esac
 
   log_info "テンプレートをコピー (preset: ${PRESET})"
+}
+
+# 隔離レイヤ（bin/sandbox）を配置する。full + Darwin のみ動作。
+# Linux は Phase 2 (#310) で bwrap 対応を追加予定のため、現時点ではスキップ。
+copy_isolation_templates() {
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+  if [[ "$OS" != "darwin" ]]; then
+    return 0
+  fi
+
+  local bin_dir="${REPO_ROOT}/.claude/bin"
+  local sandbox_dir="${REPO_ROOT}/.claude/sandbox"
+  mkdir -p "$bin_dir" "$sandbox_dir"
+
+  local src
+  for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
+    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
+    [[ -f "$src" && ! -L "$src" ]] || continue
+    local name
+    name=$(basename "$src")
+    cp "$src" "${bin_dir}/${name}"
+    chmod +x "${bin_dir}/${name}"
+    log_info "隔離レイヤを配置: .claude/bin/${name}"
+  done
+
+  for src in "${SCRIPT_DIR}/templates/claude/sandbox/"*; do
+    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
+    [[ -f "$src" && ! -L "$src" ]] || continue
+    local name
+    name=$(basename "$src")
+    cp "$src" "${sandbox_dir}/${name}"
+    log_info "隔離レイヤを配置: .claude/sandbox/${name}"
+  done
+}
+
+# 隔離レイヤの activate スクリプトを生成する。full + Darwin のみ動作。
+# source すると PATH 先頭に .claude/bin を追加する（bash / zsh 対応）。
+generate_activate_script() {
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+  if [[ "$OS" != "darwin" ]]; then
+    return 0
+  fi
+
+  local bin_dir="${REPO_ROOT}/.claude/bin"
+  local activate="${bin_dir}/activate.sh"
+  mkdir -p "$bin_dir"
+
+  cat > "$activate" <<'EOF'
+# vibecorp 隔離レイヤ activate スクリプト
+# 使用: source .claude/bin/activate.sh
+# 対応: bash / zsh
+
+_vibecorp_activate() {
+  local script_path
+  # shellcheck disable=SC2296
+  script_path="${BASH_SOURCE[0]:-${(%):-%x}}"
+  local bin_abs
+  bin_abs="$(cd "$(dirname "$script_path")" && pwd)"
+  case ":$PATH:" in
+    *":$bin_abs:"*) ;;
+    *) PATH="$bin_abs:$PATH"; export PATH ;;
+  esac
+}
+_vibecorp_activate
+unset -f _vibecorp_activate
+EOF
+
+  if [[ ! -f "$activate" ]]; then
+    log_error "activate.sh の生成に失敗しました: ${activate}"
+    exit 1
+  fi
+  chmod +x "$activate"
+  log_info "activate スクリプトを生成: .claude/bin/activate.sh"
 }
 
 generate_plan_yaml_section() {
@@ -1489,6 +1631,11 @@ show_version_diff() {
 
 main() {
   parse_args "$@"
+
+  # OS 判定（Windows ネイティブ・unknown OS はここで exit 2 する）
+  OS=$(detect_os)
+  check_unsupported_os
+
   check_prerequisites
   detect_repo_root
 
@@ -1505,8 +1652,14 @@ main() {
   validate_name
   validate_preset
   validate_language
+
+  # full プリセット時は隔離レイヤの依存を確認（sandbox-exec 等）
+  check_isolation_deps
+
   remove_managed_files
   copy_managed_files
+  copy_isolation_templates
+  generate_activate_script
   generate_vibecorp_yml
 
   if [[ "$UPDATE_MODE" == true ]]; then
