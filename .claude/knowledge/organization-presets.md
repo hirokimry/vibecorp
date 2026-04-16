@@ -47,6 +47,9 @@ C-suite 全員 + チーム分析員による組織運営。
 - docs/: specification, POLICY, SECURITY, cost-analysis, ai-organization
 - knowledge/: 全ロール（principles + decisions）
 
+注: COO は主Claude（常駐）そのものであり、召喚型のエージェントとして `agents/` には配置されない。
+全体の役割モデル（CEO / COO / SM / C*O）は `.claude/rules/roles.md` を参照。
+
 ポイント:
 - チーム分析員は「同一プロンプトで3回独立実行 → C-suiteがメタレビュー」パターン
 - role-gate でエージェントごとに編集可能ファイルを制限
