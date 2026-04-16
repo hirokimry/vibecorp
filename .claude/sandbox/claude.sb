@@ -1,0 +1,69 @@
+;; claude.sb — macOS sandbox-exec プロファイル（vibecorp 隔離レイヤ Phase 1）
+;;
+;; 目的:
+;;   Claude プロセスからホストマシンへの不用意な書き込み・秘匿ファイル読取を
+;;   防ぐ最低限の境界を敷く。
+;;
+;; 境界:
+;;   書込許可 : worktree, ~/.claude, /tmp, $TMPDIR
+;;   読取許可 : /usr, /System, /Library, /opt/homebrew, /usr/local,
+;;              ~/.gitconfig, ~/.config/gh, ~/.npm
+;;   拒否    : ~/.ssh, ~/.aws, ~/.gnupg, ~/Library/Keychains（deny default で自動）
+;;   ネット  : 全許可（host allowlist は将来検討）
+;;   プロセス : fork / exec は許可
+;;
+;; パラメータ（-D KEY=VALUE で注入）:
+;;   WORKTREE       — ホスト上の作業ツリールート
+;;   HOME           — ユーザーホーム
+;;   DARWIN_TMPDIR  — macOS の $TMPDIR（通常 /var/folders/.../T/）
+;;
+;; 参照: #293 / #309
+
+(version 1)
+(deny default)
+
+;; ----- subprocess -----
+(allow process-fork)
+(allow process-exec)
+
+;; ----- network -----
+(allow network*)
+
+;; ----- メタ情報 / IPC -----
+(allow file-read-metadata)
+(allow sysctl-read)
+(allow mach-lookup)
+(allow signal (target self))
+(allow ipc-posix-shm)
+(allow iokit-open (iokit-user-client-class "IOSurfaceSendRight"))
+
+;; ----- RW: worktree, ~/.claude, /tmp, $TMPDIR -----
+(allow file-write* file-read*
+  (subpath (param "WORKTREE"))
+  (subpath (string-append (param "HOME") "/.claude"))
+  (subpath "/tmp")
+  (subpath "/private/tmp")
+  (subpath (param "DARWIN_TMPDIR")))
+
+;; ----- /dev: 標準入出力・TTY・null デバイス等に必要 -----
+(allow file-read* file-write-data
+  (subpath "/dev"))
+
+;; ----- RO: システム・ランタイム（bash・libc・ランタイムリンカ等の起動に必要） -----
+;; (literal "/") はプロセスの初期パス解決（ルート traversal）に必要
+(allow file-read*
+  (literal "/")
+  (subpath "/usr")
+  (subpath "/bin")
+  (subpath "/sbin")
+  (subpath "/System")
+  (subpath "/Library")
+  (subpath "/opt/homebrew")
+  (subpath "/usr/local")
+  (subpath "/private/etc")
+  (subpath "/private/var/db")
+  (subpath "/private/var/folders")
+  ;; ユーザー設定（RO）
+  (literal (string-append (param "HOME") "/.gitconfig"))
+  (subpath (string-append (param "HOME") "/.config/gh"))
+  (subpath (string-append (param "HOME") "/.npm")))
