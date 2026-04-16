@@ -327,6 +327,10 @@ OS 判定を `vibecorp-sandbox` に閉じ込め、Phase 1 では Darwin（macOS 
 
 `WORKTREE=/Users` のような設定は sandbox-exec の `(subpath (param "WORKTREE"))` 経由で `~/.ssh` / `~/.aws` を書込み対象に含めてしまう。canonicalize 後に `case "${HOME_VALUE}/" in "${WORKTREE_VALUE}/"*)` で WORKTREE が HOME を包含するケースを入口で拒否する。
 
+### 境界定義の正典
+
+macOS sandbox-exec プロファイルの許可・拒否境界（書込許可パス・読取許可パス・ioctl 許可デバイス等）の詳細は `.claude/sandbox/claude.sb` のコメントを正として参照すること。本セクションは設計思想の記述であり、個々のパスを逐次列挙するスコープではない。
+
 ## ガードレール
 
 - **Public Ready**: セキュリティ情報・特定プロダクト名・ローカルパス依存の混入禁止
