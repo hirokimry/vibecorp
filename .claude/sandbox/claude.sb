@@ -5,9 +5,10 @@
 ;;   防ぐ最低限の境界を敷く。
 ;;
 ;; 境界:
-;;   書込許可 : worktree, ~/.claude, /tmp, $TMPDIR
+;;   書込許可 : worktree, ~/.claude, ~/.claude.json (+.backup), /tmp, $TMPDIR
 ;;   読取許可 : /usr, /System, /Library, /opt/homebrew, /usr/local,
-;;              ~/.gitconfig, ~/.config/gh, ~/.npm
+;;              ~/.gitconfig, ~/.config/gh, ~/.npm, ~/.local/share/claude
+;;   ioctl   : /dev 配下（TTY raw mode 切替に必須）
 ;;   拒否    : ~/.ssh, ~/.aws, ~/.gnupg, ~/Library/Keychains（deny default で自動）
 ;;   ネット  : 全許可（host allowlist は将来検討）
 ;;   プロセス : fork / exec は許可
@@ -45,8 +46,18 @@
   (subpath "/private/tmp")
   (subpath (param "DARWIN_TMPDIR")))
 
+;; ----- RW: claude グローバル設定（OAuth トークン・プロジェクト一覧等）-----
+;; literal で単一ファイルに限定し、~/.local 全体や ~/.config 全体には拡張しない
+;; .claude.json.backup は claude が更新時に生成するバックアップファイル
+(allow file-read* file-write*
+  (literal (string-append (param "HOME") "/.claude.json"))
+  (literal (string-append (param "HOME") "/.claude.json.backup")))
+
 ;; ----- /dev: 標準入出力・TTY・null デバイス等に必要 -----
+;; file-ioctl は TTY raw mode 切替（_IO('t', 20) 等）に必須
 (allow file-read* file-write-data
+  (subpath "/dev"))
+(allow file-ioctl
   (subpath "/dev"))
 
 ;; ----- RO: システム・ランタイム（bash・libc・ランタイムリンカ等の起動に必要） -----
@@ -66,4 +77,6 @@
   ;; ユーザー設定（RO）
   (literal (string-append (param "HOME") "/.gitconfig"))
   (subpath (string-append (param "HOME") "/.config/gh"))
-  (subpath (string-append (param "HOME") "/.npm")))
+  (subpath (string-append (param "HOME") "/.npm"))
+  ;; claude バイナリ実体（npm global の ~/.local/share/claude/versions/<ver>/）
+  (subpath (string-append (param "HOME") "/.local/share/claude")))
