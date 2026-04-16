@@ -28,7 +28,7 @@ macOS の `$TMPDIR` は `/var/folders/xx/.../T/` 形式で、`/tmp` や `/privat
 (allow file-read* file-write* (subpath (param "DARWIN_TMPDIR")))
 ```
 
-sandbox-exec 呼び出し時にパラメータとして渡す（`-f` はプロファイルファイル、`-p` はプロファイル文字列）:
+sandbox-exec 呼び出し時にパラメータとして渡す（`-f` はプロファイルファイルを指定するオプション。vibecorp の実装では `-f` のみを使用する）:
 
 ```bash
 sandbox-exec -f "$profile" -D DARWIN_TMPDIR="$TMPDIR" -- claude ...
