@@ -157,7 +157,7 @@ echo "[knowledge-pr] PR #${PR_NUMBER} を作成" >&2
 ### 6. auto-merge 設定
 
 ```bash
-if ! cd "$BUFFER_DIR" && gh pr merge "$PR_NUMBER" --squash --auto; then
+if ! (cd "$BUFFER_DIR" && gh pr merge "$PR_NUMBER" --squash --auto); then
   echo "[knowledge-pr] auto-merge 設定失敗。手動で gh pr merge してください" >&2
   exit 5
 fi

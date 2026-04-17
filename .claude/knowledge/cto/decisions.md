@@ -262,7 +262,21 @@
 - **判断**:
   - sandbox（SBPL）と Hook は制御層が異なる。sandbox は OS リソース境界（ファイルシステム・ネットワーク）を物理封じ込めし、Hook は Claude Code のツール意味論（どのパス・どのコマンド）を制御する。両者は直交する二層防御であり「sandbox があれば Hook を削減できる」は原則として成立しない
   - 唯一の削減候補は `team-auto-approve.sh`。この Hook の目的は「承認プロンプトを消す」ことであり、`--dangerously-skip-permissions` が前提なら存在意義がなくなる。full + macOS sandbox + VIBECORP_ISOLATION=1 有効時のみ、install.sh の配置条件から除外することを推奨する
-  - ワークフローゲート 4 本（sync-gate / review-gate / session-harvest-gate / review-to-rules-gate）はプロセス強制であってセキュリティではなく、sandbox・skip-permissions と直交する。standard 以上で維持必須
+  - ワークフローゲート 2 本（sync-gate / review-gate）はプロセス強制であってセキュリティではなく、sandbox・skip-permissions と直交する。standard 以上で維持必須（review-to-rules-gate / session-harvest-gate は #328 知見閉ループ再設計でスキル任意実行化に伴い廃止）
   - セキュリティ系 Hook（protect-files / protect-branch / role-gate / block-api-bypass / diagnose-guard）はツール意味論レベルの制御を担い、sandbox では代替不可能。全プラン維持必須
 - **根拠**: sandbox の subpath 制御は WORKTREE 境界を設定するが、WORKTREE 内の特定ファイルの除外・現在ブランチの文脈判断・エージェントのロール状態・コマンドの意味論制御は SBPL に記述できない。Hook が担保している制御を sandbox に移植する手段がそもそも存在しない
 - **代替案**: team-auto-approve を全プランで削除し、全ユーザーに skip-permissions を要求する案も検討したが、MVV「導入の手軽さ」「段階的成長」に反するため却下。full 専用の条件分岐が最小変更・最大効果の判断
+
+### 2026-04-18: CodeRabbit による cross-PR 統合問題検出の技術評価
+
+- **判断**: CodeRabbit は「子A + 子B の組み合わせで発生する API 衝突・命名不整合」をアーキテクチャ上検出できない。feature→main PR を OFF にするコスト削減は合理的だが、統合問題の防止目的には別レイヤー（Semgrep + CI）での補完が必要
+- **根拠**:
+  - CodeRabbit は PR ごとに独立した LLM セッションで動作し、他 PR の diff を参照する cross-PR analysis 機能を持たない（2026年4月時点）
+  - `knowledge_base` / `learnings` は過去レビューの蓄積であり、リアルタイムの cross-PR API surface 比較にはならない
+  - `path_instructions` でルールを書いても「2 つの PR が独立してルールに従っている場合の衝突」は instruction では防げない
+  - `path_filters` で既レビュー済みファイルを除外すると LLM コストは削減できるが、統合問題の検出能力は上がらない
+- **推奨構成**:
+  - 子PR（dev/xxx → feature/epic-xxx）: CodeRabbit フル有効
+  - feature→main PR: CodeRabbit の `path_filters` で重複除外 + Semgrep によるルール違反チェックを CI に追加
+  - Semgrep ルールファイル（`.semgrep/rules/`）はテンプレートとして配布可能（ユーザー環境依存なし）
+- **代替案**: `danger.js` は cross-PR の差分比較スクリプトを書ける点で最も直接的だが Node.js 実行環境依存が増えるため採用優先度は低い。Semgrep OSS 版（YAML 定義・CI インライン実行）が vibecorp テンプレート配布との相性が最もよい

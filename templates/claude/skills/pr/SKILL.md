@@ -126,7 +126,9 @@ PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
 case "$PRESET" in
   standard|full)
     # /session-harvest は minimal プリセットでは配置されないため standard 以上のみ
-    /session-harvest || echo "[pr] /session-harvest が失敗しました（PR 作成は成功）" >&2
+    if ! /session-harvest; then
+      echo "[pr] /session-harvest が失敗しました（PR 作成は成功）" >&2
+    fi
     ;;
 esac
 ```
