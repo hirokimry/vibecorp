@@ -419,12 +419,12 @@ Issue #326 / PR #327 にてゲートスタンプの保存先が `.claude/state/`
 
 - `.claude/sandbox/claude.sb`（`~/.cache/claude` / `~/.local/state/claude` subpath RW 許可追加）
 - `templates/claude/sandbox/claude.sb`（同上、同期）
-- `tests/test_isolation_macos.sh`（テスト [15][16][17] 追加）
+- `tests/test_isolation_macos.sh`（テスト `[15][16][17]` 追加）
 - `docs/SECURITY.md`（書込境界表更新、#331 セクション追加）
 
 ### 背景
 
-#329 マージ後も `VIBECORP_ISOLATION=1 claude /login` が失敗。kernel deny ログにより Claude Code 2.1.112+ が XDG 3 ディレクトリにまたがって OAuth state を管理することが判明:
+Issue #329 マージ後も `VIBECORP_ISOLATION=1 claude /login` が失敗。kernel deny ログにより Claude Code 2.1.112+ が XDG 3 ディレクトリにまたがって OAuth state を管理することが判明:
 
 - `~/.local/share/claude/versions/<ver>/` — バイナリ実体（RO で既許可、#320）
 - `~/.local/state/claude/locks/<ver>.lock` — バージョン固有ロック（書込必須、未許可）
@@ -448,4 +448,4 @@ Issue #326 / PR #327 にてゲートスタンプの保存先が `.claude/state/`
 
 ### 過去判断との一貫性
 
-#320/#326/#329 と整合。`~/.cache/vibecorp` サブパス限定（#326）と同じ設計思想で、`~/.cache` 全体ではなく `claude` 直下のみに限定することで攻撃面最小化を維持。
+Issue #320 / #326 / #329 と整合。`~/.cache/vibecorp` サブパス限定（#326）と同じ設計思想で、`~/.cache` 全体ではなく `claude` 直下のみに限定することで攻撃面最小化を維持。
