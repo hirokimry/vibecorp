@@ -461,6 +461,64 @@ rm -f "${FAKE_HOME}/.claude.json.lock" "${FAKE_HOME}"/.claude.json.tmp.*
 
 # ============================================
 echo ""
+echo "=== [15] sandbox 経由で ~/.local/state/claude/locks/<ver>.lock 書込が成功 ==="
+# ============================================
+# Issue #331: Claude Code 2.1.112+ は XDG state ディレクトリにバージョン固有ロックを置く。
+# 実機 Claude Code は最初の起動時に親ディレクトリを作成するため、テストでも事前作成する。
+mkdir -p "${FAKE_HOME}/.local/state/claude/locks"
+xdg_lock="${FAKE_HOME}/.local/state/claude/locks/2.1.112.lock"
+rm -f "$xdg_lock"
+status=0
+(cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-path "$xdg_lock") || status=$?
+if [[ "$status" -eq 0 && -f "$xdg_lock" ]]; then
+  pass "~/.local/state/claude/locks/2.1.112.lock 書込成功"
+else
+  fail "~/.local/state/claude/locks/2.1.112.lock 書込失敗 (status=$status, stderr=$(cat "$STDERR_LOG"))"
+fi
+rm -f "$xdg_lock"
+
+# ============================================
+echo ""
+echo "=== [16] sandbox 経由で ~/.cache/claude/staging/ 配下書込が成功 ==="
+# ============================================
+# Issue #331: Claude Code 2.1.112+ は staging エリアに一時ファイルを置く。
+mkdir -p "${FAKE_HOME}/.cache/claude/staging"
+staging_file="${FAKE_HOME}/.cache/claude/staging/test.txt"
+rm -f "$staging_file"
+status=0
+(cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-path "$staging_file") || status=$?
+if [[ "$status" -eq 0 && -f "$staging_file" ]]; then
+  pass "~/.cache/claude/staging/ 配下書込成功"
+else
+  fail "~/.cache/claude/staging/ 配下書込失敗 (status=$status, stderr=$(cat "$STDERR_LOG"))"
+fi
+rm -f "$staging_file"
+
+# ============================================
+echo ""
+echo "=== [17] sandbox 経由で ~/.cache/claude-evil / ~/.local/state/claude-evil 書込が拒否される（subpath 境界検証） ==="
+# ============================================
+# Issue #331: subpath 許可が ~/.cache/claude / ~/.local/state/claude 直下に厳密に限定され、
+# 兄弟ディレクトリ（"claude" prefix の他パス）には拡張されないことを検証する。
+xdg_deny_paths=(
+  "${FAKE_HOME}/.cache/claude-evil"
+  "${FAKE_HOME}/.local/state/claude-evil"
+)
+for deny_path in "${xdg_deny_paths[@]}"; do
+  mkdir -p "$(dirname "$deny_path")"
+  rm -f "$deny_path"
+  status=0
+  (cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-path "$deny_path") || status=$?
+  if [[ "$status" -ne 0 && ! -f "$deny_path" ]]; then
+    pass "subpath 境界拒否: ${deny_path##${FAKE_HOME}/}"
+  else
+    fail "subpath 境界が拡張された: ${deny_path##${FAKE_HOME}/} (status=$status, file_exists=$([[ -f "$deny_path" ]] && echo yes || echo no))"
+  fi
+  rm -f "$deny_path"
+done
+
+# ============================================
+echo ""
 echo "=== [14] .claude/sandbox/claude.sb と templates/claude/sandbox/claude.sb が同一 ==="
 # ============================================
 # C4: 本体とテンプレートの同期ずれ防止（#329）

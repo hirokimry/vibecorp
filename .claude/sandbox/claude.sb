@@ -6,7 +6,9 @@
 ;;
 ;; 境界:
 ;;   書込許可 : worktree, ~/.claude, ~/.claude.json (+.backup/.lock/.tmp.<pid>.<ms>),
-;;              ~/.cache/vibecorp（ゲートスタンプ保存先）, /tmp, $TMPDIR
+;;              ~/.cache/vibecorp（ゲートスタンプ保存先）,
+;;              ~/.cache/claude, ~/.local/state/claude（Claude Code 2.1.112+ XDG サイドカー）,
+;;              /tmp, $TMPDIR
 ;;   読取許可 : /usr, /System, /Library, /opt/homebrew, /usr/local,
 ;;              ~/.gitconfig, ~/.config/gh, ~/.npm, ~/.local/share/claude
 ;;   ioctl   : /dev 配下（TTY raw mode 切替に必須）
@@ -70,6 +72,17 @@
 ;; 親ディレクトリ作成は不要（subpath 配下の create のみ許可）。
 (allow file-read* file-write*
   (subpath (string-append (param "HOME") "/.cache/vibecorp")))
+
+;; ----- RW: Claude Code XDG サイドカー (#331) -----
+;; Claude Code 2.1.112+ は OAuth state を XDG 3 ディレクトリにまたがって管理する:
+;;   ~/.local/share/claude/versions/<ver>/ — バイナリ実体（RO で既許可）
+;;   ~/.local/state/claude/locks/<ver>.lock — バージョン固有ロック（書込必須）
+;;   ~/.cache/claude/staging/              — staging 領域（書込必須）
+;; subpath で claude 直下全体を許可（lock ファイル名はバージョン依存のため literal 不可）。
+;; ~/.cache 全体・~/.local/state 全体には拡張しない（他アプリのサイドカーを巻き込まない）。
+(allow file-read* file-write*
+  (subpath (string-append (param "HOME") "/.cache/claude"))
+  (subpath (string-append (param "HOME") "/.local/state/claude")))
 
 ;; ----- /dev: 標準入出力・TTY・null デバイス等に必要 -----
 ;; file-ioctl は TTY raw mode 切替（_IO('t', 20) 等）に必須
