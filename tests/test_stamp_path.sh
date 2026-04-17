@@ -129,6 +129,22 @@ else
   fail "別 repo で同じディレクトリが生成された (${DIR_A})"
 fi
 
+# --- ケース 5b: 同 basename・別パスで衝突回避（sanitized-basename + sha8 仕様の肝） ---
+
+echo "Test 5b: 同 basename・別パスでも異なるディレクトリが生成される"
+SAME_BASE_A="${TMPDIR_ROOT}/proj-a/repo"
+SAME_BASE_B="${TMPDIR_ROOT}/proj-b/repo"
+mkdir -p "$SAME_BASE_A" "$SAME_BASE_B"
+( cd "$SAME_BASE_A" && git init -q . )
+( cd "$SAME_BASE_B" && git init -q . )
+DIR_SA=$( cd "$SAME_BASE_A" && CLAUDE_PROJECT_DIR="$SAME_BASE_A" vibecorp_stamp_dir )
+DIR_SB=$( cd "$SAME_BASE_B" && CLAUDE_PROJECT_DIR="$SAME_BASE_B" vibecorp_stamp_dir )
+if [ "$DIR_SA" != "$DIR_SB" ]; then
+  pass "同 basename・別パスで異なるディレクトリ生成 (A=${DIR_SA##*/}, B=${DIR_SB##*/})"
+else
+  fail "同 basename・別パスで同じディレクトリが生成された (${DIR_SA})"
+fi
+
 # --- ケース 6: git 外（git toplevel 取得失敗）でフォールバック + stderr 警告 ---
 
 echo "Test 6: git 外で stderr 警告が出る"
@@ -187,6 +203,66 @@ if [ "$HASH" != "$HASH3" ]; then
 else
   fail "異なる入力で同じハッシュが生成された"
 fi
+
+# --- ケース 10: _vibecorp_sha256_short のフォールバック分岐を強制検証 ---
+# 実環境の /usr/bin/shasum 等に邪魔されないよう、PATH を FAKEBIN のみに限定する。
+# _vibecorp_sha256_short が内部で使う cut/awk/cat は symlink 経由で利用可能にする。
+
+echo "Test 10: shasum→sha256sum→openssl フォールバック分岐"
+
+# FAKEBIN を作成し、基本コマンド (cat/cut/awk) のみを symlink で利用可能にする
+setup_fakebin() {
+  local dir="$1"
+  mkdir -p "$dir"
+  local tool src
+  for tool in cat cut awk; do
+    src=""
+    if [ -x "/usr/bin/$tool" ]; then
+      src="/usr/bin/$tool"
+    elif [ -x "/bin/$tool" ]; then
+      src="/bin/$tool"
+    fi
+    if [ -n "$src" ]; then
+      ln -sf "$src" "${dir}/${tool}"
+    fi
+  done
+}
+
+write_fake_cmd() {
+  local path="$1" body="$2"
+  {
+    printf '#!/bin/sh\n'
+    printf '%s\n' "$body"
+  } > "$path"
+  chmod +x "$path"
+}
+
+# 10-1: shasum が最優先で使われる
+FB_SHASUM="${TMPDIR_ROOT}/fb_shasum"
+setup_fakebin "$FB_SHASUM"
+write_fake_cmd "${FB_SHASUM}/shasum" 'cat >/dev/null; printf "aaaaaaaarest  -\n"'
+HASH_A=$( PATH="$FB_SHASUM" _vibecorp_sha256_short "x" )
+assert_eq "shasum 優先分岐" "aaaaaaaa" "$HASH_A"
+
+# 10-2: shasum 不在 → sha256sum フォールバック
+FB_SHA256SUM="${TMPDIR_ROOT}/fb_sha256sum"
+setup_fakebin "$FB_SHA256SUM"
+write_fake_cmd "${FB_SHA256SUM}/sha256sum" 'cat >/dev/null; printf "bbbbbbbbrest  -\n"'
+HASH_B=$( PATH="$FB_SHA256SUM" _vibecorp_sha256_short "x" )
+assert_eq "sha256sum フォールバック分岐" "bbbbbbbb" "$HASH_B"
+
+# 10-3: shasum・sha256sum 不在 → openssl フォールバック
+FB_OPENSSL="${TMPDIR_ROOT}/fb_openssl"
+setup_fakebin "$FB_OPENSSL"
+write_fake_cmd "${FB_OPENSSL}/openssl" 'cat >/dev/null; printf "SHA2-256(stdin)= ccccccccrest\n"'
+HASH_C=$( PATH="$FB_OPENSSL" _vibecorp_sha256_short "x" )
+assert_eq "openssl フォールバック分岐" "cccccccc" "$HASH_C"
+
+# 10-4: 3 つ全て不在 → "00000000" を返す（テストで検出可能な固定値）
+FB_NONE="${TMPDIR_ROOT}/fb_none"
+setup_fakebin "$FB_NONE"
+HASH_NONE=$( PATH="$FB_NONE" _vibecorp_sha256_short "x" )
+assert_eq "全コマンド不在で 00000000 返却" "00000000" "$HASH_NONE"
 
 # --- 結果 ---
 
