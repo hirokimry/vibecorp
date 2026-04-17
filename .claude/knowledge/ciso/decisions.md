@@ -348,3 +348,63 @@ Issue #326 / PR #327 にてゲートスタンプの保存先が `.claude/state/`
 ### 過去判断との一貫性
 
 #320 の「`~/.cache` 全体ではなくサブパス限定」という攻撃面最小化の設計思想と一致。矛盾なし。
+
+## 2026-04-17 — Issue #329 VIBECORP_ISOLATION=1 下の /login 失敗修正（サイドカー書込許可追加）
+
+### 判定
+
+条件付き承認（以下 4 点の対応後に承認）
+
+### 対象
+
+- `.claude/sandbox/claude.sb`（`~/.claude.json.lock` literal 許可 + `~/.claude.json.tmp.<pid>.<epoch_ms>` regex 許可追加）
+- `templates/claude/sandbox/claude.sb`（同上、同期）
+- `tests/test_isolation_macos.sh`（テスト [11][12] 追加）
+- `docs/SECURITY.md`（書込境界表更新）
+
+### 合議状況
+
+計画段階レビュー（plan-security が Critical 1 件・Major 1 件を検出）。CISO メタレビューにより Critical/Major の再評価を実施。
+
+### 各指摘の判定
+
+| 指摘元 | 内容 | 判定 | 理由 |
+|--------|------|------|------|
+| plan-security Critical | CEO 承認トレーサビリティ欠落 | 却下（Info） | セキュリティ脆弱性ではなく監査ガバナンスの好みの問題。計画書に「CEO 承認済み」の記載あり |
+| plan-security Major | HOME `.` がSBPL regex でメタ文字誤マッチ | 却下（Info） | 計画書 C1 節で既評価済み。`.` が誤マッチしても許可範囲は `.claude.json.lock/.tmp.*` のみ。`validate_abs_path` が危険メタ文字を事前排除済み |
+| plan-security Minor | テスト [12] 境界値パターン不足 | 部分採用 | `.tmp.1.2.extra` / `.tmp.abc.1` の 2 パターン追加を推奨（実装ブロックなし） |
+| plan-architect | `date +%s` 秒精度と epoch_ms 不一致 | 採用（コメント修正のみ） | regex は桁数不問のため動作は正しい。`.claude/rules/comments.md` 準拠でコメント修正 |
+| plan-architect | `diff` 同期チェック未組込み懸念 | 却下（Info） | 計画書 Phase 1 に既記載 |
+| plan-architect | `/login` 成功が CI 外 | 却下（Info） | Phase 1 からの既知設計。SECURITY.md に明記済み |
+| plan-testing | テスト [12] パターン不足（重複） | 部分採用（上記と同一） | 同上 |
+| plan-testing | `.claude/sandbox` 側テスト欠落 | 却下（Info） | `diff 0` 検証で同一性担保済み |
+| plan-testing | `.lock` 既存状態ケース不在 | 採用（Minor） | 次回改善候補。実装ブロックなし |
+| plan-dx 全件 | UX/CI 手順の懸念 | 却下（Info） | セキュリティリスクに非該当 |
+
+### 新規懸念
+
+**N-001（過去判断との一貫性違反 — 必須対応）**
+
+#320 CISO 判断「D-1: `claude.sb` に `.claude.json.lock` のエントリなし。反映済み」を今回の変更が上書きする。kernel ログにより `.lock` deny が確認されたため再追加する必要性は正当だが、decisions.md・SECURITY.md に「#329 で再追加した背景（#320 D-1 の方針変更）」を明記すること。
+
+**N-002（sandbox param 未設定時の regex 動作確認 — Minor）**
+
+`(regex (string-append (param "HOME") "..."))` は sandbox-exec 起動時に評価される。テスト [11] フェイク環境で `-D HOME=...` が確実に渡されることを確認すること。
+
+### #320 D-1 判断の上書き記録
+
+**旧判断（2026-04-16）**: `claude.sb` に `.claude.json.lock` のエントリなし。D-1 により除去・反映済み。
+
+**新判断（2026-04-17）**: kernel ログ `deny(1) file-write-create /Users/hiroki/.claude.json.lock` により、`/login` 実行時に `.lock` の書込が必須であることが実機確認された。`.lock` 除去判断を撤回し、literal 許可として再追加する。攻撃面への影響: `~/.claude.json` 全 RW 許可（#320 承認済み）と同等の信頼境界のため、実質的な攻撃面変化なし。
+
+### 攻撃チェーン分析
+
+- 追加される regex: `^<HOME>/\.claude\.json\.tmp\.[0-9]+\.[0-9]+$`（`^`/`$` 固定）
+- `vibecorp-sandbox` の `validate_abs_path` により HOME の危険文字を事前排除済み
+- regex インジェクションで追加の書込権限を得る経路なし
+- `.lock` literal 許可: 単一ファイルのみ
+- 深刻度: 低（Phase 1 既知制約の範囲内）
+
+### 過去判断との一貫性
+
+#320 D-1 を明示的に上書き（理由: kernel log による必要性の確認）。それ以外の #309/CR-001/#318/#320/#326 の判断とは矛盾なし。

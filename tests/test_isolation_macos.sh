@@ -125,6 +125,20 @@ case "${1:-}" in
     # VIBECORP_SANDBOXED の値を出力（未設定なら UNSET）
     printf '%s\n' "${VIBECORP_SANDBOXED:-UNSET}"
     ;;
+  write-claude-json-sidecar)
+    # Claude Code の原子的置換パターンを再現:
+    # $HOME/.claude.json.lock（固定名） + $HOME/.claude.json.tmp.<pid>.<epoch_ms>（動的名）
+    # 実際の Claude Code は Date.now()（ミリ秒）で suffix を生成するため、
+    # 秒精度（date +%s）だと sandbox 側の誤狭化（"秒だけ許可"）を検知できない。
+    # perl の Time::HiRes でミリ秒精度を生成する（macOS 標準搭載）。
+    # 両方成功すれば exit 0、片方でも失敗すれば exit 1
+    : > "$HOME/.claude.json.lock" || exit 1
+    : > "$HOME/.claude.json.tmp.$$.$(perl -MTime::HiRes=time -e 'printf "%d", time()*1000')" || exit 1
+    ;;
+  write-path)
+    # 第2引数で受け取った絶対パスに 1 バイト書込を試みる（拒否境界検証用）
+    : > "$2" || exit 1
+    ;;
   *)
     echo "unknown: $*" >&2
     exit 1
@@ -366,6 +380,100 @@ else
   else
     fail "実機 claude TUI が sandbox 経由で起動できない (status=$status, expect_log=$(tail -20 "$STDOUT_LOG"), stderr=$(cat "$STDERR_LOG"))"
   fi
+fi
+
+# ============================================
+echo ""
+echo "=== [11] sandbox 経由で .claude.json サイドカー (.lock / .tmp.<pid>.<ms>) 書込が成功 ==="
+# ============================================
+# Issue #329: Claude Code は OAuth state を原子的置換で保存する。
+# literal 許可の .lock と regex 許可の .tmp.<pid>.<ms> 双方が sandbox を通ることを検証する。
+rm -f "${FAKE_HOME}/.claude.json.lock" "${FAKE_HOME}"/.claude.json.tmp.*
+status=0
+(cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-claude-json-sidecar) || status=$?
+lock_exists="no"
+tmp_exists="no"
+[[ -f "${FAKE_HOME}/.claude.json.lock" ]] && lock_exists="yes"
+# shellcheck disable=SC2012
+if ls "${FAKE_HOME}"/.claude.json.tmp.* >/dev/null 2>&1; then
+  tmp_exists="yes"
+fi
+if [[ "$status" -eq 0 && "$lock_exists" == "yes" && "$tmp_exists" == "yes" ]]; then
+  pass "サイドカー書込成功（.lock と .tmp.<pid>.<ms> 両方生成）"
+else
+  fail "サイドカー書込失敗 (status=$status, lock=$lock_exists, tmp=$tmp_exists, stderr=$(cat "$STDERR_LOG"))"
+fi
+rm -f "${FAKE_HOME}/.claude.json.lock" "${FAKE_HOME}"/.claude.json.tmp.*
+
+# ============================================
+echo ""
+echo "=== [12] sandbox 経由で .claude.json 類似の範囲外パスへの書込が拒否される（regex 境界検証） ==="
+# ============================================
+# regex パターン ^HOME/\.claude\.json\.tmp\.[0-9]+\.[0-9]+$ の境界を検証する。
+# また .lock 側の literal 境界（prefix / regex への誤拡張）も検証する。
+# 以下は deny default で拒否されるべきパス:
+#   .claude.jsonEVIL            — 類似名・サフィックス付加（. 始まりの拡張ではない）
+#   .claude.json.locked         — .lock literal の prefix 誤拡張検知
+#   .claude.json.lock.extra     — .lock literal の sub-path 誤拡張検知
+#   .claude.json.tmp.1.2.extra  — regex 末尾 $ 境界（余計なサフィックス）
+#   .claude.json.tmp.abc.1      — [0-9]+ 先頭が数値以外
+#   .claude.json.tmp.1.         — 末尾が . で数値が続かない
+deny_paths=(
+  "${FAKE_HOME}/.claude.jsonEVIL"
+  "${FAKE_HOME}/.claude.json.locked"
+  "${FAKE_HOME}/.claude.json.lock.extra"
+  "${FAKE_HOME}/.claude.json.tmp.1.2.extra"
+  "${FAKE_HOME}/.claude.json.tmp.abc.1"
+  "${FAKE_HOME}/.claude.json.tmp.1."
+)
+test12_all_ok=1
+for deny_path in "${deny_paths[@]}"; do
+  rm -f "$deny_path"
+  status=0
+  (cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-path "$deny_path") || status=$?
+  if [[ "$status" -ne 0 && ! -f "$deny_path" ]]; then
+    pass "範囲外パス拒否: ${deny_path##${FAKE_HOME}/}"
+  else
+    fail "範囲外パスが許可された: ${deny_path##${FAKE_HOME}/} (status=$status, file_exists=$([[ -f "$deny_path" ]] && echo yes || echo no))"
+    test12_all_ok=0
+  fi
+  rm -f "$deny_path"
+done
+
+# ============================================
+echo ""
+echo "=== [13] sandbox 経由で既存 .lock への上書き（ロック再取得）が成功 ==="
+# ============================================
+# ロック再取得パターン: 2 回連続で write-claude-json-sidecar を実行し、
+# .lock への上書きが 2 回とも成功することを検証する。
+# .tmp.<pid>.<epoch_ms> はミリ秒精度なので sleep なしで衝突しない。
+rm -f "${FAKE_HOME}/.claude.json.lock" "${FAKE_HOME}"/.claude.json.tmp.*
+status1=0
+(cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-claude-json-sidecar) || status1=$?
+status2=0
+(cd "$FAKE_WORKTREE" && run_shim VIBECORP_ISOLATION=1 -- write-claude-json-sidecar) || status2=$?
+if [[ "$status1" -eq 0 && "$status2" -eq 0 && -f "${FAKE_HOME}/.claude.json.lock" ]]; then
+  pass ".lock への 2 回目の上書きが成功（ロック再取得）"
+else
+  fail ".lock 上書き失敗 (status1=$status1, status2=$status2, lock_exists=$([[ -f "${FAKE_HOME}/.claude.json.lock" ]] && echo yes || echo no), stderr=$(cat "$STDERR_LOG"))"
+fi
+rm -f "${FAKE_HOME}/.claude.json.lock" "${FAKE_HOME}"/.claude.json.tmp.*
+
+# ============================================
+echo ""
+echo "=== [14] .claude/sandbox/claude.sb と templates/claude/sandbox/claude.sb が同一 ==="
+# ============================================
+# C4: 本体とテンプレートの同期ずれ防止（#329）
+LIVE_PROFILE="${SCRIPT_DIR}/.claude/sandbox/claude.sb"
+TEMPLATE_PROFILE="${SCRIPT_DIR}/templates/claude/sandbox/claude.sb"
+if [[ -f "$LIVE_PROFILE" && -f "$TEMPLATE_PROFILE" ]]; then
+  if diff -q "$LIVE_PROFILE" "$TEMPLATE_PROFILE" > /dev/null; then
+    pass "sandbox プロファイル本体とテンプレートが同一"
+  else
+    fail "sandbox プロファイルに差分あり（$LIVE_PROFILE vs $TEMPLATE_PROFILE）"
+  fi
+else
+  fail "sandbox プロファイル不在: live=$([[ -f "$LIVE_PROFILE" ]] && echo yes || echo no), template=$([[ -f "$TEMPLATE_PROFILE" ]] && echo yes || echo no)"
 fi
 
 # ============================================

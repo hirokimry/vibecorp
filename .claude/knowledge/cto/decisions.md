@@ -247,3 +247,12 @@
 - **判断**: workflow.md への追記は COO 管轄（rules/ の追記は管轄内だが今回は見送り）。`git pull --ff-only` または `git pull --rebase` を CI / install.sh で呼ぶ箇所に限定的に強制する。開発者向けのグローバル設定（`pull.ff = only`）の推奨は README に記載を推奨する（CPO・COO 判断に委ねる）
 - **根拠**: local main が divergent 状態（origin にない commit を持つ等）のとき `git pull origin main` を素直に実行すると merge commit が生まれ、PR のコミット履歴が汚染される。vibecorp の install.sh は `git pull origin main` を実行するパスがあるため影響を受ける。ただし `pull.ff = only` を rules/ に書くと全開発者の git グローバル設定に干渉する恐れがあり、スコープを install.sh / CI 内コマンドに限定する
 - **代替案**: `pull.rebase = true` の git config 推奨を rules/ に追記する案も検討したが、既存の git ワークフローへの干渉リスクがあり今回は見送り
+
+### 2026-04-17: 原子的置換パターンの実挙動確認とSBPL設計（Issue #329）
+
+- **判断**: (a) `.lock`（固定名）と `.tmp.<pid>.<epoch_ms>`（動的名）は SBPL の同一ブロックに混在させず、`literal` 許可と `regex` 許可を分離したブロックに記述する。(b) epoch_ms の桁数は不問とし `[0-9]+\.[0-9]+` で統一する
+- **根拠**:
+  - kernel deny ログ `deny(1) file-write-create /Users/hiroki/.claude.json.lock` および `deny(1) file-write-create /Users/hiroki/.claude.json.tmp.98846.1776431009101` により、Claude Code の OAuth state 書込が `.lock`（固定名）→ `.tmp.<pid>.<epoch_ms>`（動的名）→ rename という原子的置換パターンを採用していることを実挙動で確認した
+  - `literal` と `regex` は SBPL 内で意味論が異なる（前者は完全一致・後者はパターン照合）。同一 `(allow ...)` ブロックに混在させると可読性が低下し境界責務が曖昧になるため、ブロックを分離する
+  - `$(date +%s)` は 10 桁（秒）、`epoch_ms` は 13 桁だが `[0-9]+\.[0-9]+` は桁数不問でどちらにもマッチする。Claude Code 側が precision を秒→ミリ秒等に変更しても regex を修正する必要がなく、将来変更への耐性が高い
+- **代替案**: `.lock` も regex で `\.lock$` として統一する案も検討したが、固定サフィックスを literal で書けるのに regex を使うのは過剰であり、`literal` の方が意図が明確なため採用しなかった

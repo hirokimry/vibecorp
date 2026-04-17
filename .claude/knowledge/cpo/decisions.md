@@ -87,3 +87,9 @@
 - **判断**: README.md L220 の説明文と L224〜227 のテーブル列を、旧パス `$CLAUDE_PROJECT_DIR/.claude/state/*` から新パス `~/.cache/vibecorp/state/<repo-id>/<stamp-name>-ok` に更新した
 - **根拠**: PR #327 / Issue #326 でゲートスタンプの保存先が XDG Base Directory 仕様準拠の `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/` に移行された。README が旧パスを記載したままでは「透明性」バリュー（「全ての判断根拠をルール・設定ファイルとして可視化する。ブラックボックスを作らない」）に反する。また分離単位の説明も「CLAUDE_PROJECT_DIR が worktree ごとに異なる」から「repo-id = sanitized basename + sha256 先頭8桁によるリポジトリ単位分離」に実態が変わったため、同時に更新した
 - **代替案**: なし（仕様変更に追随するドキュメント修正のため）
+
+### 2026-04-17: /login がサンドボックス下で無効になるバグ修正を OK と判定（Issue #329）
+
+- **判断**: `VIBECORP_ISOLATION=1` 環境下で `/login` が失敗するバグ（claude.sb が `.claude.json.lock` / `.claude.json.tmp.*` サイドカーを deny）の修正 Issue をプロダクト方針に合致と判定した
+- **根拠**: claude.sb のサイドカーパスカバー漏れという実装不備の修正であり、#325 回帰の修正。SECURITY.md の書込境界表更新・テスト追加が受入基準に含まれており「透明性」「規律の自動化」バリューと整合する。修正手法は #320（TUI ハング修正）と同一パターン（claude.sb への境界追加）であり一貫性がある
+- **代替案**: なし（バグ修正かつスコープ限定変更のため）
