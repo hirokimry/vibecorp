@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_hooks.sh — protect-files.sh / review-to-rules-gate.sh / sync-gate.sh / block-api-bypass.sh のユニットテスト
+# test_hooks.sh — protect-files.sh / sync-gate.sh / block-api-bypass.sh のユニットテスト
 # 使い方: bash tests/test_hooks.sh
 
 set -euo pipefail
@@ -102,9 +102,8 @@ setup_project_dir() {
   # vibecorp_stamp_dir が toplevel を引けるよう git 初期化
   ( cd "$TMPDIR_ROOT" && git init -q . && git config user.email t@example.com && git config user.name t )
   # 各 stamp の現在パスを計算してエクスポート（テスト内で参照）
-  STAMP_REVIEW_TO_RULES="$(vibecorp_stamp_path review-to-rules)"
   STAMP_SYNC="$(vibecorp_stamp_path sync)"
-  mkdir -p "$(dirname "$STAMP_REVIEW_TO_RULES")"
+  mkdir -p "$(dirname "$STAMP_SYNC")"
 }
 
 write_vibecorp_yml() {
@@ -247,104 +246,6 @@ rm -rf "$EMPTY_DIR"
 assert_exit_code "CLAUDE_PROJECT_DIR 未設定時に異常終了しない" "0" "$EXIT_CODE"
 assert_allowed "CLAUDE_PROJECT_DIR 未設定 → 許可" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"
-
-# ============================================
-echo ""
-echo "=== review-to-rules-gate.sh ==="
-# ============================================
-
-write_vibecorp_yml
-
-# 1. スタンプなしで gh pr merge → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "スタンプなしで gh pr merge → deny" "$OUTPUT"
-
-# 2. スタンプありで gh pr merge → 許可
-touch "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "スタンプありで gh pr merge → 許可" "$OUTPUT"
-
-# 3. 許可後にスタンプ削除確認
-assert_file_not_exists "許可後にスタンプ削除確認" "${STAMP_REVIEW_TO_RULES}"
-
-# 4. merge 以外(gh pr view) → 許可
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr view 80"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "merge 以外(gh pr view) → 許可" "$OUTPUT"
-
-# 5. 先頭スペース付き merge → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"  gh pr merge 80 --squash"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "先頭スペース付き merge → deny" "$OUTPUT"
-
-# 6. 環境変数プレフィックス付き → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"GH_TOKEN=dummy gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
-
-# 7. 複数環境変数プレフィックス → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
-
-# 8. env ラッパー付き → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"env gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "env ラッパー付き → deny" "$OUTPUT"
-
-# 9. command ラッパー付き → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"command gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "command ラッパー付き → deny" "$OUTPUT"
-
-# 10. 絶対パス(/usr/bin/gh) → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "絶対パス(/usr/bin/gh) → deny" "$OUTPUT"
-
-# 11. 相対パス(./bin/gh) → deny
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"./bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_blocked "相対パス(./bin/gh) → deny" "$OUTPUT"
-
-# 12. gh pr create (bodyにmerge含む) → 許可
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title \"test\" --body \"gh pr merge pattern\""}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "gh pr create (bodyにmerge含む) → 許可" "$OUTPUT"
-
-# 13. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される
-write_vibecorp_yml
-touch "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される" "$OUTPUT"
-
-# 14. 別の CLAUDE_PROJECT_DIR の state は影響しない（worktree 分離）
-ALT_DIR=$(mktemp -d)
-( cd "$ALT_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
-ORIG_DIR="$CLAUDE_PROJECT_DIR"
-# 現在の TMPDIR_ROOT には state がない状態で別の CLAUDE_PROJECT_DIR を試す
-rm -f "${STAMP_REVIEW_TO_RULES}"
-export CLAUDE_PROJECT_DIR="$ALT_DIR"
-ALT_STAMP="$(vibecorp_stamp_path review-to-rules)"
-mkdir -p "$(dirname "$ALT_STAMP")"
-touch "$ALT_STAMP"
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "別の CLAUDE_PROJECT_DIR の state を参照する（worktree 分離）" "$OUTPUT"
-export CLAUDE_PROJECT_DIR="$ORIG_DIR"
-rm -rf "$ALT_DIR"
-
-# 16. deny 出力の JSON 構造検証
-write_vibecorp_yml
-rm -f "${STAMP_REVIEW_TO_RULES}"
-OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-VALID=true
-echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
-echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1 || VALID=false
-echo "$OUTPUT" | jq -e '.hookSpecificOutput.permissionDecisionReason' >/dev/null 2>&1 || VALID=false
-if [ "$VALID" = true ]; then
-  pass "deny 出力の JSON 構造検証"
-else
-  fail "deny 出力の JSON 構造検証 (構造が不正)"
-fi
 
 # ============================================
 echo ""

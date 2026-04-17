@@ -69,6 +69,33 @@ _vibecorp_sha256_short() {
   fi
 }
 
+# vibecorp_repo_id — リポジトリルートパスから ID 文字列を返す
+# 出力例: vibecorp-a1b2c3d4
+# 形式: <basename（サニタイズ済み）>-<sha256先頭8桁>
+# ゲートスタンプ（vibecorp_stamp_dir）と knowledge/buffer worktree（knowledge_buffer.sh）で共有する
+vibecorp_repo_id() {
+  local root
+  if ! root="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
+    root="${CLAUDE_PROJECT_DIR:-$PWD}"
+    echo "vibecorp_repo_id: git toplevel 取得に失敗、フォールバック使用: ${root}" >&2
+  fi
+  # basename をサニタイズ（shell.md「ファイル名に外部入力を使う場合」ルール準拠）
+  # printf で trailing newline を剥がしてから tr に渡す（改行が "_" に変換される副作用を防ぐ）
+  local sanitized_base
+  sanitized_base="$(printf '%s' "$(basename "$root")" | tr -cs 'A-Za-z0-9._-' '_')"
+  printf '%s-%s' "$sanitized_base" "$(_vibecorp_sha256_short "$root")"
+}
+
+# vibecorp_cache_root — vibecorp 用 cache ディレクトリのルートを返す
+# XDG_CACHE_HOME は絶対パスのみ有効（XDG 仕様）。相対値は $HOME/.cache にフォールバック
+vibecorp_cache_root() {
+  if [[ "${XDG_CACHE_HOME:-}" == /* ]]; then
+    printf '%s' "${XDG_CACHE_HOME}"
+  else
+    printf '%s/.cache' "${HOME}"
+  fi
+}
+
 # vibecorp_stamp_dir — ゲートスタンプ保存先ディレクトリを返す
 # .claude/ 配下を避けることで Claude Code の書込確認プロンプトを回避する
 # 出力例: /Users/me/.cache/vibecorp/state/vibecorp-a1b2c3d4
@@ -76,23 +103,7 @@ _vibecorp_sha256_short() {
 # 脅威モデル: 同一ユーザーの別プロセスからのスタンプ偽造はスコープ外
 # （信頼境界 = ユーザーアカウント）。chmod 700 で他ユーザーからの偽造のみブロック。
 vibecorp_stamp_dir() {
-  local root
-  if ! root="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
-    root="${CLAUDE_PROJECT_DIR:-$PWD}"
-    # フォールバック発動を可観測にする（gate hook はこの stderr を消費しないため push に影響しない）
-    echo "vibecorp_stamp_dir: git toplevel 取得に失敗、フォールバック使用: ${root}" >&2
-  fi
-  # XDG_CACHE_HOME は絶対パスのみ有効（XDG 仕様）。相対値は $HOME/.cache にフォールバック
-  local cache_root="${HOME}/.cache"
-  if [[ "${XDG_CACHE_HOME:-}" == /* ]]; then
-    cache_root="${XDG_CACHE_HOME}"
-  fi
-  # basename をサニタイズ（shell.md「ファイル名に外部入力を使う場合」ルール準拠）
-  # printf で trailing newline を剥がしてから tr に渡す（改行が "_" に変換される副作用を防ぐ）
-  local sanitized_base
-  sanitized_base="$(printf '%s' "$(basename "$root")" | tr -cs 'A-Za-z0-9._-' '_')"
-  local id="${sanitized_base}-$(_vibecorp_sha256_short "$root")"
-  printf '%s/vibecorp/state/%s' "$cache_root" "$id"
+  printf '%s/vibecorp/state/%s' "$(vibecorp_cache_root)" "$(vibecorp_repo_id)"
 }
 
 # vibecorp_stamp_path — 名前付きスタンプファイルのフルパスを返す

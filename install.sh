@@ -702,17 +702,21 @@ copy_managed_files() {
   # プリセット別削除（引き算方式）
   case "$PRESET" in
     minimal)
+      # レガシー clean-up: 旧バージョンのインストールが残した古いフック/スキル
       rm -f "${hooks_dir}/review-to-rules-gate.sh"
+      rm -rf "${skills_dir}/review-to-rules"
+      # 現行: minimal プリセットから除外するフック/スキル
       rm -f "${hooks_dir}/sync-gate.sh"
       rm -f "${hooks_dir}/session-harvest-gate.sh"
       rm -f "${hooks_dir}/review-gate.sh"
       rm -f "${hooks_dir}/role-gate.sh"
       rm -f "${hooks_dir}/diagnose-guard.sh"
-      rm -rf "${skills_dir}/review-to-rules"
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${skills_dir}/session-harvest"
       rm -rf "${skills_dir}/harvest-all"
+      rm -rf "${skills_dir}/review-harvest"
+      rm -rf "${skills_dir}/knowledge-pr"
       rm -rf "${skills_dir}/diagnose"
       rm -rf "${skills_dir}/context7"
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）

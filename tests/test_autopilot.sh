@@ -117,7 +117,53 @@ else
   fail "言語指定なしのコードブロックが ${BARE_OPEN_COUNT} 箇所ある"
 fi
 
-# --- テスト5: テンプレートとローカルの一致 ---
+# --- テスト5: knowledge/buffer 収集フローの参照 ---
+
+echo ""
+echo "--- テスト5: knowledge/buffer 収集フローの参照 ---"
+
+if grep -q '/review-harvest' "$SKILL_FILE"; then
+  pass "/review-harvest が参照されている"
+else
+  fail "/review-harvest が参照されていない"
+fi
+
+if grep -q '/knowledge-pr' "$SKILL_FILE"; then
+  pass "/knowledge-pr が参照されている"
+else
+  fail "/knowledge-pr が参照されていない"
+fi
+
+# /review-harvest が /knowledge-pr より先に記述されていることを確認
+# （同一行内も許容: `/review-harvest` → `/knowledge-pr` の順であれば OK）
+if awk '
+  /\/review-harvest.*\/knowledge-pr/ { print "order_ok"; exit }
+  /\/review-harvest/ && !seen_harvest { seen_harvest = NR }
+  /\/knowledge-pr/ && !seen_pr { seen_pr = NR }
+  END {
+    if (seen_harvest && seen_pr && seen_harvest < seen_pr) print "order_ok"
+  }
+' "$SKILL_FILE" | grep -q '^order_ok$'; then
+  pass "/review-harvest が /knowledge-pr より先に記述されている"
+else
+  fail "/review-harvest → /knowledge-pr の順序になっていない"
+fi
+
+# knowledge/buffer への言及
+if grep -q 'knowledge/buffer' "$SKILL_FILE"; then
+  pass "knowledge/buffer フローが言及されている"
+else
+  fail "knowledge/buffer フローが言及されていない"
+fi
+
+# main への直接 push が発生しない旨の明記
+if grep -q 'main' "$SKILL_FILE" && grep -Eq 'auto-merge|直接 push は(一切)?発生しない' "$SKILL_FILE"; then
+  pass "main 反映は auto-merge 経由である旨が明記されている"
+else
+  fail "main 反映経路の明記が不足している"
+fi
+
+# --- テスト6: テンプレートとローカルの一致 ---
 
 echo ""
 echo "--- テスト5: テンプレートとローカルの一致 ---"

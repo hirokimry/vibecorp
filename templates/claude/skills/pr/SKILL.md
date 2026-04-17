@@ -116,6 +116,23 @@ git push origin HEAD && gh pr edit $PR_NUMBER --title "$ISSUE_TITLE" --body "$PR
 gh pr view --web
 ```
 
+### 8. /session-harvest の末尾同期呼出（preset standard 以上、新規 PR 時のみ）
+
+PR 作成 + auto-merge 設定が完了した後、セッションで生まれた知見を `knowledge/buffer` に蓄積するため `/session-harvest` を末尾同期で呼ぶ。PR 作成フローはブロックしない（呼出順: PR 作成 → auto-merge 設定 → session-harvest）。
+
+```bash
+PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
+  "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml" 2>/dev/null || echo "")"
+case "$PRESET" in
+  standard|full)
+    # /session-harvest は minimal プリセットでは配置されないため standard 以上のみ
+    /session-harvest || echo "[pr] /session-harvest が失敗しました（PR 作成は成功）" >&2
+    ;;
+esac
+```
+
+失敗しても PR 作成結果は成功扱い。呼出は末尾同期のため PR URL の返却前に完了する。
+
 ## 制約
 
 - **PRタイトル**: `gh issue view {番号} --json title` で取得したIssueタイトルを使用

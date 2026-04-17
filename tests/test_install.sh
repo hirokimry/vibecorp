@@ -1498,24 +1498,23 @@ assert_file_exists "standard: cpo.md が配置される" "$R/.claude/agents/cpo.
 
 # Z2. standard 新規インストール: standard 専用 hooks が配置される
 assert_file_exists "standard: sync-gate.sh が配置される" "$R/.claude/hooks/sync-gate.sh"
-assert_file_exists "standard: review-to-rules-gate.sh が配置される" "$R/.claude/hooks/review-to-rules-gate.sh"
 assert_file_executable "standard: sync-gate.sh に実行権限" "$R/.claude/hooks/sync-gate.sh"
-assert_file_executable "standard: review-to-rules-gate.sh に実行権限" "$R/.claude/hooks/review-to-rules-gate.sh"
 
 # Z3. standard 新規インストール: standard 専用 skills が配置される
 assert_dir_exists "standard: sync-check スキル存在" "$R/.claude/skills/sync-check"
 assert_dir_exists "standard: sync-edit スキル存在" "$R/.claude/skills/sync-edit"
-assert_dir_exists "standard: review-to-rules スキル存在" "$R/.claude/skills/review-to-rules"
+assert_dir_exists "standard: review-harvest スキル存在" "$R/.claude/skills/review-harvest"
+assert_dir_exists "standard: knowledge-pr スキル存在" "$R/.claude/skills/knowledge-pr"
 
 # Z4. standard lock: agents/hooks/skills が lock に記録される
 assert_file_contains "standard lock: cto.md 記録" "$R/.claude/vibecorp.lock" "cto.md"
 assert_file_contains "standard lock: cpo.md 記録" "$R/.claude/vibecorp.lock" "cpo.md"
 assert_file_contains "standard lock: sync-gate.sh 記録" "$R/.claude/vibecorp.lock" "sync-gate.sh"
-assert_file_contains "standard lock: review-to-rules-gate.sh 記録" "$R/.claude/vibecorp.lock" "review-to-rules-gate.sh"
+assert_file_contains "standard lock: review-harvest 記録" "$R/.claude/vibecorp.lock" "review-harvest"
+assert_file_contains "standard lock: knowledge-pr 記録" "$R/.claude/vibecorp.lock" "knowledge-pr"
 
 # Z5. standard settings.json: standard 用フックが含まれる
 assert_file_contains "standard settings: sync-gate フック存在" "$R/.claude/settings.json" "sync-gate"
-assert_file_contains "standard settings: review-to-rules-gate フック存在" "$R/.claude/settings.json" "review-to-rules-gate"
 
 # Z6. standard vibecorp.yml: preset が standard
 assert_file_contains "standard vibecorp.yml: preset が standard" "$R/.claude/vibecorp.yml" "preset: standard"
@@ -1540,12 +1539,12 @@ assert_file_exists "アップグレード後: cpo.md 追加" "$R/.claude/agents/
 
 # standard 専用 hooks が追加される
 assert_file_exists "アップグレード後: sync-gate.sh 追加" "$R/.claude/hooks/sync-gate.sh"
-assert_file_exists "アップグレード後: review-to-rules-gate.sh 追加" "$R/.claude/hooks/review-to-rules-gate.sh"
 
 # standard 専用 skills が追加される
 assert_dir_exists "アップグレード後: sync-check 追加" "$R/.claude/skills/sync-check"
 assert_dir_exists "アップグレード後: sync-edit 追加" "$R/.claude/skills/sync-edit"
-assert_dir_exists "アップグレード後: review-to-rules 追加" "$R/.claude/skills/review-to-rules"
+assert_dir_exists "アップグレード後: review-harvest 追加" "$R/.claude/skills/review-harvest"
+assert_dir_exists "アップグレード後: knowledge-pr 追加" "$R/.claude/skills/knowledge-pr"
 
 # knowledge が追加される
 assert_file_exists "アップグレード後: knowledge 追加" "$R/.claude/knowledge/cto/tech-principles.md"
@@ -1555,7 +1554,6 @@ assert_file_contains "アップグレード後: preset が standard" "$R/.claude
 
 # Z9. minimal → standard アップグレード: settings.json に standard 用フックが追加される
 assert_file_contains "アップグレード後: settings に sync-gate" "$R/.claude/settings.json" "sync-gate"
-assert_file_contains "アップグレード後: settings に review-to-rules-gate" "$R/.claude/settings.json" "review-to-rules-gate"
 
 # Z10. minimal → standard アップグレード: lock が standard 構成に更新される
 assert_file_contains "アップグレード後: lock に cto.md" "$R/.claude/vibecorp.lock" "cto.md"
@@ -1770,11 +1768,11 @@ protected_files:
 hooks:
   sync-gate: false
 skills:
-  review-to-rules: false
+  review-harvest: false
 YML
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_not_exists "初回トグル: 無効化 hook がインストールされない" "$R/.claude/hooks/sync-gate.sh"
-assert_file_not_exists "初回トグル: 無効化 skill がインストールされない" "$R/.claude/skills/review-to-rules/SKILL.md"
+assert_file_not_exists "初回トグル: 無効化 skill がインストールされない" "$R/.claude/skills/review-harvest/SKILL.md"
 assert_file_not_contains "初回トグル: 無効化 hook が settings.json に含まれない" "$R/.claude/settings.json" "sync-gate"
 
 cleanup
