@@ -408,3 +408,44 @@ Issue #326 / PR #327 にてゲートスタンプの保存先が `.claude/state/`
 ### 過去判断との一貫性
 
 #320 D-1 を明示的に上書き（理由: kernel log による必要性の確認）。それ以外の #309/CR-001/#318/#320/#326 の判断とは矛盾なし。
+
+## 2026-04-17 — Issue #331 VIBECORP_ISOLATION=1 下の /login 失敗修正 Part2（XDG サイドカー拡張）
+
+### 判定
+
+承認（Phase 1 既知制約の範囲内、CR-001 観点で新規攻撃面なし）
+
+### 対象
+
+- `.claude/sandbox/claude.sb`（`~/.cache/claude` / `~/.local/state/claude` subpath RW 許可追加）
+- `templates/claude/sandbox/claude.sb`（同上、同期）
+- `tests/test_isolation_macos.sh`（テスト [15][16][17] 追加）
+- `docs/SECURITY.md`（書込境界表更新、#331 セクション追加）
+
+### 背景
+
+#329 マージ後も `VIBECORP_ISOLATION=1 claude /login` が失敗。kernel deny ログにより Claude Code 2.1.112+ が XDG 3 ディレクトリにまたがって OAuth state を管理することが判明:
+
+- `~/.local/share/claude/versions/<ver>/` — バイナリ実体（RO で既許可、#320）
+- `~/.local/state/claude/locks/<ver>.lock` — バージョン固有ロック（書込必須、未許可）
+- `~/.cache/claude/staging/` — staging 領域（書込必須、未許可）
+
+### 許可戦略の比較と選択
+
+| 案 | 許可範囲 | 評価 |
+|----|---------|------|
+| A | `~/.cache/claude` + `~/.local/state/claude` subpath RW | **採用**。バージョン変更に強く、攻撃面は既存 `~/.claude` 全 RW と同等 |
+| B | `~/.local/state/claude/locks/<ver>.lock` を literal で個別指定 | 却下。バージョン追従のたびに sandbox 修正が必要で運用負荷大 |
+| C | `~/.cache` / `~/.local/state` 全体 | 却下。他アプリのサイドカーまで巻き込み攻撃面拡大 |
+
+### 攻撃チェーン分析
+
+- 追加される subpath: `~/.cache/claude` + `~/.local/state/claude`
+- `claude-evil` 等の兄弟ディレクトリは subpath 境界で拒否（テスト [17] で検証）
+- `vibecorp-sandbox` の `canonicalize_dir` により HOME は symlink 解決後の絶対パス
+- 攻撃面: 既存の `~/.claude` 全 RW 許可（#309 承認済み）と同等の信頼境界
+- 深刻度: 低（Phase 1 既知制約の範囲内）
+
+### 過去判断との一貫性
+
+#320/#326/#329 と整合。`~/.cache/vibecorp` サブパス限定（#326）と同じ設計思想で、`~/.cache` 全体ではなく `claude` 直下のみに限定することで攻撃面最小化を維持。

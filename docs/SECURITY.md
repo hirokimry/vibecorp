@@ -77,7 +77,7 @@ which claude
 
 | 方向 | 許可範囲 |
 |------|---------|
-| 書込 | WORKTREE（`$PWD`）、`~/.claude`、`/tmp`、`$TMPDIR`、`~/.cache/vibecorp`（ゲートスタンプ保存先 #326） |
+| 書込 | WORKTREE（`$PWD`）、`~/.claude`、`/tmp`、`$TMPDIR`、`~/.cache/vibecorp`（ゲートスタンプ保存先 #326）、`~/.cache/claude`、`~/.local/state/claude`（Claude Code 2.1.112+ XDG サイドカー #331）|
 | 書込（単一ファイル） | `~/.claude.json`、`~/.claude.json.backup`、`~/.claude.json.lock`、`~/.claude.json.tmp.<pid>.<epoch_ms>`（regex）— Claude Code の原子的置換パターンに対応（#329） |
 | 読取 | `/usr`、`/System`、`/Library`、`/opt/homebrew`、`~/.gitconfig`、`~/.config/gh`、`~/.npm`、`~/.local/share/claude`（claude バイナリ実体） |
 | ioctl | `/dev/**`（TTY raw mode 切替に必須。Issue #320 で追加） |
@@ -90,6 +90,16 @@ claude 本体（npm 配布）は `~/.local/share/claude/versions/<version>/` 配
 **Issue #326 で追加された境界（ゲートスタンプの XDG キャッシュ移動）:**
 
 ゲートスタンプは `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/{gate名}-ok` に保存される。`~/.cache` 全体ではなく `~/.cache/vibecorp` サブパスのみを許可（攻撃面最小化）。脅威モデル: 同一ユーザーの別プロセスからのスタンプ偽造はスコープ外（信頼境界 = ユーザーアカウント）。chmod 700 で他ユーザーからの偽造のみブロック。
+
+**Issue #331 で追加された境界（Claude Code 2.1.112+ XDG サイドカー）:**
+
+Claude Code 2.1.112 以降は OAuth state を XDG 3 ディレクトリにまたがって管理する:
+
+- `~/.local/share/claude/versions/<ver>/` — バイナリ実体（RO で既許可、#320）
+- `~/.local/state/claude/locks/<ver>.lock` — バージョン固有ロック（書込必須）
+- `~/.cache/claude/staging/` — staging 領域（書込必須）
+
+`~/.cache/claude` と `~/.local/state/claude` を subpath で RW 許可する。lock ファイル名はバージョン依存（`2.1.112.lock` 等）のため literal 指定は不可。`~/.cache` 全体・`~/.local/state` 全体には拡張せず、`claude` 直下サブパスのみに限定（他アプリのサイドカーを巻き込まない）。境界は `test_isolation_macos.sh [17]` で検証。
 
 ### Phase 1 防御レイヤ（実装済み）
 
@@ -109,6 +119,11 @@ claude 本体（npm 配布）は `~/.local/share/claude/versions/<version>/` 配
 - `/dev` 配下 file-ioctl 全許可: `/dev` への read / write-data は既に許可済み。ioctl 追加で新たに開く攻撃面は限定的（`/dev/mem` は現代 macOS で無効化済み）。
 
 CISO エージェントによるメタレビューで「Phase 1 既知制約の範囲内」と判定済み（`.claude/knowledge/ciso/decisions.md` 2026-04-16）。CR-001 で封鎖した WORKTREE 境界・HOME 包含拒否の防御ロジックは `vibecorp-sandbox` スクリプト側に実装されており、`claude.sb` 境界拡張に影響されない。
+
+**Issue #331 で拡張した境界に対する CR-001 観点の再評価（2026-04-17）**:
+
+- `~/.cache/claude/**` RW 許可: claude バージョン固有の staging 領域。書込み対象は `~/.claude.json` / `~/.claude` 全体と同等の信頼境界。`claude-evil` 等の兄弟ディレクトリは subpath 境界により拒否（`test_isolation_macos.sh [17]` で検証）。
+- `~/.local/state/claude/**` RW 許可: バージョン固有 lock ファイルの書込経路。攻撃面は既存の `~/.claude` 全 RW と同等。
 
 ### Phase 1 の位置づけと既知の制約
 

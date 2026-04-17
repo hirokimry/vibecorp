@@ -224,3 +224,25 @@ deny(1) file-write-create /Users/xxx/.claude.json.tmp.98846.1776431009101
 ```
 
 sandbox プロファイルでは、固定名（`.lock`）と動的名（`.tmp.<pid>.<epoch_ms>`）それぞれに対して適切な許可を与える必要がある（セクション6の literal/regex 分離原則を適用）。
+
+### XDG 3 ディレクトリ分散管理（Issue #331 で実挙動確認）
+
+Claude Code 2.1.112 以降は OAuth state / staging / ロックを XDG 3 ディレクトリにまたがって管理する:
+
+| パス | 用途 | sandbox 許可 |
+|------|------|-------------|
+| `~/.local/share/claude/versions/<ver>/` | バイナリ実体 | RO subpath（#320） |
+| `~/.local/state/claude/locks/<ver>.lock` | バージョン固有ロック | RW subpath（#331） |
+| `~/.cache/claude/staging/` | staging 領域 | RW subpath（#331） |
+| `~/.claude.json` / `.backup` / `.lock` / `.tmp.<pid>.<ms>` | OAuth state 本体 | RW literal/regex（#329） |
+
+kernel deny ログで確認した実挙動（2026-04-17）:
+
+```text
+deny(1) file-read-data /Users/xxx/.cache/claude/staging
+deny(1) file-read-data /Users/xxx/.local/state/claude/locks
+```
+
+**設計原則**: lock ファイル名はバージョン依存（`2.1.112.lock` 等）のため literal 指定不可。`claude` 直下 subpath で RW 許可するが、`~/.cache` 全体・`~/.local/state` 全体には拡張しない（他アプリのサイドカー巻き込み回避）。`claude-evil` 等の兄弟ディレクトリは subpath 境界で拒否される（`tests/test_isolation_macos.sh [17]` で検証）。
+
+**バージョンアップ時の再検証**: claude メジャーバージョンアップで XDG ディレクトリ構造・ファイル名パターンが変わる可能性があるため、`log show --predicate 'process == "kernel"' | grep deny` で定期的な再検証を推奨する。
