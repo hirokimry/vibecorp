@@ -81,3 +81,9 @@
 - **判断**: `dev/320_isolation_tui_fix` の変更（claude.sb への 4 境界追加、install.sh への `setup_claude_real_symlink()` 追加、SECURITY.md の既知制約更新）をプロダクト方針に合致と判定した
 - **根拠**: full + macOS のみで動作するハード制限が実装されており、decisions.md 2026-04-16 (#308) の「物理削除によるハード制限」方針と一貫。cleanup 処理への `claude-real` 除去追加でダウングレード残滓も防止。SECURITY.md に境界追加の根拠・既知制約・再検証推奨を明記しており「透明性」バリュー適合。specification.md L27 との整合も確認済み。Public Ready ガードレール違反なし
 - **代替案**: なし（バグ修正かつスコープ限定変更のため）
+
+### 2026-04-17: README.md ゲートスタンプのパスを XDG キャッシュ配下に更新（Issue #326）
+
+- **判断**: README.md L220 の説明文と L224〜227 のテーブル列を、旧パス `$CLAUDE_PROJECT_DIR/.claude/state/*` から新パス `~/.cache/vibecorp/state/<repo-id>/<stamp-name>-ok` に更新した
+- **根拠**: PR #327 / Issue #326 でゲートスタンプの保存先が XDG Base Directory 仕様準拠の `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/` に移行された。README が旧パスを記載したままでは「透明性」バリュー（「全ての判断根拠をルール・設定ファイルとして可視化する。ブラックボックスを作らない」）に反する。また分離単位の説明も「CLAUDE_PROJECT_DIR が worktree ごとに異なる」から「repo-id = sanitized basename + sha256 先頭8桁によるリポジトリ単位分離」に実態が変わったため、同時に更新した
+- **代替案**: なし（仕様変更に追随するドキュメント修正のため）

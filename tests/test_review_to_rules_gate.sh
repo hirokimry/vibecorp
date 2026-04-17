@@ -1,12 +1,12 @@
 #!/bin/bash
-# session-harvest-gate.sh のユニットテスト
-# 使い方: bash tests/test_session_harvest_gate.sh
+# review-to-rules-gate.sh のユニットテスト
+# 使い方: bash tests/test_review_to_rules_gate.sh
 # CI: GitHub Actions で自動実行
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="${SCRIPT_DIR}/templates/claude/hooks/session-harvest-gate.sh"
+HOOK="${SCRIPT_DIR}/templates/claude/hooks/review-to-rules-gate.sh"
 PASSED=0
 FAILED=0
 TOTAL=0
@@ -64,7 +64,7 @@ export XDG_CACHE_HOME="${TMPDIR_TEST}/cache"
 # 共通ヘルパーから新スタンプパスを動的に取得
 # shellcheck source=../templates/claude/lib/common.sh
 source "${SCRIPT_DIR}/templates/claude/lib/common.sh"
-STAMP_FILE="$(vibecorp_stamp_path session-harvest)"
+STAMP_FILE="$(vibecorp_stamp_path review-to-rules)"
 mkdir -p "$(dirname "$STAMP_FILE")"
 
 # --- クリーンアップ ---
@@ -77,7 +77,7 @@ trap cleanup EXIT
 rm -f "$STAMP_FILE"
 
 # ============================================
-echo "=== session-harvest-gate.sh ==="
+echo "=== review-to-rules-gate.sh ==="
 # ============================================
 
 # 1. スタンプなしで gh pr merge → deny
@@ -89,7 +89,7 @@ touch "$STAMP_FILE"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge"}}' | "$HOOK")
 assert_allowed "スタンプありで gh pr merge → allow" "$OUTPUT"
 
-# 3. merge 後にスタンプ削除される
+# 3. merge 後にスタンプが削除される
 if [ ! -f "$STAMP_FILE" ]; then
   pass "merge 後にスタンプが削除される"
 else
@@ -104,7 +104,7 @@ assert_allowed "gh pr view → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"git status"}}' | "$HOOK")
 assert_allowed "git status → allow" "$OUTPUT"
 
-# 6. gh pr merge --squash → deny（サブコマンド付き）
+# 6. gh pr merge --squash → deny
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge --squash"}}' | "$HOOK")
 assert_blocked "gh pr merge --squash → deny" "$OUTPUT"
 
@@ -114,17 +114,17 @@ assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
 # 8. 絶対パス付き (/usr/local/bin/gh pr merge) → deny
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/local/bin/gh pr merge"}}' | "$HOOK")
-assert_blocked "絶対パス付き (/usr/local/bin/gh pr merge) → deny" "$OUTPUT"
+assert_blocked "絶対パス付き → deny" "$OUTPUT"
 
 # 9. env ラッパー付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"env gh pr merge"}}' | "$HOOK")
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
-# 10. STAMP_FILE は XDG_CACHE_HOME/vibecorp/state/<repo-id>/session-harvest-ok に配置される
+# 10. STAMP_FILE が新パス (XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok) に配置される
 touch "$STAMP_FILE"
 if [ -f "$STAMP_FILE" ]; then
   OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge"}}' | "$HOOK")
-  assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/session-harvest-ok に配置される" "$OUTPUT"
+  assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される" "$OUTPUT"
 else
   fail "STAMP_FILE が新パスに配置される (スタンプが見つからない: ${STAMP_FILE})"
 fi

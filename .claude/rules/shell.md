@@ -94,3 +94,18 @@ BEGIN { in_s=0; in_d=0; seg="" }
   - NG: `$status（完了）`
   - OK: `${status}（完了）`
 - テストスクリプト・フックスクリプトは macOS の bash 3.2 で動作確認が必要
+
+## `basename` の出力を `tr` に渡す場合は trailing newline を除去する
+
+- `basename "$path" | tr -cs 'A-Za-z0-9._-' '_'` は `basename` が出力する末尾の `\n` も `_` に変換してしまい、結果の末尾に余分な `_` が付く
+- **`printf '%s'` でコマンド置換し、trailing newline を除去してから `tr` に渡す**:
+
+```bash
+# NG: basename の trailing newline が _ に変換されて末尾に付く
+id="$(basename "$root" | tr -cs 'A-Za-z0-9._-' '_')"
+
+# OK: printf で newline を剥がしてから tr に渡す
+id="$(printf '%s' "$(basename "$root")" | tr -cs 'A-Za-z0-9._-' '_')"
+```
+
+- ファイル名サニタイズや ID 生成など、コマンド置換の出力を `tr` に渡すパターン全般に適用する

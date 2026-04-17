@@ -165,3 +165,21 @@ Issue #320 で TUI ハング問題（`file-ioctl` 欠落）を修正し、実用
 Phase 2（#310）で Linux bwrap を統合予定。Windows ネイティブは非対応（WSL2 を使用）。
 
 Docker（bind mount）方式との関係は decisions.md（2026-04-11）の記録通り「補完的用途」の位置づけを維持する。Docker が使えない macOS ホスト上で Phase 3a 連携により軽量な隔離が提供される形となる。
+
+### 6. `subpath` 許可だけでは親ディレクトリを作れない（PR #327 で確認）
+
+`(allow file-write* (subpath "/Users/me/.cache/vibecorp"))` を許可しても、親ディレクトリ `/Users/me/.cache/` が存在しない場合に `mkdir -p ~/.cache/vibecorp` は失敗する。
+
+**原因**: `mkdir -p` は中間ディレクトリ（`~/.cache/`）を作成するため `~/` への write が必要だが、sandbox プロファイルでは許可していない。`subpath` の許可はその配下に限定されており、存在しない中間パスの作成には親への write 権限が別途必要になる。
+
+**解決策**: sandbox 外（install.sh や activate.sh 等、sandbox-exec より前に実行される処理）でディレクトリを事前作成する:
+
+```bash
+# install.sh / pre-launch スクリプト内（sandbox 外）
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state"
+
+# その後 sandbox-exec を起動
+sandbox-exec -f "$profile" -- claude ...
+```
+
+プリセット install 時や初回起動スクリプト（`activate.sh` 等）でのディレクトリ事前作成をルールとして設ける。

@@ -63,18 +63,20 @@ review:
 
 ## 3. レビュー完了スタンプの生成
 
-レビューが完了したら、PR 作成を許可するスタンプを生成する。
+レビューが完了したら、PR 作成を許可するスタンプを生成する。スタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に作成される（`.claude/` 配下への書込確認プロンプトを回避）。
 
 ```bash
-mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
-touch "$CLAUDE_PROJECT_DIR/.claude/state/review-ok"
+. "$CLAUDE_PROJECT_DIR/.claude/lib/common.sh"
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+touch "${STAMP_DIR}/review-ok"
 ```
 
 worktree モードの場合:
 
 ```bash
-mkdir -p "<path>/.claude/state"
-touch "<path>/.claude/state/review-ok"
+. "<path>/.claude/lib/common.sh"
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+touch "${STAMP_DIR}/review-ok"
 ```
 
 ## 4. 結果報告
