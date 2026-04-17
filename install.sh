@@ -791,6 +791,25 @@ copy_isolation_templates() {
   done
 }
 
+# ゲートスタンプの保存先 ~/.cache/vibecorp/ を事前作成する (#326)。
+# sandbox-exec 内では ~/.cache/ の親ディレクトリ作成が拒否されるため、
+# install.sh（sandbox 外で実行）が一度作っておくことで、
+# sandbox 内の gate hook は subpath 配下の create のみで済む。
+#
+# templates/claude/lib/common.sh の vibecorp_stamp_dir() と XDG 解決規則を一致させる:
+# - XDG_CACHE_HOME は絶対パスのみ有効（XDG 仕様）。相対値は $HOME/.cache にフォールバック
+# - chmod 700 は既存ディレクトリにも毎回適用（広い権限が残らないように）
+setup_stamp_cache_dir() {
+  local cache_root="${HOME}/.cache"
+  if [[ "${XDG_CACHE_HOME:-}" == /* ]]; then
+    cache_root="${XDG_CACHE_HOME}"
+  fi
+  local cache_dir="${cache_root}/vibecorp/state"
+  mkdir -p "$cache_dir"
+  chmod 700 "$cache_dir" 2>/dev/null || true
+  log_info "ゲートスタンプ保存先を確保: ${cache_dir}"
+}
+
 # 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full + Darwin のみ動作。
 # templates/claude/bin/claude は `exec claude-real "$@"` する設計のため、
 # ラッパー自身を除外して PATH 上の本物 claude を検出し、`.claude/bin/claude-real` に symlink する。
@@ -1706,6 +1725,7 @@ main() {
 
   remove_managed_files
   copy_managed_files
+  setup_stamp_cache_dir
   copy_isolation_templates
   setup_claude_real_symlink
   generate_activate_script

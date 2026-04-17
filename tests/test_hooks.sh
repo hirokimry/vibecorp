@@ -5,10 +5,15 @@
 set -euo pipefail
 
 HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
+LIB_DIR="$(cd "$(dirname "$0")/../templates/claude/lib" && pwd)"
 PASSED=0
 FAILED=0
 TOTAL=0
 TMPDIR_ROOT=""
+
+# 共通ヘルパーを source（vibecorp_stamp_path を使うため）
+# shellcheck source=../templates/claude/lib/common.sh
+source "${LIB_DIR}/common.sh"
 
 # --- ヘルパー ---
 
@@ -92,6 +97,14 @@ setup_project_dir() {
   TMPDIR_ROOT=$(mktemp -d)
   mkdir -p "${TMPDIR_ROOT}/.claude/state"
   export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"
+  # ホスト ~/.cache を汚染しないよう XDG_CACHE_HOME を分離
+  export XDG_CACHE_HOME="${TMPDIR_ROOT}/cache"
+  # vibecorp_stamp_dir が toplevel を引けるよう git 初期化
+  ( cd "$TMPDIR_ROOT" && git init -q . && git config user.email t@example.com && git config user.name t )
+  # 各 stamp の現在パスを計算してエクスポート（テスト内で参照）
+  STAMP_REVIEW_TO_RULES="$(vibecorp_stamp_path review-to-rules)"
+  STAMP_SYNC="$(vibecorp_stamp_path sync)"
+  mkdir -p "$(dirname "$STAMP_REVIEW_TO_RULES")"
 }
 
 write_vibecorp_yml() {
@@ -243,54 +256,54 @@ echo "=== review-to-rules-gate.sh ==="
 write_vibecorp_yml
 
 # 1. スタンプなしで gh pr merge → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "スタンプなしで gh pr merge → deny" "$OUTPUT"
 
 # 2. スタンプありで gh pr merge → 許可
-touch ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+touch "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash --delete-branch"}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "スタンプありで gh pr merge → 許可" "$OUTPUT"
 
 # 3. 許可後にスタンプ削除確認
-assert_file_not_exists "許可後にスタンプ削除確認" "${TMPDIR_ROOT}/.claude/state/review-to-rules-ok"
+assert_file_not_exists "許可後にスタンプ削除確認" "${STAMP_REVIEW_TO_RULES}"
 
 # 4. merge 以外(gh pr view) → 許可
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr view 80"}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "merge 以外(gh pr view) → 許可" "$OUTPUT"
 
 # 5. 先頭スペース付き merge → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"  gh pr merge 80 --squash"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "先頭スペース付き merge → deny" "$OUTPUT"
 
 # 6. 環境変数プレフィックス付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"GH_TOKEN=dummy gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
 # 7. 複数環境変数プレフィックス → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
 
 # 8. env ラッパー付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"env gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
 # 9. command ラッパー付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"command gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 
 # 10. 絶対パス(/usr/bin/gh) → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "絶対パス(/usr/bin/gh) → deny" "$OUTPUT"
 
 # 11. 相対パス(./bin/gh) → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"./bin/gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_blocked "相対パス(./bin/gh) → deny" "$OUTPUT"
 
@@ -298,20 +311,22 @@ assert_blocked "相対パス(./bin/gh) → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title \"test\" --body \"gh pr merge pattern\""}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "gh pr create (bodyにmerge含む) → 許可" "$OUTPUT"
 
-# 13. STAMP_FILE は $CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok に配置される
+# 13. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される
 write_vibecorp_yml
-touch "${TMPDIR_ROOT}/.claude/state/review-to-rules-ok"
+touch "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
-assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok に配置される" "$OUTPUT"
+assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-to-rules-ok に配置される" "$OUTPUT"
 
 # 14. 別の CLAUDE_PROJECT_DIR の state は影響しない（worktree 分離）
 ALT_DIR=$(mktemp -d)
-mkdir -p "${ALT_DIR}/.claude/state"
-touch "${ALT_DIR}/.claude/state/review-to-rules-ok"
+( cd "$ALT_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
 ORIG_DIR="$CLAUDE_PROJECT_DIR"
 # 現在の TMPDIR_ROOT には state がない状態で別の CLAUDE_PROJECT_DIR を試す
-rm -f "${TMPDIR_ROOT}/.claude/state/review-to-rules-ok"
+rm -f "${STAMP_REVIEW_TO_RULES}"
 export CLAUDE_PROJECT_DIR="$ALT_DIR"
+ALT_STAMP="$(vibecorp_stamp_path review-to-rules)"
+mkdir -p "$(dirname "$ALT_STAMP")"
+touch "$ALT_STAMP"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 assert_allowed "別の CLAUDE_PROJECT_DIR の state を参照する（worktree 分離）" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$ORIG_DIR"
@@ -319,7 +334,7 @@ rm -rf "$ALT_DIR"
 
 # 16. deny 出力の JSON 構造検証
 write_vibecorp_yml
-rm -f ${TMPDIR_ROOT}/.claude/state/review-to-rules-ok
+rm -f "${STAMP_REVIEW_TO_RULES}"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80"}}' | run_hook review-to-rules-gate.sh)
 VALID=true
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false
@@ -339,65 +354,65 @@ echo "=== sync-gate.sh ==="
 write_vibecorp_yml
 
 # 1. スタンプなしで git push → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "スタンプなしで git push → deny" "$OUTPUT"
 
 # 2. スタンプありで git push → 許可
-touch ${TMPDIR_ROOT}/.claude/state/sync-ok
+touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "スタンプありで git push → 許可" "$OUTPUT"
 
 # 3. 許可後にスタンプ削除確認
-assert_file_not_exists "許可後にスタンプ削除確認" "${TMPDIR_ROOT}/.claude/state/sync-ok"
+assert_file_not_exists "許可後にスタンプ削除確認" "${STAMP_SYNC}"
 
 # 4. git push（引数なし） → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push"}}' | run_hook sync-gate.sh)
 assert_blocked "git push（引数なし） → deny" "$OUTPUT"
 
 # 5. git push --delete → スタンプなしでも許可
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push --delete origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push --delete → スタンプなしでも許可" "$OUTPUT"
 
 # 6. git push -d → スタンプなしでも許可
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push -d origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push -d → スタンプなしでも許可" "$OUTPUT"
 
 # 7. 先頭スペース付き push → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"  git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "先頭スペース付き push → deny" "$OUTPUT"
 
 # 8. 環境変数プレフィックス付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"GIT_SSH_COMMAND=ssh git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
 # 9. 複数環境変数プレフィックス → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
 
 # 10. env ラッパー付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
 # 11. command ラッパー付き → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"command git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 
 # 12. 絶対パス(/usr/bin/git) → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "絶対パス(/usr/bin/git) → deny" "$OUTPUT"
 
 # 13. 相対パス(./bin/git) → deny
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"./bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "相対パス(./bin/git) → deny" "$OUTPUT"
 
@@ -413,19 +428,21 @@ assert_allowed "対象外コマンド(git commit) → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "対象外コマンド(git pull) → 許可" "$OUTPUT"
 
-# 17. STAMP_FILE は $CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される
+# 17. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される
 write_vibecorp_yml
-touch "${TMPDIR_ROOT}/.claude/state/sync-ok"
+touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
-assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/sync-ok に配置される" "$OUTPUT"
+assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される" "$OUTPUT"
 
 # 18. 別の CLAUDE_PROJECT_DIR の state は影響しない（worktree 分離）
 ALT_DIR=$(mktemp -d)
-mkdir -p "${ALT_DIR}/.claude/state"
-touch "${ALT_DIR}/.claude/state/sync-ok"
+( cd "$ALT_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
 ORIG_DIR="$CLAUDE_PROJECT_DIR"
-rm -f "${TMPDIR_ROOT}/.claude/state/sync-ok"
+rm -f "${STAMP_SYNC}"
 export CLAUDE_PROJECT_DIR="$ALT_DIR"
+ALT_STAMP="$(vibecorp_stamp_path sync)"
+mkdir -p "$(dirname "$ALT_STAMP")"
+touch "$ALT_STAMP"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "別の CLAUDE_PROJECT_DIR の state を参照する（worktree 分離）" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$ORIG_DIR"
@@ -433,7 +450,7 @@ rm -rf "$ALT_DIR"
 
 # 20. deny 出力の JSON 構造検証
 write_vibecorp_yml
-rm -f ${TMPDIR_ROOT}/.claude/state/sync-ok
+rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 VALID=true
 echo "$OUTPUT" | jq -e '.hookSpecificOutput.hookEventName' >/dev/null 2>&1 || VALID=false

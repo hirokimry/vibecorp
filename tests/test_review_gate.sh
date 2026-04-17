@@ -45,24 +45,32 @@ assert_allowed() {
   fi
 }
 
-# --- テスト用の vibecorp.yml を準備 ---
+# --- テスト用の vibecorp.yml + git リポジトリを準備 ---
 
 TMPDIR_TEST=$(mktemp -d)
-mkdir -p "${TMPDIR_TEST}/.claude/state"
+mkdir -p "${TMPDIR_TEST}/.claude"
 cat > "${TMPDIR_TEST}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
 preset: standard
 language: ja
 YAML
+( cd "$TMPDIR_TEST" && git init -q . && git config user.email t@example.com && git config user.name t )
 
-# CLAUDE_PROJECT_DIR を設定して state ディレクトリ分離をテスト
+# CLAUDE_PROJECT_DIR と XDG_CACHE_HOME を分離して
+# ホスト側の ~/.cache を汚染せずスタンプを TMPDIR 配下に隔離
 export CLAUDE_PROJECT_DIR="$TMPDIR_TEST"
-STAMP_FILE="${TMPDIR_TEST}/.claude/state/review-ok"
+export XDG_CACHE_HOME="${TMPDIR_TEST}/cache"
+
+# 共通ヘルパーから新スタンプパスを動的に取得
+# shellcheck source=../templates/claude/lib/common.sh
+source "${SCRIPT_DIR}/templates/claude/lib/common.sh"
+STAMP_FILE="$(vibecorp_stamp_path review)"
+mkdir -p "$(dirname "$STAMP_FILE")"
 
 # --- クリーンアップ ---
 
 cleanup() {
-  rm -rf "$TMPDIR_TEST"
+  rm -rf "$TMPDIR_TEST" || true
 }
 trap cleanup EXIT
 # スタンプだけ削除（TMPDIR_TEST はフック実行に必要なので残す）
@@ -116,13 +124,13 @@ assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr list"}}' | "$HOOK")
 assert_allowed "gh pr list → allow" "$OUTPUT"
 
-# 11. STAMP_FILE は CLAUDE_PROJECT_DIR/.claude/state/review-ok に配置される
+# 11. STAMP_FILE は XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-ok に配置される
 touch "$STAMP_FILE"
 if [ -f "$STAMP_FILE" ]; then
   OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title test"}}' | "$HOOK")
-  assert_allowed "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/review-ok に配置される" "$OUTPUT"
+  assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/review-ok に配置される" "$OUTPUT"
 else
-  fail "STAMP_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/review-ok に配置される (スタンプが見つからない)"
+  fail "STAMP_FILE が新パスに配置される (スタンプが見つからない: ${STAMP_FILE})"
 fi
 
 # 12. command ラッパー付き → deny

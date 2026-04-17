@@ -145,11 +145,12 @@ mkdir -p .claude/knowledge/{role}/
 
 ### 5. スタンプ発行
 
-全エージェントの処理が完了したら、必ずスタンプを発行する（反映の有無に関わらず）:
+全エージェントの処理が完了したら、必ずスタンプを発行する（反映の有無に関わらず）。スタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に作成される:
 
 ```bash
-mkdir -p "$CLAUDE_PROJECT_DIR/.claude/state"
-touch "$CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok"
+. "$CLAUDE_PROJECT_DIR/.claude/lib/common.sh"
+STAMP_DIR="$(vibecorp_stamp_mkdir)"
+touch "${STAMP_DIR}/review-to-rules-ok"
 ```
 
 このスタンプがないと review-to-rules-gate フックにより `gh pr merge` がブロックされる。
