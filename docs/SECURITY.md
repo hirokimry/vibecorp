@@ -78,7 +78,7 @@ which claude
 | 方向 | 許可範囲 |
 |------|---------|
 | 書込 | WORKTREE（`$PWD`）、`~/.claude`、`/tmp`、`$TMPDIR`、`~/.cache/vibecorp`（ゲートスタンプ保存先 #326） |
-| 書込（単一ファイル） | `~/.claude.json`、`~/.claude.json.backup`（claude グローバル設定） |
+| 書込（単一ファイル） | `~/.claude.json`、`~/.claude.json.backup`、`~/.claude.json.lock`、`~/.claude.json.tmp.<pid>.<epoch_ms>`（regex）— Claude Code の原子的置換パターンに対応（#329） |
 | 読取 | `/usr`、`/System`、`/Library`、`/opt/homebrew`、`~/.gitconfig`、`~/.config/gh`、`~/.npm`、`~/.local/share/claude`（claude バイナリ実体） |
 | ioctl | `/dev/**`（TTY raw mode 切替に必須。Issue #320 で追加） |
 | 拒否（deny default） | `~/.ssh`、`~/.aws`、`~/.gnupg`、`~/Library/Keychains` 等 |
