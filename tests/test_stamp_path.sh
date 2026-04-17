@@ -97,13 +97,13 @@ assert_starts_with "XDG_CACHE_HOME=絶対パス で cache_root 反映" "${TMPDIR
 # --- ケース 2: XDG_CACHE_HOME 未設定で $HOME/.cache フォールバック ---
 
 echo "Test 2: XDG_CACHE_HOME 未設定 → \$HOME/.cache フォールバック"
-RESULT=$( cd "$REPO_DIR" && env -u XDG_CACHE_HOME HOME="${TMPDIR_ROOT}/home" CLAUDE_PROJECT_DIR="$REPO_DIR" bash -c "source ${LIB} && vibecorp_stamp_dir" )
+RESULT=$( cd "$REPO_DIR" && env -u XDG_CACHE_HOME HOME="${TMPDIR_ROOT}/home" CLAUDE_PROJECT_DIR="$REPO_DIR" bash -c "source \"${LIB}\" && vibecorp_stamp_dir" )
 assert_starts_with "XDG_CACHE_HOME 未設定 で \$HOME/.cache 使用" "${TMPDIR_ROOT}/home/.cache/vibecorp/state/" "$RESULT"
 
 # --- ケース 3: XDG_CACHE_HOME 相対パスは XDG 仕様により無視 ---
 
 echo "Test 3: XDG_CACHE_HOME 相対パス → \$HOME/.cache フォールバック（XDG 仕様）"
-RESULT=$( cd "$REPO_DIR" && XDG_CACHE_HOME="relative/path" HOME="${TMPDIR_ROOT}/home" CLAUDE_PROJECT_DIR="$REPO_DIR" bash -c "source ${LIB} && vibecorp_stamp_dir" )
+RESULT=$( cd "$REPO_DIR" && XDG_CACHE_HOME="relative/path" HOME="${TMPDIR_ROOT}/home" CLAUDE_PROJECT_DIR="$REPO_DIR" bash -c "source \"${LIB}\" && vibecorp_stamp_dir" )
 assert_starts_with "XDG_CACHE_HOME=相対 → \$HOME/.cache フォールバック" "${TMPDIR_ROOT}/home/.cache/vibecorp/state/" "$RESULT"
 
 # --- ケース 4: vibecorp_stamp_path の出力形式 ---
@@ -174,7 +174,7 @@ echo "Test 8: vibecorp_stamp_mkdir が dir 作成 + chmod 700"
 MKDIR_REPO="${TMPDIR_ROOT}/mkdir-test"
 mkdir -p "$MKDIR_REPO"
 ( cd "$MKDIR_REPO" && git init -q . )
-CREATED_DIR=$( cd "$MKDIR_REPO" && XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-mkdir" CLAUDE_PROJECT_DIR="$MKDIR_REPO" bash -c "source ${LIB} && vibecorp_stamp_mkdir" )
+CREATED_DIR=$( cd "$MKDIR_REPO" && XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-mkdir" CLAUDE_PROJECT_DIR="$MKDIR_REPO" bash -c "source \"${LIB}\" && vibecorp_stamp_mkdir" )
 if [ -d "$CREATED_DIR" ]; then
   pass "vibecorp_stamp_mkdir でディレクトリ作成"
 else
