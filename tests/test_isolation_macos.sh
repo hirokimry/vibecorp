@@ -410,13 +410,18 @@ echo ""
 echo "=== [12] sandbox 経由で .claude.json 類似の範囲外パスへの書込が拒否される（regex 境界検証） ==="
 # ============================================
 # regex パターン ^HOME/\.claude\.json\.tmp\.[0-9]+\.[0-9]+$ の境界を検証する。
+# また .lock 側の literal 境界（prefix / regex への誤拡張）も検証する。
 # 以下は deny default で拒否されるべきパス:
 #   .claude.jsonEVIL            — 類似名・サフィックス付加（. 始まりの拡張ではない）
+#   .claude.json.locked         — .lock literal の prefix 誤拡張検知
+#   .claude.json.lock.extra     — .lock literal の sub-path 誤拡張検知
 #   .claude.json.tmp.1.2.extra  — regex 末尾 $ 境界（余計なサフィックス）
 #   .claude.json.tmp.abc.1      — [0-9]+ 先頭が数値以外
 #   .claude.json.tmp.1.         — 末尾が . で数値が続かない
 deny_paths=(
   "${FAKE_HOME}/.claude.jsonEVIL"
+  "${FAKE_HOME}/.claude.json.locked"
+  "${FAKE_HOME}/.claude.json.lock.extra"
   "${FAKE_HOME}/.claude.json.tmp.1.2.extra"
   "${FAKE_HOME}/.claude.json.tmp.abc.1"
   "${FAKE_HOME}/.claude.json.tmp.1."
