@@ -217,14 +217,14 @@ your-project/
 
 ## ゲートフックとスタンプ
 
-ゲートフックはステートファイル（`$CLAUDE_PROJECT_DIR/.claude/state/*`）で状態管理する。対応するスキルを実行するとステートが発行され、ゲートが通過可能になる。ステートは確認後に自動削除される（ワンタイム）。`CLAUDE_PROJECT_DIR` が worktree ごとに異なるため、ブランチ単位で自動的に分離される。
+ゲートフックはステートファイル（`~/.cache/vibecorp/state/<repo-id>/*`）で状態管理する。対応するスキルを実行するとステートが発行され、ゲートが通過可能になる。ステートは確認後に自動削除される（ワンタイム）。`<repo-id>` は sanitized basename + sha256 先頭8桁で生成され、リポジトリ単位で分離される。保存先は `XDG_CACHE_HOME` 環境変数でカスタマイズ可能（絶対パスのみ有効、XDG Base Directory 仕様準拠）。
 
 | ゲートフック | ブロック対象 | 解除スキル | ステートファイル |
 |---|---|---|---|
-| `sync-gate.sh` | `git push` | `/sync-check` | `$CLAUDE_PROJECT_DIR/.claude/state/sync-ok` |
-| `review-to-rules-gate.sh` | `gh pr merge` | `/review-to-rules` | `$CLAUDE_PROJECT_DIR/.claude/state/review-to-rules-ok` |
-| `session-harvest-gate.sh` | `gh pr merge` | `/session-harvest` | `$CLAUDE_PROJECT_DIR/.claude/state/session-harvest-ok` |
-| `review-gate.sh` | `gh pr create` | `/review-loop` または `/review` | `$CLAUDE_PROJECT_DIR/.claude/state/review-ok` |
+| `sync-gate.sh` | `git push` | `/sync-check` | `~/.cache/vibecorp/state/<repo-id>/sync-ok` |
+| `review-to-rules-gate.sh` | `gh pr merge` | `/review-to-rules` | `~/.cache/vibecorp/state/<repo-id>/review-to-rules-ok` |
+| `session-harvest-gate.sh` | `gh pr merge` | `/session-harvest` | `~/.cache/vibecorp/state/<repo-id>/session-harvest-ok` |
+| `review-gate.sh` | `gh pr create` | `/review-loop` または `/review` | `~/.cache/vibecorp/state/<repo-id>/review-ok` |
 
 ゲートフックは `vibecorp.yml` の `hooks:` セクションで個別に無効化できる。
 

@@ -77,7 +77,7 @@ which claude
 
 | 方向 | 許可範囲 |
 |------|---------|
-| 書込 | WORKTREE（`$PWD`）、`~/.claude`、`/tmp`、`$TMPDIR` |
+| 書込 | WORKTREE（`$PWD`）、`~/.claude`、`/tmp`、`$TMPDIR`、`~/.cache/vibecorp`（ゲートスタンプ保存先 #326） |
 | 書込（単一ファイル） | `~/.claude.json`、`~/.claude.json.backup`（claude グローバル設定） |
 | 読取 | `/usr`、`/System`、`/Library`、`/opt/homebrew`、`~/.gitconfig`、`~/.config/gh`、`~/.npm`、`~/.local/share/claude`（claude バイナリ実体） |
 | ioctl | `/dev/**`（TTY raw mode 切替に必須。Issue #320 で追加） |
@@ -86,6 +86,10 @@ which claude
 **Issue #320 で追加された境界（claude バージョンアップで要再検証）:**
 
 claude 本体（npm 配布）は `~/.local/share/claude/versions/<version>/` 配下にバイナリ実体を配置し、`~/.claude.json` に OAuth トークン・プロジェクト一覧を保存し、`/dev/ttys*` への ioctl で TTY raw mode に切り替える。これらが許可されていないと TUI が起動できない。claude のバージョンアップで参照パス・要求 ioctl が変わると再びハングする可能性があるため、定期的な再検証を推奨する。
+
+**Issue #326 で追加された境界（ゲートスタンプの XDG キャッシュ移動）:**
+
+ゲートスタンプは `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/{gate名}-ok` に保存される。`~/.cache` 全体ではなく `~/.cache/vibecorp` サブパスのみを許可（攻撃面最小化）。脅威モデル: 同一ユーザーの別プロセスからのスタンプ偽造はスコープ外（信頼境界 = ユーザーアカウント）。chmod 700 で他ユーザーからの偽造のみブロック。
 
 ### Phase 1 防御レイヤ（実装済み）
 
