@@ -49,6 +49,17 @@ git diff main...HEAD --name-only
 git log main..HEAD --oneline
 ```
 
+### 2.5 差分ゼロの早期終了（コスト保護）
+
+差分も commit も無いセッションは委任対象が存在しないため、5 C\*O 呼出（約 $0.45）を回避するため即終了する。
+
+```bash
+if git diff main...HEAD --quiet && [ -z "$(git log main..HEAD --oneline)" ]; then
+  echo "[session-harvest] 差分・コミットなし — スキップ" >&2
+  exit 0
+fi
+```
+
 ### 3. 吸い上げ対象の判定
 
 セッション中の変更と会話から、以下の知見を抽出対象とする:

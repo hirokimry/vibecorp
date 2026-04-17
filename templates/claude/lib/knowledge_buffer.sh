@@ -63,7 +63,7 @@ knowledge_buffer_lock_acquire() {
   mkdir -p "$dir"
   local lock_dir="${dir}/.buffer.lock.d"
   local waited=0
-  # 10 分の 1 秒刻みでリトライ (0.1s * 10 = 1s)
+  # 1 秒刻みでリトライ（waited を秒単位で加算し timeout と直接比較）
   while ! mkdir "$lock_dir" 2>/dev/null; do
     if [ "$waited" -ge "$timeout" ]; then
       echo "[knowledge-buffer] lock acquire timeout (${timeout}s): ${lock_dir}" >&2
