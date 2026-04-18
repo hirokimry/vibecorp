@@ -23,10 +23,22 @@ if [ -f "$VIBECORP_YML" ]; then
   fi
 fi
 
+# realpath の可搬性ラッパー: realpath 不在環境では cd && pwd -P で代替
+resolve_realpath() {
+  local target="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$target" 2>/dev/null || echo ""
+  elif [ -d "$target" ]; then
+    ( cd "$target" 2>/dev/null && pwd -P ) || echo ""
+  else
+    echo ""
+  fi
+}
+
 # パストラバーサル対策: file_path から worktree を引く際の許可ルート
 # CLAUDE_PROJECT_DIR の親ディレクトリ配下のみ許可（worktree は通常 <project>.worktrees/ として
 # 親ディレクトリの兄弟に配置される想定）
-ALLOWED_ROOT=$(realpath "${PROJECT_DIR}/.." 2>/dev/null || echo "")
+ALLOWED_ROOT=$(resolve_realpath "${PROJECT_DIR}/..")
 
 # Edit/Write の場合、対象ファイルパスから worktree を判定する。
 # Bash や ALLOWED_ROOT が空/"/"のときは安全側で cwd 基準（CHECK_DIR=".")
@@ -36,6 +48,9 @@ if [ -n "$ALLOWED_ROOT" ] && [ "$ALLOWED_ROOT" != "/" ]; then
     TARGET_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
     # 空文字 / null / ~ 始まり は安全側にフォールバック（CHECK_DIR="." のまま）
+    # 注意: Claude は通常解決後の絶対パスを送る前提のため ~ 先頭のみ判定する。
+    # 未展開の $VAR や $(...) を含む file_path が来た場合は realpath が失敗する → 後続の
+    # ALLOWED_ROOT 判定で安全側 deny にフォールバックされる。
     if [ -n "$TARGET_PATH" ] && [ "${TARGET_PATH#\~}" = "$TARGET_PATH" ]; then
       # 親ディレクトリを最大 10 階層遡って実在ディレクトリを探す
       PARENT_DIR=$(dirname "$TARGET_PATH")
@@ -47,7 +62,7 @@ if [ -n "$ALLOWED_ROOT" ] && [ "$ALLOWED_ROOT" != "/" ]; then
 
       if [ -d "$PARENT_DIR" ]; then
         # realpath で正規化し、ALLOWED_ROOT 配下にあることを検証
-        RESOLVED=$(realpath "$PARENT_DIR" 2>/dev/null || echo "")
+        RESOLVED=$(resolve_realpath "$PARENT_DIR")
         if [ -n "$RESOLVED" ]; then
           case "$RESOLVED/" in
             "$ALLOWED_ROOT"/*) CHECK_DIR="$RESOLVED" ;;
@@ -105,6 +120,9 @@ if [ "$TOOL_NAME" = "Bash" ]; then
 
   # &&, ||, ; でセグメント分割して各セグメントを検査
   # here-string で読み込むことでサブシェルを回避
+  # TODO: 下記の sed による分割は quote-aware ではなく shell.md 違反（quote 内の && / ; を
+  # 誤分割する）。git commit -m "msg; with semicolon" 等でガードがすり抜ける既知バイパス経路。
+  # 別 Issue として後続化する（awk による quote-aware 分割への置換）。
   FOUND_COMMIT=false
   while IFS= read -r segment; do
     segment=$(echo "$segment" | sed 's/^[[:space:]]*//')

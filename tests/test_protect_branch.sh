@@ -104,6 +104,8 @@ setup_worktree() {
   local branch="$2"
   if ! git -C "$TMPDIR_ROOT" worktree add -B "$branch" "$worktree_path" >/dev/null 2>&1; then
     echo "  ERROR: worktree セットアップ失敗 (branch=$branch, path=$worktree_path)" >&2
+    # 中途半端な worktree を残さないよう片付けてから終了
+    git -C "$TMPDIR_ROOT" worktree remove --force "$worktree_path" >/dev/null 2>&1 || true
     exit 1
   fi
 }
@@ -319,6 +321,10 @@ else
 fi
 
 # WT-11: ALLOWED_ROOT が "/" になるエッジケース → 安全側 deny
+# CLAUDE_PROJECT_DIR=/ にすると ALLOWED_ROOT=resolve_realpath(/..)=/ になり、
+# protect-branch.sh は ALLOWED_ROOT="/" を検出して file_path 解析をスキップ → CHECK_DIR="."
+# になる。cwd は main repo（main ブランチ）なので deny される。
+# テスト後に SAVED_CLAUDE_DIR で元の値に必ず戻す（後続 WT/DIFF テストへの影響を防ぐ）。
 SAVED_CLAUDE_DIR="$CLAUDE_PROJECT_DIR"
 export CLAUDE_PROJECT_DIR="/"
 OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMPDIR_ROOT/src/app.ts\"}}" | run_hook)

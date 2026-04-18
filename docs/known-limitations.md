@@ -14,11 +14,13 @@ teammate（並列 ship の Agent）が `/ship --worktree <path>` で起動され
 
 ### 識別方法
 
-deny メッセージの `permissionDecisionReason` に `[tool=Bash, check_dir=.]` が含まれていれば、本制限による deny と判別できる。
+deny メッセージの `permissionDecisionReason` に `tool=Bash` が含まれていれば、本制限による deny と判別できる（`check_dir=.` は cwd 基準判定であることの補助情報）。
 
 ```text
 main ブランチでは直接作業できません。フィーチャーブランチを作成してください。 [tool=Bash, check_dir=.]
 ```
+
+`tool=Edit` / `tool=Write` の場合は `tool_input.file_path` から worktree を判定しているため、本制限の対象外。
 
 ### 回避策
 
