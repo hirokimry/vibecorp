@@ -488,3 +488,60 @@ CEO 提示の設計想定: full = sandbox-exec + --dangerously-skip-permissions 
 ### 過去判断との一貫性
 
 #309 の「ネットワーク全許可・process-exec 無制限は Phase 2 以降」制約と整合。Phase 1 既知制約の範囲で Hook が補完層として機能することを明示。
+
+## 2026-04-18 — Issue #296 protect-branch.sh worktree 誤検知修正
+
+### 判定
+
+承認: セキュリティリスクなし
+
+### 対象
+
+- `.claude/hooks/protect-branch.sh`（ALLOWED_ROOT + realpath による新規パストラバーサル防御追加、worktree 内 Edit/Write 誤検知修正）
+- `templates/claude/hooks/protect-branch.sh`（同期）
+- `tests/test_protect_branch.sh`（WT-1〜WT-11 + DIFF-1 追加）
+- `docs/known-limitations.md`（Bash 経路の既知制限を明記）
+
+### 合議状況
+
+security-analyst 3名の合議結果（audit-log.md: P296-001〜P296-004）。
+Critical / High / Medium の検出ゼロ。全会一致ルール適用なし。
+
+| ID | 重要度 | 合議判定 |
+|----|--------|---------|
+| P296-001 | Minor | 全員一致で検出。既存問題・別 Issue 後続化方針で一致 |
+| P296-002 | Minor | 全員一致で検出。jq --arg による JSON インジェクション回避済み、攻撃面限定的 |
+| P296-003 | Info | 対応不要（deny を受けるのは Claude Code エージェント自身であり外部公開されない） |
+| P296-004 | Info | 対応不要（運用規約依存の設計上のトレードオフ） |
+
+### メタレビュー判定
+
+**P296-001（sed quote-aware 違反）の扱い**
+
+`shell.md` に明示されている禁止事項違反（Minor）だが、実装計画（懸念事項6）および `protect-branch.sh` L157 の TODO コメントで「既存問題・本 Issue 範囲外」として認識・記録済み。別 Issue での後続化が確定しており、本 Issue の承認をブロックする理由はない。
+
+**新規パストラバーサル防御の評価**
+
+`ALLOWED_ROOT = CLAUDE_PROJECT_DIR/..` 配下のみ許可、`realpath` による symlink 解決、パス深さ10制限の組み合わせにより、Edit/Write 経路でのパストラバーサルが封鎖されている。テスト WT-4〜WT-8 でバイパス困難であることを確認。
+
+**攻撃チェーン俯瞰**
+
+P296-001（Bash 経路のセグメント分割バイパス）と P296-002（base_branch 汚染による deny 条件バイパス）を連鎖させた攻撃経路を検討したが、Bash 経路は `docs/known-limitations.md` に既知制限として明記済みであり、P296-002 の攻撃前提（vibecorp.yml への悪意ある記述）はリポジトリ管理者権限を要するため実際の攻撃面は限定的。Critical / High に相当する攻撃経路は存在しない。
+
+### 攻撃チェーン分析
+
+- Edit/Write 経路: ALLOWED_ROOT + realpath の 2 段階で封鎖。バイパス困難。
+- Bash 経路: quote-aware でない sed によるコマンド分割が残存するが、known-limitations.md に明記済み。別 Issue で後続化予定。
+- シンボリックリンク経由パス偽装: realpath が解決済み（CR-001 の canonicalize_dir 思想と同一）。
+- 深刻度: 低
+
+### 過去判断との一貫性
+
+- CR-001 / #318 の「`canonicalize_dir` / realpath による symlink 解決」という防御思想と一致。矛盾なし。
+- P296-001（sed quote-aware）は `shell.md` 規約の既知違反として別 Issue に委ねる。#309 / CR-001 以来の「既知制限を docs に明記して後続 Issue でトラッキング」方針に従った対応で整合している。
+
+### 関連
+
+- audit-log.md: 2026-04-18 Issue #296 セクション（P296-001〜P296-004）
+- CR-001 decisions.md エントリ（canonicalize_dir 防御思想の起源）
+- `docs/known-limitations.md`（Bash 経路の既知制限の明記先）

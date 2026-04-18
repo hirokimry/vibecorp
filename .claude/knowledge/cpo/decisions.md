@@ -192,3 +192,13 @@
   - 互換レイヤの廃止予定未定義は「導入の手軽さ」バリューに反する（deprecated 状態の永続化）
   - 互換スタブに移行先が明示されていないと既存ユーザーが次のアクションを取れない（透明性バリュー）
 - **代替案**: ハイブリッド案（衝突スキルのみ移行）は管理コスト増・UX の一貫性喪失のため不採用。Phase 3 削除タイムライン確定まで本 Issue を保留する案も考えられるが、移行ガイドを成果物に含める条件付きで先行可能と判断
+
+### 2026-04-18: worktree 経由 Edit/Write を許可する protect-branch.sh の仕様明確化（Issue #296）
+
+- **判断**: `protect-branch.sh` の Edit/Write 経路において、`tool_input.file_path` の dirname を `git -C` に渡して worktree 側のブランチを判定する修正を、「main ブランチでの直接作業禁止」仕様の正しい実装と判定した。Bash 経路（`tool_input.command` 経由）は cwd 依存のまま残し、`docs/known-limitations.md` に既知制限として明記する対処方針を承認した
+- **根拠**:
+  - worktree は main とは別ブランチで作業する仕組みであり、worktree 内の Edit/Write が main への直接作業とみなされていたのは誤検知。修正はフックの意図（main での直接作業を禁止する）を正確に実装するものであり、仕様の新設ではなく正しい解釈への収束
+  - Bash 経路を残す判断は、shell コマンドのパース複雑性（compound command 分解・quote-aware 処理）に対する実装コストとリスクのバランスによる。`/commit` スキル経由の `cd <worktree> && git commit` 形式を使えば回避可能であり、ユーザーへの強制を最小限に抑えた適切なトレードオフ
+  - `docs/known-limitations.md` への明記は「全ての判断根拠をルール・設定ファイルとして可視化する。ブラックボックスを作らない」という透明性バリューの体現。制限を隠さず可視化することで、ユーザーが回避策を取れる
+- **代替案**: Bash 経路も `tool_input.command` から worktree パスを抽出して判定する方式も技術的には可能だが、quote-aware な compound command パースは実装リスクが高く、誤検知・バイパスのリスクを増やす。`/commit` スキル経由という既存の回避経路が十分に機能するため、over-engineering を避けた設計が適切
+- **関連**: Issue #296, #258（teammate Bash compound command 制限）
