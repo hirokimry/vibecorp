@@ -280,3 +280,30 @@
   - feature→main PR: CodeRabbit の `path_filters` で重複除外 + Semgrep によるルール違反チェックを CI に追加
   - Semgrep ルールファイル（`.semgrep/rules/`）はテンプレートとして配布可能（ユーザー環境依存なし）
 - **代替案**: `danger.js` は cross-PR の差分比較スクリプトを書ける点で最も直接的だが Node.js 実行環境依存が増えるため採用優先度は低い。Semgrep OSS 版（YAML 定義・CI インライン実行）が vibecorp テンプレート配布との相性が最もよい
+
+### 2026-04-18（再評価）: Semgrep 採用見直し — YAGNI 原則により不採用
+
+前回（同日）の推奨を撤回する。
+
+- **判断**: Semgrep は不採用。CodeRabbit `path_instructions` + `shellcheck` で代替する
+- **根拠**:
+  1. vibecorp の本体はシェルスクリプト群であり、Semgrep が本領を発揮する TypeScript/Python/Go の型・API surface 解析の恩恵がほとんどない。`shellcheck` / `bash -n` が検出できない問題を Semgrep DSL で追加検出できるケースが見当たらない
+  2. 命名規約・構造制約は CodeRabbit の `path_instructions` に自然言語で記述することで LLM ベースのレビューとして機能する。「`path_instructions` では検出できないが Semgrep なら検出できる」ケースが vibecorp では特定できなかった
+  3. cross-PR 統合問題の補完手段として前回 Semgrep を挙げたが、Semgrep も単一 PR を静的解析するツールであり cross-PR 衝突は検出できない。前回の根拠は誤りだった
+  4. 導入コスト（テンプレート配布・install.sh 拡張・CI workflow 追加・利用者の DSL 学習）が MVV「導入の手軽さ」と衝突する
+- **推奨構成**:
+  - 子PR: CodeRabbit フル有効
+  - feature→main PR: CodeRabbit フル有効（コスト削減で `path_filters` 除外も可だが、統合問題検出には絞り込まない方が望ましい）
+  - シェルスクリプト品質: `shellcheck` を CI に追加
+- **代替案**: 将来的に TypeScript/Go など型のある言語を vibecorp に採用した場合、その時点で Semgrep の導入を再評価する（YAGNI の後追い）
+
+### 2026-04-18: `.coderabbit.yaml` テンプレート配布の取り下げ（Issue #348 再評価）
+
+- **判断**: Issue #348 を現在の設計のまま取り下げる。`shellcheck` CI のみ別 Issue で再設計する。`.coderabbit.yaml` テンプレートの配布は不採用。
+- **根拠**:
+  1. `path_filters` で `templates/` `docs/` を除外する設計は vibecorp 自身のディレクトリ構造を前提にしている。インストール先リポジトリに `templates/` が存在する保証はなく、TypeScript / Go / Rust 等どのようなプロジェクトにも適用できる汎用設定にはなりえない
+  2. `path_instructions` も配布先の命名規約・構造制約を事前定義できないため、内容が空か無意味になる
+  3. feature→main PR の `path_filters` 絞り込みは、別の子 PR が同じファイルを変更する統合問題を見落とす。フル有効の方が安全であり、CodeRabbit のコスト削減は現時点で優先課題ではない
+  4. CodeRabbit 設定は配布先プロジェクトのオーナーが自分で書くべき領域であり、vibecorp がスコープを持つ理由がない
+- **`shellcheck` CI について**: 配布する場合の対象は `.claude/hooks/*.sh`（vibecorp がインストールするファイル）のみ。`install.sh` / `tests/*.sh` は vibecorp 本体の CI で実行するものであり配布 CI の対象ではない。プリセット制限も不要（hooks は minimal 以上に存在するため全プリセットに配布可）。別 Issue で再設計する
+- **代替案**: vibecorp が `.coderabbit.yaml` の雛形コメント（`# 各プロジェクト固有のパスを設定してください`）を配布する案も検討したが、メンテ不能なゴミになるリスクがあり却下

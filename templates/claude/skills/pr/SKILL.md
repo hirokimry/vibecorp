@@ -120,17 +120,22 @@ gh pr view --web
 
 PR 作成 + auto-merge 設定が完了した後、セッションで生まれた知見を `knowledge/buffer` に蓄積するため `/session-harvest` を末尾同期で呼ぶ。PR 作成フローはブロックしない（呼出順: PR 作成 → auto-merge 設定 → session-harvest）。
 
+**新規 PR 時のみ実行**: ステップ2で `PR_NUMBER` が取得できた場合は既存 PR 更新であり session-harvest は呼ばない（同一セッションの知見が重複蓄積するのを防ぐ）。`PR_NUMBER` が空の場合のみ新規作成と判定する。
+
 ```bash
-PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
-  "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml" 2>/dev/null || echo "")"
-case "$PRESET" in
-  standard|full)
-    # /session-harvest は minimal プリセットでは配置されないため standard 以上のみ
-    if ! /session-harvest; then
-      echo "[pr] /session-harvest が失敗しました（PR 作成は成功）" >&2
-    fi
-    ;;
-esac
+# 新規 PR の場合のみ実行（既存 PR 更新時はスキップ）
+if [ -z "${PR_NUMBER:-}" ]; then
+  PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
+    "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml" 2>/dev/null || echo "")"
+  case "$PRESET" in
+    standard|full)
+      # /session-harvest は minimal プリセットでは配置されないため standard 以上のみ
+      if ! /session-harvest; then
+        echo "[pr] /session-harvest が失敗しました（PR 作成は成功）" >&2
+      fi
+      ;;
+  esac
+fi
 ```
 
 失敗しても PR 作成結果は成功扱い。呼出は末尾同期のため PR URL の返却前に完了する。
