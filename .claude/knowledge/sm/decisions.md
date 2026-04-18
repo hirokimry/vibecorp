@@ -34,3 +34,31 @@
 - 実装着手を阻むブロッカーなし
 - HOME regex エスケープ・UX系フィードバック指摘は別 Issue が適切
 - 現計画の Phase 順序（直列）は妥当。並列化しても効果が薄い
+
+## 2026-04-18: Issue #296 ガードレール領域変更の通過承認トレーサビリティ
+
+### 対象
+`protect-branch.sh`（worktree cwd 誤検知修正）— PR #363
+
+### 判断内容
+
+#### ガードレール例外の根拠
+`autonomous-restrictions.md` §4「ガードレール」領域（`protect-branch.sh` の改修）に該当する変更だが、以下の理由で実装を通過させた。
+
+- **承認経路**: CEO（ユーザー）から直接 `/ship https://github.com/hirokimry/vibecorp/issues/296` が指示された人間主導実装
+- `autonomous-restrictions.md` 末尾「人間承認ルート」に明示された経路であり、自律実行禁止制約（`/diagnose` → `/autopilot` → `/ship-parallel` ループ）とは別枠
+- 自律実行ループ経由ではなく CEO → COO 経由のため、自律実行禁止制約には抵触しない
+
+#### 変更範囲
+- `.claude/hooks/protect-branch.sh` および `templates/claude/hooks/protect-branch.sh` の worktree 対応改修
+- `tests/` 配下のテスト追加
+- `docs/known-limitations.md` 新規作成
+
+#### 整合確認
+- ガードレール自体の緩和・削除ではなく、誤検知（worktree 内 cwd 判定バグ）の修正
+- 修正後もガードレールの保護目的（保護ブランチへの直接操作防止）は維持されている
+
+### 関連
+- PR #292（誤検知の発覚契機）、PR #363（レビュー指摘反映後の最終実装）
+- Issue #258（Bash compound コマンド分割制限）
+- CTO/CPO/CISO 各 `decisions.md` 2026-04-18 エントリ

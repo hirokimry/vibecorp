@@ -307,3 +307,17 @@
   4. CodeRabbit 設定は配布先プロジェクトのオーナーが自分で書くべき領域であり、vibecorp がスコープを持つ理由がない
 - **`shellcheck` CI について**: 配布する場合の対象は `.claude/hooks/*.sh`（vibecorp がインストールするファイル）のみ。`install.sh` / `tests/*.sh` は vibecorp 本体の CI で実行するものであり配布 CI の対象ではない。プリセット制限も不要（hooks は minimal 以上に存在するため全プリセットに配布可）。別 Issue で再設計する
 - **代替案**: vibecorp が `.coderabbit.yaml` の雛形コメント（`# 各プロジェクト固有のパスを設定してください`）を配布する案も検討したが、メンテ不能なゴミになるリスクがあり却下
+
+### 2026-04-18: protect-branch.sh の worktree 誤検知問題 — 案1（ファイルパス基準）を正解設計として採用（Issue #296）
+
+- **判断**:
+  - 案1（`tool_input.file_path` の dirname を `git -C` に渡してブランチ判定）を #296 の正解設計として採用する
+  - Phase A 直前の uncommitted ホットパッチ（案 X）は GO。patch → rsync → spawn の順序を守ること
+  - Bash ツール時の `file_path` 不在はスキップせず、`CHECK_DIR="."` のまま cwd 基準で判定を継続する（訂正: PR #363 時点の実装整合確認。当初「スキップして exit 0」と記録したが実装は cwd 基準 deny を採用しており、既知制限として `docs/known-limitations.md` に明記済み）
+- **根拠**:
+  - `tool_input.file_path` は hook に確定して渡される情報であり、CWD（Claude ホストプロセスの状態）より信頼性が高い。hook が外部機構（Agent 起動プロトコルや /ship スキルの改修）に依存せず自己完結できる
+  - `team-auto-approve.sh` が既に同パターンで動作しており、アーキテクチャ整合性がある
+  - 案2（Agent 起動時に cwd を切り替える機構）・案3（/ship --worktree 全改修）はスコープが #296 を超え、変更コストが不釣り合い
+- **技術的負債として記録**: Bash ツール時の worktree 誤判定（`git commit` 検出が CWD 基準のまま）は #296 では未解消。既知の制限として Issue 完了条件に明記すること。暫定回避は agent への `cd <worktree> && git commit` 指示のみ有効（`git -C <worktree> commit` は Bash 経路でも CHECK_DIR="." のまま評価されるため機能しない。PR #363 のレビューで発覚）
+- **追加確認項目**: `diagnose-guard.sh` にも同様の worktree 誤判定が存在するか #296 担当 agent が確認すること
+- **代替案**: 案 Z（hook 完全 disable）は `autonomous-restrictions.md` 4項「ガードレール自体の変更」に抵触するため不採用。案 W（Write/Edit 禁止 agent prompt）は agent の実装自由度を大幅に制限し他 Issue への副作用が出るため不採用
