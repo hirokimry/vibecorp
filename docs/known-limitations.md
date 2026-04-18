@@ -24,17 +24,19 @@ main ブランチでは直接作業できません。フィーチャーブラン
 
 ### 回避策
 
-worktree 内で git コマンドを実行する場合は cwd を明示する:
+worktree 内で git コマンドを実行する場合は **必ず cwd を worktree に切り替える**:
 
 ```bash
 # OK: cd で worktree に入ってから commit
 cd /path/to/worktree && git commit -m "..."
 
-# OK: git -C で worktree を指定
-git -C /path/to/worktree commit -m "..."
-
 # NG: 素の git commit（cwd が main repo のままだと deny される）
 git commit -m "..."
+
+# NG: git -C <worktree> commit も同様に deny される
+#     （Bash 経路では tool_input.command から worktree を推定できず、
+#      CHECK_DIR="." のまま cwd 基準で判定されるため。将来課題として下記参照）
+git -C /path/to/worktree commit -m "..."
 ```
 
 `/commit` スキルは内部で `cd <path> && git commit` 形式を使うため、スキル経由なら本制限の影響を受けない（`rules/use-skills.md` でスキル経由が推奨されている理由の一つ）。

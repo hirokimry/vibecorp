@@ -137,7 +137,7 @@ deny() {
 - `realpath` の可搬性確認: macOS 標準環境（`/bin/bash` 3.2）で `realpath` コマンドが利用可能かを `which realpath` で確認。利用不可なら `cd "$dir" && pwd -P` の代替実装に切り替える
 
 **テスト項目:**
-- `bash tests/test_protect_branch.sh` を実行し、既存 22 ケースが全 PASS すること
+- `bash tests/test_protect_branch.sh` を実行し、既存 23 ケースが全 PASS すること
 - worktree 新規ケース（Phase 3 で追加）も PASS すること
 - macOS bash 3.2 環境（`bash --version` で 3.2.x を確認）で全テストが PASS すること
 
@@ -319,8 +319,8 @@ cleanup() {
 ```
 
 **テスト項目:**
-- 既存 22 ケース + worktree 11 ケース + diff 1 ケース = 計 34 ケースが全 PASS
-- `run_hook` ヘルパー変更後も既存 22 ケースが non-regression（特に GIT_DIR 削除と cd 方式変更による影響を確認）
+- 既存 23 ケース + worktree 11 ケース + diff 1 ケース = 計 35 ケースが全 PASS
+- `run_hook` ヘルパー変更後も既存 23 ケースが non-regression（特に GIT_DIR 削除と cd 方式変更による影響を確認）
 - macOS bash 3.2 環境（`/bin/bash --version` で確認）で `bash tests/test_protect_branch.sh` が全 PASS すること
 
 ### Phase 4: 既知制限のドキュメント化
@@ -342,7 +342,7 @@ cleanup() {
 - [ ] `templates/claude/hooks/protect-branch.sh` も同一修正（diff 0）
 - [ ] `tests/test_protect_branch.sh` に worktree テスト 11 ケース（WT-1〜WT-11）+ diff 1 ケース追加・全 PASS
 - [ ] Bash の cwd 依存を `docs/known-limitations.md` に既知制限として明記
-- [ ] 既存 22 ケースが non-regression（合計 34 ケース全 PASS）
+- [ ] 既存 23 ケースが non-regression（合計 35 ケース全 PASS）
 - [ ] macOS bash 3.2 環境で全テストが PASS
 
 ## 懸念事項

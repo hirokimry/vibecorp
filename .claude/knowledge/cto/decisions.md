@@ -318,6 +318,6 @@
   - `tool_input.file_path` は hook に確定して渡される情報であり、CWD（Claude ホストプロセスの状態）より信頼性が高い。hook が外部機構（Agent 起動プロトコルや /ship スキルの改修）に依存せず自己完結できる
   - `team-auto-approve.sh` が既に同パターンで動作しており、アーキテクチャ整合性がある
   - 案2（Agent 起動時に cwd を切り替える機構）・案3（/ship --worktree 全改修）はスコープが #296 を超え、変更コストが不釣り合い
-- **技術的負債として記録**: Bash ツール時の worktree 誤判定（`git commit` 検出が CWD 基準のまま）は #296 では未解消。既知の制限として Issue 完了条件に明記すること。対策は agent への `git -C <worktree> commit` 指示で暫定回避
+- **技術的負債として記録**: Bash ツール時の worktree 誤判定（`git commit` 検出が CWD 基準のまま）は #296 では未解消。既知の制限として Issue 完了条件に明記すること。暫定回避は agent への `cd <worktree> && git commit` 指示のみ有効（`git -C <worktree> commit` は Bash 経路でも CHECK_DIR="." のまま評価されるため機能しない。PR #363 のレビューで発覚）
 - **追加確認項目**: `diagnose-guard.sh` にも同様の worktree 誤判定が存在するか #296 担当 agent が確認すること
 - **代替案**: 案 Z（hook 完全 disable）は `autonomous-restrictions.md` 4項「ガードレール自体の変更」に抵触するため不採用。案 W（Write/Edit 禁止 agent prompt）は agent の実装自由度を大幅に制限し他 Issue への副作用が出るため不採用
