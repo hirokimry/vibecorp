@@ -449,3 +449,42 @@ Issue #329 マージ後も `VIBECORP_ISOLATION=1 claude /login` が失敗。kern
 ### 過去判断との一貫性
 
 Issue #320 / #326 / #329 と整合。`~/.cache/vibecorp` サブパス限定（#326）と同じ設計思想で、`~/.cache` 全体ではなく `claude` 直下のみに限定することで攻撃面最小化を維持。
+
+## 2026-04-18 — プリセット別安全性評価（full/standard/minimal × sandbox/Hook）
+
+### 判定
+
+条件付き承認（full のみ）/ standard・minimal は Hook 削減不可ラインを明示
+
+### 対象
+
+CEO 提示の設計想定: full = sandbox-exec + --dangerously-skip-permissions + auto
+
+### メタレビュー判定
+
+- 「sandbox があれば Hook 不要」という単純化: **反対**。代替不可な Hook が存在する
+- skip-permissions の安全条件: sandbox 内 + 明示的 opt-in の両方が必須
+
+### 攻撃チェーン分析
+
+**sandbox で防げない脅威（Phase 1 既知制約より）:**
+1. ネットワーク全許可 → `~/.config/gh` 読取と組み合わせた GitHub PAT 外部送信
+2. process-exec 無制限 → osascript 等による sandbox 境界迂回
+3. `~/.claude` 全 RW → hooks 書き換えによる持続的挙動改変
+4. git コマンド自体はワークツリー内操作として許可される（sandbox は git を止めない）
+
+**標準 Hook 群の評価（sandbox で代替不可かどうか）:**
+- `protect-files.sh`: MVV.md 等の保護ファイルへの書込。sandbox は書込境界を制御するが「特定ファイル禁止」の粒度はない。**代替不可**
+- `diagnose-guard.sh`: 自律ループ暴走防止。sandbox は対象外。**代替不可**
+- `block-api-bypass.sh`: gh api 直接マージ。git/gh はワークツリー内として許可される。**代替不可**
+- `role-gate.sh`: エージェントロール越権防止。sandbox は対象外。**代替不可**
+- `review-gate.sh` / `sync-gate.sh` 等: プロセスゲート。sandbox で防げない論理的制御。**代替不可**
+
+### 最終判断
+
+- full: 条件付き承認（sandbox + opt-in 両方が揃っている場合のみ skip-permissions 可。Hook は削減不可）
+- standard/minimal: sandbox なし前提。protect-files / diagnose-guard / block-api-bypass は削除不可最低ライン
+
+### 過去判断との一貫性
+
+#309 の「ネットワーク全許可・process-exec 無制限は Phase 2 以降」制約と整合。Phase 1 既知制約の範囲で Hook が補完層として機能することを明示。

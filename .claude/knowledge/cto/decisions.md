@@ -256,3 +256,54 @@
   - `literal` と `regex` は SBPL 内で意味論が異なる（前者は完全一致・後者はパターン照合）。同一 `(allow ...)` ブロックに混在させると可読性が低下し境界責務が曖昧になるため、ブロックを分離する
   - `$(date +%s)` は 10 桁（秒）、`epoch_ms` は 13 桁だが `[0-9]+\.[0-9]+` は桁数不問でどちらにもマッチする。Claude Code 側が precision を秒→ミリ秒等に変更しても regex を修正する必要がなく、将来変更への耐性が高い
 - **代替案**: `.lock` も regex で `\.lock$` として統一する案も検討したが、固定サフィックスを literal で書けるのに regex を使うのは過剰であり、`literal` の方が意図が明確なため採用しなかった
+
+### 2026-04-18: Hook と sandbox 隔離の役割分担評価（full = sandbox + skip-permissions 前提）
+
+- **判断**:
+  - sandbox（SBPL）と Hook は制御層が異なる。sandbox は OS リソース境界（ファイルシステム・ネットワーク）を物理封じ込めし、Hook は Claude Code のツール意味論（どのパス・どのコマンド）を制御する。両者は直交する二層防御であり「sandbox があれば Hook を削減できる」は原則として成立しない
+  - 唯一の削減候補は `team-auto-approve.sh`。この Hook の目的は「承認プロンプトを消す」ことであり、`--dangerously-skip-permissions` が前提なら存在意義がなくなる。full + macOS sandbox + VIBECORP_ISOLATION=1 有効時のみ、install.sh の配置条件から除外することを推奨する
+  - ワークフローゲート 2 本（sync-gate / review-gate）はプロセス強制であってセキュリティではなく、sandbox・skip-permissions と直交する。standard 以上で維持必須（review-to-rules-gate / session-harvest-gate は #328 知見閉ループ再設計でスキル任意実行化に伴い廃止）
+  - セキュリティ系 Hook（protect-files / protect-branch / role-gate / block-api-bypass / diagnose-guard）はツール意味論レベルの制御を担い、sandbox では代替不可能。全プラン維持必須
+- **根拠**: sandbox の subpath 制御は WORKTREE 境界を設定するが、WORKTREE 内の特定ファイルの除外・現在ブランチの文脈判断・エージェントのロール状態・コマンドの意味論制御は SBPL に記述できない。Hook が担保している制御を sandbox に移植する手段がそもそも存在しない
+- **代替案**: team-auto-approve を全プランで削除し、全ユーザーに skip-permissions を要求する案も検討したが、MVV「導入の手軽さ」「段階的成長」に反するため却下。full 専用の条件分岐が最小変更・最大効果の判断
+
+### 2026-04-18: CodeRabbit による cross-PR 統合問題検出の技術評価
+
+- **判断**: CodeRabbit は「子A + 子B の組み合わせで発生する API 衝突・命名不整合」をアーキテクチャ上検出できない。feature→main PR を OFF にするコスト削減は合理的だが、統合問題の防止目的には別レイヤー（Semgrep + CI）での補完が必要
+- **根拠**:
+  - CodeRabbit は PR ごとに独立した LLM セッションで動作し、他 PR の diff を参照する cross-PR analysis 機能を持たない（2026年4月時点）
+  - `knowledge_base` / `learnings` は過去レビューの蓄積であり、リアルタイムの cross-PR API surface 比較にはならない
+  - `path_instructions` でルールを書いても「2 つの PR が独立してルールに従っている場合の衝突」は instruction では防げない
+  - `path_filters` で既レビュー済みファイルを除外すると LLM コストは削減できるが、統合問題の検出能力は上がらない
+- **推奨構成**:
+  - 子PR（dev/xxx → feature/epic-xxx）: CodeRabbit フル有効
+  - feature→main PR: CodeRabbit の `path_filters` で重複除外 + Semgrep によるルール違反チェックを CI に追加
+  - Semgrep ルールファイル（`.semgrep/rules/`）はテンプレートとして配布可能（ユーザー環境依存なし）
+- **代替案**: `danger.js` は cross-PR の差分比較スクリプトを書ける点で最も直接的だが Node.js 実行環境依存が増えるため採用優先度は低い。Semgrep OSS 版（YAML 定義・CI インライン実行）が vibecorp テンプレート配布との相性が最もよい
+
+### 2026-04-18（再評価）: Semgrep 採用見直し — YAGNI 原則により不採用
+
+前回（同日）の推奨を撤回する。
+
+- **判断**: Semgrep は不採用。CodeRabbit `path_instructions` + `shellcheck` で代替する
+- **根拠**:
+  1. vibecorp の本体はシェルスクリプト群であり、Semgrep が本領を発揮する TypeScript/Python/Go の型・API surface 解析の恩恵がほとんどない。`shellcheck` / `bash -n` が検出できない問題を Semgrep DSL で追加検出できるケースが見当たらない
+  2. 命名規約・構造制約は CodeRabbit の `path_instructions` に自然言語で記述することで LLM ベースのレビューとして機能する。「`path_instructions` では検出できないが Semgrep なら検出できる」ケースが vibecorp では特定できなかった
+  3. cross-PR 統合問題の補完手段として前回 Semgrep を挙げたが、Semgrep も単一 PR を静的解析するツールであり cross-PR 衝突は検出できない。前回の根拠は誤りだった
+  4. 導入コスト（テンプレート配布・install.sh 拡張・CI workflow 追加・利用者の DSL 学習）が MVV「導入の手軽さ」と衝突する
+- **推奨構成**:
+  - 子PR: CodeRabbit フル有効
+  - feature→main PR: CodeRabbit フル有効（コスト削減で `path_filters` 除外も可だが、統合問題検出には絞り込まない方が望ましい）
+  - シェルスクリプト品質: `shellcheck` を CI に追加
+- **代替案**: 将来的に TypeScript/Go など型のある言語を vibecorp に採用した場合、その時点で Semgrep の導入を再評価する（YAGNI の後追い）
+
+### 2026-04-18: `.coderabbit.yaml` テンプレート配布の取り下げ（Issue #348 再評価）
+
+- **判断**: Issue #348 を現在の設計のまま取り下げる。`shellcheck` CI のみ別 Issue で再設計する。`.coderabbit.yaml` テンプレートの配布は不採用。
+- **根拠**:
+  1. `path_filters` で `templates/` `docs/` を除外する設計は vibecorp 自身のディレクトリ構造を前提にしている。インストール先リポジトリに `templates/` が存在する保証はなく、TypeScript / Go / Rust 等どのようなプロジェクトにも適用できる汎用設定にはなりえない
+  2. `path_instructions` も配布先の命名規約・構造制約を事前定義できないため、内容が空か無意味になる
+  3. feature→main PR の `path_filters` 絞り込みは、別の子 PR が同じファイルを変更する統合問題を見落とす。フル有効の方が安全であり、CodeRabbit のコスト削減は現時点で優先課題ではない
+  4. CodeRabbit 設定は配布先プロジェクトのオーナーが自分で書くべき領域であり、vibecorp がスコープを持つ理由がない
+- **`shellcheck` CI について**: 配布する場合の対象は `.claude/hooks/*.sh`（vibecorp がインストールするファイル）のみ。`install.sh` / `tests/*.sh` は vibecorp 本体の CI で実行するものであり配布 CI の対象ではない。プリセット制限も不要（hooks は minimal 以上に存在するため全プリセットに配布可）。別 Issue で再設計する
+- **代替案**: vibecorp が `.coderabbit.yaml` の雛形コメント（`# 各プロジェクト固有のパスを設定してください`）を配布する案も検討したが、メンテ不能なゴミになるリスクがあり却下

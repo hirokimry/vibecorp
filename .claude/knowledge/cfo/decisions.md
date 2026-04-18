@@ -31,3 +31,84 @@
   - OAuth 復旧後の課金削減方向: ANTHROPIC_API_KEY fallback 発動リスクの解消
   - 追加される外部サービス利用: なし
 - **スケール観点**: sandbox ユーザーが増えるほど OAuth 正常動作により ANTHROPIC_API_KEY fallback の発動リスクが下がる。スケール時のコスト影響はプラス方向（節減）のみ
+
+## 2026-04-18: プラン別 SKIP 性のコスト観点判断（CEO 直接依頼）
+
+- **合議状況**: CEO から直接の判断依頼（経理チーム合議なし）
+- **判断**: 条件付き承認
+- **条件**:
+  1. `max_issues_per_day` / `max_issues_per_run` の具体的デフォルト値を `docs/cost-analysis.md` に明記すること
+  2. full プリセット起動時に `ANTHROPIC_API_KEY` 設定を検出したらコスト警告を表示する実装を担保すること
+- **根拠**:
+  - 承認プロンプト待機時間は API トークンを消費しない。従量課金への直接影響はほぼゼロ（Claude Max レート制限ウィンドウの無駄消費という間接コストは存在する）
+  - skip-permissions の暴走リスクは /autopilot ループ検出失敗と /spike-loop の終了条件崩壊が主シナリオ。/diagnose 1回 Opus 4.6 換算で約 $15 であり、誤起動・再起動が重なると1日 $50〜$100 超えうる
+  - max_issues_per_day 等のガードレールは autonomous-restrictions.md で「課金構造」領域として自律変更禁止だが、現状の設定値が cost-analysis.md に明示されておらず監査の盲点になっている
+- **プラン別推奨**:
+  - minimal: ゲート Hook は残す。`--dangerously-skip-permissions` は不要。UX 改善はタイムアウト短縮で対応
+  - standard: sync-gate / review-gate は残す。繰り返し確認の省略は可。ゲート除去は手戻りコストを招く
+  - full: `--dangerously-skip-permissions` は必須（ヘッドレス並列で承認待ちが物理的に不可能）。上限ガードレールの強化が前提条件
+- **課金境界維持のための必須制約**:
+  - full 起動時の API キー検出警告の実装強制（現状は文書要件のみ）
+  - Claude Max フォールバック防止: minimal/standard では `ANTHROPIC_API_KEY` の設定を抑制または警告する
+- **推奨監視機構**:
+  - weekly `/audit-cost` を full プリセットの必須設定として install.sh に組み込む
+  - Anthropic Console 使用量アラート（80% 閾値）を `ANTHROPIC_API_KEY` 設定時の必須手順として明示
+  - `/audit-cost` の監査観点に `max_issues_per_day` / `max_issues_per_run` の現在値チェックを追加する
+- **数値データ**:
+  - 承認待機のコスト増分: $0（トークン消費なし）
+  - 暴走シナリオの最大リスク: /diagnose 誤起動 × 3回 = 約 $45/日（Opus 4.6 換算）
+  - /ship 1回あたりの作業コスト: 約 $1.4（Sonnet 4.6 換算）
+- **スケール観点**: full プリセット導入リポジトリが増えるほど、ガードレール値の未設定リスクが線形に拡大する。ドキュメント整備は早期に実施すべき
+
+## 2026-04-18: Issue #328 — vibecorp 知見閉ループ再設計（/session-harvest 導入）
+
+- **合議状況**: 多数決（3:0）— 全員一致 Major 2件、2:1 Major 1件、1:2 Minor 1件
+- **判断**: 差し戻し（2点の本 PR 必須修正 + 1点の別 Issue 対処）
+- **autonomous-restrictions.md #3 判定**: `docs/cost-analysis.md` は課金構造領域。自律実行禁止だが人間（COO/CEO）による修正は可能
+
+### 採用判定
+
+#### [Major] /pr 末尾 /session-harvest 同期呼出のコスト試算が docs/cost-analysis.md に未記載 — 本 PR 必須修正
+
+- **多数決**: 3/3 全員一致 → 採用
+- **MUST 違反の成否**: 違反あり。`docs/cost-analysis.md` コストレビューセクションに「新規サービス導入時はコスト試算を事前に行うこと」と明記されており、/session-harvest は /pr フロー末尾に組み込まれた実質的な新規サービス導入に該当する。試算記述がゼロの状態でのマージは MUST 違反
+- **試算検証**: PR 1回あたり C*O 5並列 × 30K トークン上限 = 最大 150K トークン（Sonnet 4.6 入力 $3/1M + 出力 $15/1M の混在として約 $0.45/PR）という経理チームの試算は妥当。ただし実際の出力比率・キャッシュヒット率で変動する。上限値としての提示が適切
+- **判断**: docs/cost-analysis.md への試算追記は本 PR の受け入れ条件とする。autonomous-restrictions.md #3 により自律実行禁止だが、本 PR の実装者（COO）が手動で追記することを強制する。追記なしのマージは不可
+
+#### [Major] キャッシュ機構なし — 差分ゼロでも5 LLM 呼出が発火 — 本 PR 必須修正
+
+- **多数決**: 3/3 全員一致（重み付け表現の差はあるが Major で一致）→ 採用
+- **MUST NOT 違反の成否**: 違反あり。`docs/cost-analysis.md` キャッシュ制御セクションに「MUST NOT: キャッシュ未設定のまま高頻度 API を本番投入しないこと」と明記されている。/session-harvest は /pr 末尾で毎回発火する高頻度 API 呼出であり、差分ゼロ時の early-exit がない状態でのマージは MUST NOT 違反に該当する
+- **実害シナリオの妥当性**: 妥当。SKILL.md ステップ3の「吸い上げ不要の判定」は LLM 判定であり、差分ゼロでも LLM が判定のために呼ばれる。true の early-exit（git diff 結果をシェルで判定して LLM 呼出前に return）が存在しない。autopilot ループ下では1日 10〜20回の PR 発火も想定され、無条件の LLM 呼出コストは $4.5〜$9/日（従量課金時）になりうる
+- **判断**: session-harvest SKILL.md に「git diff origin/main...HEAD が空ならば LLM 呼出前に exit 0」の early-exit を追加することを本 PR の受け入れ条件とする
+
+#### [Minor/Major 分裂] VIBECORP_TOKEN_RATIO=0.8 の根拠不足 — 別 Issue 対処
+
+- **多数決**: cost1 Minor / cost2 Major / cost3 Minor → 2:1 で Minor 採用
+- **判断**: 別 Issue 対処。0.8 という値が日本語混在の保守値として適切かどうかは実測値が必要であり、本 PR スコープで解決できない。ただし SKILL.md にコメントとして「保守値・根拠は docs/cost-analysis.md の token-ratio セクション参照」を追記する Minor 修正は本 PR 内で対応可
+- **CFO 補完**: 日本語リポジトリでの実測トークン比（文字数/トークン数）は 0.4〜0.6 程度が一般的（CJK 文字はサブワード分割で文字数よりトークン数が少なくなる傾向）。0.8 は保守的（過大見積もり）であり、コスト観点では切り詰めが早めに発動するが課金は増えない。過小推定ではないため安全側の設定といえる。cost2 の Major 判定は過剰。ただし根拠の明示は必要
+
+#### [Minor/Info] diagnose-guard.sh 削除によるコスト暴走リスク間接上昇 — 偽陽性除外
+
+- **多数決**: 複数アナリストが Info または参考情報として言及 → 偽陽性除外
+- **判断**: 本 PR は diagnose-guard.sh の削除を含まない（差分確認済み）。経理チームの指摘は変更内容の誤読か、別 PR との混同。除外する
+- **CFO 補完**: /diagnose 1回 ≒ $15 のリスク自体は実在するが、それは本 PR のスコープ外。#284 Phase 5 の autonomous-restrictions.md で既に対処済み
+
+#### [Info] 5エージェント常時並列起動（管轄外エージェントへの不要呼出） — 偽陽性除外
+
+- **判断**: Info 指摘。session-harvest の設計として C*O 5並列が意図的な仕様であり、これを変えることはプロダクト方針判断（CPO 管轄）に踏み込む。CFO 観点では上記コスト試算と early-exit の修正で十分に管理可能。除外する
+
+### スコープ拡大のトレードオフ
+
+docs/cost-analysis.md の試算追記を本 PR で強制することについて: autonomous-restrictions.md #3 は「課金構造」領域の**自律実行**を禁止している。CFO がコスト試算記述の追記を指示し、COO（人間が承認した上で）が記述するのは禁止の対象外。ただし本 PR 主旨（知見閉ループ再設計）とは直接関係のない記述追加であり、Issue スコープが膨らむリスクがある。判断: コスト試算なき新機能導入は MUST 違反であり、スコープ拡大より規約遵守を優先する。試算追記は本 PR 内で完結させる
+
+### 数値データ
+
+- /session-harvest 1回の上限コスト: C*O 5並列 × 30K トークン上限 = 最大 $0.45（Sonnet 4.6 従量課金時）
+- キャッシュなし + autopilot 下での最大コスト: $0.45 × 20回/日 = 最大 $9/日
+- early-exit 実装後の差分ゼロ時コスト: $0（LLM 呼出なし）
+- Claude Max 定額内では上記は直接課金にならないが、レート制限消費として間接コスト発生
+
+### スケール観点
+
+PR 作成頻度に比例してコストが線形増加する構造。full プリセット × autopilot 環境では 1リポジトリあたり月額 $0〜$270/月（0〜600 PR/月想定、従量課金時）の幅がある。early-exit 実装により差分ゼロ PR でのコストを排除できれば実効コストは大幅に低減する。docs/cost-analysis.md への試算追記でユーザーへの透明性を確保することは MVV「透明性」バリューとも整合する

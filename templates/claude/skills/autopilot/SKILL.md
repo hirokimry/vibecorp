@@ -24,6 +24,7 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 - main ブランチにいること
 - `/diagnose` が起票した diagnose Issue は **CISO + CPO + SM の3者承認ゲート**（rules/autonomous-restrictions.md）を通過済みのため、不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）が自動除外されている
 - 手動起票された Issue（diagnose ラベルなし）はこのスキルの対象外
+- **knowledge/buffer フロー**: ship 後に `/review-harvest` → `/knowledge-pr` を実行するが、main への反映は必ず auto-merge 経由（`/knowledge-pr` が PR を起こして CodeRabbit + CI を通す）。main への直接 push は一切発生しない
 
 ## ワークフロー
 
@@ -88,7 +89,20 @@ AskUserQuestion でユーザーの選択を取得する。
 
 ユーザー確認なしで、全 diagnose Issue を `/ship-parallel` に渡す。
 
-### 7. 結果報告
+### 7. knowledge/buffer の収集 → PR 化
+
+ship 実行（またはスキップ）後、蓄積されたレビュー指摘と会話差分を main に反映する:
+
+```bash
+/review-harvest    # 前回収集以降のマージ済み PR からレビュー指摘を収集
+/knowledge-pr      # knowledge/buffer の差分を Issue 起票 → PR 作成 → auto-merge
+```
+
+- いずれも失敗しても autopilot 全体は成功扱い（main 直接 push は発生しない）
+- `/review-harvest` が exit 3（push 失敗）した場合は `/knowledge-pr` を skip して人手復旧を促す
+- `/knowledge-pr` は重複 Issue チェックで自動 skip される
+
+### 8. 結果報告
 
 ```text
 ## /autopilot 完了
@@ -96,6 +110,8 @@ AskUserQuestion でユーザーの選択を取得する。
 - diagnose Issue: {n}件
 - ship 実行: {n}件
 - スキップ: {n}件
+- review-harvest: {処理 PR 数 / skip 理由}
+- knowledge-pr: {PR 番号 / skip 理由}
 ```
 
 ## 制約

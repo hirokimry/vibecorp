@@ -54,15 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-to-rules-gate.sh"
-          },
-          {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-harvest-gate.sh"
           },
           {
             "type": "command",
