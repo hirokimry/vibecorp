@@ -116,6 +116,10 @@ write_role_file "cto"
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | run_hook role-gate.sh)
 assert_allowed "CTO が docs/specification.md を編集 → 許可" "$OUTPUT"
 
+# 6b. CTO が管轄内(docs/design-philosophy.md)を編集 → 許可
+OUTPUT=$(echo '{"tool_input":{"file_path":"docs/design-philosophy.md"}}' | run_hook role-gate.sh)
+assert_allowed "CTO が docs/design-philosophy.md を編集 → 許可" "$OUTPUT"
+
 # 7. CTO が管轄外(docs/screen-flow.md)を編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/screen-flow.md"}}' | run_hook role-gate.sh)
 assert_blocked "CTO が docs/screen-flow.md を編集 → deny" "$OUTPUT"

@@ -62,3 +62,29 @@
 - PR #292（誤検知の発覚契機）、PR #363（レビュー指摘反映後の最終実装）
 - Issue #258（Bash compound コマンド分割制限）
 - CTO/CPO/CISO 各 `decisions.md` 2026-04-18 エントリ
+
+## 2026-04-18: docs/design-philosophy.md の CPO 管轄追記（訂正）
+
+### 対象
+`docs/ai-organization.md` および `templates/docs/ai-organization.md.tpl` の CPO 行・CTO 行
+
+### 経緯
+
+前回エントリ（同日）で `docs/design-philosophy.md` を CPO 管轄として追記したが、**これは誤りであった**。
+
+### 訂正内容
+
+- **誤**: `design-philosophy.md` を CPO 管轄に追記
+- **正**: `design-philosophy.md` は CTO 管轄。CPO 行から削除し、CTO 行に移動
+
+### 訂正理由
+
+`design-philosophy.md` は 3層アーキテクチャ・agents vs skills 設計・プラグイン配布方式・フック設計パターン・スキル設計原則・CI/Branch Protection・プロセス隔離（sandbox-exec）・ゲートスタンプなど、内容・セクション構成・編集履歴（#327 ゲートスタンプ移行・#317 sandbox PoC・#256 スタンプ移行等）いずれも技術設計であり、CTO 管轄が適切。CEO 承認のもと訂正した。
+
+### 認識した原則
+
+**仕様は CPO、設計は CTO** — プロダクト仕様（ユーザー視点・機能・プリセット）は CPO 管轄、技術設計（アーキテクチャ・フック・スキル・sandbox 等）は CTO 管轄。今後この基準で管轄判定を行う。
+
+### 変更ファイル
+- `/docs/ai-organization.md`（CTO 行に `docs/design-philosophy.md` 追加・CPO 行から削除・原則注記を表直下に追加）
+- `/templates/docs/ai-organization.md.tpl`（同上）
