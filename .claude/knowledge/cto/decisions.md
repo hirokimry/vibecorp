@@ -313,7 +313,7 @@
 - **判断**:
   - 案1（`tool_input.file_path` の dirname を `git -C` に渡してブランチ判定）を #296 の正解設計として採用する
   - Phase A 直前の uncommitted ホットパッチ（案 X）は GO。patch → rsync → spawn の順序を守ること
-  - Bash ツール時の `file_path` 不在は「スキップして exit 0」にする（CWD 基準での deny は不採用）
+  - Bash ツール時の `file_path` 不在はスキップせず、`CHECK_DIR="."` のまま cwd 基準で判定を継続する（訂正: PR #363 時点の実装整合確認。当初「スキップして exit 0」と記録したが実装は cwd 基準 deny を採用しており、既知制限として `docs/known-limitations.md` に明記済み）
 - **根拠**:
   - `tool_input.file_path` は hook に確定して渡される情報であり、CWD（Claude ホストプロセスの状態）より信頼性が高い。hook が外部機構（Agent 起動プロトコルや /ship スキルの改修）に依存せず自己完結できる
   - `team-auto-approve.sh` が既に同パターンで動作しており、アーキテクチャ整合性がある
