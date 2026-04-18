@@ -545,3 +545,87 @@ P296-001（Bash 経路のセグメント分割バイパス）と P296-002（base
 - audit-log.md: 2026-04-18 Issue #296 セクション（P296-001〜P296-004）
 - CR-001 decisions.md エントリ（canonicalize_dir 防御思想の起源）
 - `docs/known-limitations.md`（Bash 経路の既知制限の明記先）
+
+## 2026-04-19 — Issue #366 配布物の Source of Truth テンプレート化
+
+### 判定
+
+条件付き承認（awk セクション終端判定の Minor を今回スコープ内で修正推奨、P318-001 symlink チェックは別 Issue トラッキング継続）
+
+### 対象
+
+- `install.sh`（`migrate_tracked_artifacts` / `copy_claude_gitignore` 追加、`generate_activate_script` 削除・templates 移管）
+- `templates/claude/.gitignore.tpl`（新規）
+- `templates/claude/bin/activate.sh`（新規）
+- `tests/test_install.sh`（AJ1〜AJ12・AK1〜AK5 追加）
+- `docs/design-philosophy.md`（配布物 Source of Truth 原則セクション追加）
+- `README.md`（tracked artifact 自動 untrack ドキュメント追加）
+
+### 合議状況
+
+security-analyst 3名全員が Critical / Major なし（全会一致ルール適用なし）。
+
+| アナリスト | 判定 | 最高重要度 |
+|-----------|------|----------|
+| #1 | 問題なし | Minor（awk セクション終端・P318-001 継続） |
+| #2 | Minor 2件・Info 3件 | Minor（`..` glob マッチ誤検知 / grep コメント行混入） |
+| #3 | Minor 2件・Info 3件 | Minor（awk セクション終端 / P318-001 継続） |
+
+### メタレビュー判定
+
+#### 採用する指摘（今回スコープ内で修正推奨）
+
+**P366-awk-terminator (Minor) — #1・#3 全員一致指摘**
+
+`migrate_tracked_artifacts` 内の awk ロジック（`in_section` フラグ）に終端条件が未定義。現状の `.gitignore.tpl` は `machine-specific artifacts` セクションが末尾にあるため実害はないが、将来別セクションが追加された場合に後続エントリが `git rm --cached` 対象に混入する設計上の欠陥。
+
+推奨修正:
+```bash
+in_section && /^# ----/ { in_section = 0; next }
+```
+
+`review-criteria.md` に基づき Minor は修正対象。2名一致指摘かつ設計上の潜在欠陥のため、今回スコープ内での修正が妥当。
+
+#### 却下する指摘
+
+**P366-2-001 (`..` チェックの誤検知リスク) — #2 単独指摘**
+
+`[[ "$artifact" == *..* ]]` は `valid-..name/` のような正当パスも誤拒否しうる、という指摘。
+
+却下理由: 入力元が vibecorp 管理下の `.gitignore.tpl` であり、ユーザー入力がそのまま流れる経路ではない。また `.claude/` プレフィックス強制が主防御として機能している。`%2e%2e` のすり抜けはシェルスクリプトのファイルシステム操作には影響しない（URL エンコードはシェルで展開されない）。`..` チェックは「深層防御の補助」として存在しており、誤検知リスクが現実には限定的。#1・#3 はこの問題を指摘していない。Info 相当として却下。
+
+**P366-2-002 (grep コメント行混入) — #2 単独指摘**
+
+`grep -vxF -f "$src" "$dest"` でテンプレートのコメント行が `existing_custom_lines` に混入する、という指摘。
+
+却下理由: gitignore の動作上コメント行は無害。仮に重複コメントが追記されても機能上影響なく、ユーザー体験の軽微な劣化に留まる。Trivial 未満（Info）として却下。
+
+#### 別 Issue トラッキング継続
+
+**P318-001 symlink チェック欠如 — #1・#2 共通継続課題**
+
+`copy_isolation_templates` の `[[ -f "$src" ]]` がシンボリックリンクを通過する問題（#318 CISO 判断で `[[ ! -L "$src" ]]` 追加を推奨済み）。今回の #366 変更で悪化はないが、未修正のまま継続。別 Issue でトラッキングを維持する。
+
+### 攻撃チェーン分析
+
+**最大リスク経路（awk 終端判定なし）:**
+`.gitignore.tpl` に新セクションが将来追加された際 → `in_section` が終端されず後続の正当エントリまで抽出 → `git rm --cached` で意図しないファイルが untrack → ユーザーが次の commit で機密ファイルを意図せず公開
+
+現状は実害ゼロ（テンプレートの現行構造で終端問題が発生しない）。ただし設計の脆弱さを今後の変更から保護するための修正が推奨される。深刻度: 低（現在）/ 中（テンプレート構造変更後の潜在的リスク）
+
+**`migrate_tracked_artifacts` 全体の攻撃面:**
+- 入力源: vibecorp 管理の `.gitignore.tpl`（ユーザー制御外）
+- `.claude/` プレフィックス強制 + `..` チェックの 2 段階でパストラバーサルをブロック
+- `git rm --cached` は index の untrack のみ（working tree に影響なし）
+- 攻撃者がテンプレートを改ざんするには vibecorp リポジトリへの書込権限が必要（#318 分析と同等のスコープ外前提）
+
+深刻度: **低**
+
+### PR コメント要否
+
+不要 — Minor 指摘（awk 終端判定）は PR の実装差分に対して明確に指摘可能だが、CISO メタレビューとして diff 上の該当箇所を特定した上で修正を依頼する形で十分。PR コメント投稿（`[CISO-consensus-review]` マーカー付き）は今回の指摘規模（Minor 1件）では過剰。
+
+### 過去判断との一貫性
+
+- #318 「`copy_isolation_templates` の symlink チェック欠如（P318-001）を Phase 3a で修正すべき」→ 未修正継続。今回の #366 では悪化なし。別 Issue での後続化方針（#318 decisions.md 記録）に変更なし。
+- #309 「Phase 3（install.sh 配布）以降で全ユーザーに波及」前提: #366 は install.sh の新規機能追加であり、この観点での主要リスク経路（`.gitignore.tpl` 経由の `git rm --cached`）に 2 段階のバリデーションが実装されており整合している。

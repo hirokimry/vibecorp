@@ -49,12 +49,14 @@ Usage: install.sh --name <project-name> [--preset minimal|standard|full] [--lang
        install.sh --update [--preset minimal|standard|full]
 
 Options:
-  --name      プロジェクト名（初回インストール時に必須）
-  --update    既存インストールを更新（vibecorp.yml から設定を読み取る）
-  --preset    組織プリセット: minimal, standard, full（デフォルト: minimal）
-  --language  回答言語: ja, en, または任意（デフォルト: ja）
-  --version   インストールする vibecorp のバージョン（例: v1.0.0）
-  -h, --help  このヘルプを表示
+  --name         プロジェクト名（初回インストール時に必須）
+  --update       既存インストールを更新（vibecorp.yml から設定を読み取る）
+  --preset       組織プリセット: minimal, standard, full（デフォルト: minimal）
+  --language     回答言語: ja, en, または任意（デフォルト: ja）
+  --version      インストールする vibecorp のバージョン（例: v1.0.0）
+  --no-migrate   旧 consumer 向け tracked artifact 自動 untrack をスキップする
+                 （--install / --update 両モードで有効。実質的には --update 時のみ影響する）
+  -h, --help     このヘルプを表示
 
 --name と --update は同時に指定できません。
 USAGE
@@ -317,6 +319,7 @@ parse_args() {
   UPDATE_MODE=false
   PRESET_SPECIFIED=false
   LANGUAGE_SPECIFIED=false
+  NO_MIGRATE=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -325,6 +328,7 @@ parse_args() {
       --preset)   [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--preset に値が必要です"; usage; }; PRESET="$2"; PRESET_SPECIFIED=true; shift 2 ;;
       --language) [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--language に値が必要です"; usage; }; LANGUAGE="$2"; LANGUAGE_SPECIFIED=true; shift 2 ;;
       --version)  [[ $# -ge 2 && "$2" != --* && "$2" != -h ]] || { log_error "--version に値が必要です"; usage; }; TARGET_VERSION="$2"; shift 2 ;;
+      --no-migrate) NO_MIGRATE=true; shift ;;
       -h|--help)  usage 0 ;;
       *)          log_error "不明なオプション: $1"; usage ;;
     esac
@@ -782,6 +786,8 @@ copy_isolation_templates() {
     name=$(basename "$src")
     cp "$src" "${bin_dir}/${name}"
     chmod +x "${bin_dir}/${name}"
+    # ベーススナップショットを記録し、--update 時の 3-way マージ判定を有効化する
+    save_base_snapshot "$src" "bin/${name}"
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
@@ -791,6 +797,7 @@ copy_isolation_templates() {
     local name
     name=$(basename "$src")
     cp "$src" "${sandbox_dir}/${name}"
+    save_base_snapshot "$src" "sandbox/${name}"
     log_info "隔離レイヤを配置: .claude/sandbox/${name}"
   done
 }
@@ -858,48 +865,6 @@ setup_claude_real_symlink() {
 
   ln -sf "$real_claude" "$target"
   log_info "claude-real symlink を作成: .claude/bin/claude-real -> ${real_claude}"
-}
-
-# 隔離レイヤの activate スクリプトを生成する。full + Darwin のみ動作。
-# source すると PATH 先頭に .claude/bin を追加する（bash / zsh 対応）。
-generate_activate_script() {
-  if [[ "$PRESET" != "full" ]]; then
-    return 0
-  fi
-  if [[ "$OS" != "darwin" ]]; then
-    return 0
-  fi
-
-  local bin_dir="${REPO_ROOT}/.claude/bin"
-  local activate="${bin_dir}/activate.sh"
-  mkdir -p "$bin_dir"
-
-  cat > "$activate" <<'EOF'
-# vibecorp 隔離レイヤ activate スクリプト
-# 使用: source .claude/bin/activate.sh
-# 対応: bash / zsh
-
-_vibecorp_activate() {
-  local script_path
-  # shellcheck disable=SC2296
-  script_path="${BASH_SOURCE[0]:-${(%):-%x}}"
-  local bin_abs
-  bin_abs="$(cd "$(dirname "$script_path")" && pwd)"
-  case ":$PATH:" in
-    *":$bin_abs:"*) ;;
-    *) PATH="$bin_abs:$PATH"; export PATH ;;
-  esac
-}
-_vibecorp_activate
-unset -f _vibecorp_activate
-EOF
-
-  if [[ ! -f "$activate" ]]; then
-    log_error "activate.sh の生成に失敗しました: ${activate}"
-    exit 1
-  fi
-  chmod +x "$activate"
-  log_info "activate スクリプトを生成: .claude/bin/activate.sh"
 }
 
 generate_plan_yaml_section() {
@@ -1524,40 +1489,160 @@ copy_knowledge() {
   log_info "knowledge テンプレートをコピー"
 }
 
-generate_claude_gitignore() {
-  local target="${REPO_ROOT}/.claude/.gitignore"
+# 末尾が改行で終わっていないファイルに改行を追加する。
+# `>>` 追記前に呼び出すことで、既存行と追記行が連結されて破損するのを防ぐ。
+_ensure_trailing_newline() {
+  local file="$1"
+  [[ -s "$file" ]] || return 0
+  # tail -c 1 でファイル末尾の1バイトを取得。wc -l は改行文字があれば1、なければ0を返す
+  local last_nl
+  last_nl=$(tail -c 1 "$file" | wc -l | tr -d ' ')
+  if [[ "$last_nl" -eq 0 ]]; then
+    printf '\n' >> "$file"
+  fi
+}
 
-  # vibecorp が管理する除外エントリ
-  local entries=("plans/" "vibecorp-base/" "lib/" "state/" "bin/claude-real")
+# `.gitignore.tpl` の `# ---- machine-specific artifacts ----` セクション配下から
+# 相対パス行のみを stdout に出力する純粋関数。テストから source して直接呼び出せる。
+_extract_gitignore_artifacts() {
+  local tpl="$1"
+  [[ -f "$tpl" ]] || return 0
+  awk '
+    /^# ---- machine-specific artifacts/ { in_section = 1; next }
+    in_section && /^# ----/ { in_section = 0; next }
+    in_section && /^#/ { next }
+    in_section && /^[[:space:]]*$/ { next }
+    in_section { print }
+  ' "$tpl"
+}
 
-  if [[ -f "$target" ]]; then
-    # 既存ファイルがある場合は不足エントリのみ追記（ユーザー独自エントリは保持）
-    local added=0
-    for entry in "${entries[@]}"; do
-      if ! grep -qxF "$entry" "$target"; then
-        echo "$entry" >> "$target"
-        added=1
-      fi
-    done
-    if [[ "$added" -eq 1 ]]; then
-      log_info ".claude/.gitignore にエントリを追加"
+migrate_tracked_artifacts() {
+  # 旧バージョン install で誤って tracked 化された machine-specific artifact を untrack する
+  # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
+  # マーカー配下の相対パスから自動抽出する（DRY: .gitignore.tpl が Source of Truth）。
+  #
+  # --no-migrate は --install / --update 両モードで有効（実質 --update でのみ影響する）。
+  if [[ "$NO_MIGRATE" == true ]]; then
+    if [[ "$UPDATE_MODE" != true ]]; then
+      # 新規 install 時は本関数が untrack するものがないため --no-migrate は実質無効
+      log_info "--no-migrate は --install モードでは実質無効（本関数は --update 時の移行目的で動作します）"
+    else
+      log_info "--no-migrate 指定のため tracked artifact の untrack をスキップ"
     fi
-    return
+    return 0
   fi
 
-  cat > "$target" <<'GITIGNORE'
-# 会話中の一時的な実装計画（git 追跡しない）
-plans/
-# アップデート時の 3-way マージ用ベーススナップショット
-vibecorp-base/
-# フック共通ライブラリ（テンプレートからコピーされる生成物）
-lib/
-# hooks/skills のランタイム state（worktree ごとに分離されるマーカー・ログ）
-state/
-# 隔離レイヤ — install.sh が PATH 上の本物 claude を解決して動的生成するマシン固有 artifact
-bin/claude-real
-GITIGNORE
-  log_info ".claude/.gitignore を生成"
+  # REPO_ROOT が git リポジトリでない場合はスキップ
+  if ! git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    log_info "${REPO_ROOT} は git リポジトリではないため tracked artifact の untrack をスキップ"
+    return 0
+  fi
+
+  local tpl="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  if [[ ! -f "$tpl" ]]; then
+    log_skip "${tpl} が見つからないため migrate をスキップ"
+    return 0
+  fi
+
+  # machine-specific マーカー配下の非コメント・非空行を artifacts 配列に抽出
+  local artifacts=()
+  local line
+  while IFS= read -r line; do
+    artifacts+=(".claude/${line}")
+  done < <(_extract_gitignore_artifacts "$tpl")
+
+  if [[ ${#artifacts[@]} -eq 0 ]]; then
+    log_info "untrack 対象の artifact なし（${tpl} の machine-specific セクションが空またはマーカー行が未検出）"
+    return 0
+  fi
+
+  local artifact
+  for artifact in "${artifacts[@]}"; do
+    # path traversal / prefix 検証（`.claude/` プレフィックス + `..` 拒否）
+    if [[ "$artifact" != .claude/* ]] || [[ "$artifact" == *..* ]]; then
+      log_skip "不正なパスをスキップ: ${artifact}"
+      continue
+    fi
+
+    if git -C "$REPO_ROOT" ls-files --error-unmatch "$artifact" >/dev/null 2>&1; then
+      if git -C "$REPO_ROOT" rm --cached "$artifact" >/dev/null 2>&1; then
+        log_info "旧バージョンで tracked 化した ${artifact} を untrack しました（working tree は保持。次回コミットで untrack が反映されます）"
+      else
+        # 失敗しても install 全体は継続。ユーザーに手動対応を促す
+        log_skip "${artifact} の untrack に失敗しました。必要に応じて 'git rm --cached ${artifact}' を手動実行してください"
+      fi
+    fi
+  done
+}
+
+copy_claude_gitignore() {
+  # .claude/.gitignore を templates/ から配布する（Source of Truth: templates/claude/.gitignore.tpl）
+  local src="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  local dest="${REPO_ROOT}/.claude/.gitignore"
+  mkdir -p "$(dirname "$dest")"
+
+  if [[ ! -f "$src" ]]; then
+    log_error "${src} が見つかりません。vibecorp リポジトリが破損している可能性があります"
+    return 1
+  fi
+
+  if [[ "$UPDATE_MODE" == true ]]; then
+    # 旧 consumer 対応: ベースハッシュ未記録 + 既存独自エントリを保護する
+    # テンプレートに含まれない行（ユーザー独自エントリ）を事前に抽出し、merge_or_overwrite 後に追記する
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    local existing_custom_lines=""
+    if [[ -f "$dest" ]]; then
+      local base_hash
+      base_hash=$(read_base_hash "$lock" ".gitignore")
+      if [[ -z "$base_hash" ]]; then
+        # `-F`（固定文字列）`-x`（行全体一致）`-v`（否定）: テンプレートに含まれない行のみ抽出
+        existing_custom_lines=$(grep -vxF -f "$src" "$dest" || true)
+      fi
+    fi
+
+    # merge_or_overwrite の失敗（3-way merge コンフリクト等）は警告を出して継続する
+    if ! merge_or_overwrite "$src" "$dest" ".gitignore"; then
+      log_skip "${dest} のマージに失敗しました（コンフリクトマーカーが混入している可能性があります）。当該ファイルを手動で確認してください"
+    fi
+
+    # 旧 consumer で存在した独自エントリを末尾に追記し、base snapshot を再更新する
+    if [[ -n "$existing_custom_lines" ]]; then
+      _ensure_trailing_newline "$dest"
+      # merge 後の dest に残っていない独自行のみ追記（重複防止）
+      local line
+      while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        if ! grep -qxF -- "$line" "$dest"; then
+          printf '%s\n' "$line" >> "$dest"
+        fi
+      done <<< "$existing_custom_lines"
+      log_info "${dest} に旧 consumer の独自エントリを復元しました"
+    fi
+  elif [[ -f "$dest" ]]; then
+    # 新規 install で既存 .gitignore がある場合: ユーザー独自エントリを保持しつつ、vibecorp 管理エントリで不足しているものを追記する
+    local added=0
+    _ensure_trailing_newline "$dest"
+    local tpl_line
+    while IFS= read -r tpl_line; do
+      # コメント行・空行はスキップ
+      [[ -z "$tpl_line" || "$tpl_line" =~ ^[[:space:]]*# ]] && continue
+      if ! grep -qxF -- "$tpl_line" "$dest"; then
+        printf '%s\n' "$tpl_line" >> "$dest"
+        added=1
+      fi
+    done < "$src"
+    if [[ "$added" -eq 1 ]]; then
+      log_info "${dest} に不足している vibecorp 管理エントリを追記"
+    else
+      log_skip "${dest} は既存のためスキップ（不足エントリなし）"
+    fi
+    # 次回 --update 時の 3-way merge 判定に必要なベースハッシュを記録
+    save_base_snapshot "$src" ".gitignore"
+  else
+    cp "$src" "$dest"
+    save_base_snapshot "$src" ".gitignore"
+    log_info "${dest} を ${src} からコピー"
+  fi
 }
 
 generate_claude_md() {
@@ -1734,7 +1819,6 @@ main() {
   setup_stamp_cache_dir
   copy_isolation_templates
   setup_claude_real_symlink
-  generate_activate_script
   generate_vibecorp_yml
 
   if [[ "$UPDATE_MODE" == true ]]; then
@@ -1752,7 +1836,8 @@ main() {
   copy_issue_templates
   copy_pr_template
   copy_workflows
-  generate_claude_gitignore
+  migrate_tracked_artifacts
+  copy_claude_gitignore
   generate_claude_md
   generate_mvv_md
   create_labels
@@ -1760,4 +1845,8 @@ main() {
   print_completion
 }
 
-main "$@"
+# テストから source して内部関数（_extract_gitignore_artifacts 等）を直接呼び出せるよう、
+# 直接実行時（bash install.sh）のみ main を起動する。source 時は関数定義のみ取り込む。
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

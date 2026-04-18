@@ -211,3 +211,9 @@
   - §0-2・§1-3〜§1-5 はいずれも「透明性」バリュー（ブラックボックスを作らない）に反する配布先での不整合・リンク切れ・パス誤りの修正であり、方針と完全に整合する
   - §0 と §1-2 を別 Issue に切り出す判断はスコープの明確化として適切。親 Issue #360 をクローズしない方針も残件トラッキングとして正しい
 - **代替案**: なし（既存バグの修正であり設計判断を伴わない）
+
+### 2026-04-18: .claude/.gitignore テンプレート配布化 + 配布系アーキテクチャ再設計 Issue を OK と判定
+
+- **判断**: `templates/claude/.gitignore.tpl` 新設・`copy_rules` 相当フローへの切り替え、他 heredoc 生成ファイルの templates/ 移管または残す基準の明文化、tracked 化 artifact の untrack 移行ロジック追加、Source of Truth 一本化原則の `docs/design-philosophy.md` 記載をプロダクト方針に合致と判定した
+- **根拠**: 現行の heredoc 方式は `templates/` に source file がなく「全ての判断根拠をルール・設定ファイルとして可視化する」透明性バリューに反する。実害（vibemux PR #25 で `/Users/hiroki/.local/bin/claude` ハードコードパスが commit 混入）が発生しており、`public-ready.md`（特定マシンパスのハードコード禁止）の構造的根本原因への対処として必要。decisions.md 2026-03-22「install.sh が .gitignore 自動生成を担う」設計方針は維持したまま、heredoc → templates/ リファクタリングで透明性を回復する。tracked 化 artifact を untrack する移行ロジックは「人の意志力に頼らない」規律の自動化バリューの実践
+- **代替案**: heredoc 方式を継続し README に手順案内を記載するだけの方式も考えられるが、「指示を読まずに進める開発者が多い」という 2026-03-22 の判断根拠を踏まえ、自動化が確実
