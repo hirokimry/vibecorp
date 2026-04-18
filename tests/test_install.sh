@@ -1768,9 +1768,12 @@ assert_file_exists "AJ6: templates/claude/bin/activate.sh が存在する" "${SC
 # AJ7-10. activate.sh 配置確認（Darwin only）
 create_test_repo
 if require_darwin "AJ7: full + Darwin で activate.sh が配置" ; then
-  bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || true
+  install_ec=0
+  bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || install_ec=$?
   R="$TMPDIR_ROOT"
-  if [ -f "$R/.claude/bin/activate.sh" ]; then
+  if [ "$install_ec" -ne 0 ]; then
+    fail "AJ7: install.sh が 非ゼロ終了 (exit=${install_ec})"
+  elif [ -f "$R/.claude/bin/activate.sh" ]; then
     if diff -q "${SCRIPT_DIR}/templates/claude/bin/activate.sh" "$R/.claude/bin/activate.sh" >/dev/null 2>&1; then
       pass "AJ7: activate.sh が templates と同一内容"
     else
@@ -1876,9 +1879,7 @@ fi
 cleanup
 
 # AK6. .gitignore.tpl の machine-specific セクション更新で migrate 対象が自動追随（DRY 検証）
-# 本テストは install.sh が .gitignore.tpl から動的に読むことを間接的に検証する。
-# tpl を直接書き換えるとグローバル状態になるため、クローン先 vibecorp を使う別方式も考えられるが、
-# ここでは awk 抽出ロジックが意図通り動くことを関数単位で検証する。
+# install.sh を source して _extract_gitignore_artifacts を直接呼び出し、実コードと同じロジックを検証する
 TMPDIR_ROOT=$(mktemp -d)
 TEST_TPL="$TMPDIR_ROOT/test.gitignore.tpl"
 cat > "$TEST_TPL" <<'EOF'
@@ -1888,13 +1889,7 @@ plans/
 bin/claude-real
 bin/future-artifact
 EOF
-EXTRACTED=$(awk '
-  /^# ---- machine-specific artifacts/ { in_section = 1; next }
-  in_section && /^# ----/ { in_section = 0; next }
-  in_section && /^#/ { next }
-  in_section && /^[[:space:]]*$/ { next }
-  in_section { print }
-' "$TEST_TPL" | tr '\n' ',' )
+EXTRACTED=$(bash -c 'source "$1"; _extract_gitignore_artifacts "$2"' _ "$INSTALL_SH" "$TEST_TPL" | tr '\n' ',' )
 if [ "$EXTRACTED" = "bin/claude-real,bin/future-artifact," ]; then
   pass "AK6: DRY 抽出ロジックが tpl 更新に追随"
 else
@@ -1910,13 +1905,7 @@ plans/
 
 # ---- machine-specific artifacts ----
 EOF
-EMPTY_COUNT=$(awk '
-  /^# ---- machine-specific artifacts/ { in_section = 1; next }
-  in_section && /^# ----/ { in_section = 0; next }
-  in_section && /^#/ { next }
-  in_section && /^[[:space:]]*$/ { next }
-  in_section { print }
-' "$TEST_TPL" | wc -l | tr -d ' ')
+EMPTY_COUNT=$(bash -c 'source "$1"; _extract_gitignore_artifacts "$2"' _ "$INSTALL_SH" "$TEST_TPL" | wc -l | tr -d ' ')
 if [ "$EMPTY_COUNT" = "0" ]; then
   pass "AK7: 空セクションで抽出結果 0 行"
 else
@@ -1936,13 +1925,7 @@ bin/claude-real
 # ---- future-section ----
 should-not-be-extracted/
 EOF
-MULTI_EXTRACTED=$(awk '
-  /^# ---- machine-specific artifacts/ { in_section = 1; next }
-  in_section && /^# ----/ { in_section = 0; next }
-  in_section && /^#/ { next }
-  in_section && /^[[:space:]]*$/ { next }
-  in_section { print }
-' "$TEST_TPL" | tr '\n' ',' )
+MULTI_EXTRACTED=$(bash -c 'source "$1"; _extract_gitignore_artifacts "$2"' _ "$INSTALL_SH" "$TEST_TPL" | tr '\n' ',' )
 if [ "$MULTI_EXTRACTED" = "bin/claude-real," ]; then
   pass "AK8: 後続セクションが machine-specific 抽出に混入しない"
 else

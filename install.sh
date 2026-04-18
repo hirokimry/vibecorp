@@ -1489,6 +1489,33 @@ copy_knowledge() {
   log_info "knowledge テンプレートをコピー"
 }
 
+# 末尾が改行で終わっていないファイルに改行を追加する。
+# `>>` 追記前に呼び出すことで、既存行と追記行が連結されて破損するのを防ぐ。
+_ensure_trailing_newline() {
+  local file="$1"
+  [[ -s "$file" ]] || return 0
+  # tail -c 1 でファイル末尾の1バイトを取得。wc -l は改行文字があれば1、なければ0を返す
+  local last_nl
+  last_nl=$(tail -c 1 "$file" | wc -l | tr -d ' ')
+  if [[ "$last_nl" -eq 0 ]]; then
+    printf '\n' >> "$file"
+  fi
+}
+
+# `.gitignore.tpl` の `# ---- machine-specific artifacts ----` セクション配下から
+# 相対パス行のみを stdout に出力する純粋関数。テストから source して直接呼び出せる。
+_extract_gitignore_artifacts() {
+  local tpl="$1"
+  [[ -f "$tpl" ]] || return 0
+  awk '
+    /^# ---- machine-specific artifacts/ { in_section = 1; next }
+    in_section && /^# ----/ { in_section = 0; next }
+    in_section && /^#/ { next }
+    in_section && /^[[:space:]]*$/ { next }
+    in_section { print }
+  ' "$tpl"
+}
+
 migrate_tracked_artifacts() {
   # 旧バージョン install で誤って tracked 化された machine-specific artifact を untrack する
   # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
@@ -1522,13 +1549,7 @@ migrate_tracked_artifacts() {
   local line
   while IFS= read -r line; do
     artifacts+=(".claude/${line}")
-  done < <(awk '
-    /^# ---- machine-specific artifacts/ { in_section = 1; next }
-    in_section && /^# ----/ { in_section = 0; next }
-    in_section && /^#/ { next }
-    in_section && /^[[:space:]]*$/ { next }
-    in_section { print }
-  ' "$tpl")
+  done < <(_extract_gitignore_artifacts "$tpl")
 
   if [[ ${#artifacts[@]} -eq 0 ]]; then
     log_info "untrack 対象の artifact なし（${tpl} の machine-specific セクションが空またはマーカー行が未検出）"
@@ -1586,6 +1607,7 @@ copy_claude_gitignore() {
 
     # 旧 consumer で存在した独自エントリを末尾に追記し、base snapshot を再更新する
     if [[ -n "$existing_custom_lines" ]]; then
+      _ensure_trailing_newline "$dest"
       # merge 後の dest に残っていない独自行のみ追記（重複防止）
       local line
       while IFS= read -r line; do
@@ -1599,6 +1621,7 @@ copy_claude_gitignore() {
   elif [[ -f "$dest" ]]; then
     # 新規 install で既存 .gitignore がある場合: ユーザー独自エントリを保持しつつ、vibecorp 管理エントリで不足しているものを追記する
     local added=0
+    _ensure_trailing_newline "$dest"
     local tpl_line
     while IFS= read -r tpl_line; do
       # コメント行・空行はスキップ
@@ -1822,4 +1845,8 @@ main() {
   print_completion
 }
 
-main "$@"
+# テストから source して内部関数（_extract_gitignore_artifacts 等）を直接呼び出せるよう、
+# 直接実行時（bash install.sh）のみ main を起動する。source 時は関数定義のみ取り込む。
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
