@@ -340,3 +340,11 @@
 - **経緯**: Issue #364 の実装時点で CPO 管轄として誤って組み込まれた可能性があったが、CEO 承認のもと CTO 管轄に訂正した
 - **根拠**: 「仕様は CPO、設計は CTO」の原則に基づく。design-philosophy.md は 3 層アーキテクチャ・agents vs skills・配布方式・フック・スキル・sandbox-exec・CI・Branch Protection 等の技術設計を記述する文書であり、機能要件・プロダクト方針を扱う CPO ではなく、アーキテクチャ・技術選定を担う CTO の管轄が正しい
 - **代替案**: CPO との共同管轄とする案も検討したが、設計ドキュメントの責務は技術的な判断に特化しており、CPO が扱うプロダクト方針との境界が曖昧になるため採用しなかった
+
+### 2026-04-19: Issue #366 — 2026-04-16 の activate.sh heredoc 採用判断を撤回
+
+2026-04-16 エントリ「install.sh に macOS 隔離レイヤ配置ロジックを統合（Phase 3a / Issue #318）」内で「activate.sh を templates として配布: REPO_ROOT の動的埋め込みができないため却下」と記録したが、本判断を撤回する。
+
+- **判断**: activate.sh を `templates/claude/bin/activate.sh` からの静的テンプレート配布に切り替え、heredoc 生成方式（`generate_activate_script` 関数）を廃止する
+- **根拠**: Issue #366（PR #367）で activate.sh を REPO_ROOT 非依存にリファクタした。activate.sh は起動時に自身のパスから REPO_ROOT を動的に解決するよう変更されたため、ファイル本体への REPO_ROOT 静的埋め込みが不要になった。これにより `docs/design-philosophy.md` の「配布物の Source of Truth 原則」方式 1（テンプレートを唯一の正典として静的配布する）への移行が可能になった
+- **代替案**: heredoc 生成方式を維持し activate.sh 内の REPO_ROOT 参照を環境変数経由に切り替える案も検討可能だったが、静的テンプレート配布の方がテンプレート diff・レビュー・テストが容易であり保守性が高いため採用した
