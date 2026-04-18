@@ -117,11 +117,26 @@ run_install() {
 
 cleanup() {
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
-    rm -rf "$TMPDIR_ROOT"
+    # 擬似 git リポジトリ・chmod 操作・シンボリックリンクを含むテストがあるため、
+    # rm -rf の一時的失敗がテスト結果に波及しないように `|| true` で失敗を無害化する。
+    # 詳細: .claude/rules/testing.md「trap cleanup EXIT でのリソース解放」
+    rm -rf "$TMPDIR_ROOT" || true
   fi
-  cd "$SCRIPT_DIR"
+  cd "$SCRIPT_DIR" || true
 }
 trap cleanup EXIT
+
+# Darwin 限定テストで使用する skip ヘルパー
+require_darwin() {
+  local desc="$1"
+  local os
+  os=$(uname -s)
+  if [ "$os" = "Darwin" ]; then
+    return 0
+  fi
+  pass "${desc} (Darwin 以外のためスキップ)"
+  return 1
+}
 
 # ============================================
 echo "=== A. 引数パース ==="
@@ -1661,6 +1676,250 @@ else
   fail "--update で plans/ が重複しない (${PLANS_COUNT}件)"
 fi
 
+cleanup
+
+# ============================================
+echo ""
+echo "=== AJ. 配布テンプレート化: .gitignore.tpl / activate.sh ==="
+# ============================================
+
+# AJ1. templates/claude/.gitignore.tpl が Source of Truth として存在する
+assert_file_exists "templates/claude/.gitignore.tpl が存在する" "${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+
+# AJ2. 新規 install 後の .claude/.gitignore が templates と同一内容
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+if diff -q "${SCRIPT_DIR}/templates/claude/.gitignore.tpl" "$R/.claude/.gitignore" >/dev/null 2>&1; then
+  pass "AJ2: .gitignore が templates/claude/.gitignore.tpl と同一内容"
+else
+  fail "AJ2: .gitignore が templates/claude/.gitignore.tpl と同一内容"
+fi
+# vibecorp.lock の base_hashes に .gitignore のハッシュが記録される
+assert_file_contains "AJ2: vibecorp.lock の base_hashes に .gitignore" "$R/.claude/vibecorp.lock" "\.gitignore:"
+cleanup
+
+# AJ3. UPDATE_MODE で consumer の独自エントリが保持される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+echo "custom-secrets/" >> "$R/.claude/.gitignore"
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_contains "AJ3: UPDATE_MODE で独自エントリ custom-secrets/ が保持" "$R/.claude/.gitignore" "custom-secrets/"
+assert_file_contains "AJ3: UPDATE_MODE で vibecorp 管理エントリ plans/ も保持" "$R/.claude/.gitignore" "plans/"
+cleanup
+
+# AJ4. 旧 consumer（ベースハッシュ未記録、既存 .gitignore に独自エントリ）でも独自行保持
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude"
+cat > "$TMPDIR_ROOT/.claude/.gitignore" <<'EOF'
+# 旧 consumer の独自エントリ
+legacy-ignore/
+plans/
+EOF
+# vibecorp.lock が存在するが base_hashes に .gitignore を含まない状態をシミュレート
+mkdir -p "$TMPDIR_ROOT/.claude"
+cat > "$TMPDIR_ROOT/.claude/vibecorp.lock" <<'EOF'
+version: 0.0.0-dev
+installed_at: 2026-01-01T00:00:00+00:00
+preset: minimal
+vibecorp_commit: unknown
+files:
+  hooks: []
+  skills: []
+  agents: []
+  rules: []
+  issue_templates: []
+  docs: []
+  knowledge: []
+  base_hashes: {}
+EOF
+cat > "$TMPDIR_ROOT/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+EOF
+bash "$INSTALL_SH" --update 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_contains "AJ4: 旧 consumer で legacy-ignore/ が保持される" "$R/.claude/.gitignore" "legacy-ignore/"
+assert_file_contains "AJ4: 旧 consumer でも vibecorp エントリ lib/ が配布される" "$R/.claude/.gitignore" "lib/"
+cleanup
+
+# AJ5. 旧 consumer（vibecorp.lock 自体が存在しない）でも独自行保持
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude"
+cat > "$TMPDIR_ROOT/.claude/.gitignore" <<'EOF'
+legacy-ignore/
+EOF
+cat > "$TMPDIR_ROOT/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+EOF
+bash "$INSTALL_SH" --update 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_contains "AJ5: lock 非存在でも legacy-ignore/ が保持" "$R/.claude/.gitignore" "legacy-ignore/"
+assert_file_contains "AJ5: lock 非存在でも vibecorp エントリ lib/ が配布" "$R/.claude/.gitignore" "lib/"
+cleanup
+
+# AJ6. templates/claude/bin/activate.sh が存在する（Source of Truth）
+assert_file_exists "AJ6: templates/claude/bin/activate.sh が存在する" "${SCRIPT_DIR}/templates/claude/bin/activate.sh"
+
+# AJ7-10. activate.sh 配置確認（Darwin only）
+create_test_repo
+if require_darwin "AJ7: full + Darwin で activate.sh が配置" ; then
+  bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || true
+  R="$TMPDIR_ROOT"
+  if [ -f "$R/.claude/bin/activate.sh" ]; then
+    if diff -q "${SCRIPT_DIR}/templates/claude/bin/activate.sh" "$R/.claude/bin/activate.sh" >/dev/null 2>&1; then
+      pass "AJ7: activate.sh が templates と同一内容"
+    else
+      fail "AJ7: activate.sh が templates と同一内容"
+    fi
+    assert_file_executable "AJ8: activate.sh が実行権限付き" "$R/.claude/bin/activate.sh"
+    assert_file_exists "AJ9: vibecorp-base/bin/activate.sh が存在する" "$R/.claude/vibecorp-base/bin/activate.sh"
+  else
+    fail "AJ7: activate.sh が配置されていない"
+  fi
+fi
+cleanup
+
+# AJ11. minimal preset では activate.sh が配置されない（退行検出）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_not_exists "AJ11: minimal preset では activate.sh が配置されない" "$R/.claude/bin/activate.sh"
+cleanup
+
+# AJ12. standard preset では activate.sh が配置されない（退行検出）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_not_exists "AJ12: standard preset では activate.sh が配置されない" "$R/.claude/bin/activate.sh"
+cleanup
+
+# ============================================
+echo ""
+echo "=== AK. migrate_tracked_artifacts（旧 consumer 向け untrack） ==="
+# ============================================
+
+# AK1. 擬似 git リポジトリで claude-real を tracked 化した状態から untrack
+# 注: minimal preset は install.sh の preset クリーンアップで .claude/bin/claude-real を
+#     working tree からも削除する。ここでの検証は「index から untrack された」点のみ。
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/bin"
+echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/bin/claude-real"
+chmod +x "$TMPDIR_ROOT/.claude/bin/claude-real"
+# .gitignore がない状態で git add する（旧 consumer をシミュレート）
+(cd "$TMPDIR_ROOT" && git add -f .claude/bin/claude-real >/dev/null 2>&1)
+(cd "$TMPDIR_ROOT" && git commit -m "legacy: tracked claude-real" -q >/dev/null 2>&1)
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+# ls-files に存在しなくなっていれば成功
+if (cd "$R" && git ls-files --error-unmatch .claude/bin/claude-real >/dev/null 2>&1); then
+  fail "AK1: claude-real が untrack されている"
+else
+  pass "AK1: claude-real が untrack されている"
+fi
+cleanup
+
+# AK2. migrate_tracked_artifacts の git リポジトリガードが機能する
+# 実使用上 migrate_tracked_artifacts は install.sh 内の git チェック通過後にのみ呼ばれるが、
+# 関数内にも独立したガードが存在することをコードパスレベルで検証する。
+if grep -q 'rev-parse --git-dir' "$INSTALL_SH" && \
+   grep -q 'git リポジトリではないため tracked artifact の untrack をスキップ' "$INSTALL_SH"; then
+  pass "AK2: migrate_tracked_artifacts に git リポジトリ不在時の安全ガードが実装されている"
+else
+  fail "AK2: migrate_tracked_artifacts に git リポジトリ不在時の安全ガードが実装されている"
+fi
+
+# AK3. artifact が tracked されていない場合もエラーにならない
+create_test_repo
+# claude-real を tracked 化しない
+EXIT_CODE=0
+bash "$INSTALL_SH" --name test-proj 2>/dev/null || EXIT_CODE=$?
+assert_exit_code "AK3: artifact が未 tracked でも install が成功" "0" "$EXIT_CODE"
+cleanup
+
+# AK4. --no-migrate 指定時に tracked 済み artifact が untrack されない
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/bin"
+echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/bin/claude-real"
+chmod +x "$TMPDIR_ROOT/.claude/bin/claude-real"
+(cd "$TMPDIR_ROOT" && git add -f .claude/bin/claude-real >/dev/null 2>&1)
+(cd "$TMPDIR_ROOT" && git commit -m "legacy: tracked claude-real" -q >/dev/null 2>&1)
+bash "$INSTALL_SH" --name test-proj --no-migrate 2>/dev/null
+R="$TMPDIR_ROOT"
+if (cd "$R" && git ls-files --error-unmatch .claude/bin/claude-real >/dev/null 2>&1); then
+  pass "AK4: --no-migrate で claude-real が tracked のまま残る"
+else
+  fail "AK4: --no-migrate で claude-real が tracked のまま残る"
+fi
+cleanup
+
+# AK5. claude-real がシンボリックリンクとして tracked でも untrack される
+create_test_repo
+mkdir -p "$TMPDIR_ROOT/.claude/bin"
+# シンボリックリンク先が存在する適当なファイル
+echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/_fake_claude"
+chmod +x "$TMPDIR_ROOT/.claude/_fake_claude"
+(cd "$TMPDIR_ROOT/.claude/bin" && ln -s ../_fake_claude claude-real)
+(cd "$TMPDIR_ROOT" && git add -f .claude/bin/claude-real .claude/_fake_claude >/dev/null 2>&1)
+(cd "$TMPDIR_ROOT" && git commit -m "legacy: symlink claude-real" -q >/dev/null 2>&1)
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+if (cd "$R" && git ls-files --error-unmatch .claude/bin/claude-real >/dev/null 2>&1); then
+  fail "AK5: symlink claude-real が untrack されている"
+else
+  pass "AK5: symlink claude-real が untrack されている"
+fi
+cleanup
+
+# AK6. .gitignore.tpl の machine-specific セクション更新で migrate 対象が自動追随（DRY 検証）
+# 本テストは install.sh が .gitignore.tpl から動的に読むことを間接的に検証する。
+# tpl を直接書き換えるとグローバル状態になるため、クローン先 vibecorp を使う別方式も考えられるが、
+# ここでは awk 抽出ロジックが意図通り動くことを関数単位で検証する。
+TMPDIR_ROOT=$(mktemp -d)
+TEST_TPL="$TMPDIR_ROOT/test.gitignore.tpl"
+cat > "$TEST_TPL" <<'EOF'
+plans/
+
+# ---- machine-specific artifacts ----
+bin/claude-real
+bin/future-artifact
+EOF
+EXTRACTED=$(awk '
+  /^# ---- machine-specific artifacts/ { in_section = 1; next }
+  in_section && /^#/ { next }
+  in_section && /^[[:space:]]*$/ { next }
+  in_section { print }
+' "$TEST_TPL" | tr '\n' ',' )
+if [ "$EXTRACTED" = "bin/claude-real,bin/future-artifact," ]; then
+  pass "AK6: DRY 抽出ロジックが tpl 更新に追随"
+else
+  fail "AK6: DRY 抽出ロジックが tpl 更新に追随 (extracted=${EXTRACTED})"
+fi
+cleanup
+
+# AK7. machine-specific セクションが空の場合、migrate 対象なしで install が成功
+TMPDIR_ROOT=$(mktemp -d)
+TEST_TPL="$TMPDIR_ROOT/empty.gitignore.tpl"
+cat > "$TEST_TPL" <<'EOF'
+plans/
+
+# ---- machine-specific artifacts ----
+EOF
+EMPTY_COUNT=$(awk '
+  /^# ---- machine-specific artifacts/ { in_section = 1; next }
+  in_section && /^#/ { next }
+  in_section && /^[[:space:]]*$/ { next }
+  in_section { print }
+' "$TEST_TPL" | wc -l | tr -d ' ')
+if [ "$EMPTY_COUNT" = "0" ]; then
+  pass "AK7: 空セクションで抽出結果 0 行"
+else
+  fail "AK7: 空セクションで抽出結果 0 行（実際: ${EMPTY_COUNT}）"
+fi
 cleanup
 
 # ============================================

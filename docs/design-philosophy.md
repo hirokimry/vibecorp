@@ -361,8 +361,53 @@ vibecorp_stamp_dir
 
 gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有無で原因を切り分けられる。
 
+## 配布物の Source of Truth 原則
+
+install.sh が配布先 (`REPO_ROOT/.claude/` 等) に書き出すファイルは、以下のいずれかの方式で管理する。新規に配布ファイルを追加するときは下の方式 1 → 2 → 3 の順で検討し、静的内容なら方式 1 を優先する。
+
+### 方式 1: テンプレート配布（推奨 / 静的内容）
+
+静的な内容（ユーザー環境に依存しない）は `templates/` 配下に単一ファイルとして配置し、`merge_or_overwrite` フローで配布する。配置先でカスタマイズされた場合は `vibecorp.lock` の `base_hashes` と `vibecorp-base/` スナップショットを使った 3-way マージで安全に更新する。
+
+- `templates/claude/rules/`, `templates/claude/hooks/`, `templates/claude/agents/`, `templates/claude/skills/`
+- `templates/claude/.gitignore.tpl`
+- `templates/claude/bin/activate.sh`
+
+**利点**: 差分レビューが可能、上流でのルール変更・削除が consumer へ伝播する、カスタマイズ保持が 3-way merge で自動化される。
+
+### 方式 2: プレースホルダー置換配布（静的テンプレート + 少数の変数置換）
+
+`{{PROJECT_NAME}}` 等のプレースホルダーを持つテンプレートを `sed` で置換して配布する。
+
+- `templates/CLAUDE.md.tpl`, `templates/MVV.md.tpl`, `templates/docs/*.tpl`
+
+**利点**: 方式 1 の拡張。変数注入点が明示的でレビューしやすい。
+
+### 方式 3: heredoc 生成（動的内容限定）
+
+以下のいずれかに該当する場合のみ `install.sh` 内の heredoc による直接生成を許容する。
+
+- **自動生成マーカーを持つファイル**: `vibecorp.lock`（ハッシュ・commit SHA・タイムスタンプを含み、内容がインストール毎に変わる）
+- **プリセット別に構造が分岐する設定ファイル**: `vibecorp.yml`（`generate_plan_yaml_section` 等の内部関数呼び出しを含み、プリセットにより出力行数・キーが変わる）
+
+これら以外の静的または準静的な内容は、方式 1 または 2 で配布する。heredoc に静的内容を埋め込むと:
+
+- `templates/` に source ファイルがないため差分レビューが shell 関数の diff になる
+- 上流で不要になったエントリを削除しても consumer に残り続ける
+- `merge_or_overwrite` / `save_base_snapshot` の 3-way merge フローから外れ、カスタマイズ保持が壊れる
+
+という構造的欠陥を抱える（#366 参照）。
+
+### 新規追加時の判断フロー
+
+1. 配布対象がユーザー環境に依存しない静的内容か → **方式 1**
+2. 数個の変数置換のみで完結するか → **方式 2**
+3. 自動生成マーカーまたはプリセット別分岐を持つ動的内容か → **方式 3**
+4. 判断に迷う場合は **方式 1** を優先する（最も退行検出しやすいため）
+
 ## ガードレール
 
 - **Public Ready**: セキュリティ情報・特定プロダクト名・ローカルパス依存の混入禁止
 - **品質基準**: 参照元の実装を全網羅し、品質・汎用性・堅牢性で上回る
 - **テスト必須**: hooks / install.sh は自動テスト付き。テストなしで push しない
+- **Source of Truth**: 配布物は静的内容なら `templates/` 配下のファイルを唯一のソースとする。heredoc による直接生成は動的内容限定（上記「配布物の Source of Truth 原則」参照）

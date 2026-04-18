@@ -88,3 +88,34 @@
 ### 変更ファイル
 - `/docs/ai-organization.md`（CTO 行に `docs/design-philosophy.md` 追加・CPO 行から削除・原則注記を表直下に追加）
 - `/templates/docs/ai-organization.md.tpl`（同上）
+
+## 2026-04-18: Issue #366 実装計画のメタレビュー
+
+### 対象
+`.claude/plans/dev/366_distribution_template_redesign.md`
+
+### 判断内容
+
+#### autonomous-restrictions.md 抵触チェック
+不可領域 5 カテゴリ（認証・暗号・課金・ガードレール・MVV）いずれにも抵触しないことを確認。`/diagnose` → `/ship-parallel` 自律改善ループで扱える領域。
+
+#### Phase 間依存関係の妥当性
+- Phase 1 → 2 → 3 → 4 → 5 の直列順序は実装上正しいが、Phase 2 の依存理由が計画に未記載
+- **SM-1**: Phase 2 依存理由の欠落。両 Phase とも install.sh を変更するためマージコンフリクトリスクがあり、「Phase 1 と独立・並行可能」の記載は誤解を招く。計画の依存関係表に理由を追記推奨
+
+#### 平社員層指摘（architect A1/A3, testing T1-T4, dx D1-D3）
+全指摘採用済み。除外すべき指摘なし。
+
+#### 新規指摘
+- **SM-2**（軽微）: `--no-migrate` の `--install` 時挙動を usage テキスト / log_warn で明示する提案
+- **SM-3**: Phase 4（design-philosophy.md 更新）実装時に CTO ゲート通過を確認（decisions.md 2026-04-18 エントリ: design-philosophy.md は CTO 管轄）
+- **SM-4**: Phase 5 実装前に既存 `cleanup()` が `trap cleanup EXIT` パターンかを確認
+
+#### consumer への既存運用破壊リスク
+移行ロジック・`--no-migrate` フラグ・README 注意書きで十分ケアされている。問題なし。
+
+### 結論
+- SM-1 のみ計画への追記を推奨（実装ブロッカーではない）
+- SM-2 は軽微、実装者判断に委ねてよい
+- SM-3・SM-4 は実装時確認事項として記録
+- **実装着手を阻むブロッカーなし**
