@@ -321,3 +321,22 @@
 - **技術的負債として記録**: Bash ツール時の worktree 誤判定（`git commit` 検出が CWD 基準のまま）は #296 では未解消。既知の制限として Issue 完了条件に明記すること。暫定回避は agent への `cd <worktree> && git commit` 指示のみ有効（`git -C <worktree> commit` は Bash 経路でも CHECK_DIR="." のまま評価されるため機能しない。PR #363 のレビューで発覚）
 - **追加確認項目**: `diagnose-guard.sh` にも同様の worktree 誤判定が存在するか #296 担当 agent が確認すること
 - **代替案**: 案 Z（hook 完全 disable）は `autonomous-restrictions.md` 4項「ガードレール自体の変更」に抵触するため不採用。案 W（Write/Edit 禁止 agent prompt）は agent の実装自由度を大幅に制限し他 Issue への副作用が出るため不採用
+
+### 2026-04-18: Issue #364 — テンプレート整備・参照解消の設計判断（3件）
+
+- **判断**:
+  1. `docs/design-philosophy.md` を `templates/docs/design-philosophy.md.tpl` として配布テンプレート化した。install.sh の「既存の docs ファイルはスキップ」原則との組み合わせにより、既存インストール環境への自動適用はされない（新規インストール時のみ配置される）
+  2. `templates/claude/CLAUDE.md.tpl` に主 Claude の役割（COO）セクションを追加した。COO は常駐型のため `templates/claude/agents/` には置かないという設計判断の表れであり、CLAUDE.md テンプレート本体に記述する
+  3. `role-gate.sh` / `cpo.md` / `ai-organization.md.tpl` から `ai-prompt-design.md` への参照を一括削除した。当該ファイルは廃止済みで実体がなく、幽霊リンクとして残存していた
+- **根拠**:
+  1. design-philosophy.md は install 時に一度配置すれば後はユーザーが編集する想定。docs 既存スキップ原則はユーザーのカスタマイズを保護するための設計であり、上書きしないことが正しい挙動
+  2. COO の役割定義は主 Claude の起動時コンテキストの一部であり、エージェントファイルとは責務が異なる
+  3. 存在しないファイルへの参照はドキュメントと実装の乖離を招き、sync-check の誤検知源になる。廃止確認後は即時削除が原則
+- **代替案**: design-philosophy.md を既存インストール環境にも強制上書きする案は、ユーザーが加えたカスタマイズを破壊するため却下
+
+### 2026-04-18: docs/design-philosophy.md の管轄を CTO として正式化（Issue #364 補足）
+
+- **判断**: `docs/design-philosophy.md` の管轄を **CTO（技術設計担当）** として正式に定義した。role-gate.sh / cto.md / ai-organization.md を整合化し、テストケースを追加した
+- **経緯**: Issue #364 の実装時点で CPO 管轄として誤って組み込まれた可能性があったが、CEO 承認のもと CTO 管轄に訂正した
+- **根拠**: 「仕様は CPO、設計は CTO」の原則に基づく。design-philosophy.md は 3 層アーキテクチャ・agents vs skills・配布方式・フック・スキル・sandbox-exec・CI・Branch Protection 等の技術設計を記述する文書であり、機能要件・プロダクト方針を扱う CPO ではなく、アーキテクチャ・技術選定を担う CTO の管轄が正しい
+- **代替案**: CPO との共同管轄とする案も検討したが、設計ドキュメントの責務は技術的な判断に特化しており、CPO が扱うプロダクト方針との境界が曖昧になるため採用しなかった

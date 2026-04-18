@@ -335,6 +335,10 @@ fi
 assert_file_exists "CLAUDE.md 存在" "$R/.claude/CLAUDE.md"
 assert_file_not_contains "CLAUDE.md にプレースホルダーなし" "$R/.claude/CLAUDE.md" '{{.*}}'
 
+# E11a. CLAUDE.md に COO 役割セクションが含まれる（#364 §0-2）
+assert_file_contains "CLAUDE.md に COO 役割セクションあり" "$R/.claude/CLAUDE.md" '主Claudeの役割（COO）'
+assert_file_contains "CLAUDE.md に COO 説明あり" "$R/.claude/CLAUDE.md" 'CEO の意図を解釈'
+
 # E12. MVV.md 存在 + プレースホルダーなし
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
@@ -1308,12 +1312,17 @@ assert_file_exists "cost-analysis.md 存在" "$R/docs/cost-analysis.md"
 # X4b. ai-organization.md が生成される
 assert_file_exists "ai-organization.md 存在" "$R/docs/ai-organization.md"
 
+# X4c. design-philosophy.md が生成される（#364 §1-4: /commit スキルのアンカーリンク先）
+assert_file_exists "design-philosophy.md 存在" "$R/docs/design-philosophy.md"
+assert_file_contains "design-philosophy.md にアンカー対象セクション" "$R/docs/design-philosophy.md" 'コマンドリダイレクト・フォールバックの禁止'
+
 # X5. プレースホルダーが置換済み（残っていない）
 assert_file_not_contains "specification.md にプレースホルダーなし" "$R/docs/specification.md" '{{.*}}'
 assert_file_not_contains "POLICY.md にプレースホルダーなし" "$R/docs/POLICY.md" '{{.*}}'
 assert_file_not_contains "SECURITY.md にプレースホルダーなし" "$R/docs/SECURITY.md" '{{.*}}'
 assert_file_not_contains "cost-analysis.md にプレースホルダーなし" "$R/docs/cost-analysis.md" '{{.*}}'
 assert_file_not_contains "ai-organization.md にプレースホルダーなし" "$R/docs/ai-organization.md" '{{.*}}'
+assert_file_not_contains "design-philosophy.md にプレースホルダーなし" "$R/docs/design-philosophy.md" '{{.*}}'
 
 # X6. PROJECT_NAME が実際のプロジェクト名に置換されている
 assert_file_contains "specification.md にプロジェクト名" "$R/docs/specification.md" "test-proj"
@@ -1321,6 +1330,7 @@ assert_file_contains "POLICY.md にプロジェクト名" "$R/docs/POLICY.md" "t
 assert_file_contains "SECURITY.md にプロジェクト名" "$R/docs/SECURITY.md" "test-proj"
 assert_file_contains "cost-analysis.md にプロジェクト名" "$R/docs/cost-analysis.md" "test-proj"
 assert_file_contains "ai-organization.md にプロジェクト名" "$R/docs/ai-organization.md" "test-proj"
+assert_file_contains "design-philosophy.md にプロジェクト名" "$R/docs/design-philosophy.md" "test-proj"
 
 # X6a. cost-analysis.md に必須セクションが含まれる
 assert_file_contains "cost-analysis.md に初期投資セクション" "$R/docs/cost-analysis.md" "初期投資"
@@ -1612,6 +1622,8 @@ assert_file_exists ".claude/.gitignore が生成される" "$R/.claude/.gitignor
 assert_file_contains ".gitignore に plans/" "$R/.claude/.gitignore" "plans/"
 assert_file_contains ".gitignore に lib/" "$R/.claude/.gitignore" "lib/"
 assert_file_contains ".gitignore に vibecorp-base/" "$R/.claude/.gitignore" "vibecorp-base/"
+# AA1a. #364 §1-1: bin/claude-real が gitignore される（マシン固有 artifact 流出防止）
+assert_file_contains ".gitignore に bin/claude-real" "$R/.claude/.gitignore" "bin/claude-real"
 assert_file_not_contains ".gitignore に memory/ なし" "$R/.claude/.gitignore" "memory/"
 assert_file_not_contains ".gitignore に tickets/ なし" "$R/.claude/.gitignore" "tickets/"
 
@@ -1631,6 +1643,8 @@ assert_file_contains "ユーザー独自エントリが保持される" "$R/.cla
 assert_file_contains "plans/ が追記される" "$R/.claude/.gitignore" "plans/"
 assert_file_contains "lib/ が追記される" "$R/.claude/.gitignore" "lib/"
 assert_file_contains "vibecorp-base/ が追記される" "$R/.claude/.gitignore" "vibecorp-base/"
+# AA2a. #364 §1-1: 既存 .claude/.gitignore に bin/claude-real が追記される
+assert_file_contains "bin/claude-real が追記される" "$R/.claude/.gitignore" "bin/claude-real"
 
 cleanup
 

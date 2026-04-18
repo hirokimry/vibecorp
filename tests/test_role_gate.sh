@@ -98,10 +98,6 @@ assert_allowed "CPO が docs/specification.md を編集 → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/screen-flow.md"}}' | run_hook role-gate.sh)
 assert_allowed "CPO が docs/screen-flow.md を編集 → 許可" "$OUTPUT"
 
-# 3. CPO が管轄内(docs/ai-prompt-design.md)を編集 → 許可
-OUTPUT=$(echo '{"tool_input":{"file_path":"docs/ai-prompt-design.md"}}' | run_hook role-gate.sh)
-assert_allowed "CPO が docs/ai-prompt-design.md を編集 → 許可" "$OUTPUT"
-
 # 4. CPO が管轄外(docs/SECURITY.md)を編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
 assert_blocked "CPO が docs/SECURITY.md を編集 → deny" "$OUTPUT"
@@ -119,6 +115,10 @@ write_role_file "cto"
 # 6. CTO が管轄内(docs/specification.md)を編集 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | run_hook role-gate.sh)
 assert_allowed "CTO が docs/specification.md を編集 → 許可" "$OUTPUT"
+
+# 6b. CTO が管轄内(docs/design-philosophy.md)を編集 → 許可
+OUTPUT=$(echo '{"tool_input":{"file_path":"docs/design-philosophy.md"}}' | run_hook role-gate.sh)
+assert_allowed "CTO が docs/design-philosophy.md を編集 → 許可" "$OUTPUT"
 
 # 7. CTO が管轄外(docs/screen-flow.md)を編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/screen-flow.md"}}' | run_hook role-gate.sh)
