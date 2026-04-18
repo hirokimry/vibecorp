@@ -1524,6 +1524,7 @@ migrate_tracked_artifacts() {
     artifacts+=(".claude/${line}")
   done < <(awk '
     /^# ---- machine-specific artifacts/ { in_section = 1; next }
+    in_section && /^# ----/ { in_section = 0; next }
     in_section && /^#/ { next }
     in_section && /^[[:space:]]*$/ { next }
     in_section { print }

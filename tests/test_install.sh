@@ -1890,6 +1890,7 @@ bin/future-artifact
 EOF
 EXTRACTED=$(awk '
   /^# ---- machine-specific artifacts/ { in_section = 1; next }
+  in_section && /^# ----/ { in_section = 0; next }
   in_section && /^#/ { next }
   in_section && /^[[:space:]]*$/ { next }
   in_section { print }
@@ -1911,6 +1912,7 @@ plans/
 EOF
 EMPTY_COUNT=$(awk '
   /^# ---- machine-specific artifacts/ { in_section = 1; next }
+  in_section && /^# ----/ { in_section = 0; next }
   in_section && /^#/ { next }
   in_section && /^[[:space:]]*$/ { next }
   in_section { print }
@@ -1919,6 +1921,32 @@ if [ "$EMPTY_COUNT" = "0" ]; then
   pass "AK7: 空セクションで抽出結果 0 行"
 else
   fail "AK7: 空セクションで抽出結果 0 行（実際: ${EMPTY_COUNT}）"
+fi
+cleanup
+
+# AK8. machine-specific セクションの後に別セクションが続く場合、後続エントリが untrack 対象に混入しないこと（セクション終端判定の退行検知）
+TMPDIR_ROOT=$(mktemp -d)
+TEST_TPL="$TMPDIR_ROOT/multi-section.gitignore.tpl"
+cat > "$TEST_TPL" <<'EOF'
+plans/
+
+# ---- machine-specific artifacts ----
+bin/claude-real
+
+# ---- future-section ----
+should-not-be-extracted/
+EOF
+MULTI_EXTRACTED=$(awk '
+  /^# ---- machine-specific artifacts/ { in_section = 1; next }
+  in_section && /^# ----/ { in_section = 0; next }
+  in_section && /^#/ { next }
+  in_section && /^[[:space:]]*$/ { next }
+  in_section { print }
+' "$TEST_TPL" | tr '\n' ',' )
+if [ "$MULTI_EXTRACTED" = "bin/claude-real," ]; then
+  pass "AK8: 後続セクションが machine-specific 抽出に混入しない"
+else
+  fail "AK8: 後続セクションが machine-specific 抽出に混入しない (extracted=${MULTI_EXTRACTED})"
 fi
 cleanup
 
