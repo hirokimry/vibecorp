@@ -1639,6 +1639,9 @@ assert_file_contains ".gitignore に lib/" "$R/.claude/.gitignore" "lib/"
 assert_file_contains ".gitignore に vibecorp-base/" "$R/.claude/.gitignore" "vibecorp-base/"
 # AA1a. #364 §1-1: bin/claude-real が gitignore される（マシン固有 artifact 流出防止）
 assert_file_contains ".gitignore に bin/claude-real" "$R/.claude/.gitignore" "bin/claude-real"
+# AA1b. #333: CronCreate durable が生成する scheduled_tasks.{json,lock} が gitignore される
+assert_file_contains ".gitignore に scheduled_tasks.json" "$R/.claude/.gitignore" "scheduled_tasks.json"
+assert_file_contains ".gitignore に scheduled_tasks.lock" "$R/.claude/.gitignore" "scheduled_tasks.lock"
 assert_file_not_contains ".gitignore に memory/ なし" "$R/.claude/.gitignore" "memory/"
 assert_file_not_contains ".gitignore に tickets/ なし" "$R/.claude/.gitignore" "tickets/"
 
@@ -1660,6 +1663,9 @@ assert_file_contains "lib/ が追記される" "$R/.claude/.gitignore" "lib/"
 assert_file_contains "vibecorp-base/ が追記される" "$R/.claude/.gitignore" "vibecorp-base/"
 # AA2a. #364 §1-1: 既存 .claude/.gitignore に bin/claude-real が追記される
 assert_file_contains "bin/claude-real が追記される" "$R/.claude/.gitignore" "bin/claude-real"
+# AA2b. #333: scheduled_tasks.{json,lock} も既存 consumer に追記される
+assert_file_contains "scheduled_tasks.json が追記される" "$R/.claude/.gitignore" "scheduled_tasks.json"
+assert_file_contains "scheduled_tasks.lock が追記される" "$R/.claude/.gitignore" "scheduled_tasks.lock"
 
 cleanup
 

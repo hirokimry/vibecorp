@@ -7,3 +7,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code 本体が生成するスケジュール情報（CronCreate durable 用）
+# ユーザー固有のため他マシン・他ユーザーと共有しない
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
