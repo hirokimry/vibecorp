@@ -1468,9 +1468,11 @@ bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists "standard: cto/tech-principles.md が配置される" "$R/.claude/knowledge/cto/tech-principles.md"
-assert_file_exists "standard: cto/decisions.md が配置される" "$R/.claude/knowledge/cto/decisions.md"
+assert_file_exists "standard: cto/decisions-index.md が配置される" "$R/.claude/knowledge/cto/decisions-index.md"
+assert_file_not_exists "standard: cto/decisions.md（旧形式）は配置されない" "$R/.claude/knowledge/cto/decisions.md"
 assert_file_exists "standard: cpo/product-principles.md が配置される" "$R/.claude/knowledge/cpo/product-principles.md"
-assert_file_exists "standard: cpo/decisions.md が配置される" "$R/.claude/knowledge/cpo/decisions.md"
+assert_file_exists "standard: cpo/decisions-index.md が配置される" "$R/.claude/knowledge/cpo/decisions-index.md"
+assert_file_not_exists "standard: cpo/decisions.md（旧形式）は配置されない" "$R/.claude/knowledge/cpo/decisions.md"
 cleanup
 
 # Y2. minimal プリセットでは knowledge が配置されない
@@ -1498,7 +1500,8 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "lock に knowledge セクション" "$R/.claude/vibecorp.lock" "knowledge:"
 assert_file_contains "lock に tech-principles.md" "$R/.claude/vibecorp.lock" "tech-principles.md"
-assert_file_contains "lock に decisions.md" "$R/.claude/vibecorp.lock" "decisions.md"
+assert_file_contains "lock に decisions-index.md" "$R/.claude/vibecorp.lock" "decisions-index.md"
+assert_file_not_contains "lock に旧 decisions.md が単独で残っていない" "$R/.claude/vibecorp.lock" "  - decisions.md$"
 cleanup
 
 # Y5. standard プリセットバリデーション
@@ -1573,6 +1576,8 @@ assert_dir_exists "アップグレード後: knowledge-pr 追加" "$R/.claude/sk
 
 # knowledge が追加される
 assert_file_exists "アップグレード後: knowledge 追加" "$R/.claude/knowledge/cto/tech-principles.md"
+assert_file_exists "アップグレード後: cto/decisions-index.md 追加" "$R/.claude/knowledge/cto/decisions-index.md"
+assert_file_not_exists "アップグレード後: cto/decisions.md（旧形式）は無い" "$R/.claude/knowledge/cto/decisions.md"
 
 # Z8. minimal → standard アップグレード: vibecorp.yml が更新される
 assert_file_contains "アップグレード後: preset が standard" "$R/.claude/vibecorp.yml" "preset: standard"
