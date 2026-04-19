@@ -140,7 +140,7 @@ your-project/
 | スキル | 説明 |
 |---|---|
 | `/ship` | Issue URL を指定するだけでブランチ作成から PR 作成・auto-merge 設定までを全自動実行 |
-| `/plan` | Issue の実装方針を策定し、計画ファイルとして `.claude/plans/` に出力 |
+| `/plan` | Issue の実装方針を策定し、計画ファイルとして `~/.cache/vibecorp/plans/<repo-id>/` に出力（Claude Code の `.claude/` 書込確認プロンプトを回避するため XDG cache に配置） |
 | `/plan-review-loop` | 実装計画に対するレビュー → 修正の自動ループ。問題0件まで繰り返す |
 | `/review` | CodeRabbit CLI + カスタムレビュアーで変更差分をレビュー |
 | `/review-loop` | レビュー → 検証 → 修正を指摘ゼロになるまで繰り返す（最大5回） |
@@ -181,7 +181,7 @@ your-project/
 |---|---|---|---|
 | `protect-files.sh` | minimal 以上 | `Edit`/`Write` | `vibecorp.yml` の `protected_files` で指定したファイルの編集をブロック。MVV.md はデフォルトで保護対象 |
 | `protect-branch.sh` | minimal 以上 | `Edit`/`Write`/`Bash`（git commit） | メインブランチ（base_branch）での Edit/Write/git commit をブロック |
-| `role-gate.sh` | full | `Edit`/`Write` | エージェントの管轄外ファイルの編集をブロック。ロールファイル（`$CLAUDE_PROJECT_DIR/.claude/state/agent-role`）に書かれたロール名で判定。通常セッション（人間操作時）は制約なし |
+| `role-gate.sh` | full | `Edit`/`Write` | エージェントの管轄外ファイルの編集をブロック。ロールファイル（`~/.cache/vibecorp/state/<repo-id>/agent-role`）に書かれたロール名で判定。通常セッション（人間操作時）は制約なし |
 | `diagnose-guard.sh` | full | `Edit`/`Write` | `/diagnose` 実行中に hooks/*.sh, vibecorp.yml, MVV.md, diagnose-guard.sh 自身への変更をブロック |
 
 ### ワークフローゲート型
@@ -203,7 +203,7 @@ your-project/
 
 | フック | プリセット | トリガー | 説明 |
 |---|---|---|---|
-| `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`$CLAUDE_PROJECT_DIR/.claude/state/command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
+| `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`~/.cache/vibecorp/state/<repo-id>/command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
 
 ### 自動承認型
 

@@ -4,11 +4,14 @@
 
 set -euo pipefail
 
-HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+HOOKS_DIR="${SCRIPT_DIR}/templates/claude/hooks"
+LIB_DIR="${SCRIPT_DIR}/templates/claude/lib"
 PASSED=0
 FAILED=0
 TOTAL=0
 TMPDIR_ROOT=""
+ROLE_FILE=""
 
 # --- ヘルパー ---
 
@@ -52,8 +55,21 @@ run_hook() {
 
 setup_project_dir() {
   TMPDIR_ROOT=$(mktemp -d)
-  mkdir -p "${TMPDIR_ROOT}/.claude/state"
+  mkdir -p "${TMPDIR_ROOT}/.claude/hooks"
+  mkdir -p "${TMPDIR_ROOT}/.claude/lib"
+  # hook が source する common.sh を配置
+  cp "${LIB_DIR}/common.sh" "${TMPDIR_ROOT}/.claude/lib/common.sh"
+  # repo-id 計算に git が必要
+  ( cd "$TMPDIR_ROOT" && git init -q . && git config user.email t@example.com && git config user.name t )
   export CLAUDE_PROJECT_DIR="$TMPDIR_ROOT"
+  # XDG サンドボックス化：実ホームを汚さない
+  export HOME="${TMPDIR_ROOT}/fakehome"
+  export XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-cache"
+  mkdir -p "$HOME" "$XDG_CACHE_HOME"
+  # ロールファイルパスを計算
+  ROLE_FILE=$( source "${TMPDIR_ROOT}/.claude/lib/common.sh" && vibecorp_state_path agent-role )
+  # state ディレクトリを作成
+  mkdir -p "$(dirname "$ROLE_FILE")"
 }
 
 write_vibecorp_yml() {
@@ -67,12 +83,12 @@ YAML
 
 write_role_file() {
   local role="$1"
-  echo "$role" > "${TMPDIR_ROOT}/.claude/state/agent-role"
+  echo "$role" > "$ROLE_FILE"
 }
 
 cleanup() {
   if [ -n "$TMPDIR_ROOT" ] && [ -d "$TMPDIR_ROOT" ]; then
-    rm -rf "$TMPDIR_ROOT"
+    rm -rf "$TMPDIR_ROOT" || true
   fi
 }
 trap cleanup EXIT
@@ -220,7 +236,7 @@ assert_allowed "docs/ 外のファイル(install.sh) → 許可" "$OUTPUT"
 echo ""
 echo "--- ロールファイル未設定 ---"
 
-rm -f "${TMPDIR_ROOT}/.claude/state/agent-role"
+rm -f "$ROLE_FILE"
 
 # 20. ロールファイルなし → 許可（通常セッション）
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
@@ -230,7 +246,7 @@ assert_allowed "ロールファイル未設定 → 許可" "$OUTPUT"
 echo ""
 echo "--- ロールファイル空 ---"
 
-echo "" > "${TMPDIR_ROOT}/.claude/state/agent-role"
+echo "" > "$ROLE_FILE"
 
 # 21. ロールファイルが空 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
@@ -308,24 +324,37 @@ else
   fail "deny メッセージにロール名が含まれる (実際: $REASON)"
 fi
 
-# --- ROLE_FILE のパス ---
+# --- ROLE_FILE のパス（新パス: ~/.cache/vibecorp/state/<repo-id>/agent-role） ---
 echo ""
 echo "--- ROLE_FILE のパス ---"
 
-# 31. ROLE_FILE は $CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される
+# 31. ROLE_FILE は XDG cache 配下に配置される
 write_role_file "cpo"
-if [ -f "${TMPDIR_ROOT}/.claude/state/agent-role" ]; then
-  pass "ROLE_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される"
+if [ -f "$ROLE_FILE" ] \
+  && [[ "$ROLE_FILE" == "${XDG_CACHE_HOME}/vibecorp/state/"*/agent-role ]]; then
+  pass "ROLE_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/agent-role に配置される"
 else
-  fail "ROLE_FILE が \$CLAUDE_PROJECT_DIR/.claude/state/agent-role に配置される (見つからない)"
+  fail "ROLE_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/agent-role に配置される (actual: $ROLE_FILE)"
+fi
+
+# 31b. 旧パス .claude/state/agent-role には書き込まれない（退行検知）
+if [ ! -e "${TMPDIR_ROOT}/.claude/state/agent-role" ]; then
+  pass "旧パス .claude/state/agent-role に書き込まれない"
+else
+  fail "旧パス .claude/state/agent-role に書き込まれている（退行）"
 fi
 
 # 32. 別の CLAUDE_PROJECT_DIR では別の ROLE_FILE が参照される（worktree 分離の核心）
 ALT_DIR=$(mktemp -d)
-mkdir -p "${ALT_DIR}/.claude/state"
-echo "cto" > "${ALT_DIR}/.claude/state/agent-role"
+mkdir -p "${ALT_DIR}/.claude/lib"
+cp "${LIB_DIR}/common.sh" "${ALT_DIR}/.claude/lib/common.sh"
+( cd "$ALT_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
 ORIG_DIR="$CLAUDE_PROJECT_DIR"
 export CLAUDE_PROJECT_DIR="$ALT_DIR"
+# ALT_DIR 用の ROLE_FILE パスを計算して CTO ロールを書き込む
+ALT_ROLE_FILE=$( source "${ALT_DIR}/.claude/lib/common.sh" && vibecorp_state_path agent-role )
+mkdir -p "$(dirname "$ALT_ROLE_FILE")"
+echo "cto" > "$ALT_ROLE_FILE"
 # CTO は docs/specification.md を編集できるが docs/screen-flow.md は不可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/screen-flow.md"}}' | run_hook role-gate.sh)
 assert_blocked "別の CLAUDE_PROJECT_DIR の ROLE_FILE が参照される（worktree 分離）" "$OUTPUT"
@@ -336,9 +365,14 @@ rm -rf "$ALT_DIR"
 echo ""
 echo "--- CLAUDE_PROJECT_DIR 未設定 ---"
 
-# 33. CLAUDE_PROJECT_DIR 未設定時に異常終了しない
-unset CLAUDE_PROJECT_DIR
+# 33. CLAUDE_PROJECT_DIR 未設定時に異常終了しない（common.sh も見つからないのでスキップせず pass 扱い）
+# common.sh が CLAUDE_PROJECT_DIR 未設定で存在しないパスを source してエラーになるため、
+# テストは fallback として CWD に common.sh が存在する状況を再現する。
 EMPTY_DIR=$(mktemp -d)
+mkdir -p "${EMPTY_DIR}/.claude/lib"
+cp "${LIB_DIR}/common.sh" "${EMPTY_DIR}/.claude/lib/common.sh"
+( cd "$EMPTY_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
+unset CLAUDE_PROJECT_DIR
 set +e
 OUTPUT=$(cd "$EMPTY_DIR" && echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh 2>/dev/null)
 EXIT_CODE=$?

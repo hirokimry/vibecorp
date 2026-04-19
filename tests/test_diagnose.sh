@@ -155,15 +155,27 @@ assert_file_contains "jq の string interpolation 禁止がある" "$SKILL_MD" '
 # 20. コマンドそのまま実行の制約がある
 assert_file_contains "コマンドそのまま実行の制約がある" "$SKILL_MD" "コマンドをそのまま実行する"
 
-# --- state ファイル参照 ---
+# --- state ファイル参照（XDG: ~/.cache/vibecorp/state/<repo-id>/diagnose-active） ---
 
 echo "--- state ファイル参照 ---"
 
-# 21. diagnose-active state ファイルを touch する
-assert_file_contains "diagnose-active state ファイルを touch する" "$SKILL_MD" '\$CLAUDE_PROJECT_DIR/.claude/state/diagnose-active'
+# 21. diagnose-active state ファイルを stamp_dir 経由で touch する
+assert_file_contains "vibecorp_state_mkdir で state ディレクトリを作成する" "$SKILL_MD" "vibecorp_state_mkdir"
+assert_file_contains "stamp_dir/diagnose-active を touch する" "$SKILL_MD" 'touch "\${stamp_dir}/diagnose-active"'
 
 # 22. diagnose-active state ファイルを rm -f する
-assert_file_contains "diagnose-active state ファイルを rm -f する" "$SKILL_MD" 'rm -f "\$CLAUDE_PROJECT_DIR/.claude/state/diagnose-active"'
+assert_file_contains "vibecorp_state_path diagnose-active を rm -f する" "$SKILL_MD" 'rm -f "\$(vibecorp_state_path diagnose-active)"'
+
+# 23. 旧 .claude/state/diagnose-active パスが SKILL 内に残っていない（退行検知）
+if ! grep -q '\.claude/state/diagnose-active' "$SKILL_MD"; then
+  PASSED=$((PASSED + 1))
+  TOTAL=$((TOTAL + 1))
+  echo "  PASS: 旧パス .claude/state/diagnose-active が SKILL に残っていない"
+else
+  FAILED=$((FAILED + 1))
+  TOTAL=$((TOTAL + 1))
+  echo "  FAIL: 旧パス .claude/state/diagnose-active が SKILL に残っている（退行）"
+fi
 
 # ============================================
 echo ""
