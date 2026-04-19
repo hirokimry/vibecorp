@@ -331,11 +331,19 @@ OS 判定を `vibecorp-sandbox` に閉じ込め、Phase 1 では Darwin（macOS 
 
 macOS sandbox-exec プロファイルの許可・拒否境界（書込許可パス・読取許可パス・ioctl 許可デバイス、`literal` / `subpath` の使い分け、network/process 制約等）の詳細は `.claude/sandbox/claude.sb` の全体（ヘッダコメント + SBPL ルール本文）を正として参照すること。本セクションは設計思想の記述であり、個々のパス・ルールを逐次列挙するスコープではない。
 
-## ゲートスタンプの保存先
+## ゲートスタンプ・一時ファイルの保存先
 
 ### `.claude/` 外への切り出し
 
-`/sync-check`、`/session-harvest`、`/review-to-rules`、`/review-loop` が発行するゲートスタンプは XDG Base Directory 仕様に準拠し `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/state/<repo-id>/` 配下に配置する。`.claude/` 配下への書込みは Claude Code の `--dangerously-skip-permissions` でも確認プロンプトが発生するため、スタンプ発行が連続するスキルワークフロー（PR 作成からマージまで最大 4 回）の UX を阻害する。
+ゲートスタンプおよび実装計画ファイルは XDG Base Directory 仕様に準拠し `${XDG_CACHE_HOME:-$HOME/.cache}/vibecorp/` 配下に配置する。`.claude/` 配下への書込みは Claude Code の `--dangerously-skip-permissions` でも確認プロンプトが発生するため、スタンプ発行が連続するスキルワークフロー（PR 作成からマージまで最大 4 回）の UX を阻害する。
+
+#### state — ゲートスタンプ
+
+`/sync-check`、`/session-harvest`、`/review-to-rules`、`/review-loop` が発行するゲートスタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に配置する。
+
+#### plans — 実装計画ファイル
+
+Issue 対応時の実装計画ファイルは `~/.cache/vibecorp/plans/<repo-id>/` 配下に配置する（`{ブランチ名}.md` 形式）。旧来は `.claude/plans/` に配置していたが、同じく `.claude/` 書込確認プロンプトの問題と worktree 分離（worktree ごとに異なる `<repo-id>` を持つ）の両理由から XDG パスへ移行した。
 
 ### `<repo-id>` 構成
 
