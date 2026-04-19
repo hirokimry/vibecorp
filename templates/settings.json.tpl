@@ -2,16 +2,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|Read|Glob|Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/team-auto-approve.sh",
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write",
         "hooks": [
           {
