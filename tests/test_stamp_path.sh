@@ -264,6 +264,83 @@ setup_fakebin "$FB_NONE"
 HASH_NONE=$( PATH="$FB_NONE" _vibecorp_sha256_short "x" )
 assert_eq "全コマンド不在で 00000000 返却" "00000000" "$HASH_NONE"
 
+# --- ケース 11: vibecorp_state_path / vibecorp_state_mkdir ---
+
+echo "Test 11: vibecorp_state_path が <dir>/<name>（-ok 接尾辞なし）を返す"
+STATE_DIR=$( cd "$REPO_DIR" && CLAUDE_PROJECT_DIR="$REPO_DIR" vibecorp_stamp_dir )
+STATE_PATH=$( cd "$REPO_DIR" && CLAUDE_PROJECT_DIR="$REPO_DIR" vibecorp_state_path command-log )
+assert_eq "vibecorp_state_path command-log = <dir>/command-log" "${STATE_DIR}/command-log" "$STATE_PATH"
+
+STATE_PATH_ROLE=$( cd "$REPO_DIR" && CLAUDE_PROJECT_DIR="$REPO_DIR" vibecorp_state_path agent-role )
+assert_eq "vibecorp_state_path agent-role = <dir>/agent-role" "${STATE_DIR}/agent-role" "$STATE_PATH_ROLE"
+
+assert_not_contains "vibecorp_state_path は -ok 接尾辞を付けない" "-ok" "$STATE_PATH"
+
+echo "Test 11b: vibecorp_state_mkdir が vibecorp_stamp_mkdir と同じディレクトリを作成"
+STATE_MKDIR_REPO="${TMPDIR_ROOT}/state-mkdir-test"
+mkdir -p "$STATE_MKDIR_REPO"
+( cd "$STATE_MKDIR_REPO" && git init -q . )
+CREATED_STATE=$( cd "$STATE_MKDIR_REPO" && XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-state" CLAUDE_PROJECT_DIR="$STATE_MKDIR_REPO" bash -c "source \"${LIB}\" && vibecorp_state_mkdir" )
+if [ -d "$CREATED_STATE" ]; then
+  pass "vibecorp_state_mkdir でディレクトリ作成"
+else
+  fail "vibecorp_state_mkdir でディレクトリが作成されない: ${CREATED_STATE}"
+fi
+
+PERM=$(stat -c '%a' "$CREATED_STATE" 2>/dev/null || stat -f '%Lp' "$CREATED_STATE" 2>/dev/null || echo "unknown")
+assert_eq "vibecorp_state_mkdir で chmod 700" "700" "$PERM"
+
+# --- ケース 12: vibecorp_plans_dir / vibecorp_plans_mkdir ---
+
+echo "Test 12: vibecorp_plans_dir が <cache>/vibecorp/plans/<repo-id> を返す"
+PLANS_DIR=$( cd "$REPO_DIR" && XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-plans" CLAUDE_PROJECT_DIR="$REPO_DIR" vibecorp_plans_dir )
+assert_starts_with "vibecorp_plans_dir が plans/<repo-id> パス" "${TMPDIR_ROOT}/xdg-plans/vibecorp/plans/" "$PLANS_DIR"
+
+echo "Test 12b: vibecorp_plans_mkdir が chmod 700 でディレクトリ作成"
+PLANS_MKDIR_REPO="${TMPDIR_ROOT}/plans-mkdir-test"
+mkdir -p "$PLANS_MKDIR_REPO"
+( cd "$PLANS_MKDIR_REPO" && git init -q . )
+CREATED_PLANS=$( cd "$PLANS_MKDIR_REPO" && XDG_CACHE_HOME="${TMPDIR_ROOT}/xdg-plans2" CLAUDE_PROJECT_DIR="$PLANS_MKDIR_REPO" bash -c "source \"${LIB}\" && vibecorp_plans_mkdir" )
+if [ -d "$CREATED_PLANS" ]; then
+  pass "vibecorp_plans_mkdir でディレクトリ作成"
+else
+  fail "vibecorp_plans_mkdir でディレクトリが作成されない: ${CREATED_PLANS}"
+fi
+
+PERM_PLANS=$(stat -c '%a' "$CREATED_PLANS" 2>/dev/null || stat -f '%Lp' "$CREATED_PLANS" 2>/dev/null || echo "unknown")
+assert_eq "vibecorp_plans_mkdir で chmod 700" "700" "$PERM_PLANS"
+
+# state と plans が独立した親ディレクトリであることを確認
+assert_not_contains "plans_dir が state/ 配下ではない" "/state/" "$PLANS_DIR"
+
+# --- ケース 13: HOME 未設定時のフォールバック ---
+
+echo "Test 13: HOME 未設定で vibecorp_cache_root が / で始まる（副作用なく完了）"
+CACHE_ROOT_NOHOME=$( cd "$REPO_DIR" && env -u HOME -u XDG_CACHE_HOME CLAUDE_PROJECT_DIR="$REPO_DIR" bash -c "source \"${LIB}\" && vibecorp_cache_root" )
+# HOME 未設定時は "${HOME}/.cache" → "/.cache" になる（関数自体は失敗しない）
+assert_eq "HOME 未設定で vibecorp_cache_root が /.cache を返す" "/.cache" "$CACHE_ROOT_NOHOME"
+
+# --- ケース 14: worktree で repo-id が親と異なる ---
+
+echo "Test 14: git worktree で repo-id が親とは別（plans 自動分離の保証）"
+WT_MAIN="${TMPDIR_ROOT}/wt-main"
+mkdir -p "$WT_MAIN"
+( cd "$WT_MAIN" && git init -q -b main . && git config user.email t@example.com && git config user.name t && git commit -q --allow-empty -m init )
+WT_CHILD="${TMPDIR_ROOT}/wt-child"
+( cd "$WT_MAIN" && git worktree add -q "$WT_CHILD" -b dev/wt-test )
+
+ID_MAIN=$( cd "$WT_MAIN" && CLAUDE_PROJECT_DIR="$WT_MAIN" vibecorp_repo_id )
+ID_CHILD=$( cd "$WT_CHILD" && CLAUDE_PROJECT_DIR="$WT_CHILD" vibecorp_repo_id )
+
+if [ "$ID_MAIN" != "$ID_CHILD" ]; then
+  pass "worktree で repo-id が親と異なる (main=${ID_MAIN}, child=${ID_CHILD})"
+else
+  fail "worktree で repo-id が親と同じ (${ID_MAIN})"
+fi
+
+# worktree を片付け（後続テストに影響しないように）
+( cd "$WT_MAIN" && git worktree remove "$WT_CHILD" 2>/dev/null || true )
+
 # --- 結果 ---
 
 echo ""

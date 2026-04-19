@@ -38,9 +38,11 @@ Claude Code の Read / Write / Edit ツールは CWD に依存しないため、
 
 ```text
 Read:  <path>/src/main.ts
-Write: <path>/.claude/plans/dev_123_feature.md
+Write: ~/.cache/vibecorp/plans/<repo-id>/dev_123_feature.md
 Edit:  <path>/tests/test_foo.sh
 ```
+
+計画ファイル（plans/）は worktree 内ではなく `~/.cache/vibecorp/plans/<repo-id>/` に配置する（#334）。`<repo-id>` は worktree パスごとに一意の値になるため、worktree 間で計画ファイルは自動的に分離される。
 
 **選定理由:**
 
