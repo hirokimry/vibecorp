@@ -8,6 +8,10 @@ lib/
 # hooks/skills のランタイム state（#334 以降は ~/.cache/vibecorp/state/<repo-id>/ に移行）
 # 既存リポジトリに残る可能性がある `.claude/state/` 残骸を追跡対象外にする
 state/
+# Claude Code 本体が生成するスケジュール情報（CronCreate durable 用）
+# ユーザー固有のため他マシン・他ユーザーと共有しない
+scheduled_tasks.json
+scheduled_tasks.lock
 
 # ---- machine-specific artifacts (migrate_tracked_artifacts で untrack 対象) ----
 # 以下のマーカー配下は machine-specific artifact として扱う。

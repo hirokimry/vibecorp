@@ -309,6 +309,41 @@ get_disabled_hooks() {
   ' "$yml" | jq -R -s 'split("\n") | map(select(length > 0))'
 }
 
+get_orphan_hooks() {
+  # .claude/vibecorp.lock に記載されているが templates/claude/hooks/ に実体がない
+  # hook 名（basename）を 1 行 1 件で stdout に出力する。
+  # vibecorp 開発側で廃止された hook（例: team-auto-approve.sh）を検出するために使う。
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+  local templates_hooks_dir="${SCRIPT_DIR}/templates/claude/hooks"
+
+  [[ -f "$lock" ]] || return 0
+
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    if [[ ! -f "${templates_hooks_dir}/${name}" ]]; then
+      echo "$name"
+    fi
+  done < <(read_lock_list "$lock" "hooks")
+}
+
+remove_orphan_hooks() {
+  # lock 記載かつ templates 実体なしの hook を .claude/hooks/ から物理削除する。
+  # --update モードでのみ呼ぶ前提。
+  # settings.json からのエントリ除去は generate_settings_json の既存マージロジックが担当する
+  # （lock 基準の managed_hooks_json で既存エントリを除去 → 新テンプレートと結合）。
+  local hooks_dir="${REPO_ROOT}/.claude/hooks"
+
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    # lock 改ざん時の防御: パス区切り文字を含む name は拒否（basename のみ許可）
+    [[ "$name" == */* ]] && continue
+    if [[ -f "${hooks_dir:?}/${name:?}" ]]; then
+      rm -f "${hooks_dir:?}/${name:?}"
+      log_info "hooks/${name} は廃止されたため削除"
+    fi
+  done < <(get_orphan_hooks)
+}
+
 # ── ステップ関数 ───────────────────────────────────────
 
 parse_args() {
@@ -593,6 +628,11 @@ copy_managed_files() {
       save_base_snapshot "$src" "hooks/${name}"
     fi
   done
+
+  # --update: テンプレートから廃止された hook（lock 記載 + templates 不在）を削除
+  if [[ "$UPDATE_MODE" == true ]]; then
+    remove_orphan_hooks
+  fi
 
   # skills: --update 時は SKILL.md を 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
   for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do

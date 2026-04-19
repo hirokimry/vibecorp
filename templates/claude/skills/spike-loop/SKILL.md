@@ -50,7 +50,7 @@ claude -p --permission-mode dontAsk --verbose "/ship-parallel <Issue URL 1> <Iss
 ```
 
 - `-p` (print mode): 非対話、stdout に結果を出力して終了
-- `--permission-mode dontAsk`: hook（`team-auto-approve.sh`）が permission を制御する。親セッションへの承認要求を抑制（参照: #260）
+- `--permission-mode dontAsk`: 親セッションへの承認要求を抑制する。必要に応じて `--dangerously-skip-permissions` と併用（参照: `docs/design-philosophy.md` の「承認フローへの非介入」、#260）
 - `--verbose`: デバッグ情報を出力
 
 起動後、PID を記録する。

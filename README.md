@@ -114,7 +114,7 @@ which claude
 
 | プリセット | スキル | フック | エージェント | 課金モデル | ユースケース |
 |---|---|---|---|---|---|
-| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log, team-auto-approve | なし | Claude Max 定額内 | 個人〜小規模 |
+| **minimal** | /review, /review-loop, /pr-review-fix, /pr-review-loop, /pr, /commit, /issue, /ship, /plan, /branch, /plan-review-loop, /worktree, /approve-audit | protect-files, protect-branch, block-api-bypass, command-log | なし | Claude Max 定額内 | 個人〜小規模 |
 | **standard** | 上記 + /review-to-rules, /sync-check, /sync-edit, /session-harvest, /harvest-all, /context7 | 上記 + review-to-rules-gate, sync-gate, session-harvest-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
 | **full** | 上記 + /diagnose, /ship-parallel, /autopilot, /spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
@@ -228,15 +228,9 @@ your-project/
 |---|---|---|---|
 | `command-log.sh` | minimal 以上 | `Bash` | 全 Bash コマンドをログファイル（`~/.cache/vibecorp/state/<repo-id>/command-log`）に記録。判定は返さない（ログのみ）。`/approve-audit` で棚卸し・allow リスト追加に使用 |
 
-### 自動承認型
+### 承認フローへの非介入
 
-| フック | プリセット | トリガー | 説明 |
-|---|---|---|---|
-| `team-auto-approve.sh` | minimal 以上 | `PreToolUse` | チームモードでの安全なツールコールを自動承認。チームメイトが `settings.local.json` の allow リストを継承しない問題の回避策 |
-
-> **注意**: `team-auto-approve.sh` をカスタマイズする場合、`permissionDecision` には必ず `"allow"` を使用すること。`"approve"` は deprecated であり、Write / Edit 等のツールに対して効果がない。
-
-> **Bash コマンドの安全性判定**: `Bash` ツールに対しては、コマンドを `&&` / `;` で分割した各セグメントを個別に検証する。複合コマンドのいずれかのセグメントが安全でない場合はブロック。サブシェル（`$()` / バッククォート）・パイプ（`|` / `||`）を含むコマンドも通常フローに委ねる。`--rsh` 等の危険フラグを含むコマンドもブロック対象。
+vibecorp は Claude Code の承認フロー（permission flow）を書き換える hook を提供しない。並列実行時の承認負荷は sandbox + `--dangerously-skip-permissions` で低減する方針。詳細は [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入) を参照。
 
 ## ゲートフックとスタンプ
 
@@ -513,12 +507,6 @@ path/to/vibecorp/install.sh --update --no-migrate
 {
   "hooks": {
     "PreToolUse": [
-      {
-        "matcher": "Bash|Write|Edit|Read|Glob|Grep",
-        "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/team-auto-approve.sh", "timeout": 5 }
-        ]
-      },
       {
         "matcher": "Edit|Write",
         "hooks": [
