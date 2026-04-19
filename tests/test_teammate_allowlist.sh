@@ -25,7 +25,7 @@ fail() {
 assert_allow_contains() {
   local settings_path="$1"
   local pattern="$2"
-  local desc="allowlist: ${settings_path#$REPO_ROOT/} に $pattern"
+  local desc="allowlist: ${settings_path#"$REPO_ROOT"/} に $pattern"
 
   if [[ ! -f "$settings_path" ]]; then
     fail "$desc (ファイル不在)"
@@ -68,7 +68,7 @@ echo "=== teammate allowlist 検証 (#369) ==="
 
 for settings_path in "${SETTINGS_FILES[@]}"; do
   echo ""
-  echo "--- ${settings_path#$REPO_ROOT/} ---"
+  echo "--- ${settings_path#"$REPO_ROOT"/} ---"
   for pattern in "${REQUIRED_PATTERNS[@]}"; do
     assert_allow_contains "$settings_path" "$pattern"
   done
