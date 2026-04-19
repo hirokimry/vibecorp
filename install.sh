@@ -802,23 +802,30 @@ copy_isolation_templates() {
   done
 }
 
-# ゲートスタンプの保存先 ~/.cache/vibecorp/ を事前作成する (#326)。
+# ゲートスタンプ・state・plans の保存先 ~/.cache/vibecorp/ を事前作成する (#326, #334)。
 # sandbox-exec 内では ~/.cache/ の親ディレクトリ作成が拒否されるため、
 # install.sh（sandbox 外で実行）が一度作っておくことで、
 # sandbox 内の gate hook は subpath 配下の create のみで済む。
 #
-# templates/claude/lib/common.sh の vibecorp_stamp_dir() と XDG 解決規則を一致させる:
+# templates/claude/lib/common.sh の vibecorp_stamp_dir() / vibecorp_plans_dir() と
+# XDG 解決規則を一致させる:
 # - XDG_CACHE_HOME は絶対パスのみ有効（XDG 仕様）。相対値は $HOME/.cache にフォールバック
 # - chmod 700 は既存ディレクトリにも毎回適用（広い権限が残らないように）
-setup_stamp_cache_dir() {
+#
+# 作成するディレクトリ:
+# - ~/.cache/vibecorp/state/   — ゲートスタンプ、command-log、agent-role、diagnose-active 等の state
+# - ~/.cache/vibecorp/plans/   — /plan スキルが出力する計画ファイル（#334 で移行）
+setup_xdg_cache_dirs() {
   local cache_root="${HOME}/.cache"
   if [[ "${XDG_CACHE_HOME:-}" == /* ]]; then
     cache_root="${XDG_CACHE_HOME}"
   fi
-  local cache_dir="${cache_root}/vibecorp/state"
-  mkdir -p "$cache_dir"
-  chmod 700 "$cache_dir" 2>/dev/null || true
-  log_info "ゲートスタンプ保存先を確保: ${cache_dir}"
+  local state_dir="${cache_root}/vibecorp/state"
+  local plans_dir="${cache_root}/vibecorp/plans"
+  mkdir -p "$state_dir" "$plans_dir"
+  chmod 700 "$state_dir" "$plans_dir" 2>/dev/null || true
+  log_info "state 保存先を確保: ${state_dir}"
+  log_info "plans 保存先を確保: ${plans_dir}"
 }
 
 # 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full + Darwin のみ動作。
@@ -1816,7 +1823,7 @@ main() {
 
   remove_managed_files
   copy_managed_files
-  setup_stamp_cache_dir
+  setup_xdg_cache_dirs
   copy_isolation_templates
   setup_claude_real_symlink
   generate_vibecorp_yml

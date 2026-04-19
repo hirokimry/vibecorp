@@ -123,3 +123,36 @@ vibecorp_stamp_mkdir() {
   chmod 700 "$dir" 2>/dev/null || true
   printf '%s' "$dir"
 }
+
+# vibecorp_state_path — 汎用 state ファイルのフルパスを返す（"-ok" 接尾辞なし）
+# 引数: $1 = ファイル名（例: "command-log", "agent-role", "diagnose-active"）
+# 出力: <vibecorp_stamp_dir>/<name>
+# 既存スタンプと同じ <repo-id>/ ディレクトリを共有し、接尾辞の有無で区別する。
+vibecorp_state_path() {
+  printf '%s/%s' "$(vibecorp_stamp_dir)" "$1"
+}
+
+# vibecorp_state_mkdir — state ディレクトリを作成してパスを返す
+# vibecorp_stamp_mkdir と同じディレクトリを共有するためエイリアス。
+# 呼出側で「state を置く」意図を明示したい場合に使う。
+vibecorp_state_mkdir() {
+  vibecorp_stamp_mkdir
+}
+
+# vibecorp_plans_dir — plan mode 成果物の保存ディレクトリを返す
+# 出力例: /Users/me/.cache/vibecorp/plans/vibecorp-a1b2c3d4
+# .claude/plans/ への書込を避けることで Claude Code の書込確認プロンプトを回避する
+# （Issue #334 / #369）。
+vibecorp_plans_dir() {
+  printf '%s/vibecorp/plans/%s' "$(vibecorp_cache_root)" "$(vibecorp_repo_id)"
+}
+
+# vibecorp_plans_mkdir — plans ディレクトリを 700 で作成し、パスを stdout に返す
+# 失敗は exit code で呼出元に伝播。
+vibecorp_plans_mkdir() {
+  local dir
+  dir="$(vibecorp_plans_dir)" || return 1
+  mkdir -p "$dir" || return 1
+  chmod 700 "$dir" 2>/dev/null || true
+  printf '%s' "$dir"
+}

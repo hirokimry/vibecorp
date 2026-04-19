@@ -1,10 +1,12 @@
-# 会話中の一時的な実装計画（git 追跡しない）
+# 会話中の一時的な実装計画（#334 以降は ~/.cache/vibecorp/plans/<repo-id>/ に移行）
+# 既存リポジトリに残る可能性がある `.claude/plans/` 残骸を追跡対象外にする
 plans/
 # アップデート時の 3-way マージ用ベーススナップショット
 vibecorp-base/
 # フック共通ライブラリ（テンプレートからコピーされる生成物）
 lib/
-# hooks/skills のランタイム state（worktree ごとに分離されるマーカー・ログ）
+# hooks/skills のランタイム state（#334 以降は ~/.cache/vibecorp/state/<repo-id>/ に移行）
+# 既存リポジトリに残る可能性がある `.claude/state/` 残骸を追跡対象外にする
 state/
 
 # ---- machine-specific artifacts (migrate_tracked_artifacts で untrack 対象) ----
