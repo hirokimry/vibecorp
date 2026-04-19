@@ -57,8 +57,8 @@ description: >
 以下のコマンドを実行してロールを宣言してください。これにより管轄ファイルの編集権限が付与されます。
 
 source "$CLAUDE_PROJECT_DIR"/.claude/lib/common.sh
-vibecorp_state_mkdir >/dev/null
-echo "{role_id}" > "$(vibecorp_state_path agent-role)"
+stamp_dir="$(vibecorp_state_mkdir)"
+echo "{role_id}" > "${stamp_dir}/agent-role"
 
 role_id: cto / cpo / legal / accounting / sm
 

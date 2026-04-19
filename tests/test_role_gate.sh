@@ -330,10 +330,11 @@ echo "--- ROLE_FILE のパス ---"
 
 # 31. ROLE_FILE は XDG cache 配下に配置される
 write_role_file "cpo"
-if [ -f "$ROLE_FILE" ]; then
-  pass "ROLE_FILE が ~/.cache/vibecorp/state/<repo-id>/agent-role に配置される"
+if [ -f "$ROLE_FILE" ] \
+  && [[ "$ROLE_FILE" == "${XDG_CACHE_HOME}/vibecorp/state/"*/agent-role ]]; then
+  pass "ROLE_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/agent-role に配置される"
 else
-  fail "ROLE_FILE が新パス($ROLE_FILE) に配置される (見つからない)"
+  fail "ROLE_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/agent-role に配置される (actual: $ROLE_FILE)"
 fi
 
 # 31b. 旧パス .claude/state/agent-role には書き込まれない（退行検知）

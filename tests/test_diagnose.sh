@@ -159,9 +159,9 @@ assert_file_contains "コマンドそのまま実行の制約がある" "$SKILL_
 
 echo "--- state ファイル参照 ---"
 
-# 21. diagnose-active state ファイルを vibecorp_state_path 経由で取得・touch する
+# 21. diagnose-active state ファイルを stamp_dir 経由で touch する
 assert_file_contains "vibecorp_state_mkdir で state ディレクトリを作成する" "$SKILL_MD" "vibecorp_state_mkdir"
-assert_file_contains "vibecorp_state_path diagnose-active で touch する" "$SKILL_MD" 'touch "\$(vibecorp_state_path diagnose-active)"'
+assert_file_contains "stamp_dir/diagnose-active を touch する" "$SKILL_MD" 'touch "\${stamp_dir}/diagnose-active"'
 
 # 22. diagnose-active state ファイルを rm -f する
 assert_file_contains "vibecorp_state_path diagnose-active を rm -f する" "$SKILL_MD" 'rm -f "\$(vibecorp_state_path diagnose-active)"'

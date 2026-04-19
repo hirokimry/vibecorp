@@ -64,8 +64,8 @@ forbidden_targets のデフォルト値:
 
 ```bash
 source "$CLAUDE_PROJECT_DIR"/.claude/lib/common.sh
-vibecorp_state_mkdir >/dev/null
-touch "$(vibecorp_state_path diagnose-active)"
+stamp_dir="$(vibecorp_state_mkdir)"
+touch "${stamp_dir}/diagnose-active"
 ```
 
 このスタンプが存在する間、diagnose-guard.sh が保護ファイルへの変更を deny する。
