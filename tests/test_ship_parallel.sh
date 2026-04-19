@@ -366,6 +366,26 @@ fi
 
 echo ""
 
+# --- テスト13: rsync 除外リストの検証 ---
+
+echo "--- テスト13: rsync 除外リストの検証 ---"
+
+rsync_line=$(grep -E '^rsync -a.*--exclude' "$TEMPLATE_FILE" | head -1)
+
+if echo "$rsync_line" | grep -q -- "--exclude=state/"; then
+  pass "rsync に --exclude=state/ がある"
+else
+  fail "rsync に --exclude=state/ がない"
+fi
+
+if echo "$rsync_line" | grep -q -- "--exclude=plans/"; then
+  pass "rsync に --exclude=plans/ がある（#372）"
+else
+  fail "rsync に --exclude=plans/ がない（#372）"
+fi
+
+echo ""
+
 # --- 結果 ---
 
 echo "==========================="
