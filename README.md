@@ -85,6 +85,29 @@ which claude
 - Windows ネイティブは非対応（WSL2 を使用）
 - Linux（bwrap 対応）は Phase 2 で対応予定
 
+### Agent Teams 動作環境（公式 docs 記述）
+
+`/ship-parallel` / `/autopilot` / `/spike-loop` は Claude Code の Agent Teams 機能（[公式 docs](https://code.claude.com/docs/en/agent-teams)）に依存する。Anthropic は Agent Teams を **experimental** と明記しており、セッション再開・タスク調整・シャットダウン挙動に既知の制約がある。
+
+#### 公式 docs に明記されている動作要件
+
+- **In-process mode**: `works in any terminal, no extra setup required`
+- **Split-pane mode**: `requires either tmux or iTerm2 with the it2 CLI`
+
+#### 公式 docs に明記されている suggested entrypoint
+
+> `tmux` traditionally works best on macOS. Using `tmux -CC` in iTerm2 is the suggested entrypoint into `tmux`.
+
+#### 公式 docs に明記されている Split-pane mode not supported 環境
+
+> Split-pane mode isn't supported in VS Code's integrated terminal, Windows Terminal, or Ghostty.
+
+根拠: <https://code.claude.com/docs/en/agent-teams#limitations>
+
+#### リモート運用時の注意
+
+非対応環境で split-pane mode を使うと teammate の承認プロンプトが可視化されず、リモート閲覧（スマホ・Web）からは承認不能になる。Issue #369 で観測済み。`.claude/settings.json` の `permissions.allow` には `.claude/knowledge/**` / `.claude/plans/**` / `~/.cache/vibecorp/{plans,state}/**` が事前登録されており（[公式 docs の "Too many permission prompts" 推奨](https://code.claude.com/docs/en/agent-teams#too-many-permission-prompts)に基づく）、これら領域の teammate 書込は承認要求が発生しない。
+
 ## プリセット
 
 組織規模に応じた3つのプリセットを用意している。
