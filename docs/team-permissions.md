@@ -20,7 +20,7 @@ full プリセットで sandbox を有効化した状態で `claude --dangerousl
 
 ```bash
 # 例: spike-loop 内で teammate を起動する場合
-claude -p --permission-mode dontAsk --verbose "/ship-parallel <Issue URL>"
+claude -p --permission-mode dontAsk --dangerously-skip-permissions --verbose "/ship-parallel <Issue URL>"
 ```
 
 - `-p`（print mode）: 非対話、stdout に結果を出力して終了
@@ -37,7 +37,7 @@ sandbox を使わないユーザーは、`.claude/settings.local.json` の `perm
     "allow": [
       "Bash(git push:*)",
       "Bash(gh pr:*)",
-      "Write(.claude/plans/**)"
+      "Write(~/.cache/vibecorp/plans/**)"
     ]
   }
 }
