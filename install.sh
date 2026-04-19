@@ -335,8 +335,10 @@ remove_orphan_hooks() {
 
   while IFS= read -r name; do
     [[ -n "$name" ]] || continue
-    if [[ -f "${hooks_dir}/${name}" ]]; then
-      rm -f "${hooks_dir}/${name}"
+    # lock 改ざん時の防御: パス区切り文字を含む name は拒否（basename のみ許可）
+    [[ "$name" == */* ]] && continue
+    if [[ -f "${hooks_dir:?}/${name:?}" ]]; then
+      rm -f "${hooks_dir:?}/${name:?}"
       log_info "hooks/${name} は廃止されたため削除"
     fi
   done < <(get_orphan_hooks)
