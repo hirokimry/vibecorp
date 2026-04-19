@@ -266,7 +266,6 @@ assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
 EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → update 成功" "0" "$EXIT_CODE"
 assert_file_contains "full: update 後も preset: full" "$R/.claude/vibecorp.yml" "preset: full"
-assert_file_contains "full: update 後も settings.json に team-auto-approve" "$R/.claude/settings.json" "team-auto-approve.sh"
 cleanup
 
 # ============================================
@@ -335,8 +334,8 @@ assert_file_contains "settings.json に hooks 構造" "$R/.claude/settings.json"
 assert_file_contains "settings.json のフックパス" "$R/.claude/settings.json" '.claude/hooks/'
 assert_file_not_contains "settings.json に旧パスなし" "$R/.claude/settings.json" '.claude/vibecorp/'
 
-# E9b. settings.json に team-auto-approve.sh が含まれる
-assert_file_contains "settings.json に team-auto-approve" "$R/.claude/settings.json" "team-auto-approve.sh"
+# E9b. settings.json に team-auto-approve.sh が含まれない（#336 削除済み）
+assert_file_not_contains "settings.json に team-auto-approve なし" "$R/.claude/settings.json" "team-auto-approve.sh"
 
 # E10. .claude/rules/ にファイル存在
 RULES_COUNT=$(find "$R/.claude/rules" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
