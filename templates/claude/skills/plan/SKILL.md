@@ -130,7 +130,7 @@ gh issue edit <番号> --body "<更新後の本文>"
 
 ## 制約
 
-- 計画は `~/.cache/vibecorp/plans/<repo-id>/` ディレクトリに出力する（`vibecorp_plans_dir` 経由）
+- 計画は `~/.cache/vibecorp/plans/<repo-id>/` ディレクトリに出力する（`vibecorp_plans_mkdir` 経由）
 - Issue 本文の更新は設計セクションのみ。既存の💡概要、🎯背景等は保持する
 - **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
