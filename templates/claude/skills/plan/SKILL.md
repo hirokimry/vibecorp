@@ -24,7 +24,7 @@ Issue の実装方針を策定し、計画ファイルとして出力する。
 ~/.cache/vibecorp/plans/<repo-id>/{branch_name}.md
 ```
 
-ブランチ名は `git branch --show-current` で取得。パスは `vibecorp_plans_mkdir`（内部で `vibecorp_plans_dir` を使用）で取得:
+ブランチ名は `git branch --show-current` で取得。パスは `vibecorp_plans_mkdir` で取得:
 
 ```bash
 source "$CLAUDE_PROJECT_DIR"/.claude/lib/common.sh
