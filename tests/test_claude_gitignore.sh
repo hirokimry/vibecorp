@@ -51,9 +51,7 @@ assert_entry_exists() {
     fail "${desc} (ファイル不在: ${path})"
     return
   fi
-  if grep -q -v '^#' "$path" | grep -q -e "$entry" 2>/dev/null; then
-    pass "${desc}"
-  elif grep -q -e "^${entry}$" "$path"; then
+  if grep -v '^#' "$path" | grep -q -e "^${entry}$"; then
     pass "${desc}"
   else
     fail "${desc} (エントリ '${entry}' が '${path}' に見つからない)"
