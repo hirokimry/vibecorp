@@ -25,6 +25,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RULES_FILE="$PROJECT_DIR/templates/claude/rules/autonomous-restrictions.md"
 DIAGNOSE_FILE="$PROJECT_DIR/templates/claude/skills/diagnose/SKILL.md"
 AUTOPILOT_FILE="$PROJECT_DIR/templates/claude/skills/autopilot/SKILL.md"
+ISSUE_FILE="$PROJECT_DIR/templates/claude/skills/issue/SKILL.md"
 
 echo "=== Phase 5: 3者承認ゲート テスト ==="
 
@@ -127,21 +128,51 @@ else
   fail "diagnose に「SM 除外」の表示項目が存在しない"
 fi
 
-# --- テスト7: autopilot の3者承認ゲート言及 ---
+# --- テスト7: autopilot が起票側の3者承認ゲートを参照する（Issue #361） ---
 
 echo ""
-echo "--- テスト7: autopilot ---"
+echo "--- テスト7: autopilot（起票側ゲートの信頼） ---"
 
+# Issue #361 後: autopilot は 3者ゲートを自身で持たず、起票側（/diagnose, /issue）のゲートを信頼する
 if grep -q '3者承認ゲート' "$AUTOPILOT_FILE"; then
-  pass "autopilot に「3者承認ゲート」の記述が存在する"
+  pass "autopilot が「3者承認ゲート」を参照している（起票側への言及として）"
 else
-  fail "autopilot に「3者承認ゲート」の記述が存在しない"
+  fail "autopilot が「3者承認ゲート」を参照していない"
 fi
 
-if grep -q 'autonomous-restrictions.md' "$AUTOPILOT_FILE"; then
-  pass "autopilot が autonomous-restrictions.md を参照している"
+if grep -q '起票側' "$AUTOPILOT_FILE"; then
+  pass "autopilot が「起票側」のフィルタ実施を明記している"
 else
-  fail "autopilot が autonomous-restrictions.md を参照していない"
+  fail "autopilot が「起票側」のフィルタ実施を明記していない"
+fi
+
+if grep -q '起票経路の識別用途' "$AUTOPILOT_FILE"; then
+  pass "autopilot に diagnose ラベルの位置付け（起票経路の識別用途）が明記されている"
+else
+  fail "autopilot に diagnose ラベルの位置付けが明記されていない"
+fi
+
+# --- テスト7b: /issue が3者承認ゲートを持つ（Issue #361） ---
+
+echo ""
+echo "--- テスト7b: /issue の3者承認ゲート ---"
+
+if [[ -f "$ISSUE_FILE" ]]; then
+  pass "/issue SKILL.md が存在する"
+else
+  fail "/issue SKILL.md が存在しない"
+fi
+
+if grep -q '3者承認ゲート' "$ISSUE_FILE"; then
+  pass "/issue に「3者承認ゲート」の記述が存在する"
+else
+  fail "/issue に「3者承認ゲート」の記述が存在しない"
+fi
+
+if grep -q 'autonomous-restrictions.md' "$ISSUE_FILE"; then
+  pass "/issue が autonomous-restrictions.md を参照している"
+else
+  fail "/issue が autonomous-restrictions.md を参照していない"
 fi
 
 # --- テスト8: 前提条件に SM 追加 ---
@@ -160,7 +191,7 @@ fi
 echo ""
 echo "--- テスト9: コードブロック言語指定 ---"
 
-for f in "$RULES_FILE" "$DIAGNOSE_FILE" "$AUTOPILOT_FILE"; do
+for f in "$RULES_FILE" "$DIAGNOSE_FILE" "$AUTOPILOT_FILE" "$ISSUE_FILE"; do
   name=$(basename "$f")
   BARE_OPEN_COUNT=$(awk '
     /^```/ {
