@@ -102,7 +102,11 @@ if echo "$CEO_SECTION" | grep -q -e "communication.md"; then
 else
   fail "roles.md の CEO セクションに communication.md 参照がない"
 fi
-assert_file_contains "roles.md の CEO セクションに「経営者」" "$ROLES" "経営者"
+if echo "$CEO_SECTION" | grep -q -e "経営者"; then
+  pass "roles.md の CEO セクションに「経営者」"
+else
+  fail "roles.md の CEO セクションに「経営者」がない"
+fi
 
 # ============================================
 echo "=== /issue /pr /commit の SKILL.md に communication.md 参照 ==="
