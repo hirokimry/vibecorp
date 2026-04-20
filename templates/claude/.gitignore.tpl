@@ -1,3 +1,10 @@
+# テンプレート管理ファイル（templates/ が source of truth）
+hooks/
+skills/
+agents/
+settings.json
+vibecorp.lock
+
 # 会話中の一時的な実装計画（#334 以降は ~/.cache/vibecorp/plans/<repo-id>/ に移行）
 # 既存リポジトリに残る可能性がある `.claude/plans/` 残骸を追跡対象外にする
 plans/
@@ -12,6 +19,9 @@ state/
 # ユーザー固有のため他マシン・他ユーザーと共有しない
 scheduled_tasks.json
 scheduled_tasks.lock
+
+# Claude Code per-user 設定
+settings.local.json
 
 # ---- machine-specific artifacts (migrate_tracked_artifacts で untrack 対象) ----
 # 以下のマーカー配下は machine-specific artifact として扱う。
