@@ -5,6 +5,8 @@
 
 ## エントリ
 
+- 2026-04-20 — Issue #361 docs/ai-organization.md 不整合修正 — Issue 起票ゲートを CPO 単独から CISO+CPO+SM 3者承認に更新、起票側/ship 側の責務分離を追記
+
 - 2026-04-18 — Issue #366 実装計画のメタレビュー — 実装着手を阻むブロッカーなし。SM-1（Phase 2 依存理由追記）のみ推奨
 - 2026-04-18 — docs/design-philosophy.md の CPO 管轄追記（訂正） — 仕様は CPO、設計は CTO。design-philosophy.md は CTO 管轄に訂正
 - 2026-04-18 — Issue #296 ガードレール領域変更の通過承認トレーサビリティ — CEO 主導実装のため自律実行禁止制約とは別枠で通過

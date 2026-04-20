@@ -47,7 +47,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 
 | フェーズ | 対象スキル | 対象プリセット | 入れる役職 | 起動条件 |
 |---|---|---|---|---|
-| 1. Issue 起票 | `/issue` | standard / full | CPO | 常時 |
+| 1. Issue 起票 | `/issue` | standard / full | CISO + CPO + SM | 常時（3者承認） |
 | 2. autopilot 候補フィルタ | `/diagnose` `/autopilot` | full | CPO + SM + CISO | 常時（3者承認） |
 | 3a. 設計レビュー（平社員層） | `/plan-review-loop` | プリセット別デフォルト | plan-architect, plan-security, plan-testing, plan-performance, plan-dx, plan-cost, plan-legal | プリセット別 |
 | 3b. 設計レビュー（C*O メタ層） | `/plan-review-loop` | full | CFO / CISO / CLO / SM / CPO / CTO | 条件起動（下記トリガー表） |
@@ -85,7 +85,8 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - **C*O は常時起動しない**：差分検知に基づく条件起動でオーバーヘッドを抑える
 - **平社員 → C*O の2段階**：平社員（×3 合議や `plan-*` 専門家）が一次フィルタ、C*O はメタレビューに専念
 - **`plan-cost` と `plan-legal`**：CFO / CLO の代弁者として設計フェーズで起動
-- **Issue 起票時は CPO のみ**：この段階で CFO / CISO / CLO を呼んでも判断材料不足
+- **Issue 起票時は CISO + CPO + SM の 3 者承認**：CPO は「やる価値」、CISO は「不可領域 5 分類の安全性」、SM は「自動化適性・プロセス整合」を独立して判定する。CFO / CLO はこの段階では判断材料不足のため対象外
+- **起票側と ship 側の責務分離**：`/issue` 起票時に不可領域フィルタを完結させる。`/ship`（`/autopilot`）は起票済み Issue を信頼し、重複チェックを行わない透過パイプとして動作する
 - **autopilot は 3 者承認**（CPO + SM + CISO）：自律実行は「やる価値 × 自動化適性 × 安全性」の 3 軸が必要
 
 ## 権限モデル

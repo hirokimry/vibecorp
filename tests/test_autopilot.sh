@@ -163,10 +163,43 @@ else
   fail "main 反映経路の明記が不足している"
 fi
 
-# --- テスト6: テンプレートとローカルの一致 ---
+# --- テスト6: ラベル縛り撤廃（Issue #361） ---
 
 echo ""
-echo "--- テスト6: テンプレートとローカルの一致 ---"
+echo "--- テスト6: ラベル縛り撤廃（Issue #361） ---"
+
+# 6-1: `--label "diagnose"` がコマンドから削除されている
+if grep -q 'gh issue list --label "diagnose"' "$SKILL_FILE"; then
+  fail "ラベル縛り撤廃: gh issue list から --label \"diagnose\" が削除されていない"
+else
+  pass "ラベル縛り撤廃: gh issue list に --label \"diagnose\" がない"
+fi
+
+# 6-2: 「ラベル問わず」が明記されている
+if grep -q 'ラベル問わず' "$SKILL_FILE"; then
+  pass "ラベル問わず全 open Issue を対象とする旨が明記されている"
+else
+  fail "ラベル問わず全 open Issue を対象とする旨が明記されていない"
+fi
+
+# 6-3: diagnose ラベルが「起票経路の識別用途」として記載されている
+if grep -q '起票経路の識別用途' "$SKILL_FILE"; then
+  pass "diagnose ラベルが「起票経路の識別用途」として明記されている"
+else
+  fail "diagnose ラベルの位置付け（起票経路の識別用途）が明記されていない"
+fi
+
+# 6-4: 起票側（/diagnose と /issue）の3者承認ゲートへの言及がある
+if grep -q '起票側' "$SKILL_FILE" && grep -q '3者承認ゲート' "$SKILL_FILE"; then
+  pass "起票側の3者承認ゲートへの言及がある"
+else
+  fail "起票側の3者承認ゲートへの言及が不足している"
+fi
+
+# --- テスト7: テンプレートとローカルの一致 ---
+
+echo ""
+echo "--- テスト7: テンプレートとローカルの一致 ---"
 
 if [[ -f "$TEMPLATE_FILE" ]]; then
   pass "テンプレートファイルが存在する"
