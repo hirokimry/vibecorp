@@ -171,7 +171,7 @@ your-project/
 | `/pr-review-fix` | PR の未解決コメントを1回修正して push する。単発実行用 |
 | `/pr-review-loop` | `/pr-review-fix` を5分間隔で定期実行し、マージまで自動で指摘対応を繰り返す |
 | `/commit` | 変更を分析し、Conventional Commits 形式で自動コミット |
-| `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票。standard 以上では起票前に CPO エージェントが MVV・プロダクト方針との整合をチェックし、方針に合致しない場合は起票を見送る |
+| `/issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票。standard 以上では起票前に CISO・CPO・SM の3者が認証/暗号/課金/ガードレール/MVV の5分類で安全性と方針整合をチェックし、問題がある場合は起票を見送る |
 | `/branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
 | `/worktree` | git worktree のライフサイクル管理。`list`（一覧）、`clean`（マージ済み削除）、`remove`（手動削除） |
 | `/approve-audit` | コマンドログを棚卸しし、`settings.local.json` の allow リストへの追加を提案・実行 |
@@ -193,7 +193,7 @@ your-project/
 |---|---|
 | `/diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/ship-parallel` | 複数 Issue を並列に `/ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（課金リスクを伴う大規模並列実行のため） |
-| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能。full プリセット専用 |
+| `/autopilot` | `/diagnose` → `/ship-parallel` の自律改善サイクルを1回実行。全 open Issue を対象に実行（ラベルによる絞り込みなし）。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /autopilot` で定期実行可能。full プリセット専用 |
 | `/spike-loop` | `/ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
 ## フック一覧

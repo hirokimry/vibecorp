@@ -194,11 +194,13 @@ full の sandbox opt-in は維持する。sandbox なしで並列実行した場
 プリセット自己完結の原則の例外として、**スキル内で preset を確認し、上位プリセットでのみエージェントを呼び出すパターン**を許容する。
 
 - `/issue` は minimal プリセットに含まれるが、内部で `vibecorp.yml` の preset を確認する
-- `standard` または `full` の場合のみ CPO エージェントをゲートとして呼び出す（プロダクト整合チェック）
+- `standard` または `full` の場合のみ **CISO + CPO + SM の3者承認ゲート**を呼び出す（不可領域フィルタ + プロダクト整合チェック + 自律実行可否判定。`.claude/rules/autonomous-restrictions.md` 参照）
 - `minimal`、vibecorp.yml が存在しない、または preset キーが未定義の場合はゲートをスキップして動作する
 
 この設計により、スキル自体は minimal に配置しつつ、上位プリセットでは追加のガードレールが有効になる。
 デフォルト（minimal）でも完全に動作するため、プリセット自己完結の原則には反しない。
+
+**責務分離の根拠（Issue #361）**: `/autopilot` / `/ship-parallel` が全 open Issue を自律実行対象とするため、不可領域の門番を起票側（`/issue` と `/diagnose`）に集約する。ship 側は起票済み Issue を信頼して実行する（透過パイプ設計）。minimal では3者フィルタが動作しないが、`/autopilot` が full 専用のため不可領域 Issue が自動実装される経路は存在しない。
 
 ### 拡張ポイントの設計
 

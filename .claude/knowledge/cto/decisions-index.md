@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-20 — Issue #361 — /issue を CISO + CPO + SM の3者承認ゲートに拡張、/autopilot のラベル縛り撤廃と起票側フィルタ集約（透過パイプ設計）
 - 2026-04-19 — Issue #366 — 2026-04-16 の activate.sh heredoc 採用判断を撤回
 - 2026-04-18 — docs/design-philosophy.md の管轄を CTO として正式化（Issue #364 補足）
 - 2026-04-18 — Issue #364 — テンプレート整備・参照解消の設計判断（3件）
