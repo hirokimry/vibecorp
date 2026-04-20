@@ -15,58 +15,108 @@ concurrency:
 
 jobs:
   # Ubuntu テスト: schedule 以外（PR / push:main / workflow_dispatch）で実行
+  # Issue #340: test_install.sh を 4 シャード + other に分割して matrix 並列実行
   test-ubuntu:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [args, preset, lock, update, other]
     steps:
       - uses: actions/checkout@v4
 
       - name: jq の確認
         run: jq --version
 
-      - name: 全テスト実行
+      - name: シャード別テスト実行
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          shopt -s nullglob
-          files=(tests/test_*.sh)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "テストファイルが見つかりません"
-            exit 1
-          fi
-          failed=0
-          for f in "${files[@]}"; do
-            echo "=== $f ==="
-            bash "$f" || failed=1
-          done
-          exit "$failed"
+          case "$SHARD" in
+            args|preset|lock|update)
+              bash "tests/test_install_${SHARD}.sh"
+              ;;
+            other)
+              # 4 新規シャード以外の全 test_*.sh を実行（既存 test_install_claude_real.sh
+              # / test_install_isolation.sh / test_install_orphan_hook.sh を含む）
+              shopt -s nullglob
+              files=(tests/test_*.sh)
+              if [ ${#files[@]} -eq 0 ]; then
+                echo "テストファイルが見つかりません"
+                exit 1
+              fi
+              failed=0
+              for f in "${files[@]}"; do
+                base="${f##*/}"
+                case "$base" in
+                  test_install_args.sh|test_install_preset.sh|test_install_lock.sh|test_install_update.sh)
+                    continue
+                    ;;
+                esac
+                echo "=== $f ==="
+                bash "$f" || failed=1
+              done
+              exit "$failed"
+              ;;
+            *)
+              echo "未知の shard 値: $SHARD"
+              exit 1
+              ;;
+          esac
 
   # macOS テスト: pull_request 以外（push:main / schedule / workflow_dispatch）で実行
   # PR では macOS 分課金（Ubuntu 比 10倍）を回避し、push:main と nightly でリグレッションを捕捉する
   test-macos:
     if: github.event_name != 'pull_request'
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [args, preset, lock, update, other]
     steps:
       - uses: actions/checkout@v4
 
       - name: jq の確認
         run: jq --version
 
-      - name: 全テスト実行
+      - name: シャード別テスト実行
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          shopt -s nullglob
-          files=(tests/test_*.sh)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "テストファイルが見つかりません"
-            exit 1
-          fi
-          failed=0
-          for f in "${files[@]}"; do
-            echo "=== $f ==="
-            bash "$f" || failed=1
-          done
-          exit "$failed"
+          case "$SHARD" in
+            args|preset|lock|update)
+              bash "tests/test_install_${SHARD}.sh"
+              ;;
+            other)
+              shopt -s nullglob
+              files=(tests/test_*.sh)
+              if [ ${#files[@]} -eq 0 ]; then
+                echo "テストファイルが見つかりません"
+                exit 1
+              fi
+              failed=0
+              for f in "${files[@]}"; do
+                base="${f##*/}"
+                case "$base" in
+                  test_install_args.sh|test_install_preset.sh|test_install_lock.sh|test_install_update.sh)
+                    continue
+                    ;;
+                esac
+                echo "=== $f ==="
+                bash "$f" || failed=1
+              done
+              exit "$failed"
+              ;;
+            *)
+              echo "未知の shard 値: $SHARD"
+              exit 1
+              ;;
+          esac
 
   # 集約ジョブ: Branch Protection の required check として機能する
   # skipped（event 条件で未実行）は成功扱い、failure / cancelled は不合格
+  # matrix 展開後は親 job の result が全シャードの成功で初めて success になる
   test:
     needs: [test-ubuntu, test-macos]
     runs-on: ubuntu-latest
