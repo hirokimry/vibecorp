@@ -37,8 +37,8 @@ fail() {
 # settings.json / settings.json.tpl から .claude/hooks/ 参照の basename を抽出
 extract_hook_basenames() {
   local target="$1"
-  jq -r '.hooks | to_entries[].value[].hooks[].command' "$target" \
-    | grep -oE '/\.claude/hooks/[A-Za-z0-9_-]+\.sh' \
+  (jq -r '.hooks | to_entries[].value[].hooks[].command' "$target" \
+    | grep -oE '/\.claude/hooks/[A-Za-z0-9_-]+\.sh' || true) \
     | awk -F/ '{ print $NF }' \
     | sort -u
 }
