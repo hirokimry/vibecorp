@@ -51,7 +51,7 @@ assert_entry_exists() {
     fail "${desc} (ファイル不在: ${path})"
     return
   fi
-  if grep -v '^#' "$path" | grep -q -e "^${entry}$"; then
+  if grep -v '^#' "$path" | grep -Fqx -- "${entry}"; then
     pass "${desc}"
   else
     fail "${desc} (エントリ '${entry}' が '${path}' に見つからない)"
@@ -94,6 +94,8 @@ REQUIRED_ENTRIES=(
   "agents/"
   "settings.json"
   "vibecorp.lock"
+  "scheduled_tasks.json"
+  "scheduled_tasks.lock"
   "settings.local.json"
 )
 
