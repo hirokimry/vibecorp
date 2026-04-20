@@ -44,10 +44,14 @@ extract_hook_basenames() {
 }
 
 # 対象ファイルが参照する全 hook が指定ディレクトリに実在することを検証
+# fallback_dir が指定された場合、hooks_dir に無ければ fallback_dir も探す
+# （CI 環境では .claude/hooks/ に install.sh 配置前の hook が無いため
+#   templates/claude/hooks/ をフォールバックとして参照する）
 assert_all_hooks_exist() {
   local desc="$1"
   local settings_file="$2"
   local hooks_dir="$3"
+  local fallback_dir="${4:-}"
   local missing=""
   local hooks
   hooks=$(extract_hook_basenames "$settings_file")
@@ -60,14 +64,16 @@ assert_all_hooks_exist() {
   local hook
   while IFS= read -r hook; do
     if [ ! -f "${hooks_dir}/${hook}" ]; then
-      missing="${missing} ${hook}"
+      if [ -z "$fallback_dir" ] || [ ! -f "${fallback_dir}/${hook}" ]; then
+        missing="${missing} ${hook}"
+      fi
     fi
   done <<< "$hooks"
 
   if [ -z "$missing" ]; then
     pass "$desc"
   else
-    fail "$desc (実在しない hook:${missing} / 期待ディレクトリ: ${hooks_dir})"
+    fail "$desc (実在しない hook:${missing} / 期待ディレクトリ: ${hooks_dir}${fallback_dir:+ / フォールバック: ${fallback_dir}})"
   fi
 }
 
@@ -123,7 +129,8 @@ assert_json_valid ".claude/settings.json の JSON 構文が妥当" "$SETTINGS_JS
 assert_all_hooks_exist \
   ".claude/settings.json が参照する全 hook が .claude/hooks/ に実在する" \
   "$SETTINGS_JSON" \
-  "$HOOKS_DIR"
+  "$HOOKS_DIR" \
+  "$TEMPLATE_HOOKS_DIR"
 
 # Issue #385 固有の回帰防止: team-auto-approve.sh は PR #381 で削除済み
 assert_no_reference \
