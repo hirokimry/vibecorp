@@ -14,9 +14,9 @@
 - 2026-04-18 — CodeRabbit による cross-PR 統合問題検出の技術評価
 - 2026-04-18 — Hook と sandbox 隔離の役割分担評価（full = sandbox + skip-permissions 前提）
 - 2026-04-17 — 原子的置換パターンの実挙動確認とSBPL設計（Issue #329）
+- 2026-04-17 — ゲートスタンプの保存先を `.claude/` 外に切り出し（Issue #326）
 - 2026-04-16 — `git pull` による意図しない merge commit 混入の扱い
 - 2026-04-16 — ゲートスタンプ XDG 移行に伴う実装上の技術判断（PR #327）
-- 2026-04-17 — ゲートスタンプの保存先を `.claude/` 外に切り出し（Issue #326）
 - 2026-04-16 — ドキュメントの「正典委譲」パターン — パス列挙は実装ファイルに委譲
 - 2026-04-16 — claude TUI ハング修正 — sandbox-exec プロファイルへの `file-ioctl` 追加（Issue #320）
 - 2026-04-16 — install.sh に macOS 隔離レイヤ配置ロジックを統合（Phase 3a / Issue #318）

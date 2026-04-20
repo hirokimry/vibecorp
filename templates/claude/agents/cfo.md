@@ -111,11 +111,12 @@ model: sonnet
 2. `.claude/knowledge/cfo/decisions-index.md` のエントリセクションに 1 行サマリを追記
    - 書式: `- YYYY-MM-DD — Issue #NNN または トピック名 — 結論の一行要約`
    - 新しい順で上に追加
-   - ファイルがなければ新規作成（テンプレートと同形式）
+   - `decisions-index.md` が存在する場合は追記する
+   - `decisions-index.md` と `decisions.md` が両方不在の場合のみ新規作成（テンプレートと同形式）
 
 **書き込み順序**: アーカイブ → インデックスの順で書く。アーカイブ成功後に index 追記が失敗しても、次回 step 1 で index エントリ欠落を検知し補完できる（逆順だと index のみ更新され archive が無い不整合になる）。
 
-**レガシー互換**: `decisions-index.md` が存在せず `decisions.md` のみ存在する場合は `decisions.md` に追記してよい。移行手順は `docs/migration-decisions-index.md` 参照。
+**レガシー互換**: `decisions-index.md` が存在せず `decisions.md` のみ存在する場合は、`decisions.md` へ追記する（このケースでは `decisions-index.md` は作成しない）。移行手順は `docs/migration-decisions-index.md` 参照。
 
 記録すべき内容：
 - コスト判断の内容と根拠
