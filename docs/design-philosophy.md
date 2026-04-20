@@ -32,7 +32,7 @@ docs/（Source of Truth・仕様書群）
 
 特徴:
 - 持続的なアイデンティティがある（「私はCTOです」）
-- 自律的に判断し、`knowledge/{role}/decisions.md` に蓄積する
+- 自律的に判断し、`knowledge/{role}/decisions-index.md` + `decisions/YYYY-QN.md` の 2 段構成に蓄積する
 - 他エージェントと権限境界がある（管轄ファイルが異なる）
 
 ### skills 内のステップにするもの
