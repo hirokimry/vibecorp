@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-22 — 承認ダイアログのスマホ remote app 非表示問題 — 除外（ガードレール領域: protect-files.sh 承認フロー変更リスク）
 - 2026-04-20 — docs/SECURITY.md プリセット別動作表の誤記修正（standard 行 /autopilot を「動作しない」に訂正）
 - 2026-04-20 — Issue #361 /issue と /autopilot の責務分離 + 3者承認ゲート導入（条件付き承認: SECURITY.md 更新・/diagnose ゲート確認を条件）
 - 2026-04-19 — Issue #366 配布物の Source of Truth テンプレート化
