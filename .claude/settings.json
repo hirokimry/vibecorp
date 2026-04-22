@@ -3,6 +3,8 @@
     "allow": [
       "Write(.claude/knowledge/**)",
       "Edit(.claude/knowledge/**)",
+      "Write(.claude/rules/**)",
+      "Edit(.claude/rules/**)",
       "Write(.claude/plans/**)",
       "Edit(.claude/plans/**)",
       "Write(//Users/**/.cache/vibecorp/plans/**)",
