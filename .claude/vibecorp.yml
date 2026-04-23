@@ -5,3 +5,15 @@ language: ja
 base_branch: main
 protected_files:
   - MVV.md
+diagnose:
+  enabled: true
+  max_issues_per_run: 5
+  max_issues_per_day: 10
+  max_files_per_issue: 10
+  scope: ""
+  forbidden_targets:
+    - "hooks/*.sh"
+    - "vibecorp.yml"
+    - "MVV.md"
+    - "SECURITY.md"
+    - "POLICY.md"
