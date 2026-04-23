@@ -1164,6 +1164,31 @@ configure_github_repo() {
   fi
 }
 
+setup_git_config() {
+  # vibecorp 運用（Issue 駆動 + squash マージ + 短寿命ブランチ）に合わせた
+  # local git config を適用する。squash マージ後の `git pull origin main` で
+  # 空の merge commit が生成される問題（Issue #383）を防ぐ。
+  #
+  # - merge.ff only: FF 可能時は merge commit を作らず、不可能時はエラーで手動判断させる
+  # - pull.ff only: pull で FF 不可能な状況ではエラー終了して手動判断させる
+  # - pull.rebase (local) を unset: global の `pull.rebase merges` 等を活かす
+  git -C "${REPO_ROOT}" config --local merge.ff only
+  log_info "git config --local merge.ff only を適用（空 merge commit 防止）"
+
+  git -C "${REPO_ROOT}" config --local pull.ff only
+  log_info "git config --local pull.ff only を適用（非 FF pull はエラー）"
+
+  # local に pull.rebase が設定されている場合のみ unset する。
+  # 未設定のまま `git config --unset` を呼ぶと exit 5 で失敗するため、
+  # 事前に `--get` で存在確認してから unset する（冪等性）。
+  if git -C "${REPO_ROOT}" config --local --get pull.rebase >/dev/null 2>&1; then
+    git -C "${REPO_ROOT}" config --local --unset pull.rebase
+    log_info "git config --local pull.rebase を unset（global 設定を活かす）"
+  else
+    log_skip "local pull.rebase は未設定（unset スキップ）"
+  fi
+}
+
 generate_vibecorp_lock() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local installed_at
@@ -1875,6 +1900,7 @@ main() {
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
+  setup_git_config
 
   generate_settings_json
   copy_rules

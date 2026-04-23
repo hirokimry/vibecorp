@@ -108,6 +108,20 @@ which claude
 
 非対応環境で split-pane mode を使うと teammate の承認プロンプトが可視化されず、リモート閲覧（スマホ・Web）からは承認不能になる。Issue #369 で観測済み。`.claude/settings.json` の `permissions.allow` には `.claude/knowledge/**` / `.claude/plans/**` / `.claude/rules/**` / `~/.cache/vibecorp/{plans,state}/**` が事前登録されており（[公式 docs の "Too many permission prompts" 推奨](https://code.claude.com/docs/en/agent-teams#too-many-permission-prompts)に基づく）、これら領域の teammate 書込は承認要求が発生しない。
 
+## インストール時に適用される git config（local）
+
+`install.sh` は導入先リポジトリに以下の **local git config** を自動適用する。vibecorp の運用方針（Issue 駆動 + squash マージ + 短寿命ブランチ）と整合させ、`git pull origin main` 時に空の merge commit が生成される問題を防ぐ目的。
+
+| 設定 | 値 | 根拠 |
+|---|---|---|
+| `merge.ff` | `only` | FF 可能時は merge commit を作らず、不可能時はエラー終了で手動判断させる（空 merge commit の生成を防止） |
+| `pull.ff` | `only` | pull で非 FF となる状況（並行作業中など）でエラー終了し、手動で rebase / merge を選択させる |
+| `pull.rebase`（local） | `--unset` | global 側の `pull.rebase merges` 等を活かすため local 値は持たない。既に未設定でもエラーにならない（冪等） |
+
+- 設定対象は `--local` スコープのみ（global 設定は変更しない）
+- 何度 `install.sh` を実行しても同じ状態に収束する
+- 適用箇所: `install.sh` の `setup_git_config()` 関数（`configure_github_repo` の直後で実行）
+
 ## プリセット
 
 組織規模に応じた3つのプリセットを用意している。
