@@ -1694,34 +1694,102 @@ copy_claude_gitignore() {
 
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
-
-  if [[ -f "$target" ]]; then
-    log_skip "CLAUDE.md は既存のためスキップ"
-    return
-  fi
+  local src_template="${SCRIPT_DIR}/templates/CLAUDE.md.tpl"
+  local rel_path="CLAUDE.md"
 
   local lang_display
   lang_display=$(resolve_language "$LANGUAGE")
 
+  # 置換済みテンプレートを一時ファイルに出力し、以降のマージ/比較で使い回す
+  local tmp_tpl
+  tmp_tpl=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmp_tpl'" INT TERM
+
   sed \
     -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
     -e "s|{{LANGUAGE}}|${lang_display}|g" \
-    "${SCRIPT_DIR}/templates/CLAUDE.md.tpl" > "$target"
-  log_info "CLAUDE.md を生成"
+    "$src_template" > "$tmp_tpl"
+
+  if [[ ! -f "$target" ]]; then
+    # 新規作成
+    cp "$tmp_tpl" "$target"
+    save_base_snapshot "$tmp_tpl" "$rel_path"
+    log_info "CLAUDE.md を生成"
+  elif [[ "$UPDATE_MODE" != true ]]; then
+    # 通常インストールで既存ファイルあり → カスタマイズを保護
+    log_skip "CLAUDE.md は既存のためスキップ"
+  else
+    # --update 時は 3-way マージまたはスキップ判定
+    update_user_managed_file "$tmp_tpl" "$target" "$rel_path"
+  fi
+
+  rm -f "$tmp_tpl"
+  trap - INT TERM
 }
 
 generate_mvv_md() {
   local target="${REPO_ROOT}/MVV.md"
+  local src_template="${SCRIPT_DIR}/templates/MVV.md.tpl"
+  local rel_path="MVV.md"
 
-  if [[ -f "$target" ]]; then
-    log_skip "MVV.md は既存のためスキップ"
-    return
-  fi
+  # 置換済みテンプレートを一時ファイルに出力
+  local tmp_tpl
+  tmp_tpl=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmp_tpl'" INT TERM
 
   sed \
     -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
-    "${SCRIPT_DIR}/templates/MVV.md.tpl" > "$target"
-  log_info "MVV.md を生成"
+    "$src_template" > "$tmp_tpl"
+
+  if [[ ! -f "$target" ]]; then
+    # 新規作成
+    cp "$tmp_tpl" "$target"
+    save_base_snapshot "$tmp_tpl" "$rel_path"
+    log_info "MVV.md を生成"
+  elif [[ "$UPDATE_MODE" != true ]]; then
+    log_skip "MVV.md は既存のためスキップ"
+  else
+    update_user_managed_file "$tmp_tpl" "$target" "$rel_path"
+  fi
+
+  rm -f "$tmp_tpl"
+  trap - INT TERM
+}
+
+# --update 時に CLAUDE.md / MVV.md のようなユーザーカスタマイズ前提ファイルを
+# 安全に更新するためのヘルパー。
+# - 既存ファイルが置換済みテンプレートと一致 → ベーススナップショットのみ保存
+# - ベーススナップショットありで差分あり → merge_or_overwrite（3-way マージ）に委譲
+# - ベーススナップショットなしで差分あり → 上書きせず警告（手動マージを促す）
+update_user_managed_file() {
+  local tpl="$1"
+  local target="$2"
+  local rel_path="$3"
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+
+  if cmp -s "$target" "$tpl"; then
+    # 内容一致 → 次回のマージ判定用にベーススナップショットだけ保存
+    save_base_snapshot "$tpl" "$rel_path"
+    return
+  fi
+
+  local base_hash
+  base_hash=$(read_base_hash "$lock" "$rel_path")
+
+  if [[ -n "$base_hash" ]]; then
+    # ベーススナップショットあり → 3-way マージ
+    merge_or_overwrite "$tpl" "$target" "$rel_path" || true
+  else
+    # 旧バージョンからの初回 --update。ユーザーカスタマイズが上書きで消えるのを
+    # 防ぐため、テンプレートは適用せず手動マージを促す。
+    # 次回の --update で 3-way マージが働くよう、現テンプレートをベースとして記録する。
+    log_skip "${rel_path} はカスタマイズ済みの可能性があり、ベーススナップショット未記録のためスキップ"
+    log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${target} ${tpl}"
+    save_base_snapshot "$tpl" "$rel_path"
+    CONFLICT_FILES="${CONFLICT_FILES}  - ${rel_path}（カスタマイズ保護のためスキップ）"$'\n'
+  fi
 }
 
 print_completion() {
@@ -1739,12 +1807,13 @@ print_completion() {
 
 DONE
 
-  # コンフリクトが発生したファイルがある場合、警告を表示
+  # コンフリクトが発生したファイル／カスタマイズ保護でスキップされたファイルがあれば警告表示
   if [[ -n "$CONFLICT_FILES" ]]; then
     cat >&2 <<CONFLICT
-⚠️  以下のファイルにコンフリクトが発生しています:
+⚠️  以下のファイルは手動での確認が必要です:
 ${CONFLICT_FILES}
-コンフリクトマーカー（<<<<<<<, =======, >>>>>>>）を検索し、手動で解消してください。
+- 3-way マージでコンフリクトしたファイル: コンフリクトマーカー（<<<<<<<, =======, >>>>>>>）を検索して手動で解消してください
+- 「カスタマイズ保護のためスキップ」と記されたファイル: ベーススナップショット未記録のため自動マージを行いませんでした。新テンプレート内容は現行ファイルの近くに diff 表示されているので、必要に応じて手動で取り込んでください
 
 CONFLICT
   fi
