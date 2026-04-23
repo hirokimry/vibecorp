@@ -505,13 +505,13 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
 
 ### 旧 consumer 向け tracked artifact の自動 untrack
 
-旧バージョンの install.sh は `.claude/bin/claude-real` をマシン固有の絶対パスを含んだファイルとしてリポジトリに書き出し、かつ `.gitignore` への記載漏れにより、誤って `git add` されるケースがあった。これを修正するため、`--update` 実行時に `migrate_tracked_artifacts()` が以下の処理を自動実行する。
+旧バージョンの install.sh は `.claude/bin/claude-real` をマシン固有の絶対パスを含んだファイルとしてリポジトリに書き出し、かつ `.gitignore` への記載漏れにより、誤って `git add` されるケースがあった。これを修正するため、install.sh 実行時に `migrate_tracked_artifacts()` が以下の処理を自動実行する。
 
 - `templates/claude/.gitignore.tpl` の `# ---- machine-specific artifacts ----` マーカー配下にリストされた artifact（現状は `.claude/bin/claude-real`）が tracked 化されていれば `git rm --cached` で untrack する
 - working tree のファイル実体は保持される（次回コミットで untrack が git history に反映される）
 - 対象 artifact が tracked されていない場合は何もしない
 
-新規 `--install` では本処理の untrack 対象が存在しない（tracked artifact がそもそもないため）。
+通常は `--update` による既存環境の移行時に untrack 対象が存在するが、新規 `--name` モードでも legacy artifact を tracked 化した consumer が `--update` なしで再インストールしたケースに対応する。
 
 #### --no-migrate オプション
 
@@ -519,9 +519,10 @@ Context7 CLI (`c7`) 経由でライブラリ・フレームワークの最新ド
 
 ```bash
 path/to/vibecorp/install.sh --update --no-migrate
+path/to/vibecorp/install.sh --name my-project --no-migrate
 ```
 
-`--no-migrate` は実質 `--update` モードでのみ効果がある。`--install` モードでは migrate 処理の untrack 対象が存在しないため、フラグを渡しても無効である旨が `log_info` に出力される。
+`--name` / `--update` の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ（新規 `--name` 実行時は untrack 対象がそもそも存在しないケースが大半）。
 
 ## フック登録構造（settings.json）
 

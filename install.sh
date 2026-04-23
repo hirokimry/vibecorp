@@ -4,7 +4,9 @@
 #        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# ${BASH_SOURCE[0]} を使用することで、`bash install.sh` 実行時だけでなく
+# `source install.sh`（テストからの内部関数呼び出し等）でも install.sh 自身のディレクトリを解決できる
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Git タグからバージョンを動的取得（タグがない場合は開発版として扱う）
 VIBECORP_VERSION=$(git -C "$SCRIPT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
 VIBECORP_VERSION="${VIBECORP_VERSION#v}"
@@ -55,7 +57,7 @@ Options:
   --language     回答言語: ja, en, または任意（デフォルト: ja）
   --version      インストールする vibecorp のバージョン（例: v1.0.0）
   --no-migrate   旧 consumer 向け tracked artifact 自動 untrack をスキップする
-                 （--install / --update 両モードで有効。実質的には --update 時のみ影響する）
+                 （--name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ）
   -h, --help     このヘルプを表示
 
 --name と --update は同時に指定できません。
@@ -1593,14 +1595,11 @@ migrate_tracked_artifacts() {
   # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
   # マーカー配下の相対パスから自動抽出する（DRY: .gitignore.tpl が Source of Truth）。
   #
-  # --no-migrate は --install / --update 両モードで有効（実質 --update でのみ影響する）。
+  # --no-migrate は --name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ。
+  # 新規 --name モードでも legacy artifact を tracked 化した consumer には影響するため、
+  # フラグが立っていれば本関数はスキップする。
   if [[ "$NO_MIGRATE" == true ]]; then
-    if [[ "$UPDATE_MODE" != true ]]; then
-      # 新規 install 時は本関数が untrack するものがないため --no-migrate は実質無効
-      log_info "--no-migrate は --install モードでは実質無効（本関数は --update 時の移行目的で動作します）"
-    else
-      log_info "--no-migrate 指定のため tracked artifact の untrack をスキップ"
-    fi
+    log_info "--no-migrate 指定のため tracked artifact の untrack をスキップ"
     return 0
   fi
 
