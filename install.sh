@@ -4,7 +4,9 @@
 #        install.sh --update [--preset minimal|standard|full]
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# ${BASH_SOURCE[0]} を使用することで、`bash install.sh` 実行時だけでなく
+# `source install.sh`（テストからの内部関数呼び出し等）でも install.sh 自身のディレクトリを解決できる
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Git タグからバージョンを動的取得（タグがない場合は開発版として扱う）
 VIBECORP_VERSION=$(git -C "$SCRIPT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
 VIBECORP_VERSION="${VIBECORP_VERSION#v}"
@@ -55,7 +57,7 @@ Options:
   --language     回答言語: ja, en, または任意（デフォルト: ja）
   --version      インストールする vibecorp のバージョン（例: v1.0.0）
   --no-migrate   旧 consumer 向け tracked artifact 自動 untrack をスキップする
-                 （--install / --update 両モードで有効。実質的には --update 時のみ影響する）
+                 （--name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ）
   -h, --help     このヘルプを表示
 
 --name と --update は同時に指定できません。
@@ -1164,6 +1166,31 @@ configure_github_repo() {
   fi
 }
 
+setup_git_config() {
+  # vibecorp 運用（Issue 駆動 + squash マージ + 短寿命ブランチ）に合わせた
+  # local git config を適用する。squash マージ後の `git pull origin main` で
+  # 空の merge commit が生成される問題（Issue #383）を防ぐ。
+  #
+  # - merge.ff only: FF 可能時は merge commit を作らず、不可能時はエラーで手動判断させる
+  # - pull.ff only: pull で FF 不可能な状況ではエラー終了して手動判断させる
+  # - pull.rebase (local) を unset: global の `pull.rebase merges` 等を活かす
+  git -C "${REPO_ROOT}" config --local merge.ff only
+  log_info "git config --local merge.ff only を適用（空 merge commit 防止）"
+
+  git -C "${REPO_ROOT}" config --local pull.ff only
+  log_info "git config --local pull.ff only を適用（非 FF pull はエラー）"
+
+  # local に pull.rebase が設定されている場合のみ unset する。
+  # 未設定のまま `git config --unset` を呼ぶと exit 5 で失敗するため、
+  # 事前に `--get` で存在確認してから unset する（冪等性）。
+  if git -C "${REPO_ROOT}" config --local --get pull.rebase >/dev/null 2>&1; then
+    git -C "${REPO_ROOT}" config --local --unset pull.rebase
+    log_info "git config --local pull.rebase を unset（global 設定を活かす）"
+  else
+    log_skip "local pull.rebase は未設定（unset スキップ）"
+  fi
+}
+
 generate_vibecorp_lock() {
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local installed_at
@@ -1568,14 +1595,11 @@ migrate_tracked_artifacts() {
   # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
   # マーカー配下の相対パスから自動抽出する（DRY: .gitignore.tpl が Source of Truth）。
   #
-  # --no-migrate は --install / --update 両モードで有効（実質 --update でのみ影響する）。
+  # --no-migrate は --name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ。
+  # 新規 --name モードでも legacy artifact を tracked 化した consumer には影響するため、
+  # フラグが立っていれば本関数はスキップする。
   if [[ "$NO_MIGRATE" == true ]]; then
-    if [[ "$UPDATE_MODE" != true ]]; then
-      # 新規 install 時は本関数が untrack するものがないため --no-migrate は実質無効
-      log_info "--no-migrate は --install モードでは実質無効（本関数は --update 時の移行目的で動作します）"
-    else
-      log_info "--no-migrate 指定のため tracked artifact の untrack をスキップ"
-    fi
+    log_info "--no-migrate 指定のため tracked artifact の untrack をスキップ"
     return 0
   fi
 
@@ -1948,6 +1972,7 @@ main() {
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
+  setup_git_config
 
   generate_settings_json
   copy_rules

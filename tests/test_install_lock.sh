@@ -299,9 +299,21 @@ else
 fi
 cleanup
 
+# AK9. 別ディレクトリから source した際に SCRIPT_DIR が install.sh 自身のディレクトリを指す
+# （${BASH_SOURCE[0]} 使用の退行検知。$0 に戻ると、source 呼び出し側のパスを指してしまう）
+TMPDIR_ROOT=$(mktemp -d)
+RESOLVED_SCRIPT_DIR=$(cd "$TMPDIR_ROOT" && bash -c 'source "$1"; printf "%s" "$SCRIPT_DIR"' _ "$INSTALL_SH")
+EXPECTED_SCRIPT_DIR="$SCRIPT_DIR"
+if [ "$RESOLVED_SCRIPT_DIR" = "$EXPECTED_SCRIPT_DIR" ]; then
+  pass "AK9: source 時に SCRIPT_DIR が install.sh 自身のディレクトリを指す"
+else
+  fail "AK9: source 時 SCRIPT_DIR が誤った場所を指す（resolved=${RESOLVED_SCRIPT_DIR}, expected=${EXPECTED_SCRIPT_DIR}）"
+fi
+cleanup
+
 # ============================================
 echo ""
-echo "=== AH. lock ファイル空リスト時のインデント ===" 
+echo "=== AH. lock ファイル空リスト時のインデント ==="
 # ============================================
 
 # AH1. 空リスト時に YAML の明示的空リスト表記 [] が使用される
