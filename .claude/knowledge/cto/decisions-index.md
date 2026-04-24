@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-24 — Issue #352 フォローアップ — docs/design-philosophy.md プラグイン配布方式セクションに Plugin 名前空間移行検討中（Phase 1 完了・Phase 2 待ち）を現行方針と並記
 - 2026-04-24 — Issue #352 — Plugin 名前空間 Phase 1 実機検証。Go 判定（`--plugin-dir .` で `vibecorp:review` の名前空間解決を実機確認。永続化方法が Phase 2 の課題）
 - 2026-04-23 — diagnose 上限ガードレール文書化 — 3ファイル間（autonomous-restrictions.md・vibecorp.yml・cost-analysis.md）の整合性確認、矛盾なし
 - 2026-04-23 — Issue #392 — `settings.json` の allow リストに `.claude/rules/**` の Write/Edit を追加（teammate の承認ダイアログ停止を解消）

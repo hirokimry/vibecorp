@@ -158,3 +158,8 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - SM を追加し、プロセス管理・進捗把握・並列判定を担う
 - 全 C-suite + 分析員が稼働し、AI 組織としてフル稼働する
 - /ship-parallel で複数 Issue の並列処理が可能になる
+
+### Plugin 名前空間移行（検討中）
+
+Claude Code 公式 Plugin 機能（`--plugin-dir`）を利用した `/vibecorp:xxx` 形式のスキル名前空間への移行を検討中。
+Phase 1（実機検証）は Issue #352 で完了。Phase 2（全面移行）は Issue #358 で対応予定。
