@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-24 — Issue #352 — Plugin 名前空間 Phase 1 実機検証。Conditional Go 判定（名前空間解決は構造的に正しい、スキル間呼び出し・相対パス参照に回避策要）
 - 2026-04-23 — diagnose 上限ガードレール文書化 — 3ファイル間（autonomous-restrictions.md・vibecorp.yml・cost-analysis.md）の整合性確認、矛盾なし
 - 2026-04-23 — Issue #392 — `settings.json` の allow リストに `.claude/rules/**` の Write/Edit を追加（teammate の承認ダイアログ停止を解消）
 - 2026-04-20 — Issue #361 — /issue を CISO + CPO + SM の3者承認ゲートに拡張、/autopilot のラベル縛り撤廃と起票側フィルタ集約（透過パイプ設計）
