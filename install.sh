@@ -1778,16 +1778,20 @@ update_user_managed_file() {
   local base_hash
   base_hash=$(read_base_hash "$lock" "$rel_path")
 
-  if [[ -n "$base_hash" ]]; then
-    # ベーススナップショットあり → 3-way マージ
+  local base_snapshot
+  base_snapshot=$(get_base_snapshot "$rel_path")
+
+  if [[ -n "$base_hash" && -n "$base_snapshot" ]]; then
+    # ベースハッシュ・スナップショット両方あり → 3-way マージ
     merge_or_overwrite "$tpl" "$target" "$rel_path" || true
   else
-    # 旧バージョンからの初回 --update。ユーザーカスタマイズが上書きで消えるのを
-    # 防ぐため、テンプレートは適用せず手動マージを促す。
+    # ベース情報が不完全（旧バージョンからの移行、またはスナップショット欠落）。
+    # ユーザーカスタマイズが上書きで消えるのを防ぐため、テンプレートは適用せず手動マージを促す。
     # 次回の --update で 3-way マージが働くよう、現テンプレートをベースとして記録する。
-    log_skip "${rel_path} はカスタマイズ済みの可能性があり、ベーススナップショット未記録のためスキップ"
-    log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${target} ${tpl}"
     save_base_snapshot "$tpl" "$rel_path"
+    local snapshot_path="${REPO_ROOT}/.claude/vibecorp-base/${rel_path}"
+    log_skip "${rel_path} はカスタマイズ済みの可能性があり、ベース情報が不完全なためスキップ"
+    log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${target} ${snapshot_path}"
     CONFLICT_FILES="${CONFLICT_FILES}  - ${rel_path}（カスタマイズ保護のためスキップ）"$'\n'
   fi
 }
@@ -1813,7 +1817,7 @@ DONE
 ⚠️  以下のファイルは手動での確認が必要です:
 ${CONFLICT_FILES}
 - 3-way マージでコンフリクトしたファイル: コンフリクトマーカー（<<<<<<<, =======, >>>>>>>）を検索して手動で解消してください
-- 「カスタマイズ保護のためスキップ」と記されたファイル: ベーススナップショット未記録のため自動マージを行いませんでした。新テンプレート内容は現行ファイルの近くに diff 表示されているので、必要に応じて手動で取り込んでください
+- 「カスタマイズ保護のためスキップ」と記されたファイル: ベース情報が不完全なため自動マージを行いませんでした。ログに表示された diff コマンドで現行ファイルと新テンプレートの差分を確認し、必要に応じて手動で取り込んでください
 
 CONFLICT
   fi

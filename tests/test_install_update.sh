@@ -121,6 +121,40 @@ bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_contains "O7: カスタマイズ済み MVV.md が保持される" "$R/MVV.md" "mvv-marker-abc"
 cleanup
 
+# O8. --update でスナップショット欠落・lock の base_hash 残存時もカスタマイズが保護される
+# クリーン clone で .claude/vibecorp-base/ が gitignore により欠落する状態を模擬
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# My customized CLAUDE.md" > "$R/.claude/CLAUDE.md"
+echo "snapshot-missing-marker" >> "$R/.claude/CLAUDE.md"
+
+# スナップショットだけ削除（lock の base_hash は残す）
+rm -f "$R/.claude/vibecorp-base/CLAUDE.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "O8: スナップショット欠落時もカスタマイズ済み CLAUDE.md が保持される" "$R/.claude/CLAUDE.md" "snapshot-missing-marker"
+assert_file_exists "O8: スナップショットが再作成される" "$R/.claude/vibecorp-base/CLAUDE.md"
+cleanup
+
+# O9. --update で MVV.md もスナップショット欠落時にカスタマイズが保護される
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+echo "# Custom MVV" > "$R/MVV.md"
+echo "mvv-snapshot-missing" >> "$R/MVV.md"
+
+rm -f "$R/.claude/vibecorp-base/MVV.md"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_contains "O9: スナップショット欠落時もカスタマイズ済み MVV.md が保持される" "$R/MVV.md" "mvv-snapshot-missing"
+assert_file_exists "O9: スナップショットが再作成される" "$R/.claude/vibecorp-base/MVV.md"
+cleanup
+
 # ============================================
 echo ""
 echo "=== P. --update での管理ファイル強制差し替え ==="
