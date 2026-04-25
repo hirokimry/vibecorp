@@ -4,7 +4,7 @@
 
 ## 概要
 
-worktree モードは、`git worktree` で作成された独立ディレクトリ内で全操作を実行するための仕組み。主に `/ship-parallel` が複数 Issue を並列処理する際に使用される。
+worktree モードは、`git worktree` で作成された独立ディレクトリ内で全操作を実行するための仕組み。主に `/vibecorp:ship-parallel` が複数 Issue を並列処理する際に使用される。
 
 ## 2つの実行パターン
 
@@ -54,15 +54,15 @@ Edit:  <path>/tests/test_foo.sh
 スキルチェーン（スキルが内部で別スキルを呼び出す構造）では、`--worktree <path>` を末端まで引き継ぐ。
 
 ```text
-/ship --worktree <path>
-  ├─ /plan-review-loop --worktree <path>
-  ├─ /commit --worktree <path>
-  ├─ /review-loop --worktree <path>
-  │   └─ /review --worktree <path>
-  ├─ /pr --worktree <path>
-  └─ /pr-review-loop --worktree <path>
-      ├─ /commit --worktree <path>
-      └─ /review-to-rules --worktree <path>
+/vibecorp:ship --worktree <path>
+  ├─ /vibecorp:plan-review-loop --worktree <path>
+  ├─ /vibecorp:commit --worktree <path>
+  ├─ /vibecorp:review-loop --worktree <path>
+  │   └─ /vibecorp:review --worktree <path>
+  ├─ /vibecorp:pr --worktree <path>
+  └─ /vibecorp:pr-review-loop --worktree <path>
+      ├─ /vibecorp:commit --worktree <path>
+      └─ /vibecorp:review-to-rules --worktree <path>
 ```
 
 **ルール:**
@@ -77,24 +77,24 @@ Edit:  <path>/tests/test_foo.sh
 
 | スキル | 用途 |
 |--------|------|
-| `/ship` | Issue → PR 全自動（worktree モードの起点） |
-| `/commit` | コミット |
-| `/review` | レビュー実行 |
-| `/review-loop` | レビュー → 修正ループ |
-| `/pr` | PR 作成 |
-| `/pr-review-loop` | PR レビュー修正ループ |
-| `/plan-review-loop` | 計画レビューループ |
-| `/review-to-rules` | レビュー指摘の規約反映 |
-| `/session-harvest` | セッション知見の吸い上げ |
-| `/harvest-all` | 全量棚卸し |
-| `/context7` | ドキュメント取得 |
-| `/branch` | ブランチ作成（`--worktree` で worktree 同時作成） |
+| `/vibecorp:ship` | Issue → PR 全自動（worktree モードの起点） |
+| `/vibecorp:commit` | コミット |
+| `/vibecorp:review` | レビュー実行 |
+| `/vibecorp:review-loop` | レビュー → 修正ループ |
+| `/vibecorp:pr` | PR 作成 |
+| `/vibecorp:pr-review-loop` | PR レビュー修正ループ |
+| `/vibecorp:plan-review-loop` | 計画レビューループ |
+| `/vibecorp:review-to-rules` | レビュー指摘の規約反映 |
+| `/vibecorp:session-harvest` | セッション知見の吸い上げ |
+| `/vibecorp:harvest-all` | 全量棚卸し |
+| `/vibecorp:context7` | ドキュメント取得 |
+| `/vibecorp:branch` | ブランチ作成（`--worktree` で worktree 同時作成） |
 
 ## ship-parallel の手動 worktree + rsync 方式
 
 ### 背景
 
-`/ship-parallel` は複数 Issue を並列に ship する。各 Agent が独立した作業ディレクトリを持つ必要がある。
+`/vibecorp:ship-parallel` は複数 Issue を並列に ship する。各 Agent が独立した作業ディレクトリを持つ必要がある。
 
 ### Agent の `isolation: "worktree"` を使わない理由
 
@@ -114,8 +114,11 @@ project=$(basename "$(pwd)")
 # worktree を作成（ブランチも同時に作成）
 git worktree add "../${project}.worktrees/dev_${Issue番号}_${要約}" -b "dev/${Issue番号}_${要約}"
 
-# .claude/ ディレクトリを同期（skills, hooks, settings.json 等）
+# .claude/ ディレクトリを同期（hooks, settings.json 等）
 rsync -a .claude/ "../${project}.worktrees/dev_${Issue番号}_${要約}/.claude/"
+
+# skills/（plugin ルート）を同期
+rsync -a skills/ "../${project}.worktrees/dev_${Issue番号}_${要約}/skills/"
 ```
 
 **設計判断:**
@@ -137,17 +140,17 @@ rsync -a .claude/ "../${project}.worktrees/dev_${Issue番号}_${要約}/.claude/
 
 ### Agent 起動
 
-各 Agent は `isolation` なしで起動し、`/ship --worktree <path>` で全操作を worktree 内に限定する。TeamCreate + SendMessage により双方向通信が可能。
+各 Agent は `isolation` なしで起動し、`/vibecorp:ship --worktree <path>` で全操作を worktree 内に限定する。TeamCreate + SendMessage により双方向通信が可能。
 
 ## worktree ライフサイクル管理
 
-`/worktree` スキルが worktree のライフサイクルを管理する。
+`/vibecorp:worktree` スキルが worktree のライフサイクルを管理する。
 
 | サブコマンド | 機能 |
 |------------|------|
-| `/worktree list` | 全 worktree の状態を表示（PR 状態・Agent 状態を含む） |
-| `/worktree clean` | マージ済み・孤立 worktree を自動削除 |
-| `/worktree remove` | 指定 worktree を手動削除 |
+| `/vibecorp:worktree list` | 全 worktree の状態を表示（PR 状態・Agent 状態を含む） |
+| `/vibecorp:worktree clean` | マージ済み・孤立 worktree を自動削除 |
+| `/vibecorp:worktree remove` | 指定 worktree を手動削除 |
 
 削除の安全基準:
 

@@ -22,7 +22,7 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/templates/claude/skills/sync-check/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/sync-check/SKILL.md"
 
 echo "=== sync-check 管轄 C*O 拡張 テスト ==="
 

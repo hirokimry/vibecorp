@@ -83,12 +83,12 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - MVV.md を策定する
 - エージェントなしで手動運用しながら、開発フローに慣れる
 - protect-files フックでファイル保護を開始する
-- /review, /commit, /pr 等の基本スキルを活用する
+- /vibecorp:review, /vibecorp:commit, /vibecorp:pr 等の基本スキルを活用する
 
 #### Phase 1: レビュー体制（standard プリセット）
 
 - CTO + CPO エージェントを有効化し、コード品質とプロダクト方針のレビューを開始する
-- /sync-check, /review-to-rules でドキュメントとコードの整合性を維持する
+- /vibecorp:sync-check, /vibecorp:review-to-rules でドキュメントとコードの整合性を維持する
 - sync-gate, review-to-rules-gate フックでゲート制御を導入する
 
 #### Phase 2: コスト・法務（full プリセット）
@@ -100,10 +100,10 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 #### Phase 3: セキュリティ（full プリセット）
 
 - CISO + セキュリティ分析員を追加し、セキュリティ監査体制を確立する
-- /diagnose スキルで自律的な問題検出を開始する
+- /vibecorp:diagnose スキルで自律的な問題検出を開始する
 
 #### Phase 4: フル組織（full プリセット）
 
 - COO を追加し、全エージェントの連携・進捗管理を統括する
 - 全 C-suite + 分析員が稼働し、AI 組織としてフル稼働する
-- /ship-parallel で複数 Issue の並列処理が可能になる
+- /vibecorp:ship-parallel で複数 Issue の並列処理が可能になる

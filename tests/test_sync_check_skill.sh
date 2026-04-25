@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SKILL_MD="${SCRIPT_DIR}/templates/claude/skills/sync-check/SKILL.md"
+SKILL_MD="${SCRIPT_DIR}/skills/sync-check/SKILL.md"
 PASSED=0
 FAILED=0
 TOTAL=0

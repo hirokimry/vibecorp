@@ -22,7 +22,7 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/templates/claude/skills/approve-audit/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/approve-audit/SKILL.md"
 
 echo "=== approve-audit スキル テスト ==="
 echo ""

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_harvest_all.sh — /harvest-all スキルのテスト
+# test_harvest_all.sh — /vibecorp:harvest-all スキルのテスト
 # 使い方: bash tests/test_harvest_all.sh
 
 set -euo pipefail
@@ -22,10 +22,10 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/harvest-all/SKILL.md"
+TEMPLATE_FILE="$PROJECT_DIR/skills/harvest-all/SKILL.md"
 SKILL_FILE="$TEMPLATE_FILE"
 
-echo "=== /harvest-all スキル テスト ==="
+echo "=== /vibecorp:harvest-all スキル テスト ==="
 echo ""
 
 # --- テスト1: SKILL.md の存在 ---

@@ -1,6 +1,6 @@
 #!/bin/bash
 # test_state_no_placeholder.sh
-# templates/claude/hooks と templates/claude/skills から
+# templates/claude/hooks と skills/ から
 # {{PROJECT_NAME}} placeholder と /tmp/.${PROJECT_NAME} 参照が消滅していることを検証する回帰テスト
 #
 # Issue #255 で /tmp/ スタンプを $CLAUDE_PROJECT_DIR/.claude/state/ に移行した。
@@ -62,7 +62,7 @@ check_pattern_absent \
   "{{PROJECT_NAME}} placeholder（hooks/skills）" \
   '\{\{PROJECT_NAME\}\}' \
   "${SCRIPT_DIR}/templates/claude/hooks" \
-  "${SCRIPT_DIR}/templates/claude/skills"
+  "${SCRIPT_DIR}/skills"
 
 # --- 2. /tmp/.${PROJECT_NAME} 参照の不在 ---
 
@@ -74,7 +74,7 @@ check_pattern_absent \
   "/tmp/.\${PROJECT_NAME} 参照（hooks/skills）" \
   '/tmp/\.(\$\{PROJECT_NAME\}|\{\{PROJECT_NAME\}\}|\{project\})' \
   "${SCRIPT_DIR}/templates/claude/hooks" \
-  "${SCRIPT_DIR}/templates/claude/skills"
+  "${SCRIPT_DIR}/skills"
 
 # --- 3. PROJECT_NAME 変数定義の不在（hooks 限定） ---
 # hooks では get_project_name 呼び出しが消滅しているはず

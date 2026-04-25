@@ -22,10 +22,8 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/ship-parallel/SKILL.md"
-LOCAL_FILE="$PROJECT_DIR/.claude/skills/ship-parallel/SKILL.md"
-# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
-SKILL_FILE="$TEMPLATE_FILE"
+SKILL_FILE="$PROJECT_DIR/skills/ship-parallel/SKILL.md"
+STUB_FILE="$PROJECT_DIR/.claude/skills/ship-parallel/SKILL.md"
 
 echo "=== 並列 ship オーケストレーションスキル テスト ==="
 echo ""
@@ -230,11 +228,11 @@ echo ""
 
 echo "--- テスト8: Agent プロンプトの方式I 対応 ---"
 
-# 8-1: /ship --worktree パラメータの使用
-if grep -q '/ship.*--worktree' "$SKILL_FILE"; then
-  pass "Agent プロンプトに /ship --worktree がある"
+# 8-1: /vibecorp:ship --worktree パラメータの使用
+if grep -q '/vibecorp:ship.*--worktree' "$SKILL_FILE"; then
+  pass "Agent プロンプトに /vibecorp:ship --worktree がある"
 else
-  fail "Agent プロンプトに /ship --worktree がない"
+  fail "Agent プロンプトに /vibecorp:ship --worktree がない"
 fi
 
 # 8-2: Agent(isolation: "worktree") がパラメータとして使われていない
@@ -344,24 +342,19 @@ fi
 
 echo ""
 
-# --- テスト12: テンプレートとローカルの一致 ---
+# --- テスト12: スタブの検証 ---
 
-echo "--- テスト12: テンプレートとローカルの一致 ---"
+echo "--- テスト12: スタブの検証 ---"
 
-if [ -f "$TEMPLATE_FILE" ]; then
-  pass "テンプレートファイルが存在する"
-else
-  fail "テンプレートファイルが存在しない: $TEMPLATE_FILE"
-fi
-
-if [ -f "$LOCAL_FILE" ]; then
-  if diff -q "$LOCAL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
-    pass "ローカルとテンプレートが一致する"
+if [ -f "$STUB_FILE" ]; then
+  pass "スタブファイルが存在する"
+  if grep -q 'vibecorp:ship-parallel' "$STUB_FILE"; then
+    pass "スタブが /vibecorp:ship-parallel へリダイレクトしている"
   else
-    fail "ローカルとテンプレートが一致しない"
+    fail "スタブに /vibecorp:ship-parallel への参照がない"
   fi
 else
-  pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
+  pass "スタブファイルなし（CI 環境）"
 fi
 
 echo ""
@@ -370,7 +363,7 @@ echo ""
 
 echo "--- テスト13: rsync 除外リストの検証 ---"
 
-rsync_line=$(grep -E '^rsync -a.*--exclude' "$TEMPLATE_FILE" | head -1)
+rsync_line=$(grep -E '^rsync -a.*--exclude' "$SKILL_FILE" | head -1)
 
 if echo "$rsync_line" | grep -q -- "--exclude=state/"; then
   pass "rsync に --exclude=state/ がある"

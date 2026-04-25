@@ -590,6 +590,14 @@ remove_managed_files() {
     [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
   done < <(read_lock_list "$lock" "agents")
 
+  # plugin skills: プラグインルート skills/ の管理ファイルを削除
+  local plugin_skills_dir="${REPO_ROOT}/skills"
+  if [[ "$UPDATE_MODE" != true ]]; then
+    while IFS= read -r name; do
+      [[ -n "$name" ]] && rm -rf "${plugin_skills_dir:?}/${name:?}"
+    done < <(read_lock_list "$lock" "plugin_skills")
+  fi
+
   # knowledge は運用中にユーザーが蓄積するデータのため削除しない
 
   log_info "管理ファイルを整理（lock ベース）"
@@ -645,57 +653,32 @@ copy_managed_files() {
     remove_orphan_hooks
   fi
 
-  # skills: --update 時は SKILL.md を 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
-  for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+  # skills（.claude/skills/）: plugin skills から互換スタブを自動生成する
+  # templates/claude/skills/ は廃止 — skills/ （プラグインルート）が正とし、スタブは動的生成
+  for src_dir in "${SCRIPT_DIR}/skills/"*/; do
     [[ -d "$src_dir" ]] || continue
     local name
     name=$(basename "$src_dir")
     if ! is_skill_enabled "$name"; then
-      # --update 時は無効化されたスキルを削除（lock に記載されている場合のみ）
       if [[ "$UPDATE_MODE" == true ]]; then
         local lock="${REPO_ROOT}/.claude/vibecorp.lock"
         if [[ -f "$lock" ]] && read_lock_list "$lock" "skills" | grep -qxF "$name"; then
           rm -rf "${skills_dir:?}/${name:?}"
         fi
       fi
-      log_skip "skills/${name} は yml で無効化されているためスキップ"
+      log_skip "skills/${name}（stub）は yml で無効化されているためスキップ"
       continue
     fi
-    if [[ "$UPDATE_MODE" == true ]]; then
-      if [[ -d "${skills_dir}/${name}" ]]; then
-        # SKILL.md を 3-way マージ、その他のファイルは上書き
-        for src_file in "${src_dir}"*; do
-          [[ -f "$src_file" ]] || continue
-          local fname
-          fname=$(basename "$src_file")
-          if [[ "$fname" == "SKILL.md" ]]; then
-            merge_or_overwrite "$src_file" "${skills_dir}/${name}/${fname}" "skills/${name}/${fname}" || true
-          else
-            cp "$src_file" "${skills_dir}/${name}/${fname}"
-          fi
-        done
-      else
-        cp -R "$src_dir" "${skills_dir}/${name}"
-        # ベーススナップショットを保存
-        for src_file in "${src_dir}"*; do
-          [[ -f "$src_file" ]] || continue
-          local fname
-          fname=$(basename "$src_file")
-          save_base_snapshot "$src_file" "skills/${name}/${fname}"
-        done
-      fi
-    elif [[ -d "${skills_dir}/${name}" ]]; then
-      log_skip "skills/${name} は既存のためスキップ"
-    else
-      cp -R "$src_dir" "${skills_dir}/${name}"
-      # ベーススナップショットを保存
-      for src_file in "${src_dir}"*; do
-        [[ -f "$src_file" ]] || continue
-        local fname
-        fname=$(basename "$src_file")
-        save_base_snapshot "$src_file" "skills/${name}/${fname}"
-      done
-    fi
+    mkdir -p "${skills_dir}/${name}"
+    cat > "${skills_dir}/${name}/SKILL.md" <<STUB
+---
+name: ${name}
+description: "このスキルは /vibecorp:${name} に移行しました。"
+---
+
+このスキルは \`/vibecorp:${name}\` に移行しました。
+\`/vibecorp:${name}\` を使用してください。
+STUB
   done
 
   # agents: 同名ファイルが既存ならスキップ
@@ -713,10 +696,70 @@ copy_managed_files() {
     done
   fi
 
+  # plugin skills: プラグインルート skills/ にコピー（.claude/skills/ のスタブとは別）
+  local plugin_skills_dir="${REPO_ROOT}/skills"
+  if [[ -d "${SCRIPT_DIR}/skills" ]]; then
+    mkdir -p "$plugin_skills_dir"
+    for src_dir in "${SCRIPT_DIR}/skills/"*/; do
+      [[ -d "$src_dir" ]] || continue
+      local name
+      name=$(basename "$src_dir")
+      if ! is_skill_enabled "$name"; then
+        if [[ "$UPDATE_MODE" == true ]]; then
+          local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+          if [[ -f "$lock" ]] && read_lock_list "$lock" "plugin_skills" | grep -qxF "$name"; then
+            rm -rf "${plugin_skills_dir:?}/${name:?}"
+          fi
+        fi
+        log_skip "skills/${name}（plugin）は yml で無効化されているためスキップ"
+        continue
+      fi
+      if [[ "$UPDATE_MODE" == true ]]; then
+        if [[ -d "${plugin_skills_dir}/${name}" ]]; then
+          for src_file in "${src_dir}"*; do
+            [[ -f "$src_file" ]] || continue
+            local fname
+            fname=$(basename "$src_file")
+            if [[ "$fname" == "SKILL.md" ]]; then
+              merge_or_overwrite "$src_file" "${plugin_skills_dir}/${name}/${fname}" "plugin_skills/${name}/${fname}" || true
+            else
+              cp "$src_file" "${plugin_skills_dir}/${name}/${fname}"
+            fi
+          done
+        else
+          cp -R "$src_dir" "${plugin_skills_dir}/${name}"
+          for src_file in "${src_dir}"*; do
+            [[ -f "$src_file" ]] || continue
+            local fname
+            fname=$(basename "$src_file")
+            save_base_snapshot "$src_file" "plugin_skills/${name}/${fname}"
+          done
+        fi
+      elif [[ -d "${plugin_skills_dir}/${name}" ]]; then
+        log_skip "skills/${name}（plugin）は既存のためスキップ"
+      else
+        cp -R "$src_dir" "${plugin_skills_dir}/${name}"
+        for src_file in "${src_dir}"*; do
+          [[ -f "$src_file" ]] || continue
+          local fname
+          fname=$(basename "$src_file")
+          save_base_snapshot "$src_file" "plugin_skills/${name}/${fname}"
+        done
+      fi
+    done
+  fi
+
+  # .claude-plugin/plugin.json: プラグインメタデータ（常に最新で上書き）
+  if [[ -f "${SCRIPT_DIR}/templates/claude-plugin/plugin.json" ]]; then
+    mkdir -p "${REPO_ROOT}/.claude-plugin"
+    cp "${SCRIPT_DIR}/templates/claude-plugin/plugin.json" "${REPO_ROOT}/.claude-plugin/plugin.json"
+  fi
+
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
   local target_dirs=("$hooks_dir" "$skills_dir")
   [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
+  [[ -d "$plugin_skills_dir" ]] && target_dirs+=("$plugin_skills_dir")
   local placeholder_errors=0
   for dir in "${target_dirs[@]}"; do
     while IFS= read -r f; do
@@ -778,6 +821,18 @@ copy_managed_files() {
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
       rm -rf "${skills_dir}/spike-loop"
+      # plugin skills（プラグインルート skills/）も同様に削除
+      rm -rf "${plugin_skills_dir}/sync-check"
+      rm -rf "${plugin_skills_dir}/sync-edit"
+      rm -rf "${plugin_skills_dir}/session-harvest"
+      rm -rf "${plugin_skills_dir}/harvest-all"
+      rm -rf "${plugin_skills_dir}/review-harvest"
+      rm -rf "${plugin_skills_dir}/knowledge-pr"
+      rm -rf "${plugin_skills_dir}/diagnose"
+      rm -rf "${plugin_skills_dir}/context7"
+      rm -rf "${plugin_skills_dir}/ship-parallel"
+      rm -rf "${plugin_skills_dir}/autopilot"
+      rm -rf "${plugin_skills_dir}/spike-loop"
       rm -rf "${agents_dir}"
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
@@ -797,6 +852,11 @@ copy_managed_files() {
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
       rm -rf "${skills_dir}/spike-loop"
+      # plugin skills（プラグインルート skills/）も同様に削除
+      rm -rf "${plugin_skills_dir}/diagnose"
+      rm -rf "${plugin_skills_dir}/ship-parallel"
+      rm -rf "${plugin_skills_dir}/autopilot"
+      rm -rf "${plugin_skills_dir}/spike-loop"
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
@@ -1208,7 +1268,7 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
+  local hooks_list="" skills_list="" plugin_skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
@@ -1218,11 +1278,17 @@ generate_vibecorp_lock() {
     # 実際に配置先に存在するもののみ記録（プリセット削除分を除外）
     [[ -f "${REPO_ROOT}/.claude/hooks/${name}" ]] && hooks_list="${hooks_list}    - ${name}"$'\n'
   done
-  for d in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+  for d in "${SCRIPT_DIR}/skills/"*/; do
     [[ -d "$d" ]] || continue
     local name
     name=$(basename "$d")
     [[ -d "${REPO_ROOT}/.claude/skills/${name}" ]] && skills_list="${skills_list}    - ${name}"$'\n'
+  done
+  for d in "${SCRIPT_DIR}/skills/"*/; do
+    [[ -d "$d" ]] || continue
+    local name
+    name=$(basename "$d")
+    [[ -d "${REPO_ROOT}/skills/${name}" ]] && plugin_skills_list="${plugin_skills_list}    - ${name}"$'\n'
   done
   for f in "${SCRIPT_DIR}/templates/claude/agents/"*.md; do
     [[ -f "$f" ]] || continue
@@ -1282,6 +1348,7 @@ generate_vibecorp_lock() {
   # $() は末尾改行を除去するため、各セクション連結時に明示的に改行を補う
   files_block+="$(_lock_list_section "hooks" "$hooks_list")"$'\n'
   files_block+="$(_lock_list_section "skills" "$skills_list")"$'\n'
+  files_block+="$(_lock_list_section "plugin_skills" "$plugin_skills_list")"$'\n'
   files_block+="$(_lock_list_section "agents" "$agents_list")"$'\n'
   files_block+="$(_lock_list_section "rules" "$rules_list")"$'\n'
   files_block+="$(_lock_list_section "issue_templates" "$issue_templates_list")"$'\n'

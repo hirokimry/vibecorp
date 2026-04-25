@@ -9,9 +9,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 COMM_RULE="${SCRIPT_DIR}/.claude/rules/communication.md"
 ROLES="${SCRIPT_DIR}/.claude/rules/roles.md"
 AI_ORG="${SCRIPT_DIR}/docs/ai-organization.md"
-ISSUE_SKILL="${SCRIPT_DIR}/.claude/skills/issue/SKILL.md"
-PR_SKILL="${SCRIPT_DIR}/.claude/skills/pr/SKILL.md"
-COMMIT_SKILL="${SCRIPT_DIR}/.claude/skills/commit/SKILL.md"
+ISSUE_SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
+PR_SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
+COMMIT_SKILL="${SCRIPT_DIR}/skills/commit/SKILL.md"
 
 PASSED=0
 FAILED=0
@@ -109,12 +109,12 @@ else
 fi
 
 # ============================================
-echo "=== /issue /pr /commit の SKILL.md に communication.md 参照 ==="
+echo "=== /vibecorp:issue /vibecorp:pr /vibecorp:commit の SKILL.md に communication.md 参照 ==="
 # ============================================
 
-assert_file_contains "/issue SKILL.md に communication.md 参照" "$ISSUE_SKILL" "communication.md"
-assert_file_contains "/pr SKILL.md に communication.md 参照" "$PR_SKILL" "communication.md"
-assert_file_contains "/commit SKILL.md に communication.md 参照" "$COMMIT_SKILL" "communication.md"
+assert_file_contains "/vibecorp:issue SKILL.md に communication.md 参照" "$ISSUE_SKILL" "communication.md"
+assert_file_contains "/vibecorp:pr SKILL.md に communication.md 参照" "$PR_SKILL" "communication.md"
+assert_file_contains "/vibecorp:commit SKILL.md に communication.md 参照" "$COMMIT_SKILL" "communication.md"
 
 # ============================================
 echo ""

@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_ship.sh — /ship スキルのテスト（worktree モード対応含む）
+# test_ship.sh — /vibecorp:ship スキルのテスト（worktree モード対応含む）
 # 使い方: bash tests/test_ship.sh
 
 set -euo pipefail
@@ -22,12 +22,10 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/ship/SKILL.md"
-LOCAL_FILE="$PROJECT_DIR/.claude/skills/ship/SKILL.md"
-# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
-SKILL_FILE="$TEMPLATE_FILE"
+SKILL_FILE="$PROJECT_DIR/skills/ship/SKILL.md"
+STUB_FILE="$PROJECT_DIR/.claude/skills/ship/SKILL.md"
 
-echo "=== /ship スキル テスト ==="
+echo "=== /vibecorp:ship スキル テスト ==="
 echo ""
 
 # --- テスト1: SKILL.md の存在 ---
@@ -160,32 +158,32 @@ echo ""
 
 echo "--- テスト6: サブスキル伝播 ---"
 
-# 6-1: /commit への --worktree 引き継ぎ
-if grep -q '/commit.*worktree' "$SKILL_FILE"; then
-  pass "/commit への worktree 引き継ぎ記載がある"
+# 6-1: /vibecorp:commit への --worktree 引き継ぎ
+if grep -q '/vibecorp:commit.*worktree' "$SKILL_FILE"; then
+  pass "/vibecorp:commit への worktree 引き継ぎ記載がある"
 else
-  fail "/commit への worktree 引き継ぎ記載がない"
+  fail "/vibecorp:commit への worktree 引き継ぎ記載がない"
 fi
 
-# 6-2: /review-loop への --worktree 引き継ぎ
-if grep -q '/review-loop.*worktree' "$SKILL_FILE"; then
-  pass "/review-loop への worktree 引き継ぎ記載がある"
+# 6-2: /vibecorp:review-loop への --worktree 引き継ぎ
+if grep -q '/vibecorp:review-loop.*worktree' "$SKILL_FILE"; then
+  pass "/vibecorp:review-loop への worktree 引き継ぎ記載がある"
 else
-  fail "/review-loop への worktree 引き継ぎ記載がない"
+  fail "/vibecorp:review-loop への worktree 引き継ぎ記載がない"
 fi
 
-# 6-3: /pr-review-loop への --worktree 引き継ぎ
-if grep -q '/pr-review-loop.*worktree' "$SKILL_FILE"; then
-  pass "/pr-review-loop への worktree 引き継ぎ記載がある"
+# 6-3: /vibecorp:pr-review-loop への --worktree 引き継ぎ
+if grep -q '/vibecorp:pr-review-loop.*worktree' "$SKILL_FILE"; then
+  pass "/vibecorp:pr-review-loop への worktree 引き継ぎ記載がある"
 else
-  fail "/pr-review-loop への worktree 引き継ぎ記載がない"
+  fail "/vibecorp:pr-review-loop への worktree 引き継ぎ記載がない"
 fi
 
-# 6-4: /plan-review-loop への --worktree 引き継ぎ
-if grep -q '/plan-review-loop.*worktree' "$SKILL_FILE"; then
-  pass "/plan-review-loop への worktree 引き継ぎ記載がある"
+# 6-4: /vibecorp:plan-review-loop への --worktree 引き継ぎ
+if grep -q '/vibecorp:plan-review-loop.*worktree' "$SKILL_FILE"; then
+  pass "/vibecorp:plan-review-loop への worktree 引き継ぎ記載がある"
 else
-  fail "/plan-review-loop への worktree 引き継ぎ記載がない"
+  fail "/vibecorp:plan-review-loop への worktree 引き継ぎ記載がない"
 fi
 
 echo ""
@@ -272,24 +270,19 @@ fi
 
 echo ""
 
-# --- テスト10: テンプレートとローカルの一致 ---
+# --- テスト10: スタブの検証 ---
 
-echo "--- テスト10: テンプレートとローカルの一致 ---"
+echo "--- テスト10: スタブの検証 ---"
 
-if [ -f "$TEMPLATE_FILE" ]; then
-  pass "テンプレートファイルが存在する"
-else
-  fail "テンプレートファイルが存在しない: $TEMPLATE_FILE"
-fi
-
-if [ -f "$LOCAL_FILE" ]; then
-  if diff -q "$LOCAL_FILE" "$TEMPLATE_FILE" > /dev/null 2>&1; then
-    pass "ローカルとテンプレートが一致する"
+if [ -f "$STUB_FILE" ]; then
+  pass "スタブファイルが存在する"
+  if grep -q 'vibecorp:ship' "$STUB_FILE"; then
+    pass "スタブが /vibecorp:ship へリダイレクトしている"
   else
-    fail "ローカルとテンプレートが一致しない"
+    fail "スタブに /vibecorp:ship への参照がない"
   fi
 else
-  pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
+  pass "スタブファイルなし（CI 環境）"
 fi
 
 echo ""
