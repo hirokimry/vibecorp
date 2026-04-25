@@ -22,11 +22,8 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PLUGIN_FILE="$PROJECT_DIR/skills/spike-loop/SKILL.md"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/spike-loop/SKILL.md"
-# Plugin 名前空間移行後: skills/ がスキル本体
-LOCAL_FILE="$PROJECT_DIR/.claude/skills/spike-loop/SKILL.md"
-SKILL_FILE="$PLUGIN_FILE"
+SKILL_FILE="$PROJECT_DIR/skills/spike-loop/SKILL.md"
+STUB_FILE="$PROJECT_DIR/.claude/skills/spike-loop/SKILL.md"
 
 echo "=== spike-loop スキル テスト ==="
 
@@ -169,25 +166,20 @@ else
   fail "言語指定なしのコードブロックが ${BARE_OPEN_COUNT} 箇所ある"
 fi
 
-# --- テスト6: テンプレートとローカルの一致 ---
+# --- テスト6: スタブの検証 ---
 
 echo ""
-echo "--- テスト6: テンプレートとローカルの一致 ---"
+echo "--- テスト6: スタブの検証 ---"
 
-if [[ -f "$TEMPLATE_FILE" ]]; then
-  pass "テンプレートファイルが存在する"
-else
-  fail "テンプレートファイルが存在しない"
-fi
-
-if [[ -f "$LOCAL_FILE" ]]; then
-  if diff -q "$TEMPLATE_FILE" "$LOCAL_FILE" > /dev/null 2>&1; then
-    pass "ローカルとテンプレートが一致する"
+if [[ -f "$STUB_FILE" ]]; then
+  pass "スタブファイルが存在する"
+  if grep -q 'vibecorp:spike-loop' "$STUB_FILE"; then
+    pass "スタブが /vibecorp:spike-loop へリダイレクトしている"
   else
-    fail "ローカルとテンプレートが一致しない"
+    fail "スタブに /vibecorp:spike-loop への参照がない"
   fi
 else
-  pass "ローカルファイルが存在しない（CI 環境では正常）"
+  pass "スタブファイルなし（CI 環境）"
 fi
 
 # --- 結果出力 ---

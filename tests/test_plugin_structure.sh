@@ -147,21 +147,11 @@ echo "--- D. テンプレート整合性 ---"
 # D1. templates/claude-plugin/plugin.json が存在する
 assert_file_exists "templates/claude-plugin/plugin.json" "${SCRIPT_DIR}/templates/claude-plugin/plugin.json"
 
-# D2. templates/claude/skills/ がスタブのみである（全スキルに vibecorp: リダイレクトがある）
-TEMPLATE_STUB_ISSUES=0
-for stub_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
-  [[ -d "$stub_dir" ]] || continue
-  local_name=$(basename "$stub_dir")
-  STUB_FILE="${stub_dir}SKILL.md"
-  if [[ -f "$STUB_FILE" ]]; then
-    if ! grep -q "vibecorp:${local_name}" "$STUB_FILE"; then
-      fail "templates/claude/skills/${local_name} がスタブでない"
-      TEMPLATE_STUB_ISSUES=$((TEMPLATE_STUB_ISSUES + 1))
-    fi
-  fi
-done
-if [[ "$TEMPLATE_STUB_ISSUES" -eq 0 ]]; then
-  pass "templates/claude/skills/ は全てスタブ"
+# D2. templates/claude/skills/ が廃止されている（スタブは install.sh で自動生成）
+if [[ -d "${SCRIPT_DIR}/templates/claude/skills" ]]; then
+  fail "templates/claude/skills/ が残存している（廃止済み: スタブは install.sh で自動生成）"
+else
+  pass "templates/claude/skills/ が廃止されている"
 fi
 
 print_test_summary

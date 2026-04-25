@@ -22,11 +22,8 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PLUGIN_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/autopilot/SKILL.md"
-# Plugin 名前空間移行後: skills/ がスキル本体
-LOCAL_FILE="$PROJECT_DIR/.claude/skills/autopilot/SKILL.md"
-SKILL_FILE="$PLUGIN_FILE"
+SKILL_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
+STUB_FILE="$PROJECT_DIR/.claude/skills/autopilot/SKILL.md"
 
 echo "=== autopilot スキル テスト ==="
 
@@ -197,25 +194,20 @@ else
   fail "起票側の3者承認ゲートへの言及が不足している"
 fi
 
-# --- テスト7: テンプレートとローカルの一致 ---
+# --- テスト7: スタブの検証 ---
 
 echo ""
-echo "--- テスト7: テンプレートとローカルの一致 ---"
+echo "--- テスト7: スタブの検証 ---"
 
-if [[ -f "$TEMPLATE_FILE" ]]; then
-  pass "テンプレートファイルが存在する"
-else
-  fail "テンプレートファイルが存在しない"
-fi
-
-if [[ -f "$LOCAL_FILE" ]]; then
-  if diff -q "$TEMPLATE_FILE" "$LOCAL_FILE" > /dev/null 2>&1; then
-    pass "ローカルとテンプレートが一致する"
+if [[ -f "$STUB_FILE" ]]; then
+  pass "スタブファイルが存在する"
+  if grep -q 'vibecorp:autopilot' "$STUB_FILE"; then
+    pass "スタブが /vibecorp:autopilot へリダイレクトしている"
   else
-    fail "ローカルとテンプレートが一致しない"
+    fail "スタブに /vibecorp:autopilot への参照がない"
   fi
 else
-  pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
+  pass "スタブファイルなし（CI 環境）"
 fi
 
 # --- 結果 ---

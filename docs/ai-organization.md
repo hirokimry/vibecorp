@@ -159,7 +159,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - 全 C-suite + 分析員が稼働し、AI 組織としてフル稼働する
 - /vibecorp:ship-parallel で複数 Issue の並列処理が可能になる
 
-### Plugin 名前空間移行（検討中）
+### Plugin 名前空間移行（完了）
 
-Claude Code 公式 Plugin 機能（`--plugin-dir`）を利用した `/vibecorp:xxx` 形式のスキル名前空間への移行を検討中。
-Phase 1（実機検証）は Issue #352 で完了。Phase 2（全面移行）は Issue #358 で対応予定。
+Claude Code 公式 Plugin 機能（`--plugin-dir`）を利用した `/vibecorp:xxx` 形式のスキル名前空間への移行が完了した。
+Phase 1（実機検証）は Issue #352、Phase 2（全スキル plugin 化と互換レイヤ構築）は Issue #358 で完了。全 26 スキルが `skills/`（plugin ルート）に配置され、`.claude/skills/` には互換スタブが自動生成される。`templates/claude/skills/` は廃止され、install.sh がスタブを動的生成する。

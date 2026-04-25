@@ -114,8 +114,11 @@ project=$(basename "$(pwd)")
 # worktree を作成（ブランチも同時に作成）
 git worktree add "../${project}.worktrees/dev_${Issue番号}_${要約}" -b "dev/${Issue番号}_${要約}"
 
-# .claude/ ディレクトリを同期（skills, hooks, settings.json 等）
+# .claude/ ディレクトリを同期（hooks, settings.json 等）
 rsync -a .claude/ "../${project}.worktrees/dev_${Issue番号}_${要約}/.claude/"
+
+# skills/（plugin ルート）を同期
+rsync -a skills/ "../${project}.worktrees/dev_${Issue番号}_${要約}/skills/"
 ```
 
 **設計判断:**

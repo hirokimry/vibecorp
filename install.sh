@@ -653,57 +653,32 @@ copy_managed_files() {
     remove_orphan_hooks
   fi
 
-  # skills: --update 時は SKILL.md を 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
-  for src_dir in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+  # skills（.claude/skills/）: plugin skills から互換スタブを自動生成する
+  # templates/claude/skills/ は廃止 — skills/ （プラグインルート）が正とし、スタブは動的生成
+  for src_dir in "${SCRIPT_DIR}/skills/"*/; do
     [[ -d "$src_dir" ]] || continue
     local name
     name=$(basename "$src_dir")
     if ! is_skill_enabled "$name"; then
-      # --update 時は無効化されたスキルを削除（lock に記載されている場合のみ）
       if [[ "$UPDATE_MODE" == true ]]; then
         local lock="${REPO_ROOT}/.claude/vibecorp.lock"
         if [[ -f "$lock" ]] && read_lock_list "$lock" "skills" | grep -qxF "$name"; then
           rm -rf "${skills_dir:?}/${name:?}"
         fi
       fi
-      log_skip "skills/${name} は yml で無効化されているためスキップ"
+      log_skip "skills/${name}（stub）は yml で無効化されているためスキップ"
       continue
     fi
-    if [[ "$UPDATE_MODE" == true ]]; then
-      if [[ -d "${skills_dir}/${name}" ]]; then
-        # SKILL.md を 3-way マージ、その他のファイルは上書き
-        for src_file in "${src_dir}"*; do
-          [[ -f "$src_file" ]] || continue
-          local fname
-          fname=$(basename "$src_file")
-          if [[ "$fname" == "SKILL.md" ]]; then
-            merge_or_overwrite "$src_file" "${skills_dir}/${name}/${fname}" "skills/${name}/${fname}" || true
-          else
-            cp "$src_file" "${skills_dir}/${name}/${fname}"
-          fi
-        done
-      else
-        cp -R "$src_dir" "${skills_dir}/${name}"
-        # ベーススナップショットを保存
-        for src_file in "${src_dir}"*; do
-          [[ -f "$src_file" ]] || continue
-          local fname
-          fname=$(basename "$src_file")
-          save_base_snapshot "$src_file" "skills/${name}/${fname}"
-        done
-      fi
-    elif [[ -d "${skills_dir}/${name}" ]]; then
-      log_skip "skills/${name} は既存のためスキップ"
-    else
-      cp -R "$src_dir" "${skills_dir}/${name}"
-      # ベーススナップショットを保存
-      for src_file in "${src_dir}"*; do
-        [[ -f "$src_file" ]] || continue
-        local fname
-        fname=$(basename "$src_file")
-        save_base_snapshot "$src_file" "skills/${name}/${fname}"
-      done
-    fi
+    mkdir -p "${skills_dir}/${name}"
+    cat > "${skills_dir}/${name}/SKILL.md" <<STUB
+---
+name: ${name}
+description: "このスキルは /vibecorp:${name} に移行しました。"
+---
+
+このスキルは \`/vibecorp:${name}\` に移行しました。
+\`/vibecorp:${name}\` を使用してください。
+STUB
   done
 
   # agents: 同名ファイルが既存ならスキップ
@@ -1303,7 +1278,7 @@ generate_vibecorp_lock() {
     # 実際に配置先に存在するもののみ記録（プリセット削除分を除外）
     [[ -f "${REPO_ROOT}/.claude/hooks/${name}" ]] && hooks_list="${hooks_list}    - ${name}"$'\n'
   done
-  for d in "${SCRIPT_DIR}/templates/claude/skills/"*/; do
+  for d in "${SCRIPT_DIR}/skills/"*/; do
     [[ -d "$d" ]] || continue
     local name
     name=$(basename "$d")

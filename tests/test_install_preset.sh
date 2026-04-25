@@ -334,18 +334,17 @@ echo ""
 echo "=== L. 既存スキル保持（同名スキルスキップ） ==="
 # ============================================
 
-# L1. ユーザーがカスタマイズした同名スキルはスキップ
+# L1. 同名スキルもスタブ自動生成で上書き（plugin 名前空間移行済み）
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/skills/review"
 echo "# カスタムレビュースキル" > "$TMPDIR_ROOT/.claude/skills/review/SKILL.md"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-REVIEW_CONTENT=$(cat "$R/.claude/skills/review/SKILL.md")
-if [ "$REVIEW_CONTENT" = "# カスタムレビュースキル" ]; then
-  pass "同名スキル(review)はユーザー版を保持"
+if grep -q "vibecorp:review" "$R/.claude/skills/review/SKILL.md"; then
+  pass "同名スキル(review)もスタブで上書き（plugin リダイレクト）"
 else
-  fail "同名スキル(review)はユーザー版を保持 (上書きされた)"
+  fail "同名スキル(review)がスタブで上書きされていない"
 fi
 
 # L2. ユーザー独自スキルも保持
