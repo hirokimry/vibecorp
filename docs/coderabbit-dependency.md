@@ -61,14 +61,26 @@ auto-merge 発動 ──→ マージ完了
 
 ### `/vibecorp:pr-review-loop`（依存度: 高）
 
-CodeRabbit 未導入時は以下の流れになる:
+`/vibecorp:pr-review-loop` は `/loop` や `ScheduleWakeup` のような非同期スケジューラに依存せず、teammate のターン内で `gh pr view` をポーリングする同期ループとして実装されている（[根拠](#同期ループ仕様)）。
 
-1. ステップ 2.1（レビュー待ち）でコメント数が0のまま5分経過
-2. **CodeRabbit 未導入と判断し、修正ループをスキップ**
-3. auto-merge 状態を確認・設定
+`vibecorp.yml` の `coderabbit.enabled` が `false` の場合は以下の流れになる:
+
+1. ステップ 2（CodeRabbit 有効性の確認）で `enabled: false` を検出
+2. **CodeRabbit レビュー待ちをスキップ**
+3. auto-merge 設定（既設定ならスキップ）を実行
 4. 結果報告に「CodeRabbit 未検出。Require approvals が有効な場合、人間による approve が必要です」と案内
 
-修正ループが一度も回らないため、PR上のレビュー指摘修正は人間が手動で対応する前提になる。
+修正ループが一度も回らないため、PR 上のレビュー指摘修正は人間が手動で対応する前提になる。
+
+#### 同期ループ仕様
+
+teammate（`/vibecorp:ship-parallel` 配下の Agent）はメッセージ駆動で idle 化すると `ScheduleWakeup` の wakeup が届かないため、`/loop 5m /vibecorp:pr-review-fix` 方式では PR が放置される構造欠陥があった。これを解消するため、本スキルは以下の同期ループ仕様で実装されている。
+
+- `gh pr view` で PR 状態（`state` / `mergeStateStatus` / `reviewDecision` / `autoMergeRequest`）を 30 秒間隔でポーリング
+- `MERGED` / `CLOSED` に達するか escalation 条件に当たるまで teammate のターン内で継続
+- `CHANGES_REQUESTED` 検知時は `/vibecorp:pr-review-fix` を Skill ツールで同期呼び出し
+- max iterations 20 / timeout 60 分 / `mergeStateStatus == DIRTY|DRAFT` のいずれかで escalation
+- teammate 配下では `SendMessage` で team-lead に escalation を通知
 
 ### `/vibecorp:review`（依存度: 部分）
 
