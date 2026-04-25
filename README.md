@@ -528,10 +528,20 @@ path/to/vibecorp/install.sh --name my-project --no-migrate
 
 ## フック登録構造（settings.json）
 
-フックは `settings.json` の `hooks.PreToolUse` に登録される。
+フックは `settings.json` の `hooks.PreToolUse` に登録される。`permissions.allow` も同ファイルから配布される。
 
 ```json
 {
+  "permissions": {
+    "allow": [
+      "Write(.claude/knowledge/**)",
+      "Edit(.claude/knowledge/**)",
+      "Write(.claude/rules/**)",
+      "Edit(.claude/rules/**)",
+      "Write(.claude/plans/**)",
+      "Edit(.claude/plans/**)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -548,15 +558,8 @@ path/to/vibecorp/install.sh --name my-project --no-migrate
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/command-log.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-api-bypass.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-to-rules-gate.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-harvest-gate.sh" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-gate.sh" }
         ]
       }
@@ -565,7 +568,7 @@ path/to/vibecorp/install.sh --name my-project --no-migrate
 }
 ```
 
-上記は `settings.json.tpl` の全内容。プリセットに応じて不要なフックエントリが自動除外される。vibecorp.yml の `hooks:` でトグルした場合も同様に反映される。
+上記は `settings.json.tpl` の主要な内容（`permissions.allow` は実テンプレートではプラットフォーム別パス（`/Users/**`、`/home/**`）も含む）。`install.sh` 実行時にプリセット (`minimal` / `standard` / `full`) に応じて不要なフックエントリが除外される。`vibecorp.yml` の `hooks:` でトグルした場合も同様に反映される。`permissions` セクションはプリセットや `vibecorp.yml` に関わらずそのまま適用される。
 
 ## リポジトリインフラ設定
 

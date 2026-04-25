@@ -1,4 +1,22 @@
 {
+  "permissions": {
+    "allow": [
+      "Write(.claude/knowledge/**)",
+      "Edit(.claude/knowledge/**)",
+      "Write(.claude/rules/**)",
+      "Edit(.claude/rules/**)",
+      "Write(.claude/plans/**)",
+      "Edit(.claude/plans/**)",
+      "Write(//Users/**/.cache/vibecorp/plans/**)",
+      "Edit(//Users/**/.cache/vibecorp/plans/**)",
+      "Write(//Users/**/.cache/vibecorp/state/**)",
+      "Edit(//Users/**/.cache/vibecorp/state/**)",
+      "Write(//home/**/.cache/vibecorp/plans/**)",
+      "Edit(//home/**/.cache/vibecorp/plans/**)",
+      "Write(//home/**/.cache/vibecorp/state/**)",
+      "Edit(//home/**/.cache/vibecorp/state/**)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -35,16 +53,11 @@
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+          },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh"
           },
           {
             "type": "command",
