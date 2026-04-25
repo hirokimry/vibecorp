@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_pr_review_loop.sh — /vibecorp:pr-review-loop の同期ループ仕様ガード
+# test_pr_review_loop.sh — /vibecorp:pr-fix-loop の同期ループ仕様ガード
 # 使い方: bash tests/test_pr_review_loop.sh
 
 set -euo pipefail
@@ -22,9 +22,9 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/skills/pr-review-loop/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/pr-fix-loop/SKILL.md"
 
-echo "=== /vibecorp:pr-review-loop 同期ループ仕様ガード テスト ==="
+echo "=== /vibecorp:pr-fix-loop 同期ループ仕様ガード テスト ==="
 echo ""
 
 # --- テスト1: SKILL.md の存在 ---
@@ -32,9 +32,9 @@ echo ""
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
-  pass "pr-review-loop SKILL.md が存在する"
+  pass "pr-fix-loop SKILL.md が存在する"
 else
-  fail "pr-review-loop SKILL.md が存在しない: $SKILL_FILE"
+  fail "pr-fix-loop SKILL.md が存在しない: $SKILL_FILE"
   # 前提ファイル不在 → 後続テストは全て無意味なので即終了
   exit 1
 fi
@@ -53,8 +53,8 @@ else
 fi
 
 NAME_VALUE=$(awk '/^---$/{n++; next} n==1 && /^name:/{sub(/^name:[[:space:]]*/, ""); gsub(/"/, ""); print; exit}' "$SKILL_FILE")
-if [ "$NAME_VALUE" = "pr-review-loop" ]; then
-  pass "name フィールドが 'pr-review-loop' である"
+if [ "$NAME_VALUE" = "pr-fix-loop" ]; then
+  pass "name フィールドが 'pr-fix-loop' である"
 else
   fail "name フィールドが期待値と異なる（実際: '$NAME_VALUE'）"
 fi
@@ -135,11 +135,11 @@ for state in "${STATES[@]}"; do
   fi
 done
 
-# CHANGES_REQUESTED 時に /vibecorp:pr-review-fix を同期呼び出しすることが明示されている
-if grep -q -e 'pr-review-fix' "$SKILL_FILE"; then
-  pass "pr-review-fix の同期呼び出し記述が存在する"
+# CHANGES_REQUESTED 時に /vibecorp:pr-fix を同期呼び出しすることが明示されている
+if grep -q -e 'pr-fix' "$SKILL_FILE"; then
+  pass "pr-fix の同期呼び出し記述が存在する"
 else
-  fail "pr-review-fix の同期呼び出し記述が存在しない"
+  fail "pr-fix の同期呼び出し記述が存在しない"
 fi
 
 echo ""

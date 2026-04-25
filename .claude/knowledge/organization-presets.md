@@ -12,7 +12,7 @@
 最小構成。エージェント定義なしでスキルだけで回る。
 
 - agents: なし（スキル内で直接実行）
-- skills: /review, /review-loop, /pr-merge-loop, /pr-review-fix, /pr, /commit
+- skills: /review, /review-loop, /pr-merge-loop, /pr-fix, /pr, /commit
 - hooks: protect-files
 - docs/: specification.md, POLICY.md, SECURITY.md（プレースホルダー生成）
 - knowledge/: なし（運用中に蓄積）
