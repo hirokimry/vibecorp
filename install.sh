@@ -1425,10 +1425,14 @@ generate_settings_json() {
     new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
     local new_permissions_allow
     new_permissions_allow=$(echo "$new_settings" | jq '.permissions.allow // []')
+    local new_marketplaces
+    new_marketplaces=$(echo "$new_settings" | jq '.extraKnownMarketplaces // {}')
+    local new_enabled_plugins
+    new_enabled_plugins=$(echo "$new_settings" | jq '.enabledPlugins // {}')
 
-    # permissions.allow はテンプレートの値を既存値に追加し重複排除する
-    # （ユーザーが追加したカスタム allow は保持される）
-    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" --argjson new_allow "$new_permissions_allow" '
+    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" \
+       --argjson new_allow "$new_permissions_allow" \
+       --argjson new_mkts "$new_marketplaces" --argjson new_plugins "$new_enabled_plugins" '
       def is_managed_hook:
         (.command | split("/") | last) as $basename |
         any($managed[]; . == $basename);
@@ -1443,8 +1447,10 @@ generate_settings_json() {
         | map({matcher: .[0].matcher, hooks: ([.[].hooks[]] | unique_by(.command))})
       )
       | .permissions = ((.permissions // {}) | .allow = (((.allow // []) + $new_allow) | unique))
+      | .extraKnownMarketplaces = ((.extraKnownMarketplaces // {}) + $new_mkts)
+      | .enabledPlugins = ((.enabledPlugins // {}) + $new_plugins)
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
-    log_info "settings.json をマージ（ユーザーフック・permissions 保持）"
+    log_info "settings.json をマージ（ユーザーフック・permissions・marketplace 保持）"
   fi
 }
 

@@ -1,0 +1,12 @@
+{
+  "name": "vibecorp",
+  "owner": {
+    "name": "hirokimry"
+  },
+  "plugins": [
+    {
+      "name": "vibecorp",
+      "source": "."
+    }
+  ]
+}

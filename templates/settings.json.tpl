@@ -17,6 +17,17 @@
       "Edit(//home/**/.cache/vibecorp/state/**)"
     ]
   },
+  "extraKnownMarketplaces": {
+    "vibecorp": {
+      "source": {
+        "source": "github",
+        "repo": "hirokimry/vibecorp"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "vibecorp@vibecorp": true
+  },
   "hooks": {
     "PreToolUse": [
       {
