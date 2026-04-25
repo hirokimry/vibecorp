@@ -101,21 +101,21 @@ echo "=== A. テンプレートファイルの存在確認 ==="
 
 # A1. SKILL.md テンプレートが存在する
 assert_file_exists "context7 SKILL.md テンプレートが存在する" \
-  "${SCRIPT_DIR}/templates/claude/skills/context7/SKILL.md"
+  "${SCRIPT_DIR}/skills/context7/SKILL.md"
 
 # A2. SKILL.md に name: context7 が含まれる
 assert_file_contains "SKILL.md に name: context7 が含まれる" \
-  "${SCRIPT_DIR}/templates/claude/skills/context7/SKILL.md" \
+  "${SCRIPT_DIR}/skills/context7/SKILL.md" \
   "name: context7"
 
 # A3. SKILL.md に c7 コマンドの記述がある
 assert_file_contains "SKILL.md に c7 コマンドの記述がある" \
-  "${SCRIPT_DIR}/templates/claude/skills/context7/SKILL.md" \
+  "${SCRIPT_DIR}/skills/context7/SKILL.md" \
   "c7"
 
 # A4. SKILL.md に未インストール時のフォールバック案内がある
 assert_file_contains "SKILL.md に未インストール時のフォールバック案内がある" \
-  "${SCRIPT_DIR}/templates/claude/skills/context7/SKILL.md" \
+  "${SCRIPT_DIR}/skills/context7/SKILL.md" \
   "インストール"
 
 # ============================================
@@ -154,29 +154,29 @@ echo "=== C. SKILL.md の内容検証 ==="
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 
-# C1. フロントマターに description がある
+# C1. フロントマターに description がある（plugin skill を検証）
 assert_file_contains "SKILL.md に description がある" \
-  "$TMPDIR_ROOT/.claude/skills/context7/SKILL.md" \
+  "$TMPDIR_ROOT/skills/context7/SKILL.md" \
   "description:"
 
 # C2. c7 resolve コマンドの記述がある
 assert_file_contains "SKILL.md に c7 resolve の記述がある" \
-  "$TMPDIR_ROOT/.claude/skills/context7/SKILL.md" \
+  "$TMPDIR_ROOT/skills/context7/SKILL.md" \
   "c7 resolve"
 
 # C3. c7 get コマンドの記述がある
 assert_file_contains "SKILL.md に c7 get の記述がある" \
-  "$TMPDIR_ROOT/.claude/skills/context7/SKILL.md" \
+  "$TMPDIR_ROOT/skills/context7/SKILL.md" \
   "c7 get"
 
 # C4. エラーハンドリングセクションがある
 assert_file_contains "SKILL.md にエラーハンドリングの記述がある" \
-  "$TMPDIR_ROOT/.claude/skills/context7/SKILL.md" \
+  "$TMPDIR_ROOT/skills/context7/SKILL.md" \
   "エラーハンドリング"
 
 # C5. 未インストール時のインストール方法が記載されている
 assert_file_contains "SKILL.md にインストール方法の記載がある" \
-  "$TMPDIR_ROOT/.claude/skills/context7/SKILL.md" \
+  "$TMPDIR_ROOT/skills/context7/SKILL.md" \
   "npm install"
 
 cleanup

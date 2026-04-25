@@ -60,7 +60,8 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "初回で同名フックはスキップ（ユーザー版保持）" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版 protect-files"
 
-# N2. 初回（lock なし）で同名スキルが既存ならスキップ
+# N2. 初回（lock なし）で同名スキルが既存でもスタブで上書き
+# plugin 名前空間移行により .claude/skills/ は常にスタブが自動生成される
 cleanup
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/skills/commit"
@@ -69,11 +70,10 @@ echo "# ユーザーカスタム commit" > "$TMPDIR_ROOT/.claude/skills/commit/S
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-COMMIT_CONTENT=$(cat "$R/.claude/skills/commit/SKILL.md")
-if [ "$COMMIT_CONTENT" = "# ユーザーカスタム commit" ]; then
-  pass "初回で同名スキルはスキップ（ユーザー版保持）"
+if grep -q "vibecorp:commit" "$R/.claude/skills/commit/SKILL.md"; then
+  pass "初回で同名スキルもスタブで上書き（plugin リダイレクト）"
 else
-  fail "初回で同名スキルはスキップ（ユーザー版保持） (上書きされた)"
+  fail "初回で同名スキルがスタブで上書きされていない"
 fi
 
 # N3. settings.json のユーザー独自フック参照も保持（lock なし初回）

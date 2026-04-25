@@ -1,13 +1,13 @@
 #!/bin/bash
-# test_review_harvest.sh — /review-harvest スキルの構造テスト
+# test_review_harvest.sh — /vibecorp:review-harvest スキルの構造テスト
 # LLM 駆動スキルのため、SKILL.md の必須要素・関連ファイル削除状況を検証する
 # 使い方: bash tests/test_review_harvest.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SKILL_FILE="${SCRIPT_DIR}/templates/claude/skills/review-harvest/SKILL.md"
-OLD_SKILL_DIR="${SCRIPT_DIR}/templates/claude/skills/review-to-rules"
+SKILL_FILE="${SCRIPT_DIR}/skills/review-harvest/SKILL.md"
+OLD_SKILL_DIR="${SCRIPT_DIR}/skills/review-to-rules"
 OLD_HOOK="${SCRIPT_DIR}/templates/claude/hooks/review-to-rules-gate.sh"
 OLD_TEST="${SCRIPT_DIR}/tests/test_review_to_rules_gate.sh"
 SETTINGS="${SCRIPT_DIR}/templates/claude/settings.json"
@@ -45,7 +45,7 @@ assert_not_contains() {
 }
 
 # ============================================
-echo "=== /review-harvest SKILL.md 存在 ==="
+echo "=== /vibecorp:review-harvest SKILL.md 存在 ==="
 # ============================================
 
 assert_file_exists "SKILL.md が存在する" "$SKILL_FILE"
@@ -99,7 +99,7 @@ echo ""
 echo "=== 旧 review-to-rules 関連ファイル削除 ==="
 # ============================================
 
-assert_file_not_exists "旧 /review-to-rules スキル削除" "$OLD_SKILL_DIR"
+assert_file_not_exists "旧 /vibecorp:review-to-rules スキル削除" "$OLD_SKILL_DIR"
 assert_file_not_exists "旧 review-to-rules-gate.sh 削除" "$OLD_HOOK"
 assert_file_not_exists "旧 test_review_to_rules_gate.sh 削除" "$OLD_TEST"
 

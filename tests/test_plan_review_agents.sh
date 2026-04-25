@@ -23,7 +23,7 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 AGENTS_DIR="$PROJECT_DIR/templates/claude/agents"
-SKILL_FILE="$PROJECT_DIR/templates/claude/skills/plan-review-loop/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/plan-review-loop/SKILL.md"
 INSTALL_SCRIPT="$PROJECT_DIR/install.sh"
 
 echo "=== 専門家エージェント プランレビュー テスト ==="

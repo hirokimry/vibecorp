@@ -1,12 +1,12 @@
 #!/bin/bash
-# test_issue.sh — /issue スキルの統合テスト
+# test_issue.sh — /vibecorp:issue スキルの統合テスト
 # 使い方: bash tests/test_issue.sh
 # CI: GitHub Actions で自動実行
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SKILL_MD="${SCRIPT_DIR}/templates/claude/skills/issue/SKILL.md"
+SKILL_MD="${SCRIPT_DIR}/skills/issue/SKILL.md"
 PASSED=0
 FAILED=0
 TOTAL=0
@@ -47,7 +47,7 @@ assert_file_contains() {
 }
 
 # ============================================
-echo "=== /issue スキル テスト ==="
+echo "=== /vibecorp:issue スキル テスト ==="
 # ============================================
 
 # --- SKILL.md の存在確認 ---

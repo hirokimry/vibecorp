@@ -334,18 +334,17 @@ echo ""
 echo "=== L. 既存スキル保持（同名スキルスキップ） ==="
 # ============================================
 
-# L1. ユーザーがカスタマイズした同名スキルはスキップ
+# L1. 同名スキルもスタブ自動生成で上書き（plugin 名前空間移行済み）
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/skills/review"
 echo "# カスタムレビュースキル" > "$TMPDIR_ROOT/.claude/skills/review/SKILL.md"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-REVIEW_CONTENT=$(cat "$R/.claude/skills/review/SKILL.md")
-if [ "$REVIEW_CONTENT" = "# カスタムレビュースキル" ]; then
-  pass "同名スキル(review)はユーザー版を保持"
+if grep -q "vibecorp:review" "$R/.claude/skills/review/SKILL.md"; then
+  pass "同名スキル(review)もスタブで上書き（plugin リダイレクト）"
 else
-  fail "同名スキル(review)はユーザー版を保持 (上書きされた)"
+  fail "同名スキル(review)がスタブで上書きされていない"
 fi
 
 # L2. ユーザー独自スキルも保持
@@ -385,7 +384,7 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== S. Issue テンプレート・ラベル・/issue スキル ==="
+echo "=== S. Issue テンプレート・ラベル・/vibecorp:issue スキル ==="
 # ============================================
 
 # P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
@@ -425,7 +424,7 @@ assert_file_not_contains "スキップされた bug_report.md は lock に載ら
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 
-# P7. /issue スキルが配置されている
+# P7. /vibecorp:issue スキルが配置されている
 assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
 assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
 assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
@@ -816,7 +815,7 @@ assert_file_exists "cost-analysis.md 存在" "$R/docs/cost-analysis.md"
 # X4b. ai-organization.md が生成される
 assert_file_exists "ai-organization.md 存在" "$R/docs/ai-organization.md"
 
-# X4c. design-philosophy.md が生成される（#364 §1-4: /commit スキルのアンカーリンク先）
+# X4c. design-philosophy.md が生成される（#364 §1-4: /vibecorp:commit スキルのアンカーリンク先）
 assert_file_exists "design-philosophy.md 存在" "$R/docs/design-philosophy.md"
 assert_file_contains "design-philosophy.md にアンカー対象セクション" "$R/docs/design-philosophy.md" 'コマンドリダイレクト・フォールバックの禁止'
 

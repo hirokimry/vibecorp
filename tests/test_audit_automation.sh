@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_audit_automation.sh — Phase 6: 事後監査自動化（/audit-cost, /audit-security）のテスト
+# test_audit_automation.sh — Phase 6: 事後監査自動化（/vibecorp:audit-cost, /vibecorp:audit-security）のテスト
 # 使い方: bash tests/test_audit_automation.sh
 
 set -euo pipefail
@@ -22,8 +22,8 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-AUDIT_COST_FILE="$PROJECT_DIR/templates/claude/skills/audit-cost/SKILL.md"
-AUDIT_SECURITY_FILE="$PROJECT_DIR/templates/claude/skills/audit-security/SKILL.md"
+AUDIT_COST_FILE="$PROJECT_DIR/skills/audit-cost/SKILL.md"
+AUDIT_SECURITY_FILE="$PROJECT_DIR/skills/audit-security/SKILL.md"
 COST_TEMPLATE="$PROJECT_DIR/templates/claude/knowledge/accounting/cost-audit-template.md"
 SECURITY_TEMPLATE="$PROJECT_DIR/templates/claude/knowledge/security/security-audit-template.md"
 COST_DOC="$PROJECT_DIR/docs/cost-analysis.md"
@@ -157,7 +157,7 @@ echo "--- テスト7: Issue 起票 ---"
 
 for f in "$AUDIT_COST_FILE" "$AUDIT_SECURITY_FILE"; do
   name=$(basename "$(dirname "$f")")
-  if grep -q 'audit' "$f" && grep -q '/issue' "$f"; then
+  if grep -q 'audit' "$f" && grep -q '/vibecorp:issue' "$f"; then
     pass "${name} に Issue 起票の記述がある"
   else
     fail "${name} に Issue 起票の記述がない"
@@ -169,16 +169,16 @@ done
 echo ""
 echo "--- テスト8: docs 追記 ---"
 
-if grep -q '/audit-cost' "$COST_DOC"; then
-  pass "docs/cost-analysis.md に /audit-cost の記述がある"
+if grep -q '/vibecorp:audit-cost' "$COST_DOC"; then
+  pass "docs/cost-analysis.md に /vibecorp:audit-cost の記述がある"
 else
-  fail "docs/cost-analysis.md に /audit-cost の記述がない"
+  fail "docs/cost-analysis.md に /vibecorp:audit-cost の記述がない"
 fi
 
-if grep -q '/audit-security' "$SECURITY_DOC"; then
-  pass "docs/SECURITY.md に /audit-security の記述がある"
+if grep -q '/vibecorp:audit-security' "$SECURITY_DOC"; then
+  pass "docs/SECURITY.md に /vibecorp:audit-security の記述がある"
 else
-  fail "docs/SECURITY.md に /audit-security の記述がない"
+  fail "docs/SECURITY.md に /vibecorp:audit-security の記述がない"
 fi
 
 if grep -q '事後監査' "$COST_DOC"; then

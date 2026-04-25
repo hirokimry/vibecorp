@@ -232,7 +232,7 @@ assert_file_contains "--update でカスタム版フックが保持される" "$
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
 
-# P2. --update でカスタマイズ済みスキルはテンプレート未変更ならスキップ（3-way マージ）
+# P2. --update で .claude/skills/ スタブは常に自動生成で上書き（plugin 名前空間移行済み）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -243,8 +243,8 @@ echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# テンプレート未変更のため、カスタム版が保持される
-assert_file_contains "--update でカスタム版スキルが保持される" "$R/.claude/skills/review/SKILL.md" "古い review"
+# .claude/skills/ はスタブ自動生成のため常に上書きされる
+assert_file_contains "--update でスタブが再生成される" "$R/.claude/skills/review/SKILL.md" "vibecorp:review"
 assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
 cleanup
 
@@ -466,13 +466,13 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# review スキルの SKILL.md をカスタマイズ
+# review スキルの SKILL.md をカスタマイズしても、スタブ自動生成で上書きされる
 echo "# custom-review-skill" > "$R/.claude/skills/review/SKILL.md"
 echo "user-added-instruction" >> "$R/.claude/skills/review/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_contains "AB9: カスタム SKILL.md が保持される" "$R/.claude/skills/review/SKILL.md" "custom-review-skill"
+assert_file_contains "AB9: スタブが再生成される（plugin リダイレクト）" "$R/.claude/skills/review/SKILL.md" "vibecorp:review"
 cleanup
 
 # AB10. コンフリクト発生時に stderr に警告メッセージが出力される

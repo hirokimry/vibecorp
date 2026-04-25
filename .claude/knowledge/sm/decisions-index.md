@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-25 — Issue #358 Plugin 名前空間 Phase 2 完了確認 — 全26スキル plugin 化、templates/claude/skills/ 廃止、install.sh スタブ自動生成移行
 - 2026-04-24 — Issue #352 sync-check 整合性修正 — docs/ai-organization.md に Plugin 名前空間移行検討状況を追記
 - 2026-04-23 — diagnose デフォルト値・forbidden_targets 設定整合確認 — vibecorp.yml diagnose セクション全設定値が不可領域 5 分類と整合。docs/cost-analysis.md が上限ガードレールの Source of Truth として確立
 - 2026-04-20 — Issue #361 docs/ai-organization.md 不整合修正 — Issue 起票ゲートを CPO 単独から CISO+CPO+SM 3者承認に更新、起票側/ship 側の責務分離を追記

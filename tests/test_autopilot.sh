@@ -22,10 +22,8 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/autopilot/SKILL.md"
-LOCAL_FILE="$PROJECT_DIR/.claude/skills/autopilot/SKILL.md"
-# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
-SKILL_FILE="$TEMPLATE_FILE"
+SKILL_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
+STUB_FILE="$PROJECT_DIR/.claude/skills/autopilot/SKILL.md"
 
 echo "=== autopilot スキル テスト ==="
 
@@ -122,31 +120,31 @@ fi
 echo ""
 echo "--- テスト5: knowledge/buffer 収集フローの参照 ---"
 
-if grep -q '/review-harvest' "$SKILL_FILE"; then
-  pass "/review-harvest が参照されている"
+if grep -q '/vibecorp:review-harvest' "$SKILL_FILE"; then
+  pass "/vibecorp:review-harvest が参照されている"
 else
-  fail "/review-harvest が参照されていない"
+  fail "/vibecorp:review-harvest が参照されていない"
 fi
 
-if grep -q '/knowledge-pr' "$SKILL_FILE"; then
-  pass "/knowledge-pr が参照されている"
+if grep -q '/vibecorp:knowledge-pr' "$SKILL_FILE"; then
+  pass "/vibecorp:knowledge-pr が参照されている"
 else
-  fail "/knowledge-pr が参照されていない"
+  fail "/vibecorp:knowledge-pr が参照されていない"
 fi
 
-# /review-harvest が /knowledge-pr より先に記述されていることを確認
-# （同一行内も許容: `/review-harvest` → `/knowledge-pr` の順であれば OK）
+# /vibecorp:review-harvest が /vibecorp:knowledge-pr より先に記述されていることを確認
+# （同一行内も許容: `/vibecorp:review-harvest` → `/vibecorp:knowledge-pr` の順であれば OK）
 if awk '
-  /\/review-harvest.*\/knowledge-pr/ { print "order_ok"; exit }
-  /\/review-harvest/ && !seen_harvest { seen_harvest = NR }
-  /\/knowledge-pr/ && !seen_pr { seen_pr = NR }
+  /\/vibecorp:review-harvest.*\/vibecorp:knowledge-pr/ { print "order_ok"; exit }
+  /vibecorp:review-harvest/ && !seen_harvest { seen_harvest = NR }
+  /vibecorp:knowledge-pr/ && !seen_pr { seen_pr = NR }
   END {
     if (seen_harvest && seen_pr && seen_harvest < seen_pr) print "order_ok"
   }
 ' "$SKILL_FILE" | grep -q '^order_ok$'; then
-  pass "/review-harvest が /knowledge-pr より先に記述されている"
+  pass "/vibecorp:review-harvest が /vibecorp:knowledge-pr より先に記述されている"
 else
-  fail "/review-harvest → /knowledge-pr の順序になっていない"
+  fail "/vibecorp:review-harvest → /vibecorp:knowledge-pr の順序になっていない"
 fi
 
 # knowledge/buffer への言及
@@ -189,32 +187,27 @@ else
   fail "diagnose ラベルの位置付け（起票経路の識別用途）が明記されていない"
 fi
 
-# 6-4: 起票側（/diagnose と /issue）の3者承認ゲートへの言及がある
+# 6-4: 起票側（/vibecorp:diagnose と /issue）の3者承認ゲートへの言及がある
 if grep -q '起票側' "$SKILL_FILE" && grep -q '3者承認ゲート' "$SKILL_FILE"; then
   pass "起票側の3者承認ゲートへの言及がある"
 else
   fail "起票側の3者承認ゲートへの言及が不足している"
 fi
 
-# --- テスト7: テンプレートとローカルの一致 ---
+# --- テスト7: スタブの検証 ---
 
 echo ""
-echo "--- テスト7: テンプレートとローカルの一致 ---"
+echo "--- テスト7: スタブの検証 ---"
 
-if [[ -f "$TEMPLATE_FILE" ]]; then
-  pass "テンプレートファイルが存在する"
-else
-  fail "テンプレートファイルが存在しない"
-fi
-
-if [[ -f "$LOCAL_FILE" ]]; then
-  if diff -q "$TEMPLATE_FILE" "$LOCAL_FILE" > /dev/null 2>&1; then
-    pass "ローカルとテンプレートが一致する"
+if [[ -f "$STUB_FILE" ]]; then
+  pass "スタブファイルが存在する"
+  if grep -q 'vibecorp:autopilot' "$STUB_FILE"; then
+    pass "スタブが /vibecorp:autopilot へリダイレクトしている"
   else
-    fail "ローカルとテンプレートが一致しない"
+    fail "スタブに /vibecorp:autopilot への参照がない"
   fi
 else
-  pass "ローカルファイルなし（CI 環境 — テンプレートのみで検証）"
+  pass "スタブファイルなし（CI 環境）"
 fi
 
 # --- 結果 ---
