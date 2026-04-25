@@ -27,7 +27,7 @@ bash /path/to/vibecorp/install.sh --update
 
 1. `skills/` にプラグインスキルがコピーされる
 2. `.claude-plugin/plugin.json` が配置される
-3. `.claude/skills/` の旧スタブが自動クリーンアップされる（v0.3.0 以降）
+3. `.claude/skills/` の旧スタブが自動クリーンアップされる（v0.3.0 以降、`vibecorp.lock` が存在する場合）
 
 ### 旧コマンド名（`/ship` 等）について
 

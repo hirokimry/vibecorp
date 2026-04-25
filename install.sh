@@ -751,7 +751,8 @@ copy_managed_files() {
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
-  local target_dirs=("$hooks_dir" "$skills_dir")
+  local target_dirs=("$hooks_dir")
+  [[ -d "$skills_dir" ]] && target_dirs+=("$skills_dir")
   [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
   [[ -d "$plugin_skills_dir" ]] && target_dirs+=("$plugin_skills_dir")
   local placeholder_errors=0

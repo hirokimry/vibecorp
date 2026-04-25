@@ -286,7 +286,7 @@ vibecorp.lock
 
 ### 独自名前空間
 
-`.claude/vibecorp/` のような独自ディレクトリは作らない。全ファイルを Claude Code の規約パス（`.claude/hooks/`, `.claude/rules/`）および Plugin ルート（`skills/`）に直接配置する。
+`.claude/vibecorp/` のような独自ディレクトリは作らない。全ファイルを Claude Code の規約パス（`.claude/hooks/`, `.claude/agents/`, `.claude/rules/`）および Plugin ルート（`skills/`）に直接配置する。
 
 ### シークレット・認証情報
 
