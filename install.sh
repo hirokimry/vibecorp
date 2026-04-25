@@ -661,7 +661,7 @@ copy_managed_files() {
     if [[ -f "$lock" ]]; then
       while IFS= read -r name; do
         [[ -n "$name" ]] || continue
-        [[ "$name" == */* ]] && continue
+        [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || continue
         if [[ -d "${skills_dir:?}/${name:?}" ]]; then
           rm -rf "${skills_dir:?}/${name:?}"
           log_info ".claude/skills/${name} 互換スタブを削除"
