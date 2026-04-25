@@ -32,14 +32,12 @@ assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hook
 assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
 assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
-# M2. vibecorp 管理スキルも差し替えられる
-echo "# 古いレビュー" > "$R/.claude/skills/review/SKILL.md"
+# M2. vibecorp 管理 plugin スキルが配置される
+assert_dir_exists "plugin review スキルが存在" "$R/skills/review"
+# ユーザー独自の .claude/skills/ は install で触らない
 mkdir -p "$R/.claude/skills/my-custom"
 echo "# カスタム" > "$R/.claude/skills/my-custom/SKILL.md"
-
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
-
-assert_file_not_contains "管理スキルが差し替え済み" "$R/.claude/skills/review/SKILL.md" "古いレビュー"
 assert_file_exists "ユーザー独自スキルが残る" "$R/.claude/skills/my-custom/SKILL.md"
 
 cleanup
@@ -60,20 +58,21 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "初回で同名フックはスキップ（ユーザー版保持）" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版 protect-files"
 
-# N2. 初回（lock なし）で同名スキルが既存でもスタブで上書き
-# plugin 名前空間移行により .claude/skills/ は常にスタブが自動生成される
+# N2. 初回インストールで .claude/skills/ にスタブが生成されない（Phase 3 廃止）
 cleanup
 create_test_repo
-mkdir -p "$TMPDIR_ROOT/.claude/skills/commit"
-echo "# ユーザーカスタム commit" > "$TMPDIR_ROOT/.claude/skills/commit/SKILL.md"
-
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-if grep -q "vibecorp:commit" "$R/.claude/skills/commit/SKILL.md"; then
-  pass "初回で同名スキルもスタブで上書き（plugin リダイレクト）"
+if [[ -d "$R/.claude/skills" ]]; then
+  STUB_COUNT=$(find "$R/.claude/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$STUB_COUNT" -gt 0 ]]; then
+    fail "初回インストールで .claude/skills/ にスタブが生成されている（${STUB_COUNT} 件）"
+  else
+    pass "初回インストールで .claude/skills/ にスタブなし"
+  fi
 else
-  fail "初回で同名スキルがスタブで上書きされていない"
+  pass "初回インストールで .claude/skills/ が存在しない"
 fi
 
 # N3. settings.json のユーザー独自フック参照も保持（lock なし初回）

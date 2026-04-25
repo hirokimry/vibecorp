@@ -23,7 +23,6 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/ship/SKILL.md"
-STUB_FILE="$PROJECT_DIR/.claude/skills/ship/SKILL.md"
 
 echo "=== /vibecorp:ship スキル テスト ==="
 echo ""
@@ -270,19 +269,14 @@ fi
 
 echo ""
 
-# --- テスト10: スタブの検証 ---
+# --- テスト10: 互換スタブの廃止確認 ---
 
-echo "--- テスト10: スタブの検証 ---"
+echo "--- テスト10: 互換スタブの廃止確認 ---"
 
-if [ -f "$STUB_FILE" ]; then
-  pass "スタブファイルが存在する"
-  if grep -q 'vibecorp:ship' "$STUB_FILE"; then
-    pass "スタブが /vibecorp:ship へリダイレクトしている"
-  else
-    fail "スタブに /vibecorp:ship への参照がない"
-  fi
+if [ -d "$PROJECT_DIR/.claude/skills/ship" ]; then
+  fail ".claude/skills/ship/ が残存している（Phase 3 で廃止済み）"
 else
-  pass "スタブファイルなし（CI 環境）"
+  pass ".claude/skills/ship/ が廃止されている"
 fi
 
 echo ""

@@ -23,7 +23,7 @@ vibecorp が生成するテンプレート（hooks, skills, agents, rules 等）
 参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する。未設定時はスキップ可。
 
 - hooks: `${VIBECORP_REFERENCE_DIR}/.claude/hooks/`
-- skills: `${VIBECORP_REFERENCE_DIR}/.claude/skills/`
+- skills: `${VIBECORP_REFERENCE_DIR}/skills/`（Plugin ルート）
 - agents: `${VIBECORP_REFERENCE_DIR}/.claude/agents/`
 - rules: `${VIBECORP_REFERENCE_DIR}/.claude/rules/`
 - knowledge: `${VIBECORP_REFERENCE_DIR}/.claude/knowledge/`

@@ -27,8 +27,8 @@ assert_file_exists "protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
 # E3. hooks に実行権限
 assert_file_executable "hooks に実行権限" "$R/.claude/hooks/protect-files.sh"
 
-# E4. skills ディレクトリ存在
-assert_dir_exists "skills ディレクトリ存在" "$R/.claude/skills"
+# E4. plugin skills ディレクトリ存在
+assert_dir_exists "plugin skills ディレクトリ存在" "$R/skills"
 
 # E5. vibecorp.yml に name/preset/language
 assert_file_contains "vibecorp.yml に name" "$R/.claude/vibecorp.yml" "name: test-proj"
@@ -111,8 +111,8 @@ R="$TMPDIR_ROOT"
 # F1. review-to-rules-gate.sh が削除されている
 assert_file_not_exists "review-to-rules-gate.sh が削除されている" "$R/.claude/hooks/review-to-rules-gate.sh"
 
-# F2. review-to-rules スキルが削除されている
-if [ ! -d "$R/.claude/skills/review-to-rules" ]; then
+# F2. review-to-rules スキルが削除されている（plugin skills）
+if [ ! -d "$R/skills/review-to-rules" ]; then
   pass "review-to-rules スキルが削除されている"
 else
   fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
@@ -121,15 +121,15 @@ fi
 # F3. sync-gate.sh が削除されている
 assert_file_not_exists "sync-gate.sh が削除されている" "$R/.claude/hooks/sync-gate.sh"
 
-# F4. sync-check スキルが削除されている
-if [ ! -d "$R/.claude/skills/sync-check" ]; then
+# F4. sync-check スキルが削除されている（plugin skills）
+if [ ! -d "$R/skills/sync-check" ]; then
   pass "sync-check スキルが削除されている"
 else
   fail "sync-check スキルが削除されている (ディレクトリが存在)"
 fi
 
-# F4b. sync-edit スキルが削除されている
-if [ ! -d "$R/.claude/skills/sync-edit" ]; then
+# F4b. sync-edit スキルが削除されている（plugin skills）
+if [ ! -d "$R/skills/sync-edit" ]; then
   pass "sync-edit スキルが削除されている"
 else
   fail "sync-edit スキルが削除されている (ディレクトリが存在)"
@@ -334,23 +334,26 @@ echo ""
 echo "=== L. 既存スキル保持（同名スキルスキップ） ==="
 # ============================================
 
-# L1. 同名スキルもスタブ自動生成で上書き（plugin 名前空間移行済み）
+# L1. install 後 .claude/skills/ にスタブが生成されない（Phase 3 廃止）
 create_test_repo
-mkdir -p "$TMPDIR_ROOT/.claude/skills/review"
-echo "# カスタムレビュースキル" > "$TMPDIR_ROOT/.claude/skills/review/SKILL.md"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-if grep -q "vibecorp:review" "$R/.claude/skills/review/SKILL.md"; then
-  pass "同名スキル(review)もスタブで上書き（plugin リダイレクト）"
+if [[ -d "$R/.claude/skills" ]]; then
+  STUB_COUNT=$(find "$R/.claude/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$STUB_COUNT" -gt 0 ]]; then
+    fail "install 後 .claude/skills/ にスタブが生成されている（${STUB_COUNT} 件）"
+  else
+    pass "install 後 .claude/skills/ にスタブなし"
+  fi
 else
-  fail "同名スキル(review)がスタブで上書きされていない"
+  pass "install 後 .claude/skills/ が存在しない"
 fi
 
-# L2. ユーザー独自スキルも保持
-mkdir -p "$TMPDIR_ROOT/.claude/skills/my-deploy"
-echo "# デプロイスキル" > "$TMPDIR_ROOT/.claude/skills/my-deploy/SKILL.md"
-bash "$INSTALL_SH" --name test-proj 2>/dev/null
+# L2. ユーザー独自スキルは保持される
+mkdir -p "$R/.claude/skills/my-deploy"
+echo "# デプロイスキル" > "$R/.claude/skills/my-deploy/SKILL.md"
+bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_exists "ユーザー独自スキルが残る" "$R/.claude/skills/my-deploy/SKILL.md"
 assert_file_contains "ユーザー独自スキルの内容が保持" "$R/.claude/skills/my-deploy/SKILL.md" "デプロイスキル"
 
@@ -424,10 +427,10 @@ assert_file_not_contains "スキップされた bug_report.md は lock に載ら
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 
-# P7. /vibecorp:issue スキルが配置されている
-assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
-assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
-assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
+# P7. /vibecorp:issue スキルが配置されている（plugin skills）
+assert_dir_exists "issue スキルディレクトリ存在" "$R/skills/issue"
+assert_file_exists "issue スキル SKILL.md 存在" "$R/skills/issue/SKILL.md"
+assert_file_contains "issue スキルに name: issue" "$R/skills/issue/SKILL.md" "name: issue"
 
 # P8. gh が repo view に失敗する場合のラベル作成スキップ動作
 # ダミー gh を PATH の先頭に配置し、常に失敗させる
@@ -1016,11 +1019,11 @@ assert_file_exists "standard: cpo.md が配置される" "$R/.claude/agents/cpo.
 assert_file_exists "standard: sync-gate.sh が配置される" "$R/.claude/hooks/sync-gate.sh"
 assert_file_executable "standard: sync-gate.sh に実行権限" "$R/.claude/hooks/sync-gate.sh"
 
-# Z3. standard 新規インストール: standard 専用 skills が配置される
-assert_dir_exists "standard: sync-check スキル存在" "$R/.claude/skills/sync-check"
-assert_dir_exists "standard: sync-edit スキル存在" "$R/.claude/skills/sync-edit"
-assert_dir_exists "standard: review-harvest スキル存在" "$R/.claude/skills/review-harvest"
-assert_dir_exists "standard: knowledge-pr スキル存在" "$R/.claude/skills/knowledge-pr"
+# Z3. standard 新規インストール: standard 専用 skills が配置される（plugin skills）
+assert_dir_exists "standard: sync-check スキル存在" "$R/skills/sync-check"
+assert_dir_exists "standard: sync-edit スキル存在" "$R/skills/sync-edit"
+assert_dir_exists "standard: review-harvest スキル存在" "$R/skills/review-harvest"
+assert_dir_exists "standard: knowledge-pr スキル存在" "$R/skills/knowledge-pr"
 
 # Z4. standard lock: agents/hooks/skills が lock に記録される
 assert_file_contains "standard lock: cto.md 記録" "$R/.claude/vibecorp.lock" "cto.md"
@@ -1056,11 +1059,11 @@ assert_file_exists "アップグレード後: cpo.md 追加" "$R/.claude/agents/
 # standard 専用 hooks が追加される
 assert_file_exists "アップグレード後: sync-gate.sh 追加" "$R/.claude/hooks/sync-gate.sh"
 
-# standard 専用 skills が追加される
-assert_dir_exists "アップグレード後: sync-check 追加" "$R/.claude/skills/sync-check"
-assert_dir_exists "アップグレード後: sync-edit 追加" "$R/.claude/skills/sync-edit"
-assert_dir_exists "アップグレード後: review-harvest 追加" "$R/.claude/skills/review-harvest"
-assert_dir_exists "アップグレード後: knowledge-pr 追加" "$R/.claude/skills/knowledge-pr"
+# standard 専用 skills が追加される（plugin skills）
+assert_dir_exists "アップグレード後: sync-check 追加" "$R/skills/sync-check"
+assert_dir_exists "アップグレード後: sync-edit 追加" "$R/skills/sync-edit"
+assert_dir_exists "アップグレード後: review-harvest 追加" "$R/skills/review-harvest"
+assert_dir_exists "アップグレード後: knowledge-pr 追加" "$R/skills/knowledge-pr"
 
 # knowledge が追加される
 assert_file_exists "アップグレード後: knowledge 追加" "$R/.claude/knowledge/cto/tech-principles.md"
@@ -1112,7 +1115,7 @@ assert_exit_code "standard → standard 更新成功" "0" "$EXIT_CODE"
 # 更新後もファイルが維持される
 assert_file_exists "standard 更新後: agents 維持" "$R/.claude/agents/cto.md"
 assert_file_exists "standard 更新後: sync-gate 維持" "$R/.claude/hooks/sync-gate.sh"
-assert_dir_exists "standard 更新後: sync-check 維持" "$R/.claude/skills/sync-check"
+assert_dir_exists "standard 更新後: sync-check 維持" "$R/skills/sync-check"
 
 cleanup
 
@@ -1303,7 +1306,7 @@ assert_file_exists "無効化していない hook はインストールされる
 
 cleanup
 
-# T2. skills セクションで false 指定した skill がインストールされない
+# T2. skills セクションで false 指定した skill がインストールされない（plugin skills）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -1312,9 +1315,9 @@ skills:
   commit: false
 YML
 bash "$INSTALL_SH" --update 2>/dev/null
-assert_file_not_exists "無効化した skill がインストールされない" "$R/.claude/skills/commit/SKILL.md"
+assert_file_not_exists "無効化した skill がインストールされない" "$R/skills/commit/SKILL.md"
 # 他の skill はインストールされている
-assert_dir_exists "無効化していない skill はインストールされる" "$R/.claude/skills/branch"
+assert_dir_exists "無効化していない skill はインストールされる" "$R/skills/branch"
 
 cleanup
 
@@ -1338,7 +1341,7 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 assert_file_exists "トグル省略時: hook がインストールされる" "$R/.claude/hooks/block-api-bypass.sh"
-assert_dir_exists "トグル省略時: skill がインストールされる" "$R/.claude/skills/commit"
+assert_dir_exists "トグル省略時: skill がインストールされる" "$R/skills/commit"
 assert_file_contains "トグル省略時: hook が settings.json に含まれる" "$R/.claude/settings.json" "block-api-bypass"
 
 cleanup
@@ -1362,7 +1365,7 @@ skills:
 YML
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_not_exists "初回トグル: 無効化 hook がインストールされない" "$R/.claude/hooks/sync-gate.sh"
-assert_file_not_exists "初回トグル: 無効化 skill がインストールされない" "$R/.claude/skills/review-harvest/SKILL.md"
+assert_file_not_exists "初回トグル: 無効化 skill がインストールされない" "$R/skills/review-harvest/SKILL.md"
 assert_file_not_contains "初回トグル: 無効化 hook が settings.json に含まれない" "$R/.claude/settings.json" "sync-gate"
 
 cleanup
@@ -1370,9 +1373,9 @@ cleanup
 # T6. 無効化対象と同名のユーザーファイルが --update で削除されない
 create_test_repo
 R="$TMPDIR_ROOT"
-mkdir -p "$R/.claude/hooks" "$R/.claude/skills/commit"
+mkdir -p "$R/.claude/hooks" "$R/skills/commit"
 echo '#!/bin/bash' > "$R/.claude/hooks/block-api-bypass.sh"
-echo '# ユーザー独自の commit スキル' > "$R/.claude/skills/commit/SKILL.md"
+echo '# ユーザー独自の commit スキル' > "$R/skills/commit/SKILL.md"
 mkdir -p "$R/.claude"
 cat > "$R/.claude/vibecorp.yml" <<'YML'
 # vibecorp.yml — プロジェクト設定
@@ -1389,7 +1392,7 @@ skills:
 YML
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_exists "同名ユーザーフックは保持される" "$R/.claude/hooks/block-api-bypass.sh"
-assert_file_exists "同名ユーザースキルは保持される" "$R/.claude/skills/commit/SKILL.md"
+assert_file_exists "同名ユーザースキルは保持される" "$R/skills/commit/SKILL.md"
 assert_file_contains "ユーザーフックの内容が維持される" "$R/.claude/hooks/block-api-bypass.sh" "#!/bin/bash"
 assert_file_not_contains "無効化 hook が settings.json に含まれない" "$R/.claude/settings.json" "block-api-bypass"
 
@@ -1579,12 +1582,12 @@ else
   fail "AI1: hooks 内にプレースホルダーが残っている: $REMAINING"
 fi
 
-# skills 内の全ファイルに vibecorp プレースホルダーが残っていないこと
-REMAINING=$(grep -rl '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$R/.claude/skills/" 2>/dev/null || true)
+# plugin skills 内の全ファイルに vibecorp プレースホルダーが残っていないこと
+REMAINING=$(grep -rl '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$R/skills/" 2>/dev/null || true)
 if [ -z "$REMAINING" ]; then
-  pass "AI1: skills 内にプレースホルダーが残っていない"
+  pass "AI1: plugin skills 内にプレースホルダーが残っていない"
 else
-  fail "AI1: skills 内にプレースホルダーが残っている: $REMAINING"
+  fail "AI1: plugin skills 内にプレースホルダーが残っている: $REMAINING"
 fi
 cleanup
 
@@ -1642,7 +1645,7 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # 正常実行後に .tmp ファイルが残っていないこと
-TMP_FILES=$(find "$R/.claude/hooks/" "$R/.claude/skills/" -name '*.tmp' 2>/dev/null || true)
+TMP_FILES=$(find "$R/.claude/hooks/" "$R/skills/" -name '*.tmp' 2>/dev/null || true)
 if [ -z "$TMP_FILES" ]; then
   pass "AI3: 置換後に .tmp ファイルが残っていない"
 else

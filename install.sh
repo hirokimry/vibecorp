@@ -609,7 +609,7 @@ copy_managed_files() {
   local skills_dir="${REPO_ROOT}/.claude/skills"
   local agents_dir="${REPO_ROOT}/.claude/agents"
 
-  mkdir -p "$hooks_dir" "$skills_dir"
+  mkdir -p "$hooks_dir"
 
   # lib: フック共通ユーティリティをコピー（常に最新で上書き）
   local lib_dir="${REPO_ROOT}/.claude/lib"
@@ -653,33 +653,27 @@ copy_managed_files() {
     remove_orphan_hooks
   fi
 
-  # skills（.claude/skills/）: plugin skills から互換スタブを自動生成する
-  # templates/claude/skills/ は廃止 — skills/ （プラグインルート）が正とし、スタブは動的生成
-  for src_dir in "${SCRIPT_DIR}/skills/"*/; do
-    [[ -d "$src_dir" ]] || continue
-    local name
-    name=$(basename "$src_dir")
-    if ! is_skill_enabled "$name"; then
-      if [[ "$UPDATE_MODE" == true ]]; then
-        local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-        if [[ -f "$lock" ]] && read_lock_list "$lock" "skills" | grep -qxF "$name"; then
+  # --update: Phase 3 で廃止された .claude/skills/ 互換スタブをクリーンアップする
+  # plugin_skills リストに載っているスキル名と一致する .claude/skills/ 配下のみ削除
+  # （skills セクションは Phase 3 で空になるため plugin_skills で照合する）
+  if [[ "$UPDATE_MODE" == true ]]; then
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    if [[ -f "$lock" ]]; then
+      while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || continue
+        if [[ -d "${skills_dir:?}/${name:?}" ]]; then
           rm -rf "${skills_dir:?}/${name:?}"
+          log_info ".claude/skills/${name} 互換スタブを削除"
         fi
+      done < <(read_lock_list "$lock" "plugin_skills")
+      # .claude/skills/ が空ならディレクトリごと削除
+      if [[ -d "$skills_dir" ]] && [[ -z "$(ls -A "$skills_dir" 2>/dev/null)" ]]; then
+        rmdir "$skills_dir"
+        log_info ".claude/skills/ を削除（空）"
       fi
-      log_skip "skills/${name}（stub）は yml で無効化されているためスキップ"
-      continue
     fi
-    mkdir -p "${skills_dir}/${name}"
-    cat > "${skills_dir}/${name}/SKILL.md" <<STUB
----
-name: ${name}
-description: "このスキルは /vibecorp:${name} に移行しました。"
----
-
-このスキルは \`/vibecorp:${name}\` に移行しました。
-\`/vibecorp:${name}\` を使用してください。
-STUB
-  done
+  fi
 
   # agents: 同名ファイルが既存ならスキップ
   if [[ -d "${SCRIPT_DIR}/templates/claude/agents" ]]; then
@@ -757,7 +751,8 @@ STUB
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
-  local target_dirs=("$hooks_dir" "$skills_dir")
+  local target_dirs=("$hooks_dir")
+  [[ -d "$skills_dir" ]] && target_dirs+=("$skills_dir")
   [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
   [[ -d "$plugin_skills_dir" ]] && target_dirs+=("$plugin_skills_dir")
   local placeholder_errors=0

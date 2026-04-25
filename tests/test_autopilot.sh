@@ -23,7 +23,6 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
-STUB_FILE="$PROJECT_DIR/.claude/skills/autopilot/SKILL.md"
 
 echo "=== autopilot スキル テスト ==="
 
@@ -194,20 +193,15 @@ else
   fail "起票側の3者承認ゲートへの言及が不足している"
 fi
 
-# --- テスト7: スタブの検証 ---
+# --- テスト7: 互換スタブの廃止確認 ---
 
 echo ""
-echo "--- テスト7: スタブの検証 ---"
+echo "--- テスト7: 互換スタブの廃止確認 ---"
 
-if [[ -f "$STUB_FILE" ]]; then
-  pass "スタブファイルが存在する"
-  if grep -q 'vibecorp:autopilot' "$STUB_FILE"; then
-    pass "スタブが /vibecorp:autopilot へリダイレクトしている"
-  else
-    fail "スタブに /vibecorp:autopilot への参照がない"
-  fi
+if [[ -d "$PROJECT_DIR/.claude/skills/autopilot" ]]; then
+  fail ".claude/skills/autopilot/ が残存している（Phase 3 で廃止済み）"
 else
-  pass "スタブファイルなし（CI 環境）"
+  pass ".claude/skills/autopilot/ が廃止されている"
 fi
 
 # --- 結果 ---

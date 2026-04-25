@@ -232,19 +232,26 @@ assert_file_contains "--update でカスタム版フックが保持される" "$
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
 
-# P2. --update で .claude/skills/ スタブは常に自動生成で上書き（plugin 名前空間移行済み）
+# P2. --update で .claude/skills/ の互換スタブがクリーンアップされる（Phase 3）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-echo "# 古い review" > "$R/.claude/skills/review/SKILL.md"
+# 旧スタブを模擬配置
+mkdir -p "$R/.claude/skills/review"
+echo "# 旧スタブ" > "$R/.claude/skills/review/SKILL.md"
 mkdir -p "$R/.claude/skills/my-deploy"
 echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# .claude/skills/ はスタブ自動生成のため常に上書きされる
-assert_file_contains "--update でスタブが再生成される" "$R/.claude/skills/review/SKILL.md" "vibecorp:review"
+# lock に載っている管理スタブは削除される
+if [[ -d "$R/.claude/skills/review" ]]; then
+  fail "--update で管理スタブ(review)が削除されていない"
+else
+  pass "--update で管理スタブ(review)が削除された"
+fi
+# ユーザー独自スキルは残る
 assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
 cleanup
 
@@ -293,7 +300,7 @@ bash "$INSTALL_SH" --update 2>/dev/null
 
 # vibecorp 管理ファイルが存在
 assert_file_exists "--update 後に protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
-assert_dir_exists "--update 後に review スキル存在" "$R/.claude/skills/review"
+assert_dir_exists "--update 後に plugin review スキル存在" "$R/skills/review"
 # ユーザーファイルが保持
 assert_file_exists "--update 後にユーザーフック保持" "$R/.claude/hooks/custom.sh"
 assert_file_exists "--update 後にユーザースキル保持" "$R/.claude/skills/custom-skill/SKILL.md"
@@ -461,18 +468,22 @@ bash "$INSTALL_SH" --update --preset standard 2>/dev/null
 assert_file_contains "AB8: カスタム sync-gate が保持される" "$R/.claude/hooks/sync-gate.sh" "カスタム sync-gate"
 cleanup
 
-# AB9. 統合テスト: SKILL.md のカスタマイズが保持される（テンプレート未変更時）
+# AB9. 統合テスト: --update で旧スタブがクリーンアップされる
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# review スキルの SKILL.md をカスタマイズしても、スタブ自動生成で上書きされる
-echo "# custom-review-skill" > "$R/.claude/skills/review/SKILL.md"
-echo "user-added-instruction" >> "$R/.claude/skills/review/SKILL.md"
+# 旧スタブを模擬配置
+mkdir -p "$R/.claude/skills/review"
+echo "# 旧スタブ" > "$R/.claude/skills/review/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_contains "AB9: スタブが再生成される（plugin リダイレクト）" "$R/.claude/skills/review/SKILL.md" "vibecorp:review"
+if [[ -d "$R/.claude/skills/review" ]]; then
+  fail "AB9: 旧スタブ(review)が削除されていない"
+else
+  pass "AB9: 旧スタブ(review)がクリーンアップされた"
+fi
 cleanup
 
 # AB10. コンフリクト発生時に stderr に警告メッセージが出力される

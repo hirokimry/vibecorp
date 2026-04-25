@@ -23,7 +23,6 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/ship-parallel/SKILL.md"
-STUB_FILE="$PROJECT_DIR/.claude/skills/ship-parallel/SKILL.md"
 
 echo "=== 並列 ship オーケストレーションスキル テスト ==="
 echo ""
@@ -342,19 +341,14 @@ fi
 
 echo ""
 
-# --- テスト12: スタブの検証 ---
+# --- テスト12: 互換スタブの廃止確認 ---
 
-echo "--- テスト12: スタブの検証 ---"
+echo "--- テスト12: 互換スタブの廃止確認 ---"
 
-if [ -f "$STUB_FILE" ]; then
-  pass "スタブファイルが存在する"
-  if grep -q 'vibecorp:ship-parallel' "$STUB_FILE"; then
-    pass "スタブが /vibecorp:ship-parallel へリダイレクトしている"
-  else
-    fail "スタブに /vibecorp:ship-parallel への参照がない"
-  fi
+if [ -d "$PROJECT_DIR/.claude/skills/ship-parallel" ]; then
+  fail ".claude/skills/ship-parallel/ が残存している（Phase 3 で廃止済み）"
 else
-  pass "スタブファイルなし（CI 環境）"
+  pass ".claude/skills/ship-parallel/ が廃止されている"
 fi
 
 echo ""

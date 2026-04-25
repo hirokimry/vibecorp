@@ -23,7 +23,6 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/spike-loop/SKILL.md"
-STUB_FILE="$PROJECT_DIR/.claude/skills/spike-loop/SKILL.md"
 
 echo "=== spike-loop スキル テスト ==="
 
@@ -166,20 +165,15 @@ else
   fail "言語指定なしのコードブロックが ${BARE_OPEN_COUNT} 箇所ある"
 fi
 
-# --- テスト6: スタブの検証 ---
+# --- テスト6: 互換スタブの廃止確認 ---
 
 echo ""
-echo "--- テスト6: スタブの検証 ---"
+echo "--- テスト6: 互換スタブの廃止確認 ---"
 
-if [[ -f "$STUB_FILE" ]]; then
-  pass "スタブファイルが存在する"
-  if grep -q 'vibecorp:spike-loop' "$STUB_FILE"; then
-    pass "スタブが /vibecorp:spike-loop へリダイレクトしている"
-  else
-    fail "スタブに /vibecorp:spike-loop への参照がない"
-  fi
+if [[ -d "$PROJECT_DIR/.claude/skills/spike-loop" ]]; then
+  fail ".claude/skills/spike-loop/ が残存している（Phase 3 で廃止済み）"
 else
-  pass "スタブファイルなし（CI 環境）"
+  pass ".claude/skills/spike-loop/ が廃止されている"
 fi
 
 # --- 結果出力 ---
