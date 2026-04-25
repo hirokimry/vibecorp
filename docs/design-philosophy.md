@@ -164,7 +164,7 @@ full の sandbox opt-in は維持する。sandbox なしで並列実行した場
 
 ### 関連ドキュメント
 
-- `templates/docs/team-permissions.md` — チームモードでの承認負荷を下げる実用ガイド
+- `templates/docs/team-permissions.md.tpl` — チームモードでの承認負荷を下げる実用ガイド
 - [anthropics/claude-code#26479](https://github.com/anthropics/claude-code/issues/26479) — Agent Teams の allow リスト未継承バグ
 
 ## フック設計パターン
