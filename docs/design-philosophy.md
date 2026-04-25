@@ -62,7 +62,7 @@ docs/（Source of Truth・仕様書群）
    → Yes → agents/ に定義する
 ```
 
-## プラグイン配布方式: Claude Code 規約パスへの直接配置
+## プラグイン配布方式: Claude Code 規約パスへの直接配置（現行方針）
 
 ```text
 導入先リポジトリ:
@@ -83,8 +83,14 @@ docs/（Source of Truth・仕様書群）
 
 設計上の重要な判断:
 
-- **独自名前空間を持たない**
+- **独自名前空間を持たない（現行）**
   `.claude/vibecorp/` のような独自ディレクトリは作らない。全ファイルを Claude Code の規約パス（`.claude/hooks/`, `.claude/skills/`, `.claude/rules/`）に直接配置する。Claude Code が認識しないパスにファイルを置くことは、プラグインとして意味がない
+
+- **Plugin 名前空間への移行検討中（Phase 1 検証完了、Phase 2 設計判断待ち）**
+  Claude Code の公式 Plugin 機能（`.claude-plugin/plugin.json` + `skills/{name}/SKILL.md`）により `/vibecorp:review` 形式の名前空間付きスキルが実現可能であることを Phase 1 実機検証で確認した（Issue #352）。組み込みコマンドとの衝突を回避できるため、長期的には移行が有望。ただし以下のブロッカーが残るため、現行の直接配置方式を維持しつつ並行検討する:
+  - プラグインの永続化方法（`claude plugin install` の自動化 or 自動検出の公式サポート待ち）
+  - スキル間呼び出し構文（SKILL.md 内の `/review` 等を `/vibecorp:review` に書き換える必要がある）
+  - `$CLAUDE_PROJECT_DIR` の参照先（install.sh ファイルコピー方式と plugin install キャッシュ方式で異なる）
 
 - **lock をマニフェストとして使う**
   `vibecorp.lock` に vibecorp が管理するファイルの一覧を記録する。lock に載っている = vibecorp 管理、載っていない = ユーザー作成。更新時は lock を参照して vibecorp 管理ファイルのみ差し替える
