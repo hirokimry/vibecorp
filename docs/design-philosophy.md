@@ -134,7 +134,7 @@ vibecorp が生成した skills, rules, hooks を protect-files フックで保�
 
 - **minimal**: /vibecorp:review, /vibecorp:review-loop, /vibecorp:pr-review-loop, /vibecorp:pr, /vibecorp:commit, /vibecorp:issue, /vibecorp:ship, /vibecorp:plan, /vibecorp:branch, /vibecorp:plan-review-loop
 - **standard**: 上記 + /vibecorp:review-to-rules, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all
-- **full**: 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:spike-loop
+- **full**: 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot
 
 ## 承認フローへの非介入
 
