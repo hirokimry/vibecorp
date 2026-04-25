@@ -19,7 +19,7 @@ vibecorp v0.2.0 より、全スキルが Claude Code 公式 Plugin 名前空間 
 
 ```bash
 # install.sh --update で自動移行
-source /path/to/vibecorp/install.sh --update
+bash /path/to/vibecorp/install.sh --update
 ```
 
 `--update` を実行すると以下が自動で行われる:
