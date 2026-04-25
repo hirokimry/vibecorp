@@ -609,7 +609,7 @@ copy_managed_files() {
   local skills_dir="${REPO_ROOT}/.claude/skills"
   local agents_dir="${REPO_ROOT}/.claude/agents"
 
-  mkdir -p "$hooks_dir" "$skills_dir"
+  mkdir -p "$hooks_dir"
 
   # lib: フック共通ユーティリティをコピー（常に最新で上書き）
   local lib_dir="${REPO_ROOT}/.claude/lib"
