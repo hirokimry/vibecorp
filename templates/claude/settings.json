@@ -1,4 +1,15 @@
 {
+  "extraKnownMarketplaces": {
+    "vibecorp": {
+      "source": {
+        "source": "github",
+        "repo": "hirokimry/vibecorp"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "vibecorp@vibecorp": true
+  },
   "permissions": {
     "allow": [
       "Write(.claude/knowledge/**)",

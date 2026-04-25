@@ -1423,8 +1423,13 @@ generate_settings_json() {
 
     local new_hooks
     new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
+    local new_marketplaces
+    new_marketplaces=$(echo "$new_settings" | jq '.extraKnownMarketplaces // {}')
+    local new_enabled_plugins
+    new_enabled_plugins=$(echo "$new_settings" | jq '.enabledPlugins // {}')
 
-    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" '
+    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" \
+       --argjson new_mkts "$new_marketplaces" --argjson new_plugins "$new_enabled_plugins" '
       def is_managed_hook:
         (.command | split("/") | last) as $basename |
         any($managed[]; . == $basename);
@@ -1438,8 +1443,12 @@ generate_settings_json() {
         | group_by(.matcher)
         | map({matcher: .[0].matcher, hooks: ([.[].hooks[]] | unique_by(.command))})
       )
+      # extraKnownMarketplaces / enabledPlugins はテンプレート値で既存をオーバーレイする
+      # （vibecorp 自身のエントリだけを上書きし、ユーザー追加分は保持される）
+      | .extraKnownMarketplaces = ((.extraKnownMarketplaces // {}) + $new_mkts)
+      | .enabledPlugins = ((.enabledPlugins // {}) + $new_plugins)
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
-    log_info "settings.json をマージ（ユーザーフック保持）"
+    log_info "settings.json をマージ（ユーザーフック・marketplace 保持）"
   fi
 }
 
