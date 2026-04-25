@@ -85,11 +85,11 @@ Agent ツールで以下を実行（model: sonnet, tools: Bash(限定), Edit, Wr
   clo.md
   ciso.md
 
-.claude/skills/     ← ワークフロー（内部で Agent 起動時に model/tools 指定）
+skills/             ← Plugin 名前空間（/vibecorp:xxx）で呼び出し
   review/           ← CodeRabbit CLI実行 + カスタムレビュー
   review-loop/      ← validator(opus) → planner(opus) → fixer(sonnet) を内包
-  pr-merge-loop/    ← 統合ワークフロー
-  review-to-rules/  ← 各 Role Agent を順次起動して知識蓄積
+  pr-review-loop/   ← 統合ワークフロー
+  session-harvest/  ← 各 Role Agent を順次起動して知識蓄積
   ...
 ```
 

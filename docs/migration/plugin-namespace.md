@@ -3,15 +3,16 @@
 ## 概要
 
 vibecorp v0.2.0 より、全スキルが Claude Code 公式 Plugin 名前空間 `/vibecorp:xxx` で呼び出せるようになった。
+v0.3.0 で `.claude/skills/` の互換スタブが廃止され、Plugin 形式に一本化された。
 
 ## 変更点
 
-| 項目 | Before | After |
-|------|--------|-------|
-| スキル呼び出し | `/ship` | `/vibecorp:ship` |
-| スキル本体の配置先 | `.claude/skills/` | `skills/`（プラグインルート） |
-| `.claude/skills/` の役割 | スキル本体 | 互換スタブ（リダイレクト） |
-| プラグインメタデータ | なし | `.claude-plugin/plugin.json` |
+| 項目 | v0.1.x | v0.2.0（Phase 2） | v0.3.0（Phase 3） |
+|------|--------|-------------------|-------------------|
+| スキル呼び出し | `/ship` | `/vibecorp:ship` | `/vibecorp:ship` |
+| スキル本体 | `.claude/skills/` | `skills/`（プラグインルート） | `skills/`（プラグインルート） |
+| `.claude/skills/` | スキル本体 | 互換スタブ | **廃止** |
+| プラグインメタデータ | なし | `.claude-plugin/plugin.json` | `.claude-plugin/plugin.json` |
 
 ## 移行手順
 
@@ -26,13 +27,12 @@ bash /path/to/vibecorp/install.sh --update
 
 1. `skills/` にプラグインスキルがコピーされる
 2. `.claude-plugin/plugin.json` が配置される
-3. `.claude/skills/` のスタブが更新される（旧スキル本体 → リダイレクトスタブ）
+3. `.claude/skills/` の旧スタブが自動クリーンアップされる（v0.3.0 以降、`vibecorp.lock` が存在する場合）
 
-### 互換性
+### 旧コマンド名（`/ship` 等）について
 
-- 旧名称 `/ship` は `.claude/skills/` のスタブが `/vibecorp:ship` へリダイレクトする
-- 既存のカスタマイズ（SKILL.md の編集）は `--update` の 3-way マージで保持される
-- `vibecorp.yml` の設定は変更不要
+v0.3.0 で互換スタブが廃止されたため、旧コマンド名（`/ship`、`/autopilot` 等）は使用できない。
+`/vibecorp:ship`、`/vibecorp:autopilot` 等の Plugin 名前空間形式を使用すること。
 
 ## ディレクトリ構成
 
@@ -47,16 +47,11 @@ project-root/
 │   │   └── SKILL.md
 │   └── ...
 ├── .claude/
-│   ├── skills/               # 互換スタブ（/xxx → /vibecorp:xxx へリダイレクト）
-│   │   ├── ship/
-│   │   │   └── SKILL.md     # "このスキルは /vibecorp:ship に移行しました"
-│   │   └── ...
+│   ├── hooks/
+│   ├── agents/
+│   ├── rules/
 │   └── ...
 ```
-
-## 互換レイヤの廃止予定
-
-`.claude/skills/` の互換スタブは暫定的な移行補助であり、将来のメジャーバージョン（v1.0.0 以降）で廃止を予定している。廃止時は `install.sh --update` でスタブが自動削除される。新規のスキル参照は `/vibecorp:xxx` 形式を使用すること。
 
 ## `$CLAUDE_PROJECT_DIR` について
 
@@ -64,5 +59,7 @@ project-root/
 
 ## 関連
 
-- Issue #358
+- Issue #352（Phase 1 実機検証）
+- Issue #358（Phase 2 全面移行）
+- Issue #359（Phase 3 互換レイヤ廃止）
 - `.claude-plugin/plugin.json`

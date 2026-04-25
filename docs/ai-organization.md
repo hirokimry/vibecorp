@@ -162,4 +162,4 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 ### Plugin 名前空間移行（完了）
 
 Claude Code 公式 Plugin 機能（`--plugin-dir`）を利用した `/vibecorp:xxx` 形式のスキル名前空間への移行が完了した。
-Phase 1（実機検証）は Issue #352、Phase 2（全スキル plugin 化と互換レイヤ構築）は Issue #358 で完了。全 26 スキルが `skills/`（plugin ルート）に配置され、`.claude/skills/` には互換スタブが自動生成される。`templates/claude/skills/` は廃止され、install.sh がスタブを動的生成する。
+Phase 1（実機検証）は Issue #352、Phase 2（全スキル plugin 化と互換レイヤ構築）は Issue #358、Phase 3（互換レイヤ廃止）は Issue #359 で完了。全 26 スキルが `skills/`（plugin ルート）に配置され、Plugin 名前空間（`/vibecorp:xxx`）のみで呼び出し可能。`.claude/skills/` の互換スタブは廃止された。

@@ -117,10 +117,10 @@ language: ja
 base_branch: main
 YAML
 
-  # .gitignore（vibecorp パターン: hooks, skills, settings.json を除外）
+  # .gitignore（vibecorp パターン: hooks, agents, settings.json を除外）
   cat > "$REPO_DIR/.claude/.gitignore" <<'GITIGNORE'
 hooks/
-skills/
+agents/
 settings.json
 GITIGNORE
 
@@ -132,10 +132,10 @@ GITIGNORE
   git -C "$REPO_DIR" fetch origin >/dev/null 2>&1
 
   # 未追跡ファイル（.gitignore で除外されるもの — コミット後に作成）
-  mkdir -p "$REPO_DIR/.claude/hooks" "$REPO_DIR/.claude/skills/branch"
+  mkdir -p "$REPO_DIR/.claude/hooks" "$REPO_DIR/.claude/agents"
   echo '#!/bin/bash' > "$REPO_DIR/.claude/hooks/test-hook.sh"
   chmod +x "$REPO_DIR/.claude/hooks/test-hook.sh"
-  echo '# テストスキル' > "$REPO_DIR/.claude/skills/branch/SKILL.md"
+  echo '# テストエージェント' > "$REPO_DIR/.claude/agents/test-agent.md"
   echo '{"hooks":{}}' > "$REPO_DIR/.claude/settings.json"
 }
 
@@ -173,7 +173,7 @@ rsync -a "$REPO_DIR/.claude/" "$WORKTREE_BASE/$BRANCH_NAME/.claude/"
 
 assert_dir_exists "同期後: hooks/ がワークツリーに存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/hooks"
 assert_file_exists "同期後: hooks/test-hook.sh が存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/hooks/test-hook.sh"
-assert_file_exists "同期後: skills/branch/SKILL.md が存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/skills/branch/SKILL.md"
+assert_file_exists "同期後: agents/test-agent.md が存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/agents/test-agent.md"
 assert_file_exists "同期後: settings.json が存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/settings.json"
 assert_file_exists "同期後: 追跡ファイル（CLAUDE.md）が引き続き存在する" "$WORKTREE_BASE/$BRANCH_NAME/.claude/CLAUDE.md"
 
@@ -212,7 +212,7 @@ echo "--- テスト5: 全追跡プロジェクト（Case A）での rsync ---"
 
 # .gitignore を削除して全追跡にする
 rm -f "$REPO_DIR/.claude/.gitignore"
-git -C "$REPO_DIR" add "$REPO_DIR/.claude/hooks" "$REPO_DIR/.claude/skills" "$REPO_DIR/.claude/settings.json"
+git -C "$REPO_DIR" add "$REPO_DIR/.claude/hooks" "$REPO_DIR/.claude/agents" "$REPO_DIR/.claude/settings.json"
 git -C "$REPO_DIR" rm --cached "$REPO_DIR/.claude/.gitignore" >/dev/null 2>&1 || true
 git -C "$REPO_DIR" commit -m "全ファイルを追跡に追加" >/dev/null 2>&1
 

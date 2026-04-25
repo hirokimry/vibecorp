@@ -126,7 +126,7 @@ esac
 | 種別 | 配置先 |
 |------|--------|
 | フック | `templates/claude/hooks/新しいフック.sh` |
-| スキル | `templates/claude/skills/新しいスキル/SKILL.md` |
+| スキル | `skills/新しいスキル/SKILL.md` |
 | エージェント | `templates/claude/agents/新しいエージェント.md` |
 | knowledge | `templates/claude/knowledge/新しいロール/` |
 

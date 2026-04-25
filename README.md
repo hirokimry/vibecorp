@@ -138,9 +138,11 @@ which claude
 
 ```text
 your-project/
+├── .claude-plugin/
+│   └── plugin.json        # Plugin メタデータ
+├── skills/                # スキル（/vibecorp:xxx で呼び出し）
 ├── .claude/
 │   ├── hooks/             # フック（ファイル保護・ゲート制御）
-│   ├── skills/            # スキル（Claude Code の /コマンド）
 │   ├── agents/            # エージェント（standard 以上）
 │   ├── knowledge/         # 役割別の判断基準・判断記録（standard 以上）
 │   ├── rules/             # コーディング規約

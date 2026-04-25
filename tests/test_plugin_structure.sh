@@ -1,6 +1,6 @@
 #!/bin/bash
 # test_plugin_structure.sh — Plugin 名前空間の構造テスト
-# skills/ にプラグインスキルが配置され、.claude/skills/ がスタブになっていることを検証する
+# skills/ にプラグインスキルが配置されていることを検証する
 # 使い方: bash tests/test_plugin_structure.sh
 
 set -euo pipefail
@@ -35,27 +35,11 @@ for skill in ship review commit plan pr issue branch; do
   assert_file_exists "skills/${skill}/SKILL.md 存在" "${SCRIPT_DIR}/skills/${skill}/SKILL.md"
 done
 
-# A5. .claude/skills/ がスタブになっている（install.sh 実行後のみ検証可能）
-# CI 環境では .claude/skills/ のスタブは install.sh で自動生成されるため、
-# checkout 直後にはスタブが揃わない。スタブの整合性はセクション B（install 後）で検証する。
-STUB_COUNT=$(find "${SCRIPT_DIR}/.claude/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-PLUGIN_COUNT=$(find "${SCRIPT_DIR}/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-if [[ "$STUB_COUNT" -ge "$PLUGIN_COUNT" ]]; then
-  for skill in ship review commit plan pr issue branch; do
-    STUB_FILE="${SCRIPT_DIR}/.claude/skills/${skill}/SKILL.md"
-    if [[ -f "$STUB_FILE" ]]; then
-      if grep -q "vibecorp:${skill}" "$STUB_FILE"; then
-        pass ".claude/skills/${skill} がスタブ（リダイレクト）"
-      else
-        fail ".claude/skills/${skill} がスタブでない（vibecorp:${skill} への参照がない）"
-      fi
-    else
-      fail ".claude/skills/${skill}/SKILL.md が存在しない"
-    fi
-  done
-  pass "plugin skills 数（${PLUGIN_COUNT}）= stub 数（${STUB_COUNT}）"
+# A5. .claude/skills/ 互換スタブが廃止されている（Phase 3）
+if [[ -d "${SCRIPT_DIR}/.claude/skills" ]]; then
+  fail ".claude/skills/ が残存している（Phase 3 で廃止済み）"
 else
-  pass "A5/A6: スタブ未生成（CI 環境）— install 後テスト（B4）で検証"
+  pass ".claude/skills/ が廃止されている"
 fi
 
 # --- B. install.sh でのプラグインスキル配布 ---
@@ -78,19 +62,17 @@ done
 # B3. .claude-plugin/plugin.json がコピーされている
 assert_file_exists "install 後 .claude-plugin/plugin.json" "${R}/.claude-plugin/plugin.json"
 
-# B4. .claude/skills/ がスタブとしてコピーされている
-for skill in ship review commit; do
-  STUB_FILE="${R}/.claude/skills/${skill}/SKILL.md"
-  if [[ -f "$STUB_FILE" ]]; then
-    if grep -q "vibecorp:${skill}" "$STUB_FILE"; then
-      pass "install 後 .claude/skills/${skill} がスタブ"
-    else
-      fail "install 後 .claude/skills/${skill} がスタブでない"
-    fi
+# B4. .claude/skills/ 互換スタブが生成されない（Phase 3 で廃止）
+if [[ -d "${R}/.claude/skills" ]]; then
+  STUB_COUNT=$(find "${R}/.claude/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$STUB_COUNT" -gt 0 ]]; then
+    fail "install 後 .claude/skills/ にスタブが生成されている（${STUB_COUNT} 件）"
   else
-    fail "install 後 .claude/skills/${skill}/SKILL.md が存在しない"
+    pass "install 後 .claude/skills/ にスタブなし"
   fi
-done
+else
+  pass "install 後 .claude/skills/ が存在しない"
+fi
 
 # B5. vibecorp.lock に plugin_skills セクションがある
 assert_file_contains "lock に plugin_skills" "${R}/.claude/vibecorp.lock" "plugin_skills:"
@@ -147,9 +129,9 @@ echo "--- D. テンプレート整合性 ---"
 # D1. templates/claude-plugin/plugin.json が存在する
 assert_file_exists "templates/claude-plugin/plugin.json" "${SCRIPT_DIR}/templates/claude-plugin/plugin.json"
 
-# D2. templates/claude/skills/ が廃止されている（スタブは install.sh で自動生成）
+# D2. templates/claude/skills/ が廃止されている
 if [[ -d "${SCRIPT_DIR}/templates/claude/skills" ]]; then
-  fail "templates/claude/skills/ が残存している（廃止済み: スタブは install.sh で自動生成）"
+  fail "templates/claude/skills/ が残存している（廃止済み）"
 else
   pass "templates/claude/skills/ が廃止されている"
 fi
