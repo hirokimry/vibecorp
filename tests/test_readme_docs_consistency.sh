@@ -83,21 +83,20 @@ while IFS= read -r name; do
   fi
 done <<< "$listed_files"
 
-# テンプレートだけにあって README に載っていないファイルも警告（情報のみ）
+# テンプレートだけにあって README に載っていないファイルは失敗扱い（1:1 対応）
 declare -a tpl_orphans=()
 while IFS= read -r tpl; do
   base=$(basename "$tpl")
   name="${base%.tpl}"
-  if ! grep -qF "${name}" <<< "$listed_files"; then
+  if ! grep -qxF "${name}" <<< "$listed_files"; then
     tpl_orphans+=("$name")
   fi
 done < <(find "$TPL_DIR" -maxdepth 1 -type f -name '*.md.tpl')
 
 if [[ ${#tpl_orphans[@]} -gt 0 ]]; then
   echo ""
-  echo "  ℹ️  テンプレートには存在するが README に掲載されていない docs:"
   for o in "${tpl_orphans[@]}"; do
-    echo "    - $o"
+    fail "README 未掲載テンプレート: ${o}"
   done
 fi
 
