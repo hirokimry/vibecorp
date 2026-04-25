@@ -155,6 +155,59 @@ assert_file_contains "O9: スナップショット欠落時もカスタマイズ
 assert_file_exists "O9: スナップショットが再作成される" "$R/.claude/vibecorp-base/MVV.md"
 cleanup
 
+# O10. クリーン clone 模擬: lock の base_hash あり + スナップショットなし + テンプレート差分あり
+# merge_or_overwrite に流れて上書きされないことを確認（指摘: クリーン clone の失敗モード）
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ユーザーが CLAUDE.md をカスタマイズ
+echo "# My customized CLAUDE.md" > "$R/.claude/CLAUDE.md"
+echo "clean-clone-marker" >> "$R/.claude/CLAUDE.md"
+
+# クリーン clone を模擬: スナップショットだけ削除（lock の base_hash は残す）
+rm -f "$R/.claude/vibecorp-base/CLAUDE.md"
+
+# テンプレートに差分を作るため CLAUDE.md テンプレートを変更
+tpl_claude="$R/.claude/vibecorp-base/../../../templates/CLAUDE.md.tpl"
+if [[ ! -f "$tpl_claude" ]]; then
+  # テンプレートが見つからない場合はテスト用に直接 lock を操作して差分を発生させる
+  # base_hash を意図的に古い値に書き換えることで「テンプレートが変わった」状態を再現
+  tmp_lock="$(mktemp "$(dirname "$R/.claude/vibecorp.lock")/.vibecorp.lock.XXXXXX")"
+  sed 's/\(    CLAUDE\.md: \).*/\1aaaa_fake_old_hash/' "$R/.claude/vibecorp.lock" > "$tmp_lock" && mv "$tmp_lock" "$R/.claude/vibecorp.lock"
+fi
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# カスタマイズが保護されること（上書きされないこと）
+assert_file_contains "O10: クリーン clone 模擬でカスタマイズが保護される" "$R/.claude/CLAUDE.md" "clean-clone-marker"
+# 次回マージ用にスナップショットが再作成される
+assert_file_exists "O10: スナップショットが再作成される" "$R/.claude/vibecorp-base/CLAUDE.md"
+cleanup
+
+# O11. スナップショット hash 不一致: lock の base_hash と vibecorp-base/ の内容が食い違う場合
+# 誤ったベースで 3-way マージされないことを確認
+create_test_repo
+bash "$INSTALL_SH" --name test-proj 2>/dev/null
+R="$TMPDIR_ROOT"
+
+# ユーザーが CLAUDE.md をカスタマイズ
+echo "# Custom CLAUDE" > "$R/.claude/CLAUDE.md"
+echo "hash-mismatch-marker" >> "$R/.claude/CLAUDE.md"
+
+# スナップショットを壊す（base_hash と不一致にする）
+echo "corrupted snapshot content" > "$R/.claude/vibecorp-base/CLAUDE.md"
+
+# base_hash を古い値に変更してテンプレート差分を発生させる
+tmp_lock="$(mktemp "$(dirname "$R/.claude/vibecorp.lock")/.vibecorp.lock.XXXXXX")"
+sed 's/\(    CLAUDE\.md: \).*/\1bbbb_fake_old_hash/' "$R/.claude/vibecorp.lock" > "$tmp_lock" && mv "$tmp_lock" "$R/.claude/vibecorp.lock"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# 不一致時はカスタマイズが保護される（誤ったベースでマージされない）
+assert_file_contains "O11: スナップショット hash 不一致時にカスタマイズが保護される" "$R/.claude/CLAUDE.md" "hash-mismatch-marker"
+cleanup
+
 # ============================================
 echo ""
 echo "=== P. --update での管理ファイル強制差し替え ==="

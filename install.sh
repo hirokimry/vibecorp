@@ -236,8 +236,17 @@ merge_or_overwrite() {
   base_snapshot=$(get_base_snapshot "$rel_path")
 
   if [[ -z "$base_snapshot" ]]; then
-    # ベーススナップショットがない場合は上書き（ユーザーに警告）
     log_merge "${rel_path} はカスタマイズ済みですが、ベーススナップショットがないため上書きします"
+    cp "$template" "$target"
+    save_base_snapshot "$template" "$rel_path"
+    return 0
+  fi
+
+  # スナップショットの hash が lock の base_hash と一致するか検証
+  local snapshot_hash
+  snapshot_hash=$(compute_hash "$base_snapshot")
+  if [[ -n "$snapshot_hash" && "$snapshot_hash" != "$base_hash" ]]; then
+    log_merge "${rel_path} のベーススナップショットが base_hash と不一致のため上書きします"
     cp "$template" "$target"
     save_base_snapshot "$template" "$rel_path"
     return 0
@@ -1806,7 +1815,18 @@ update_user_managed_file() {
   base_snapshot=$(get_base_snapshot "$rel_path")
 
   if [[ -n "$base_hash" && -n "$base_snapshot" ]]; then
-    # ベースハッシュ・スナップショット両方あり → 3-way マージ
+    # ベースハッシュ・スナップショット両方あり → hash 整合性を検証してから 3-way マージ
+    local snapshot_hash
+    snapshot_hash=$(compute_hash "$base_snapshot")
+    if [[ -n "$snapshot_hash" && "$snapshot_hash" != "$base_hash" ]]; then
+      # スナップショットが lock の base_hash と不一致 → 信頼できないのでスキップ
+      save_base_snapshot "$tpl" "$rel_path"
+      local snapshot_path="${REPO_ROOT}/.claude/vibecorp-base/${rel_path}"
+      log_skip "${rel_path} のベーススナップショットが base_hash と不一致のためスキップ"
+      log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${snapshot_path} ${target}"
+      CONFLICT_FILES="${CONFLICT_FILES}  - ${rel_path}（ベーススナップショット不整合のためスキップ）"$'\n'
+      return
+    fi
     merge_or_overwrite "$tpl" "$target" "$rel_path" || true
   else
     # ベース情報が不完全（旧バージョンからの移行、またはスナップショット欠落）。
@@ -1815,7 +1835,7 @@ update_user_managed_file() {
     save_base_snapshot "$tpl" "$rel_path"
     local snapshot_path="${REPO_ROOT}/.claude/vibecorp-base/${rel_path}"
     log_skip "${rel_path} はカスタマイズ済みの可能性があり、ベース情報が不完全なためスキップ"
-    log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${target} ${snapshot_path}"
+    log_info "新テンプレートを反映する場合は手動でマージしてください: diff ${snapshot_path} ${target}"
     CONFLICT_FILES="${CONFLICT_FILES}  - ${rel_path}（カスタマイズ保護のためスキップ）"$'\n'
   fi
 }
