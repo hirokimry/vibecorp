@@ -153,6 +153,8 @@ your-project/
 ├── docs/                  # 仕様書・設計ドキュメント群
 │   ├── POLICY.md
 │   ├── SECURITY.md
+│   ├── ai-organization.md
+│   ├── cost-analysis.md
 │   ├── design-philosophy.md
 │   ├── specification.md
 │   ├── team-permissions.md
