@@ -119,6 +119,7 @@ awk '!/^    MVV\.md:/' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tm
 bash "$INSTALL_SH" --update 2>/dev/null
 
 assert_file_contains "O7: カスタマイズ済み MVV.md が保持される" "$R/MVV.md" "mvv-marker-abc"
+assert_file_exists "O7: 次回マージ用にベーススナップショットが作成される" "$R/.claude/vibecorp-base/MVV.md"
 cleanup
 
 # O8. --update でスナップショット欠落・lock の base_hash 残存時もカスタマイズが保護される
