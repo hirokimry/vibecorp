@@ -1,6 +1,6 @@
 ---
 name: approve-audit
-description: "コマンドログを棚卸しし、settings.local.json の allow リストへの追加を提案・実行する。「/approve-audit」「許可リスト更新」「コマンド棚卸し」と言った時に使用。"
+description: "コマンドログを棚卸しし、settings.local.json の allow リストへの追加を提案・実行する。「/vibecorp:approve-audit」「許可リスト更新」「コマンド棚卸し」と言った時に使用。"
 ---
 
 **ultrathink**

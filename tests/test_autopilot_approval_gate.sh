@@ -133,7 +133,7 @@ fi
 echo ""
 echo "--- テスト7: autopilot（起票側ゲートの信頼） ---"
 
-# Issue #361 後: autopilot は 3者ゲートを自身で持たず、起票側（/vibecorp:diagnose, /issue）のゲートを信頼する
+# Issue #361 後: autopilot は 3者ゲートを自身で持たず、起票側（/vibecorp:diagnose, /vibecorp:issue）のゲートを信頼する
 if grep -q '3者承認ゲート' "$AUTOPILOT_FILE"; then
   pass "autopilot が「3者承認ゲート」を参照している（起票側への言及として）"
 else

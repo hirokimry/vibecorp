@@ -3,7 +3,7 @@ name: audit-security
 description: >
   CISO による月次セキュリティ監査。直近30日間の変更から脆弱性・認証変更を分析し、
   `knowledge/security/audit-YYYY-MM-DD.md` に記録する。full プリセット限定。
-  「/audit-security」「セキュリティ監査」と言った時に使用。
+  「/vibecorp:audit-security」「セキュリティ監査」と言った時に使用。
 ---
 
 **ultrathink**

@@ -2,7 +2,7 @@
 # test_preset_workflow_regression.sh — /vibecorp:ship /vibecorp:autopilot のプリセット横断回帰テスト
 # 使い方: bash tests/test_preset_workflow_regression.sh
 #
-# Issue #284 完了条件「既存ワークフロー（/vibecorp:ship /autopilot）の minimal/standard/full 各プリセットで回帰テストパス」対応。
+# Issue #284 完了条件「既存ワークフロー（/vibecorp:ship /vibecorp:autopilot）の minimal/standard/full 各プリセットで回帰テストパス」対応。
 # install.sh のプリセット別生成ロジックと、autopilot の full 限定ガードが崩れていないかを検証する。
 
 set -euo pipefail

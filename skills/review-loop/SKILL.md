@@ -1,6 +1,6 @@
 ---
 name: review-loop
-description: "レビュー→検証→修正の自動ループ。問題0件まで繰り返す。「/review-loop」「レビューして直して」で使用。"
+description: "レビュー→検証→修正の自動ループ。問題0件まで繰り返す。「/vibecorp:review-loop」「レビューして直して」で使用。"
 ---
 
 **ultrathink**

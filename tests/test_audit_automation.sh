@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_audit_automation.sh — Phase 6: 事後監査自動化（/vibecorp:audit-cost, /audit-security）のテスト
+# test_audit_automation.sh — Phase 6: 事後監査自動化（/vibecorp:audit-cost, /vibecorp:audit-security）のテスト
 # 使い方: bash tests/test_audit_automation.sh
 
 set -euo pipefail

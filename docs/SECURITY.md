@@ -191,7 +191,7 @@ claude のメジャーバージョンアップ後は再検証を推奨する。
 
 ### 起票側集約アーキテクチャ
 
-不可領域フィルタは**起票側（/issue・/diagnose）に集約**し、/vibecorp:autopilot は起票済み Issue を透過パイプとして扱う。
+不可領域フィルタは**起票側（/vibecorp:issue・/vibecorp:diagnose）に集約**し、/vibecorp:autopilot は起票済み Issue を透過パイプとして扱う。
 
 - /vibecorp:autopilot は全 open Issue を処理対象とするが、起票ゲートを通過した Issue のみが存在する前提で動作する
 - /vibecorp:diagnose も起票時に同等の3者承認ゲートを実装済みであり、この前提を担保する
@@ -203,7 +203,7 @@ claude のメジャーバージョンアップ後は再検証を推奨する。
 
 | プリセット | /vibecorp:autopilot | 3者ゲート | 安全性根拠 |
 |-----------|-----------|----------|----------|
-| full | 動作する | /issue・/vibecorp:diagnose で実施済み | 起票側フィルタが前段で機能 |
+| full | 動作する | /vibecorp:issue・/vibecorp:diagnose で実施済み | 起票側フィルタが前段で機能 |
 | standard | 動作しない | /vibecorp:issue で実施 | /vibecorp:autopilot が存在しないため自動実装経路なし |
 | minimal | 動作しない | スキップ（/vibecorp:issue のみ動作） | /vibecorp:autopilot が存在しないため自動実装経路なし |
 

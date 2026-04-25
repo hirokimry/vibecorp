@@ -59,7 +59,7 @@ git -C <worktree_path> diff HEAD..origin/main --quiet
 ```text
 | パス | ブランチ | PR | 状態 |
 |------|---------|-----|------|
-| /path/to/vibecorp:worktree | dev/62_xxx | #123 | open |
+| /path/to/worktree | dev/62_xxx | #123 | open |
 | /path/to/worktree2 | dev/99_yyy | #456 | merged |
 | .claude/worktrees/agent-abc123 | worktree-agent-abc123 | - | agent (孤立) |
 | .claude/worktrees/agent-def456 | worktree-agent-def456 | - | agent (作業中) |
@@ -121,7 +121,7 @@ git branch -d <ブランチ名>
 #### 返却フォーマット
 
 ```text
-削除: dev/62_xxx (/path/to/vibecorp:worktree)
+削除: dev/62_xxx (/path/to/worktree)
 削除: worktree-agent-abc123 (.claude/worktrees/agent-abc123) [Agent]
 スキップ: dev/100_zzz (未コミット変更あり)
 スキップ: worktree-agent-def456 (作業中) [Agent]

@@ -1,6 +1,6 @@
 ---
 name: knowledge-pr
-description: "knowledge/buffer ブランチの差分を Issue 起票 → PR 作成 → auto-merge で main に反映する。/review-harvest / /session-harvest が蓄積した差分を定期的に本番化するためのスキル。「/knowledge-pr」「バッファをPR化して」と言った時に使用。"
+description: "knowledge/buffer ブランチの差分を Issue 起票 → PR 作成 → auto-merge で main に反映する。/vibecorp:review-harvest / /vibecorp:session-harvest が蓄積した差分を定期的に本番化するためのスキル。「/vibecorp:knowledge-pr」「バッファをPR化して」と言った時に使用。"
 ---
 
 # knowledge/buffer → PR 化
@@ -135,7 +135,7 @@ ${CHANGE_SUMMARY}
 
 ## 自動化ポリシー
 
-- 生成: \`/knowledge-pr\` スキル
+- 生成: \`/vibecorp:knowledge-pr\` スキル
 - 書込先: \`.claude/knowledge/\`, \`.claude/rules/\`, \`docs/\` のみ
 - CodeRabbit レビュー・CI 通過後に GitHub auto-merge が main に反映する
 EOF
