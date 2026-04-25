@@ -9,7 +9,7 @@ vibecorp は **承認フローに介入しない** 方針を取る。詳細は `
 ## vibecorp のスタンス
 
 - vibecorp は Claude Code の承認フローを書き換える hook を提供しない（`team-auto-approve.sh` 相当の自動承認 hook は廃止済み: #336）
-- 並列実行は full プリセットの `/vibecorp:ship-parallel` / `/vibecorp:autopilot` / `/vibecorp:spike-loop` に限定される
+- 並列実行は full プリセットの `/vibecorp:ship-parallel` / `/vibecorp:autopilot` に限定される
 - full プリセットを選んだユーザーは「並列 + 承認負荷」のトレードオフを理解している前提
 
 ## 並列実行時の承認負荷を下げる手段
@@ -19,7 +19,7 @@ vibecorp は **承認フローに介入しない** 方針を取る。詳細は `
 full プリセットで sandbox を有効化した状態で `claude --dangerously-skip-permissions` を使うと承認ダイアログが発生しない。vibecorp の公式サポート範囲はこの組み合わせ。
 
 ```bash
-# 例: spike-loop 内で teammate を起動する場合
+# 例: ship-parallel から teammate を起動する場合
 claude -p --permission-mode dontAsk --dangerously-skip-permissions --verbose "/vibecorp:ship-parallel <Issue URL>"
 ```
 

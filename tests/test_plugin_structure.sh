@@ -87,7 +87,7 @@ bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # C1. minimal ではヘッドレス並列スキルが plugin skills からも削除されている
-for skill in ship-parallel autopilot spike-loop diagnose; do
+for skill in ship-parallel autopilot diagnose; do
   if [[ -d "${R}/skills/${skill}" ]]; then
     fail "minimal で skills/${skill} が残っている"
   else
@@ -108,7 +108,7 @@ bash "$INSTALL_SH" --name test-proj --preset standard --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # C3. standard ではヘッドレス並列スキルが plugin skills からも削除されている
-for skill in ship-parallel autopilot spike-loop diagnose; do
+for skill in ship-parallel autopilot diagnose; do
   if [[ -d "${R}/skills/${skill}" ]]; then
     fail "standard で skills/${skill} が残っている"
   else
