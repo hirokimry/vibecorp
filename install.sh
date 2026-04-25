@@ -792,6 +792,10 @@ copy_managed_files() {
     [[ -f "$f" ]] && chmod +x "$f"
   done
 
+  # 全プリセット共通レガシー clean-up: 廃止済みスキル・フックを除去（#343 spike-loop 等）
+  rm -rf "${skills_dir}/spike-loop"
+  rm -rf "${plugin_skills_dir}/spike-loop"
+
   # プリセット別削除（引き算方式）
   case "$PRESET" in
     minimal)
@@ -815,7 +819,6 @@ copy_managed_files() {
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
-      rm -rf "${skills_dir}/spike-loop"
       # plugin skills（プラグインルート skills/）も同様に削除
       rm -rf "${plugin_skills_dir}/sync-check"
       rm -rf "${plugin_skills_dir}/sync-edit"
@@ -827,7 +830,6 @@ copy_managed_files() {
       rm -rf "${plugin_skills_dir}/context7"
       rm -rf "${plugin_skills_dir}/ship-parallel"
       rm -rf "${plugin_skills_dir}/autopilot"
-      rm -rf "${plugin_skills_dir}/spike-loop"
       rm -rf "${agents_dir}"
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
@@ -846,12 +848,10 @@ copy_managed_files() {
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
-      rm -rf "${skills_dir}/spike-loop"
       # plugin skills（プラグインルート skills/）も同様に削除
       rm -rf "${plugin_skills_dir}/diagnose"
       rm -rf "${plugin_skills_dir}/ship-parallel"
       rm -rf "${plugin_skills_dir}/autopilot"
-      rm -rf "${plugin_skills_dir}/spike-loop"
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
