@@ -54,6 +54,10 @@ project-root/
 │   └── ...
 ```
 
+## 互換レイヤの廃止予定
+
+`.claude/skills/` の互換スタブは暫定的な移行補助であり、将来のメジャーバージョン（v1.0.0 以降）で廃止を予定している。廃止時は `install.sh --update` でスタブが自動削除される。新規のスキル参照は `/vibecorp:xxx` 形式を使用すること。
+
 ## `$CLAUDE_PROJECT_DIR` について
 
 現時点では `$CLAUDE_PROJECT_DIR` を維持している。`claude plugin install` コマンドが安定した段階で `$CLAUDE_PLUGIN_ROOT` への移行を検討する。
