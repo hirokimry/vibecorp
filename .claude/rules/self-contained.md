@@ -1,6 +1,6 @@
 ---
 description: スキルが参照するコマンドはプリセット内に存在しなければならない
-paths: ["templates/claude/skills/**"]
+paths: ["skills/**"]
 ---
 
 # プリセット自己完結の原則
