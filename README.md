@@ -185,7 +185,7 @@ your-project/
 | `/vibecorp:review-loop` | レビュー → 検証 → 修正を指摘ゼロになるまで繰り返す（最大5回） |
 | `/vibecorp:pr` | GitHub PR を作成・更新。ブランチ名から Issue 番号を自動抽出し、auto-merge を設定 |
 | `/vibecorp:pr-review-fix` | PR の未解決コメントを1回修正して push する。単発実行用 |
-| `/vibecorp:pr-review-loop` | `/vibecorp:pr-review-fix` を5分間隔で定期実行し、マージまで自動で指摘対応を繰り返す |
+| `/vibecorp:pr-review-loop` | PR の状態を `gh pr view` でポーリングし、`MERGED` / `CLOSED` に達するまで teammate のターン内で同期完遂する。`CHANGES_REQUESTED` 検知時は `/vibecorp:pr-review-fix` を同期呼び出しして指摘を消化する |
 | `/vibecorp:commit` | 変更を分析し、Conventional Commits 形式で自動コミット |
 | `/vibecorp:issue` | タイトル・本文からラベルを自動判定し、Assignees を設定して GitHub Issue を起票。standard 以上では起票前に CISO・CPO・SM の3者が認証/暗号/課金/ガードレール/MVV の5分類で安全性と方針整合をチェックし、問題がある場合は起票を見送る |
 | `/vibecorp:branch` | Issue URL からブランチを自動作成（`dev/{Issue番号}_{要約}` 形式）。`--worktree` オプションで git worktree も同時作成 |
