@@ -1,12 +1,12 @@
 #!/bin/bash
-# test_knowledge_pr.sh — /knowledge-pr スキルの構造テスト
+# test_knowledge_pr.sh — /vibecorp:knowledge-pr スキルの構造テスト
 # LLM 駆動スキルのため、SKILL.md の必須要素と制約を検証する
 # 使い方: bash tests/test_knowledge_pr.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SKILL_FILE="${SCRIPT_DIR}/templates/claude/skills/knowledge-pr/SKILL.md"
+SKILL_FILE="${SCRIPT_DIR}/skills/knowledge-pr/SKILL.md"
 PASSED=0
 FAILED=0
 
@@ -27,7 +27,7 @@ assert_contains() {
 }
 
 # ============================================
-echo "=== /knowledge-pr SKILL.md 存在 ==="
+echo "=== /vibecorp:knowledge-pr SKILL.md 存在 ==="
 # ============================================
 
 assert_file_exists "SKILL.md が存在する" "$SKILL_FILE"

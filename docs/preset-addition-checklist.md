@@ -43,7 +43,7 @@ esac
 **注意**: `minimal)` ブロックには standard で削除するものも含める（minimal は standard のサブセット）
 
 **full プリセット専用スキル/フック追加時の必須対応**:
-- `/autopilot`, `/spike-loop`, `/ship-parallel` のように full 限定のスキルを追加した場合、必ず `minimal)` と `standard)` の両方に `rm -rf "${skills_dir}/<スキル名>"` を追加する
+- `/vibecorp:autopilot`, `/vibecorp:spike-loop`, `/vibecorp:ship-parallel` のように full 限定のスキルを追加した場合、必ず `minimal)` と `standard)` の両方に `rm -rf "${skills_dir}/<スキル名>"` を追加する
 - SKILL.md 内のソフトガード（preset 判定ロジック）だけに頼らず、install.sh で物理削除することがハード制限の本筋（隔離レイヤが full でしか効かないため、minimal/standard で誤爆させない）
 
 ### 2. install.sh — settings.json フィルタ（jq）

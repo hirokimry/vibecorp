@@ -22,10 +22,11 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PLUGIN_FILE="$PROJECT_DIR/skills/spike-loop/SKILL.md"
 TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/spike-loop/SKILL.md"
+# Plugin 名前空間移行後: skills/ がスキル本体
 LOCAL_FILE="$PROJECT_DIR/.claude/skills/spike-loop/SKILL.md"
-# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
-SKILL_FILE="$TEMPLATE_FILE"
+SKILL_FILE="$PLUGIN_FILE"
 
 echo "=== spike-loop スキル テスト ==="
 

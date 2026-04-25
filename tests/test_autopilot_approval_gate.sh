@@ -23,9 +23,9 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RULES_FILE="$PROJECT_DIR/templates/claude/rules/autonomous-restrictions.md"
-DIAGNOSE_FILE="$PROJECT_DIR/templates/claude/skills/diagnose/SKILL.md"
-AUTOPILOT_FILE="$PROJECT_DIR/templates/claude/skills/autopilot/SKILL.md"
-ISSUE_FILE="$PROJECT_DIR/templates/claude/skills/issue/SKILL.md"
+DIAGNOSE_FILE="$PROJECT_DIR/skills/diagnose/SKILL.md"
+AUTOPILOT_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
+ISSUE_FILE="$PROJECT_DIR/skills/issue/SKILL.md"
 
 echo "=== Phase 5: 3者承認ゲート テスト ==="
 
@@ -133,7 +133,7 @@ fi
 echo ""
 echo "--- テスト7: autopilot（起票側ゲートの信頼） ---"
 
-# Issue #361 後: autopilot は 3者ゲートを自身で持たず、起票側（/diagnose, /issue）のゲートを信頼する
+# Issue #361 後: autopilot は 3者ゲートを自身で持たず、起票側（/vibecorp:diagnose, /issue）のゲートを信頼する
 if grep -q '3者承認ゲート' "$AUTOPILOT_FILE"; then
   pass "autopilot が「3者承認ゲート」を参照している（起票側への言及として）"
 else
@@ -152,27 +152,27 @@ else
   fail "autopilot に diagnose ラベルの位置付けが明記されていない"
 fi
 
-# --- テスト7b: /issue が3者承認ゲートを持つ（Issue #361） ---
+# --- テスト7b: /vibecorp:issue が3者承認ゲートを持つ（Issue #361） ---
 
 echo ""
-echo "--- テスト7b: /issue の3者承認ゲート ---"
+echo "--- テスト7b: /vibecorp:issue の3者承認ゲート ---"
 
 if [[ -f "$ISSUE_FILE" ]]; then
-  pass "/issue SKILL.md が存在する"
+  pass "/vibecorp:issue SKILL.md が存在する"
 else
-  fail "/issue SKILL.md が存在しない"
+  fail "/vibecorp:issue SKILL.md が存在しない"
 fi
 
 if grep -q '3者承認ゲート' "$ISSUE_FILE"; then
-  pass "/issue に「3者承認ゲート」の記述が存在する"
+  pass "/vibecorp:issue に「3者承認ゲート」の記述が存在する"
 else
-  fail "/issue に「3者承認ゲート」の記述が存在しない"
+  fail "/vibecorp:issue に「3者承認ゲート」の記述が存在しない"
 fi
 
 if grep -q 'autonomous-restrictions.md' "$ISSUE_FILE"; then
-  pass "/issue が autonomous-restrictions.md を参照している"
+  pass "/vibecorp:issue が autonomous-restrictions.md を参照している"
 else
-  fail "/issue が autonomous-restrictions.md を参照していない"
+  fail "/vibecorp:issue が autonomous-restrictions.md を参照していない"
 fi
 
 # --- テスト8: 前提条件に SM 追加 ---

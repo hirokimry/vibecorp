@@ -385,7 +385,7 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== S. Issue テンプレート・ラベル・/issue スキル ==="
+echo "=== S. Issue テンプレート・ラベル・/vibecorp:issue スキル ==="
 # ============================================
 
 # P1. .github/ISSUE_TEMPLATE/ ディレクトリ存在
@@ -425,7 +425,7 @@ assert_file_not_contains "スキップされた bug_report.md は lock に載ら
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 
-# P7. /issue スキルが配置されている
+# P7. /vibecorp:issue スキルが配置されている
 assert_dir_exists "issue スキルディレクトリ存在" "$R/.claude/skills/issue"
 assert_file_exists "issue スキル SKILL.md 存在" "$R/.claude/skills/issue/SKILL.md"
 assert_file_contains "issue スキルに name: issue" "$R/.claude/skills/issue/SKILL.md" "name: issue"
@@ -816,7 +816,7 @@ assert_file_exists "cost-analysis.md 存在" "$R/docs/cost-analysis.md"
 # X4b. ai-organization.md が生成される
 assert_file_exists "ai-organization.md 存在" "$R/docs/ai-organization.md"
 
-# X4c. design-philosophy.md が生成される（#364 §1-4: /commit スキルのアンカーリンク先）
+# X4c. design-philosophy.md が生成される（#364 §1-4: /vibecorp:commit スキルのアンカーリンク先）
 assert_file_exists "design-philosophy.md 存在" "$R/docs/design-philosophy.md"
 assert_file_contains "design-philosophy.md にアンカー対象セクション" "$R/docs/design-philosophy.md" 'コマンドリダイレクト・フォールバックの禁止'
 

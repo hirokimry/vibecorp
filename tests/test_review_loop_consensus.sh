@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_review_loop_consensus.sh — /review-loop の合議制 + C*O メタレビュー層のテスト
+# test_review_loop_consensus.sh — /vibecorp:review-loop の合議制 + C*O メタレビュー層のテスト
 # 使い方: bash tests/test_review_loop_consensus.sh
 
 set -euo pipefail
@@ -22,10 +22,10 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/templates/claude/skills/review-loop/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/review-loop/SKILL.md"
 AGENTS_DIR="$PROJECT_DIR/templates/claude/agents"
 
-echo "=== /review-loop 合議制 + C*O メタレビュー テスト ==="
+echo "=== /vibecorp:review-loop 合議制 + C*O メタレビュー テスト ==="
 echo ""
 
 # --- テスト1: SKILL.md の存在 ---
@@ -193,10 +193,10 @@ echo ""
 
 echo "--- テスト6: CodeRabbit との位置づけ ---"
 
-if grep -q -e 'CodeRabbit' "$SKILL_FILE" || grep -q -e '/review' "$SKILL_FILE"; then
-  pass "/review / CodeRabbit との関係記述が存在する"
+if grep -q -e 'CodeRabbit' "$SKILL_FILE" || grep -q -e '/vibecorp:review' "$SKILL_FILE"; then
+  pass "/vibecorp:review / CodeRabbit との関係記述が存在する"
 else
-  fail "/review / CodeRabbit との関係記述が存在しない"
+  fail "/vibecorp:review / CodeRabbit との関係記述が存在しない"
 fi
 
 if grep -q -e '置き換えではなく追加' "$SKILL_FILE"; then

@@ -175,7 +175,7 @@ claude のメジャーバージョンアップ後は再検証を推奨する。
 
 ### 3者承認ゲートの設計
 
-/issue スキル（full/standard プリセット）でのIssue起票時に、CISO・CPO・SMの3者が不可領域フィルタを実施する。**全会一致ルール**: 1者でも「除外」と判定した場合は起票を中止する。
+/vibecorp:issue スキル（full/standard プリセット）でのIssue起票時に、CISO・CPO・SMの3者が不可領域フィルタを実施する。**全会一致ルール**: 1者でも「除外」と判定した場合は起票を中止する。
 
 不可領域の5分類:
 
@@ -191,40 +191,40 @@ claude のメジャーバージョンアップ後は再検証を推奨する。
 
 ### 起票側集約アーキテクチャ
 
-不可領域フィルタは**起票側（/issue・/diagnose）に集約**し、/autopilot は起票済み Issue を透過パイプとして扱う。
+不可領域フィルタは**起票側（/issue・/diagnose）に集約**し、/vibecorp:autopilot は起票済み Issue を透過パイプとして扱う。
 
-- /autopilot は全 open Issue を処理対象とするが、起票ゲートを通過した Issue のみが存在する前提で動作する
-- /diagnose も起票時に同等の3者承認ゲートを実装済みであり、この前提を担保する
-- この前提が崩れると「ゲートなしで起票された不可領域 Issue が /autopilot で自動実装される」攻撃経路が生じる
+- /vibecorp:autopilot は全 open Issue を処理対象とするが、起票ゲートを通過した Issue のみが存在する前提で動作する
+- /vibecorp:diagnose も起票時に同等の3者承認ゲートを実装済みであり、この前提を担保する
+- この前提が崩れると「ゲートなしで起票された不可領域 Issue が /vibecorp:autopilot で自動実装される」攻撃経路が生じる
 
 **既知制約**: Issue 本文へのプロンプトインジェクション（「判定: OK」等の埋め込み）による判定偽装の可能性がある。ただし CEO アカウントの侵害が前提条件となるため、信頼境界（CEO = ユーザー）の設計上スコープ外として扱う。
 
 ### プリセット別動作
 
-| プリセット | /autopilot | 3者ゲート | 安全性根拠 |
+| プリセット | /vibecorp:autopilot | 3者ゲート | 安全性根拠 |
 |-----------|-----------|----------|----------|
-| full | 動作する | /issue・/diagnose で実施済み | 起票側フィルタが前段で機能 |
-| standard | 動作しない | /issue で実施 | /autopilot が存在しないため自動実装経路なし |
-| minimal | 動作しない | スキップ（/issue のみ動作） | /autopilot が存在しないため自動実装経路なし |
+| full | 動作する | /issue・/vibecorp:diagnose で実施済み | 起票側フィルタが前段で機能 |
+| standard | 動作しない | /vibecorp:issue で実施 | /vibecorp:autopilot が存在しないため自動実装経路なし |
+| minimal | 動作しない | スキップ（/vibecorp:issue のみ動作） | /vibecorp:autopilot が存在しないため自動実装経路なし |
 
-minimal プリセットでは /autopilot スキル自体が配置されないため、3者ゲートが非動作であっても不可領域の自動実装経路は存在しない。
+minimal プリセットでは /vibecorp:autopilot スキル自体が配置されないため、3者ゲートが非動作であっても不可領域の自動実装経路は存在しない。
 
 ## 事後監査
 
-`/audit-security`（full プリセット限定）で CISO による月次セキュリティ監査を自動化できる。直近30日間のコード変更を分析し、`knowledge/security/audit-YYYY-MM-DD.md` にレポートを保存する。Critical / Major 指摘がある場合は自動で `audit` + `security` ラベル付き Issue を起票する。
+`/vibecorp:audit-security`（full プリセット限定）で CISO による月次セキュリティ監査を自動化できる。直近30日間のコード変更を分析し、`knowledge/security/audit-YYYY-MM-DD.md` にレポートを保存する。Critical / Major 指摘がある場合は自動で `audit` + `security` ラベル付き Issue を起票する。
 
 ### 定期実行例
 
 ```bash
 # 毎月1日 09:00 JST に実行
-/schedule monthly "0 0 1 * *" /audit-security
+/schedule monthly "0 0 1 * *" /vibecorp:audit-security
 ```
 
 または cron で:
 
 ```bash
 # crontab -e
-0 0 1 * * cd /path/to/repo && claude -p "/audit-security"
+0 0 1 * * cd /path/to/repo && claude -p "/vibecorp:audit-security"
 ```
 
 ### 監査観点

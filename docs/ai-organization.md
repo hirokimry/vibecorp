@@ -42,23 +42,23 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 
 ## ワークフロー × C*O ゲート マトリクス
 
-`/ship` 等の自動化ワークフローでは、**そのフェーズで判断に必要な情報が揃う最初のタイミングで、判断を管轄する C*O（または平社員合議）を入れる**ことを原則とする。C*O は常時起動せず、**管轄領域に触れた差分を検知した時のみ起動**する。
+`/vibecorp:ship` 等の自動化ワークフローでは、**そのフェーズで判断に必要な情報が揃う最初のタイミングで、判断を管轄する C*O（または平社員合議）を入れる**ことを原則とする。C*O は常時起動せず、**管轄領域に触れた差分を検知した時のみ起動**する。
 
 ### フェーズ × ゲート対応
 
 | フェーズ | 対象スキル | 対象プリセット | 入れる役職 | 起動条件 |
 |---|---|---|---|---|
-| 1. Issue 起票 | `/issue` | standard / full | CISO + CPO + SM | 常時（3者承認） |
-| 2. autopilot 候補フィルタ | `/diagnose` `/autopilot` | full | CPO + SM + CISO | 常時（3者承認） |
-| 3a. 設計レビュー（平社員層） | `/plan-review-loop` | プリセット別デフォルト | plan-architect, plan-security, plan-testing, plan-performance, plan-dx, plan-cost, plan-legal | プリセット別 |
-| 3b. 設計レビュー（C*O メタ層） | `/plan-review-loop` | full | CFO / CISO / CLO / SM / CPO / CTO | 条件起動（下記トリガー表） |
-| 4. 実装 | `/ship` 内 | — | なし | — |
-| 5. 実装レビュー（平社員合議） | `/review-loop` | full | security-analyst×3, accounting-analyst×3, legal-analyst×3 | 差分検知で条件起動 |
-| 6. 実装レビュー（C*O メタ層） | `/review-loop` | full | 該当 C*O | 平社員合議で Major 以上 |
-| 7. PR レビュー | `/pr-review-loop` | 全プリセット | CodeRabbit のみ | — |
-| 8a. マージゲート（standard） | `/sync-check` | standard | CTO / CPO | 管轄領域に触れた時のみ |
-| 8b. マージゲート（full） | `/sync-check` | full | CTO / CPO / CFO / CISO / CLO / SM | 管轄領域に触れた時のみ |
-| 9. 事後監査 | `/audit-cost` `/audit-security` | full | CFO（週次コスト）/ CISO（月次セキュリティ） | 定期 |
+| 1. Issue 起票 | `/vibecorp:issue` | standard / full | CISO + CPO + SM | 常時（3者承認） |
+| 2. autopilot 候補フィルタ | `/vibecorp:diagnose` `/vibecorp:autopilot` | full | CPO + SM + CISO | 常時（3者承認） |
+| 3a. 設計レビュー（平社員層） | `/vibecorp:plan-review-loop` | プリセット別デフォルト | plan-architect, plan-security, plan-testing, plan-performance, plan-dx, plan-cost, plan-legal | プリセット別 |
+| 3b. 設計レビュー（C*O メタ層） | `/vibecorp:plan-review-loop` | full | CFO / CISO / CLO / SM / CPO / CTO | 条件起動（下記トリガー表） |
+| 4. 実装 | `/vibecorp:ship` 内 | — | なし | — |
+| 5. 実装レビュー（平社員合議） | `/vibecorp:review-loop` | full | security-analyst×3, accounting-analyst×3, legal-analyst×3 | 差分検知で条件起動 |
+| 6. 実装レビュー（C*O メタ層） | `/vibecorp:review-loop` | full | 該当 C*O | 平社員合議で Major 以上 |
+| 7. PR レビュー | `/vibecorp:pr-review-loop` | 全プリセット | CodeRabbit のみ | — |
+| 8a. マージゲート（standard） | `/vibecorp:sync-check` | standard | CTO / CPO | 管轄領域に触れた時のみ |
+| 8b. マージゲート（full） | `/vibecorp:sync-check` | full | CTO / CPO / CFO / CISO / CLO / SM | 管轄領域に触れた時のみ |
+| 9. 事後監査 | `/vibecorp:audit-cost` `/vibecorp:audit-security` | full | CFO（週次コスト）/ CISO（月次セキュリティ） | 定期 |
 
 ### `plan.review_agents` のプリセット別デフォルト
 
@@ -87,7 +87,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - **平社員 → C*O の2段階**：平社員（×3 合議や `plan-*` 専門家）が一次フィルタ、C*O はメタレビューに専念
 - **`plan-cost` と `plan-legal`**：CFO / CLO の代弁者として設計フェーズで起動
 - **Issue 起票時は CISO + CPO + SM の 3 者承認**：CPO は「やる価値」、CISO は「不可領域 5 分類の安全性」、SM は「自動化適性・プロセス整合」を独立して判定する。CFO / CLO はこの段階では判断材料不足のため対象外
-- **起票側と ship 側の責務分離**：`/issue` 起票時に不可領域フィルタを完結させる。`/ship`（`/autopilot`）は起票済み Issue を信頼し、重複チェックを行わない透過パイプとして動作する
+- **起票側と ship 側の責務分離**：`/vibecorp:issue` 起票時に不可領域フィルタを完結させる。`/vibecorp:ship`（`/vibecorp:autopilot`）は起票済み Issue を信頼し、重複チェックを行わない透過パイプとして動作する
 - **autopilot は 3 者承認**（CPO + SM + CISO）：自律実行は「やる価値 × 自動化適性 × 安全性」の 3 軸が必要
 
 ## 権限モデル
@@ -134,12 +134,12 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 - MVV.md を策定する
 - エージェントなしで手動運用しながら、開発フローに慣れる
 - protect-files フックでファイル保護を開始する
-- /review, /commit, /pr 等の基本スキルを活用する
+- /vibecorp:review, /vibecorp:commit, /vibecorp:pr 等の基本スキルを活用する
 
 #### Phase 1: レビュー体制（standard プリセット）
 
 - CTO + CPO エージェントを有効化し、コード品質とプロダクト方針のレビューを開始する
-- /sync-check, /review-to-rules でドキュメントとコードの整合性を維持する
+- /vibecorp:sync-check, /vibecorp:review-to-rules でドキュメントとコードの整合性を維持する
 - sync-gate, review-to-rules-gate フックでゲート制御を導入する
 
 #### Phase 2: コスト・法務（full プリセット）
@@ -151,13 +151,13 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 #### Phase 3: セキュリティ（full プリセット）
 
 - CISO + セキュリティ分析員を追加し、セキュリティ監査体制を確立する
-- /diagnose スキルで自律的な問題検出を開始する
+- /vibecorp:diagnose スキルで自律的な問題検出を開始する
 
 #### Phase 4: フル組織（full プリセット）
 
 - SM を追加し、プロセス管理・進捗把握・並列判定を担う
 - 全 C-suite + 分析員が稼働し、AI 組織としてフル稼働する
-- /ship-parallel で複数 Issue の並列処理が可能になる
+- /vibecorp:ship-parallel で複数 Issue の並列処理が可能になる
 
 ### Plugin 名前空間移行（検討中）
 

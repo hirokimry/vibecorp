@@ -1,8 +1,8 @@
 #!/bin/bash
-# test_preset_workflow_regression.sh — /ship /autopilot のプリセット横断回帰テスト
+# test_preset_workflow_regression.sh — /vibecorp:ship /vibecorp:autopilot のプリセット横断回帰テスト
 # 使い方: bash tests/test_preset_workflow_regression.sh
 #
-# Issue #284 完了条件「既存ワークフロー（/ship /autopilot）の minimal/standard/full 各プリセットで回帰テストパス」対応。
+# Issue #284 完了条件「既存ワークフロー（/vibecorp:ship /autopilot）の minimal/standard/full 各プリセットで回帰テストパス」対応。
 # install.sh のプリセット別生成ロジックと、autopilot の full 限定ガードが崩れていないかを検証する。
 
 set -euo pipefail
@@ -26,8 +26,8 @@ fail() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INSTALL_SCRIPT="$PROJECT_DIR/install.sh"
-AUTOPILOT_SKILL="$PROJECT_DIR/templates/claude/skills/autopilot/SKILL.md"
-SHIP_SKILL="$PROJECT_DIR/templates/claude/skills/ship/SKILL.md"
+AUTOPILOT_SKILL="$PROJECT_DIR/skills/autopilot/SKILL.md"
+SHIP_SKILL="$PROJECT_DIR/skills/ship/SKILL.md"
 
 echo "=== プリセット横断 ワークフロー回帰テスト ==="
 echo ""
@@ -108,8 +108,8 @@ echo ""
 
 echo "--- テスト3: ヘッドレス並列スキルの full プリセット限定記述 ---"
 
-SHIP_PARALLEL_SKILL="$PROJECT_DIR/templates/claude/skills/ship-parallel/SKILL.md"
-SPIKE_LOOP_SKILL="$PROJECT_DIR/templates/claude/skills/spike-loop/SKILL.md"
+SHIP_PARALLEL_SKILL="$PROJECT_DIR/skills/ship-parallel/SKILL.md"
+SPIKE_LOOP_SKILL="$PROJECT_DIR/skills/spike-loop/SKILL.md"
 
 for skill_file in "$AUTOPILOT_SKILL" "$SHIP_PARALLEL_SKILL" "$SPIKE_LOOP_SKILL"; do
   if [[ ! -f "$skill_file" ]]; then
@@ -148,14 +148,14 @@ done
 
 echo ""
 
-# --- テスト4: /ship は全プリセットで利用可能（preset ガードなし） ---
+# --- テスト4: /vibecorp:ship は全プリセットで利用可能（preset ガードなし） ---
 
-echo "--- テスト4: /ship は全プリセットで利用可能 ---"
+echo "--- テスト4: /vibecorp:ship は全プリセットで利用可能 ---"
 
 if grep -qE "full プリセット専用|minimal では使用不可" "$SHIP_SKILL"; then
-  fail "/ship にプリセット限定記述がある（全プリセット対応であるべき）"
+  fail "/vibecorp:ship にプリセット限定記述がある（全プリセット対応であるべき）"
 else
-  pass "/ship はプリセット限定されていない"
+  pass "/vibecorp:ship はプリセット限定されていない"
 fi
 
 echo ""

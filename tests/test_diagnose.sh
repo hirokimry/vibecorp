@@ -1,12 +1,12 @@
 #!/bin/bash
-# test_diagnose.sh — /diagnose スキルの統合テスト
+# test_diagnose.sh — /vibecorp:diagnose スキルの統合テスト
 # 使い方: bash tests/test_diagnose.sh
 # CI: GitHub Actions で自動実行
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SKILL_MD="${SCRIPT_DIR}/templates/claude/skills/diagnose/SKILL.md"
+SKILL_MD="${SCRIPT_DIR}/skills/diagnose/SKILL.md"
 PASSED=0
 FAILED=0
 TOTAL=0
@@ -58,7 +58,7 @@ assert_file_not_contains() {
 }
 
 # ============================================
-echo "=== /diagnose スキル テスト ==="
+echo "=== /vibecorp:diagnose スキル テスト ==="
 # ============================================
 
 # --- SKILL.md の存在確認 ---
@@ -91,8 +91,8 @@ assert_file_contains "full プリセット専用の記述がある" "$SKILL_MD" 
 # 6. diagnose-active スタンプ作成がある
 assert_file_contains "diagnose-active スタンプ作成がある" "$SKILL_MD" "diagnose-active"
 
-# 7. /harvest-all --dry-run の呼び出しがある
-assert_file_contains "/harvest-all --dry-run の呼び出しがある" "$SKILL_MD" "harvest-all --dry-run"
+# 7. /vibecorp:harvest-all --dry-run の呼び出しがある
+assert_file_contains "/vibecorp:harvest-all --dry-run の呼び出しがある" "$SKILL_MD" "harvest-all --dry-run"
 
 # 8. CISO フィルタリングがある
 assert_file_contains "CISO フィルタリングがある" "$SKILL_MD" "CISO"
@@ -139,8 +139,8 @@ assert_file_contains "--scope の使用方法がある" "$SKILL_MD" "\-\-scope"
 
 echo "--- Issue 起票関連 ---"
 
-# 17. /issue スキルの呼び出しがある
-assert_file_contains "/issue スキルの呼び出しがある" "$SKILL_MD" "/issue"
+# 17. /vibecorp:issue スキルの呼び出しがある
+assert_file_contains "/vibecorp:issue スキルの呼び出しがある" "$SKILL_MD" "/vibecorp:issue"
 
 # 18. diagnose ラベルの付与がある
 assert_file_contains "diagnose ラベルの付与がある" "$SKILL_MD" "diagnose"

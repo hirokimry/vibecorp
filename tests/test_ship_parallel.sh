@@ -22,10 +22,11 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PLUGIN_FILE="$PROJECT_DIR/skills/ship-parallel/SKILL.md"
 TEMPLATE_FILE="$PROJECT_DIR/templates/claude/skills/ship-parallel/SKILL.md"
+# Plugin 名前空間移行後: skills/ がスキル本体
 LOCAL_FILE="$PROJECT_DIR/.claude/skills/ship-parallel/SKILL.md"
-# テンプレートを正とする（.claude/skills/ は gitignored で CI に存在しない場合がある）
-SKILL_FILE="$TEMPLATE_FILE"
+SKILL_FILE="$PLUGIN_FILE"
 
 echo "=== 並列 ship オーケストレーションスキル テスト ==="
 echo ""
@@ -230,11 +231,11 @@ echo ""
 
 echo "--- テスト8: Agent プロンプトの方式I 対応 ---"
 
-# 8-1: /ship --worktree パラメータの使用
-if grep -q '/ship.*--worktree' "$SKILL_FILE"; then
-  pass "Agent プロンプトに /ship --worktree がある"
+# 8-1: /vibecorp:ship --worktree パラメータの使用
+if grep -q '/vibecorp:ship.*--worktree' "$SKILL_FILE"; then
+  pass "Agent プロンプトに /vibecorp:ship --worktree がある"
 else
-  fail "Agent プロンプトに /ship --worktree がない"
+  fail "Agent プロンプトに /vibecorp:ship --worktree がない"
 fi
 
 # 8-2: Agent(isolation: "worktree") がパラメータとして使われていない
