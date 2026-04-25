@@ -159,20 +159,20 @@ echo "--- テスト7b: /vibecorp:issue の3者承認ゲート ---"
 
 if [[ -f "$ISSUE_FILE" ]]; then
   pass "/vibecorp:issue SKILL.md が存在する"
+
+  if grep -q '3者承認ゲート' "$ISSUE_FILE"; then
+    pass "/vibecorp:issue に「3者承認ゲート」の記述が存在する"
+  else
+    fail "/vibecorp:issue に「3者承認ゲート」の記述が存在しない"
+  fi
+
+  if grep -q 'autonomous-restrictions.md' "$ISSUE_FILE"; then
+    pass "/vibecorp:issue が autonomous-restrictions.md を参照している"
+  else
+    fail "/vibecorp:issue が autonomous-restrictions.md を参照していない"
+  fi
 else
   fail "/vibecorp:issue SKILL.md が存在しない"
-fi
-
-if grep -q '3者承認ゲート' "$ISSUE_FILE"; then
-  pass "/vibecorp:issue に「3者承認ゲート」の記述が存在する"
-else
-  fail "/vibecorp:issue に「3者承認ゲート」の記述が存在しない"
-fi
-
-if grep -q 'autonomous-restrictions.md' "$ISSUE_FILE"; then
-  pass "/vibecorp:issue が autonomous-restrictions.md を参照している"
-else
-  fail "/vibecorp:issue が autonomous-restrictions.md を参照していない"
 fi
 
 # --- テスト8: 前提条件に SM 追加 ---
