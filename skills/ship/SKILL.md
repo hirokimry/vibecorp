@@ -144,7 +144,7 @@ gh pr merge --squash --auto
 
 ### 9. レビュー修正ループ
 
-`/vibecorp:pr-review-loop` を実行する（worktree モードでは `--worktree <path>` を引き継ぐ）。
+`/vibecorp:pr-fix-loop` を実行する（worktree モードでは `--worktree <path>` を引き継ぐ）。
 
 `vibecorp.yml` の `coderabbit.enabled` が `false` の場合、CodeRabbit レビュー待ちはスキップされ、CI パス確認と auto-merge 設定のみ実行される。
 マージは auto-merge により、CI パス + approve 後に GitHub が自動実行する。

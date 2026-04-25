@@ -60,7 +60,7 @@ Edit:  <path>/tests/test_foo.sh
   ├─ /vibecorp:review-loop --worktree <path>
   │   └─ /vibecorp:review --worktree <path>
   ├─ /vibecorp:pr --worktree <path>
-  └─ /vibecorp:pr-review-loop --worktree <path>
+  └─ /vibecorp:pr-fix-loop --worktree <path>
       ├─ /vibecorp:commit --worktree <path>
       └─ /vibecorp:review-to-rules --worktree <path>
 ```
@@ -82,7 +82,7 @@ Edit:  <path>/tests/test_foo.sh
 | `/vibecorp:review` | レビュー実行 |
 | `/vibecorp:review-loop` | レビュー → 修正ループ |
 | `/vibecorp:pr` | PR 作成 |
-| `/vibecorp:pr-review-loop` | PR レビュー修正ループ |
+| `/vibecorp:pr-fix-loop` | PR レビュー修正ループ |
 | `/vibecorp:plan-review-loop` | 計画レビューループ |
 | `/vibecorp:review-to-rules` | レビュー指摘の規約反映 |
 | `/vibecorp:session-harvest` | セッション知見の吸い上げ |

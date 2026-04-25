@@ -1,6 +1,6 @@
 ---
-name: pr-review-fix
-description: "PRの未解決コメントを1回修正してpushする。定期実行は /pr-review-loop を使う。「/pr-review-fix」「コメント直して」と言った時に使用。"
+name: pr-fix
+description: "PR上の指摘（コメント＋CI失敗）を1回修正してpushする。定期実行は /pr-fix-loop を使う。「/pr-fix」「コメント直して」と言った時に使用。"
 ---
 
 # PRレビュー修正（単発）
@@ -11,9 +11,9 @@ PRの現在の状態を確認し、未解決コメントがあれば修正して
 ## 使用方法
 
 ```bash
-/vibecorp:pr-review-fix                    # 現在のブランチのPRを自動検出
-/vibecorp:pr-review-fix <PR URL>           # PR URLを直接指定
-/vibecorp:pr-review-fix --worktree <path>  # worktree 内で実行
+/vibecorp:pr-fix                    # 現在のブランチのPRを自動検出
+/vibecorp:pr-fix <PR URL>           # PR URLを直接指定
+/vibecorp:pr-fix --worktree <path>  # worktree 内で実行
 ```
 
 ## worktree モード
@@ -186,7 +186,7 @@ git push
 ### 7. 結果報告
 
 ```text
-## /vibecorp:pr-review-fix 完了
+## /vibecorp:pr-fix 完了
 
 - PR: #{pr_number}
 - 修正: {n}件
@@ -196,7 +196,7 @@ git push
 **マージ済みの場合:**
 
 ```text
-## /vibecorp:pr-review-fix 完了
+## /vibecorp:pr-fix 完了
 
 - PR: #{pr_number}
 - 状態: マージ済み
@@ -205,7 +205,7 @@ git push
 **未解決コメントなしの場合:**
 
 ```text
-## /vibecorp:pr-review-fix 完了
+## /vibecorp:pr-fix 完了
 
 - PR: #{pr_number}
 - 未解決コメント: なし
