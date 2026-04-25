@@ -87,7 +87,7 @@ which claude
 
 ### Agent Teams 動作環境（公式 docs 記述）
 
-`/vibecorp:ship-parallel` / `/vibecorp:autopilot` / `/vibecorp:spike-loop` は Claude Code の Agent Teams 機能（[公式 docs](https://code.claude.com/docs/en/agent-teams)）に依存する。Anthropic は Agent Teams を **experimental** と明記しており、セッション再開・タスク調整・シャットダウン挙動に既知の制約がある。
+`/vibecorp:ship-parallel` / `/vibecorp:autopilot` は Claude Code の Agent Teams 機能（[公式 docs](https://code.claude.com/docs/en/agent-teams)）に依存する。Anthropic は Agent Teams を **experimental** と明記しており、セッション再開・タスク調整・シャットダウン挙動に既知の制約がある。
 
 #### 公式 docs に明記されている動作要件
 
@@ -130,7 +130,7 @@ which claude
 |---|---|---|---|---|---|
 | **minimal** | /vibecorp:review, /vibecorp:review-loop, /vibecorp:pr-review-fix, /vibecorp:pr-review-loop, /vibecorp:pr, /vibecorp:commit, /vibecorp:issue, /vibecorp:ship, /vibecorp:plan, /vibecorp:branch, /vibecorp:plan-review-loop, /vibecorp:worktree, /vibecorp:approve-audit | protect-files, protect-branch, block-api-bypass, command-log | なし | Claude Max 定額内 | 個人〜小規模 |
 | **standard** | 上記 + /vibecorp:review-harvest, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all, /vibecorp:context7 | 上記 + sync-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
-| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:spike-loop | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
+| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
@@ -212,7 +212,6 @@ your-project/
 | `/vibecorp:diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/vibecorp:ship-parallel` | 複数 Issue を並列に `/vibecorp:ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（課金リスクを伴う大規模並列実行のため） |
 | `/vibecorp:autopilot` | `/vibecorp:diagnose` → `/vibecorp:ship-parallel` の自律改善サイクルを1回実行。全 open Issue を対象に実行（ラベルによる絞り込みなし）。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /vibecorp:autopilot` で定期実行可能。full プリセット専用 |
-| `/vibecorp:spike-loop` | `/vibecorp:ship-parallel` の E2E 検証を自動化。ヘッドレス Claude で ship-parallel を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループ。修正の自動適用は行わない（Phase 2 対応予定）。full プリセット専用 |
 
 ## フック一覧
 
@@ -437,15 +436,6 @@ SM エージェントが Issue 群の依存関係を分析し、TeamCreate + wor
 ```
 
 コードベースを自律的に診断し、改善点を GitHub Issue として起票する。実装は行わない（起票と実装の分離で暴走を防止）。full プリセット専用。
-
-### /vibecorp:spike-loop — ship-parallel E2E 自動検証
-
-```bash
-/vibecorp:spike-loop <Issue URL 1> <Issue URL 2> [...]
-/vibecorp:spike-loop <Issue URL 1> <Issue URL 2> --max-runs 5    # 最大5回ループ（デフォルト: 3）
-```
-
-ヘッドレス Claude で `/vibecorp:ship-parallel` を起動し、command-log を監視して stuck 検出 → 診断スナップショット → kill + cleanup → 分析レポートをループする。修正の自動適用は行わない（Phase 2 対応予定。分析レポートを出力してユーザーの判断を待つ）。full プリセット専用。
 
 ### /vibecorp:harvest-all — 全量棚卸し
 
