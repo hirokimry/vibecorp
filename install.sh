@@ -1418,7 +1418,7 @@ generate_settings_json() {
   fi
 
   if [[ ! -f "$settings" ]]; then
-    # 新規: フィルタ済みテンプレートをそのまま書き出し
+    # 新規: フィルタ済みテンプレートをそのまま書き出し（permissions / hooks 両方）
     echo "$new_settings" | jq '.' > "$settings"
     log_info "settings.json を生成"
   else
@@ -1431,8 +1431,12 @@ generate_settings_json() {
 
     local new_hooks
     new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
+    local new_permissions_allow
+    new_permissions_allow=$(echo "$new_settings" | jq '.permissions.allow // []')
 
-    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" '
+    # permissions.allow はテンプレートの値を既存値に追加し重複排除する
+    # （ユーザーが追加したカスタム allow は保持される）
+    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" --argjson new_allow "$new_permissions_allow" '
       def is_managed_hook:
         (.command | split("/") | last) as $basename |
         any($managed[]; . == $basename);
@@ -1446,8 +1450,9 @@ generate_settings_json() {
         | group_by(.matcher)
         | map({matcher: .[0].matcher, hooks: ([.[].hooks[]] | unique_by(.command))})
       )
+      | .permissions = ((.permissions // {}) | .allow = (((.allow // []) + $new_allow) | unique))
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
-    log_info "settings.json をマージ（ユーザーフック保持）"
+    log_info "settings.json をマージ（ユーザーフック・permissions 保持）"
   fi
 }
 
