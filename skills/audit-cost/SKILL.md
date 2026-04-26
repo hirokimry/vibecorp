@@ -58,6 +58,7 @@ git commit range: @{7 days ago}..HEAD
 3. ヘッドレス Claude 起動（claude -p / npx / bunx）の増減
 4. コスト上限設定（max_issues_per_day, max_issues_per_run 等）の変更
 5. 従量課金到達リスクの変化
+6. エージェントのモデル指定の妥当性（Opus / Sonnet / Haiku が役割に合っているか）。詳細は SKILL.md の「モデル指定監査の判定ガイド」節を参照。
 
 ## 参照ドキュメント
 - docs/cost-analysis.md
@@ -66,7 +67,42 @@ git commit range: @{7 days ago}..HEAD
 ## 出力
 knowledge/accounting/cost-audit-template.md の雛形に沿って監査結果を記述してください。
 Critical / Major / Minor で指摘を分類してください。
+モデル指定監査は雛形の「モデル指定監査」節に出力してください（コスト影響評価とは別節）。
 ```
+
+### モデル指定監査の判定ガイド
+
+走査対象: `templates/claude/agents/*.md`（配布元・優先）および `.claude/agents/*.md`（導入先上書き）。
+各エージェントの YAML フロントマター `model:` 行を抽出し、役割と単価（`docs/cost-analysis.md` の「モデル単価」表）を突き合わせる。判定区分は以下のとおり。
+
+#### 判断品質が存在意義のロール（C-suite + 合議制の分析員 + プロセス管理）
+
+対象エージェント: `cfo`, `cto`, `cpo`, `clo`, `ciso`, `accounting-analyst`, `legal-analyst`, `security-analyst`, `sm`
+
+`sm`（Scrum Master）は `.claude/rules/roles.md` で「並列/直列の実行判定・ブロッカー検出・次タスク提案」を担うプロセス管理の専門家として定義されており、判断品質が存在意義のロールに含める。
+
+- 推奨: Opus または Sonnet
+- **Haiku 指定 → Major 指摘**（品質劣化リスク。メタレビュー・合議・プロセス判断の品質が落ちる）
+- Sonnet 指定で Opus が望ましいケース → Minor 指摘（CFO が文脈で判定）
+- モデル未指定（親から継承）→ Minor 指摘（明示推奨）
+
+#### 定型作業ロール（自動化エージェント）
+
+対象エージェント: `branch`, `commit`, `pr`, `plan-architect`, `plan-cost`, `plan-dx`, `plan-legal`, `plan-performance`, `plan-security`, `plan-testing`
+
+- 推奨: Sonnet または Haiku（定型作業に十分）
+- **Opus 指定 → Major 指摘**（過剰指定。`docs/cost-analysis.md` の「プリセット別の想定運用モード」で full プリセットの並列度が高くコスト超過リスクが大きい）
+- モデル未指定 → Minor 指摘
+
+#### 直近7日間の Diff 抽出
+
+`model:` 行が変更された箇所をレポートに添付する:
+
+```bash
+git log --since="7 days ago" -p -- 'templates/claude/agents/*.md' '.claude/agents/*.md' | grep -E '^[+-]model:|^diff --git'
+```
+
+判定が「妥当」のロールはサマリ件数のみ記載し、警告対象（Major / Minor）のみ詳細を出力する。
 
 ### 4. レポート保存
 
@@ -122,6 +158,7 @@ Minor のみの場合は起票しない（レポート保存のみ）。
 ## 制約
 
 - **コード変更は一切行わない** — 監査レポートと Issue 起票のみ
+- **モデル指定の自動変更は行わない** — CFO は警告のみ。`model:` 行の書き換えは人間または `/vibecorp:ship` 経由で行う
 - `git add` / `git commit` / `git push` は実行しない
 - `--force`、`--hard`、`--no-verify` は使用しない
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
