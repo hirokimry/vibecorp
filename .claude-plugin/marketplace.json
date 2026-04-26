@@ -9,7 +9,34 @@
     {
       "name": "vibecorp",
       "description": "vibecorp スキル・エージェント・フック一式",
-      "source": "./"
+      "source": "./",
+      "skills": [
+        "./skills/approve-audit",
+        "./skills/audit-cost",
+        "./skills/audit-security",
+        "./skills/autopilot",
+        "./skills/branch",
+        "./skills/commit",
+        "./skills/context7",
+        "./skills/diagnose",
+        "./skills/harvest-all",
+        "./skills/issue",
+        "./skills/knowledge-pr",
+        "./skills/plan",
+        "./skills/plan-review-loop",
+        "./skills/pr",
+        "./skills/pr-review-fix",
+        "./skills/pr-review-loop",
+        "./skills/review",
+        "./skills/review-harvest",
+        "./skills/review-loop",
+        "./skills/session-harvest",
+        "./skills/ship",
+        "./skills/ship-parallel",
+        "./skills/sync-check",
+        "./skills/sync-edit",
+        "./skills/worktree"
+      ]
     }
   ]
 }
