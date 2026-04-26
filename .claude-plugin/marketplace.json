@@ -28,6 +28,7 @@
         "./skills/pr",
         "./skills/pr-review-fix",
         "./skills/pr-review-loop",
+        "./skills/release-epic",
         "./skills/review",
         "./skills/review-harvest",
         "./skills/review-loop",
