@@ -1,12 +1,15 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "vibecorp",
+  "description": "AI エージェントチームによる再現可能なプロダクト開発フレームワーク",
   "owner": {
     "name": "hirokimry"
   },
   "plugins": [
     {
       "name": "vibecorp",
-      "source": "."
+      "description": "vibecorp スキル・エージェント・フック一式",
+      "source": "./"
     }
   ]
 }
