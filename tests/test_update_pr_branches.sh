@@ -4,24 +4,11 @@
 
 set -euo pipefail
 
-PASSED=0
-FAILED=0
-TOTAL=0
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 WORKFLOW_FILE="$(cd "$(dirname "$0")/.." && pwd)/.github/workflows/update-pr-branches.yml"
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_contains() {
   local desc="$1"
@@ -42,17 +29,6 @@ assert_not_contains() {
     fail "$desc (パターン '$needle' が見つかった)"
   else
     pass "$desc"
-  fi
-}
-
-assert_equals() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$expected" = "$actual" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: '$expected', 実際: '$actual')"
   fi
 }
 

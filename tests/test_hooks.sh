@@ -4,30 +4,17 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
 LIB_DIR="$(cd "$(dirname "$0")/../templates/claude/lib" && pwd)"
-PASSED=0
-FAILED=0
-TOTAL=0
 TMPDIR_ROOT=""
 
 # 共通ヘルパーを source（vibecorp_stamp_path を使うため）
 # shellcheck source=../templates/claude/lib/common.sh
 source "${LIB_DIR}/common.sh"
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_blocked() {
   local desc="$1"

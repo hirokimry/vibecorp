@@ -16,27 +16,15 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MARKETPLACE="${REPO_ROOT}/.claude-plugin/marketplace.json"
 TPL="${REPO_ROOT}/templates/settings.json.tpl"
 CLAUDE_SETTINGS="${REPO_ROOT}/templates/claude/settings.json"
 INSTALL_SH="${REPO_ROOT}/install.sh"
-
-PASSED=0
-FAILED=0
-TOTAL=0
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 echo "=== Plugin Marketplace 自動ロード検証 (#405) ==="
 

@@ -18,26 +18,14 @@ fi
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SHIM="${SCRIPT_DIR}/templates/claude/bin/claude"
 DISPATCHER="${SCRIPT_DIR}/templates/claude/bin/vibecorp-sandbox"
 PROFILE="${SCRIPT_DIR}/templates/claude/sandbox/claude.sb"
-
-PASSED=0
-FAILED=0
-TOTAL=0
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 # ----- 前提ファイル確認 -----
 

@@ -21,25 +21,13 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TPL="${REPO_ROOT}/templates/settings.json.tpl"
 CLAUDE_SETTINGS="${REPO_ROOT}/templates/claude/settings.json"
-
-PASSED=0
-FAILED=0
-TOTAL=0
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 # 前提ファイル存在確認
 if [[ ! -f "$TPL" ]]; then

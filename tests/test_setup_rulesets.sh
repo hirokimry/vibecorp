@@ -7,25 +7,12 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SETUP_SH="${SCRIPT_DIR}/setup-rulesets.sh"
-PASSED=0
-FAILED=0
-TOTAL=0
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_exit_code() {
   local desc="$1"
