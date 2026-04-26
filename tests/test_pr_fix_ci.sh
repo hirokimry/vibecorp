@@ -1,6 +1,6 @@
 #!/bin/bash
-# test_pr_review_fix_ci.sh — /vibecorp:pr-fix の CI 失敗検知仕様ガード
-# 使い方: bash tests/test_pr_review_fix_ci.sh
+# test_pr_fix_ci.sh — /vibecorp:pr-fix の CI 失敗検知仕様ガード
+# 使い方: bash tests/test_pr_fix_ci.sh
 
 set -euo pipefail
 
