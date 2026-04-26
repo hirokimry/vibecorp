@@ -4,24 +4,11 @@
 
 set -euo pipefail
 
-PASSED=0
-FAILED=0
-TOTAL=0
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 WORKFLOW_FILE="$(cd "$(dirname "$0")/.." && pwd)/.github/workflows/update-pr-branches.yml"
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_contains() {
   local desc="$1"
@@ -45,29 +32,7 @@ assert_not_contains() {
   fi
 }
 
-assert_equals() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$expected" = "$actual" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: '$expected', 実際: '$actual')"
-  fi
-}
-
 # ファイルに対して直接 grep する（大きなファイルの変数展開問題を回避）
-assert_file_contains() {
-  local desc="$1"
-  local file="$2"
-  local needle="$3"
-  if grep -q "$needle" "$file"; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$needle' がファイル '$file' に見つからない)"
-  fi
-}
-
 # --- ワークフローファイル構造テスト ---
 
 echo "=== ワークフローファイル構造テスト ==="
@@ -164,10 +129,4 @@ test_readme_has_pat_section
 
 # --- 結果 ---
 
-echo ""
-echo "=== 結果 ==="
-echo "合計: ${TOTAL} / 成功: ${PASSED} / 失敗: ${FAILED}"
-
-if [ "${FAILED}" -gt 0 ]; then
-  exit 1
-fi
+print_test_summary

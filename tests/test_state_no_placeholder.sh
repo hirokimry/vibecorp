@@ -10,22 +10,11 @@
 
 set -uo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PASSED=0
-FAILED=0
-TOTAL=0
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 # check_pattern_absent — grep の終了コードを明示的に判定して exit 0/1/その他を分離する
 # 引数: $1=ラベル, $2=パターン, $3..=検索対象パス

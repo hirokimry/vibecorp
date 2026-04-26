@@ -17,26 +17,13 @@ fi
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_SH="${SCRIPT_DIR}/install.sh"
-PASSED=0
-FAILED=0
-TOTAL=0
 TMPDIR_ROOT=""
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_symlink_to() {
   local desc="$1"
@@ -52,16 +39,6 @@ assert_symlink_to() {
     fi
   else
     fail "$desc (symlink ではない: $link)"
-  fi
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -e "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
   fi
 }
 

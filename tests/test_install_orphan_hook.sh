@@ -18,47 +18,14 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PASSED=0
-FAILED=0
-TOTAL=0
 TMPDIR_ROOT=""
 VIBECORP_COPY=""
 TEST_REPO=""
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
 
 assert_lock_has() {
   local desc="$1"

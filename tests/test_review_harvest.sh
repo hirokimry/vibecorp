@@ -5,6 +5,10 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_FILE="${SCRIPT_DIR}/skills/review-harvest/SKILL.md"
 OLD_SKILL_DIR="${SCRIPT_DIR}/skills/review-to-rules"
@@ -12,23 +16,6 @@ OLD_HOOK="${SCRIPT_DIR}/templates/claude/hooks/review-to-rules-gate.sh"
 OLD_TEST="${SCRIPT_DIR}/tests/test_review_to_rules_gate.sh"
 SETTINGS="${SCRIPT_DIR}/templates/claude/settings.json"
 SETTINGS_TPL="${SCRIPT_DIR}/templates/settings.json.tpl"
-PASSED=0
-FAILED=0
-
-pass() { PASSED=$((PASSED + 1)); echo "  PASS: $1"; }
-fail() { FAILED=$((FAILED + 1)); echo "  FAIL: $1"; }
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then pass "$desc"; else fail "$desc ($path が存在しない)"; fi
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -e "$path" ]; then pass "$desc"; else fail "$desc ($path が残っている)"; fi
-}
 
 assert_contains() {
   local desc="$1"
@@ -112,9 +99,4 @@ assert_not_contains "settings.json から review-to-rules-gate エントリ削�
 assert_not_contains "settings.json.tpl から review-to-rules-gate エントリ削除" 'review-to-rules-gate' "$SETTINGS_TPL"
 
 # ============================================
-echo ""
-echo "=== 結果: $PASSED passed, $FAILED failed ==="
-
-if [ "$FAILED" -gt 0 ]; then
-  exit 1
-fi
+print_test_summary

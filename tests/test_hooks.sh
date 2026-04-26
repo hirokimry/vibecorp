@@ -4,30 +4,17 @@
 
 set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
 HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
 LIB_DIR="$(cd "$(dirname "$0")/../templates/claude/lib" && pwd)"
-PASSED=0
-FAILED=0
-TOTAL=0
 TMPDIR_ROOT=""
 
 # 共通ヘルパーを source（vibecorp_stamp_path を使うため）
 # shellcheck source=../templates/claude/lib/common.sh
 source "${LIB_DIR}/common.sh"
-
-# --- ヘルパー ---
-
-pass() {
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: $1"
-}
-
-fail() {
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: $1"
-}
 
 assert_blocked() {
   local desc="$1"
@@ -46,48 +33,6 @@ assert_allowed() {
     fail "$desc (期待: allow, 実際: deny)"
   else
     pass "$desc"
-  fi
-}
-
-assert_exit_code() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$actual" = "$expected" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: exit $expected, 実際: exit $actual)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$pattern' がファイルに含まれない)"
   fi
 }
 
