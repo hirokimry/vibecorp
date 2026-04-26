@@ -83,6 +83,14 @@ else
   fail "CI 待機（PENDING）状態が記述されていない"
 fi
 
+if grep -q -e 'IN_PROGRESS' "$SKILL_FILE" && \
+   grep -q -e 'QUEUED' "$SKILL_FILE" && \
+   grep -q -e 'null' "$SKILL_FILE"; then
+  pass "CI pending の定義（IN_PROGRESS/QUEUED/null）が記述されている"
+else
+  fail "CI pending の定義（IN_PROGRESS/QUEUED/null）が不足している"
+fi
+
 echo ""
 
 # --- テスト4: 外部要因キーワード ---
@@ -126,10 +134,11 @@ echo ""
 
 echo "--- テスト6: 終了条件に CI green ---"
 
-if grep -q -e 'CI 失敗 0 件\|CI green\|CI.*失敗.*0' "$SKILL_FILE"; then
-  pass "終了条件に CI 失敗 0 件が含まれている"
+if grep -q -e 'CI 失敗 0 件\|CI green\|CI.*失敗.*0' "$SKILL_FILE" && \
+   grep -q -e 'PENDING.*0\|pending.*0\|待機.*0' "$SKILL_FILE"; then
+  pass "終了条件に CI green（失敗0かつPENDING0）が含まれている"
 else
-  fail "終了条件に CI 失敗 0 件が含まれていない"
+  fail "終了条件に CI green（失敗0かつPENDING0）が含まれていない"
 fi
 
 echo ""
@@ -157,10 +166,10 @@ echo ""
 echo "--- テスト8: コードブロック言語指定 ---"
 
 bare_opens=$(awk '
-  /^```[a-zA-Z]/ { in_fence = 1; next }
+  /^```[[:alpha:]][[:alnum:]_+-]*$/ { in_fence = 1; next }
   /^```$/ {
-    if (in_fence) { in_fence = 0 }
-    else { count++ }
+    if (in_fence) { in_fence = 0; next }
+    if (!in_bare) { in_bare = 1; count++ } else { in_bare = 0 }
     next
   }
   END { print count + 0 }
