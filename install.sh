@@ -260,9 +260,12 @@ merge_or_overwrite() {
   tmp_base=$(mktemp)
   tmp_other=$(mktemp)
 
-  # SIGINT/SIGTERM 時に tmp ファイルをクリーンアップする trap を設定
+  # 異常終了（set -e による途中失敗を含む）時にも tmp ファイルを掃除するため EXIT も対象にする。
+  # 親の EXIT trap（restore_original_ref など）を退避し、関数末尾で復元する。
+  local prev_exit_trap
+  prev_exit_trap=$(trap -p EXIT)
   # shellcheck disable=SC2064
-  trap "rm -f '$tmp_current' '$tmp_base' '$tmp_other'" INT TERM
+  trap "rm -f '$tmp_current' '$tmp_base' '$tmp_other'" EXIT INT TERM
 
   cp "$target" "$tmp_current"
   cp "$base_snapshot" "$tmp_base"
@@ -289,7 +292,12 @@ merge_or_overwrite() {
   fi
 
   rm -f "$tmp_current" "$tmp_base" "$tmp_other"
-  # trap をリセット
+  # 元の EXIT trap を復元し、INT/TERM をクリア
+  if [[ -n "$prev_exit_trap" ]]; then
+    eval "$prev_exit_trap"
+  else
+    trap - EXIT
+  fi
   trap - INT TERM
 
   if [[ "$merge_exit" -gt 0 ]]; then
@@ -1809,8 +1817,11 @@ generate_claude_md() {
   # 置換済みテンプレートを一時ファイルに出力し、以降のマージ/比較で使い回す
   local tmp_tpl
   tmp_tpl=$(mktemp)
+  # 異常終了時にも tmp を掃除するため EXIT も対象にする。親の EXIT trap は退避・復元する。
+  local prev_exit_trap
+  prev_exit_trap=$(trap -p EXIT)
   # shellcheck disable=SC2064
-  trap "rm -f '$tmp_tpl'" INT TERM
+  trap "rm -f '$tmp_tpl'" EXIT INT TERM
 
   sed \
     -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
@@ -1831,6 +1842,11 @@ generate_claude_md() {
   fi
 
   rm -f "$tmp_tpl"
+  if [[ -n "$prev_exit_trap" ]]; then
+    eval "$prev_exit_trap"
+  else
+    trap - EXIT
+  fi
   trap - INT TERM
 }
 
@@ -1842,8 +1858,11 @@ generate_mvv_md() {
   # 置換済みテンプレートを一時ファイルに出力
   local tmp_tpl
   tmp_tpl=$(mktemp)
+  # 異常終了時にも tmp を掃除するため EXIT も対象にする。親の EXIT trap は退避・復元する。
+  local prev_exit_trap
+  prev_exit_trap=$(trap -p EXIT)
   # shellcheck disable=SC2064
-  trap "rm -f '$tmp_tpl'" INT TERM
+  trap "rm -f '$tmp_tpl'" EXIT INT TERM
 
   sed \
     -e "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" \
@@ -1861,6 +1880,11 @@ generate_mvv_md() {
   fi
 
   rm -f "$tmp_tpl"
+  if [[ -n "$prev_exit_trap" ]]; then
+    eval "$prev_exit_trap"
+  else
+    trap - EXIT
+  fi
   trap - INT TERM
 }
 
