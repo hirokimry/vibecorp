@@ -131,7 +131,12 @@ assert_exit_code "full → 成功" "0" "$EXIT_CODE"
 R="$TMPDIR_ROOT"
 assert_file_contains "full: vibecorp.yml に preset: full" "$R/.claude/vibecorp.yml" "preset: full"
 assert_dir_exists "full: agents ディレクトリ存在" "$R/.claude/agents"
-assert_dir_exists "full: plugin skills ディレクトリ存在" "$R/skills"
+# skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "full: skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "full: skills/ が作成されていない"
+fi
 assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
 # --update --preset full の冪等性確認
 EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?

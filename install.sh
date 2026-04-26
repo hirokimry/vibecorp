@@ -664,10 +664,18 @@ copy_managed_files() {
           rm -rf "${REPO_ROOT:?}/skills/${name:?}"
           log_info "skills/${name} をプラグインキャッシュに移行（ローカルコピーを削除）"
         fi
+        if [[ -d "${skills_dir:?}/${name:?}" ]]; then
+          rm -rf "${skills_dir:?}/${name:?}"
+          log_info ".claude/skills/${name} 互換スタブを削除"
+        fi
       done < <(read_lock_list "$lock" "plugin_skills")
       if [[ -d "${REPO_ROOT}/skills" ]] && [[ -z "$(ls -A "${REPO_ROOT}/skills" 2>/dev/null)" ]]; then
         rmdir "${REPO_ROOT}/skills"
         log_info "skills/ を削除（空）"
+      fi
+      if [[ -d "$skills_dir" ]] && [[ -z "$(ls -A "$skills_dir" 2>/dev/null)" ]]; then
+        rmdir "$skills_dir"
+        log_info ".claude/skills/ を削除（空）"
       fi
     fi
   fi

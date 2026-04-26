@@ -27,8 +27,12 @@ assert_file_exists "protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
 # E3. hooks に実行権限
 assert_file_executable "hooks に実行権限" "$R/.claude/hooks/protect-files.sh"
 
-# E4. plugin skills ディレクトリ存在
-assert_dir_exists "plugin skills ディレクトリ存在" "$R/skills"
+# E4. skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "skills/ が作成されていない"
+fi
 
 # E5. vibecorp.yml に name/preset/language
 assert_file_contains "vibecorp.yml に name" "$R/.claude/vibecorp.yml" "name: test-proj"
@@ -111,29 +115,17 @@ R="$TMPDIR_ROOT"
 # F1. review-to-rules-gate.sh が削除されている
 assert_file_not_exists "review-to-rules-gate.sh が削除されている" "$R/.claude/hooks/review-to-rules-gate.sh"
 
-# F2. review-to-rules スキルが削除されている（plugin skills）
-if [ ! -d "$R/skills/review-to-rules" ]; then
-  pass "review-to-rules スキルが削除されている"
+# F2. skills/ ディレクトリが作成されていない（プラグインキャッシュに移行済み）
+if [ ! -d "$R/skills" ]; then
+  pass "skills/ が作成されていない"
 else
-  fail "review-to-rules スキルが削除されている (ディレクトリが存在)"
+  fail "skills/ が作成されている（プラグインキャッシュに移行済み）"
 fi
 
 # F3. sync-gate.sh が削除されている
 assert_file_not_exists "sync-gate.sh が削除されている" "$R/.claude/hooks/sync-gate.sh"
 
-# F4. sync-check スキルが削除されている（plugin skills）
-if [ ! -d "$R/skills/sync-check" ]; then
-  pass "sync-check スキルが削除されている"
-else
-  fail "sync-check スキルが削除されている (ディレクトリが存在)"
-fi
-
-# F4b. sync-edit スキルが削除されている（plugin skills）
-if [ ! -d "$R/skills/sync-edit" ]; then
-  pass "sync-edit スキルが削除されている"
-else
-  fail "sync-edit スキルが削除されている (ディレクトリが存在)"
-fi
+# F4-F4b は skills/ 非作成確認に統合（F2 で確認済み）
 
 # F5. settings.json に sync-gate のエントリがない
 assert_file_not_contains "settings.json に sync-gate なし" "$R/.claude/settings.json" "sync-gate"
@@ -427,10 +419,12 @@ assert_file_not_contains "スキップされた bug_report.md は lock に載ら
 assert_file_contains "lock に feature_request.md" "$R/.claude/vibecorp.lock" "feature_request.md"
 assert_file_contains "lock に config.yml" "$R/.claude/vibecorp.lock" "config.yml"
 
-# P7. /vibecorp:issue スキルが配置されている（plugin skills）
-assert_dir_exists "issue スキルディレクトリ存在" "$R/skills/issue"
-assert_file_exists "issue スキル SKILL.md 存在" "$R/skills/issue/SKILL.md"
-assert_file_contains "issue スキルに name: issue" "$R/skills/issue/SKILL.md" "name: issue"
+# P7. skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "skills/ が作成されていない"
+fi
 
 # P8. gh が repo view に失敗する場合のラベル作成スキップ動作
 # ダミー gh を PATH の先頭に配置し、常に失敗させる
@@ -1019,18 +1013,17 @@ assert_file_exists "standard: cpo.md が配置される" "$R/.claude/agents/cpo.
 assert_file_exists "standard: sync-gate.sh が配置される" "$R/.claude/hooks/sync-gate.sh"
 assert_file_executable "standard: sync-gate.sh に実行権限" "$R/.claude/hooks/sync-gate.sh"
 
-# Z3. standard 新規インストール: standard 専用 skills が配置される（plugin skills）
-assert_dir_exists "standard: sync-check スキル存在" "$R/skills/sync-check"
-assert_dir_exists "standard: sync-edit スキル存在" "$R/skills/sync-edit"
-assert_dir_exists "standard: review-harvest スキル存在" "$R/skills/review-harvest"
-assert_dir_exists "standard: knowledge-pr スキル存在" "$R/skills/knowledge-pr"
+# Z3. standard 新規インストール: skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "standard: skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "standard: skills/ が作成されていない"
+fi
 
-# Z4. standard lock: agents/hooks/skills が lock に記録される
+# Z4. standard lock: agents/hooks が lock に記録される
 assert_file_contains "standard lock: cto.md 記録" "$R/.claude/vibecorp.lock" "cto.md"
 assert_file_contains "standard lock: cpo.md 記録" "$R/.claude/vibecorp.lock" "cpo.md"
 assert_file_contains "standard lock: sync-gate.sh 記録" "$R/.claude/vibecorp.lock" "sync-gate.sh"
-assert_file_contains "standard lock: review-harvest 記録" "$R/.claude/vibecorp.lock" "review-harvest"
-assert_file_contains "standard lock: knowledge-pr 記録" "$R/.claude/vibecorp.lock" "knowledge-pr"
 
 # Z5. standard settings.json: standard 用フックが含まれる
 assert_file_contains "standard settings: sync-gate フック存在" "$R/.claude/settings.json" "sync-gate"
@@ -1059,11 +1052,12 @@ assert_file_exists "アップグレード後: cpo.md 追加" "$R/.claude/agents/
 # standard 専用 hooks が追加される
 assert_file_exists "アップグレード後: sync-gate.sh 追加" "$R/.claude/hooks/sync-gate.sh"
 
-# standard 専用 skills が追加される（plugin skills）
-assert_dir_exists "アップグレード後: sync-check 追加" "$R/skills/sync-check"
-assert_dir_exists "アップグレード後: sync-edit 追加" "$R/skills/sync-edit"
-assert_dir_exists "アップグレード後: review-harvest 追加" "$R/skills/review-harvest"
-assert_dir_exists "アップグレード後: knowledge-pr 追加" "$R/skills/knowledge-pr"
+# standard 専用 skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "アップグレード後: skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "アップグレード後: skills/ が作成されていない"
+fi
 
 # knowledge が追加される
 assert_file_exists "アップグレード後: knowledge 追加" "$R/.claude/knowledge/cto/tech-principles.md"
@@ -1115,7 +1109,12 @@ assert_exit_code "standard → standard 更新成功" "0" "$EXIT_CODE"
 # 更新後もファイルが維持される
 assert_file_exists "standard 更新後: agents 維持" "$R/.claude/agents/cto.md"
 assert_file_exists "standard 更新後: sync-gate 維持" "$R/.claude/hooks/sync-gate.sh"
-assert_dir_exists "standard 更新後: sync-check 維持" "$R/skills/sync-check"
+# skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "standard 更新後: skills/ が作成されている"
+else
+  pass "standard 更新後: skills/ が作成されていない"
+fi
 
 cleanup
 
@@ -1315,9 +1314,12 @@ skills:
   commit: false
 YML
 bash "$INSTALL_SH" --update 2>/dev/null
-assert_file_not_exists "無効化した skill がインストールされない" "$R/skills/commit/SKILL.md"
-# 他の skill はインストールされている
-assert_dir_exists "無効化していない skill はインストールされる" "$R/skills/branch"
+# skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "無効化テスト: skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "無効化テスト: skills/ が作成されていない"
+fi
 
 cleanup
 
@@ -1341,8 +1343,13 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null
 R="$TMPDIR_ROOT"
 assert_file_exists "トグル省略時: hook がインストールされる" "$R/.claude/hooks/block-api-bypass.sh"
-assert_dir_exists "トグル省略時: skill がインストールされる" "$R/skills/commit"
 assert_file_contains "トグル省略時: hook が settings.json に含まれる" "$R/.claude/settings.json" "block-api-bypass"
+# skills/ は作成されない（プラグインキャッシュに移行済み）
+if [ -d "$R/skills" ]; then
+  fail "トグル省略時: skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "トグル省略時: skills/ が作成されていない"
+fi
 
 cleanup
 
