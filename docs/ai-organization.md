@@ -55,7 +55,7 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 | 4. 実装 | `/vibecorp:ship` 内 | — | なし | — |
 | 5. 実装レビュー（平社員合議） | `/vibecorp:review-loop` | full | security-analyst×3, accounting-analyst×3, legal-analyst×3 | 差分検知で条件起動 |
 | 6. 実装レビュー（C*O メタ層） | `/vibecorp:review-loop` | full | 該当 C*O | 平社員合議で Major 以上 |
-| 7. PR レビュー | `/vibecorp:pr-review-loop` | 全プリセット | CodeRabbit のみ | — |
+| 7. PR レビュー | `/vibecorp:pr-fix-loop` | 全プリセット | CodeRabbit のみ | — |
 | 8a. マージゲート（standard） | `/vibecorp:sync-check` | standard | CTO / CPO | 管轄領域に触れた時のみ |
 | 8b. マージゲート（full） | `/vibecorp:sync-check` | full | CTO / CPO / CFO / CISO / CLO / SM | 管轄領域に触れた時のみ |
 | 9. 事後監査 | `/vibecorp:audit-cost` `/vibecorp:audit-security` | full | CFO（週次コスト）/ CISO（月次セキュリティ） | 定期 |
