@@ -89,7 +89,17 @@ echo ""
 
 echo "--- テスト4: 外部要因 CI 失敗キーワード ---"
 
-EXTERNAL_KEYWORDS=("Rate limit" "429" "ECONNREFUSED" "ETIMEDOUT" "ENOTFOUND")
+EXTERNAL_KEYWORDS=(
+  "Rate limit"
+  "429"
+  "ECONNREFUSED"
+  "network is unreachable"
+  "could not resolve host"
+  "npm install failed"
+  "ETIMEDOUT"
+  "ENOTFOUND"
+  "socket hang up"
+)
 for kw in "${EXTERNAL_KEYWORDS[@]}"; do
   if grep -q -e "$kw" "$SKILL_FILE"; then
     pass "外部要因キーワード '$kw' が記述されている"
