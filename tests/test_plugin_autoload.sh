@@ -63,6 +63,13 @@ else
   fail "marketplace.json の name が期待値と異なる: $mkt_name"
 fi
 
+owner_name=$(jq -r '.owner.name' "$MARKETPLACE")
+if [[ "$owner_name" == "hirokimry" ]]; then
+  pass "marketplace.json の owner.name が \"hirokimry\""
+else
+  fail "marketplace.json の owner.name が期待値と異なる: $owner_name"
+fi
+
 plugin_count=$(jq '.plugins | length' "$MARKETPLACE")
 if [[ "$plugin_count" -ge 1 ]]; then
   pass "marketplace.json に plugins エントリが存在する（${plugin_count} 件）"
@@ -86,7 +93,7 @@ fi
 
 # --- B. templates/settings.json.tpl の extraKnownMarketplaces / enabledPlugins ---
 
-if jq -e '.extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$TPL" >/dev/null 2>&1; then
+if jq -e '.extraKnownMarketplaces.vibecorp.source.source == "github" and .extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$TPL" >/dev/null 2>&1; then
   pass "templates/settings.json.tpl に extraKnownMarketplaces.vibecorp が登録されている"
 else
   fail "templates/settings.json.tpl の extraKnownMarketplaces.vibecorp が期待値と異なる"
@@ -100,7 +107,7 @@ fi
 
 # --- C. templates/claude/settings.json も同等の設定を持つ ---
 
-if jq -e '.extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+if jq -e '.extraKnownMarketplaces.vibecorp.source.source == "github" and .extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
   pass "templates/claude/settings.json に extraKnownMarketplaces.vibecorp が登録されている"
 else
   fail "templates/claude/settings.json の extraKnownMarketplaces.vibecorp が期待値と異なる"
