@@ -66,5 +66,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "vibecorp@vibecorp": true
   }
 }
