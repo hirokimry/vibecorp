@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: "ワークツリーのライフサイクル管理スキル。一覧表示、マージ済みワークツリーの自動削除、手動削除を行う。「/worktree list」「/worktree clean」「/worktree remove」と言った時に使用。"
+description: "ワークツリーのライフサイクル管理スキル。一覧表示、マージ済みワークツリーの自動削除、手動削除、ゾンビエージェントプロセスの kill を行う。「/worktree list」「/worktree clean」「/worktree remove」「/worktree kill-zombies」と言った時に使用。"
 ---
 
 # ワークツリー管理
@@ -14,6 +14,7 @@ git worktree のライフサイクルを管理する。
 /vibecorp:worktree list
 /vibecorp:worktree clean
 /vibecorp:worktree remove <ブランチ名>
+/vibecorp:worktree kill-zombies
 ```
 
 ## サブコマンド
@@ -68,6 +69,7 @@ git -C <worktree_path> diff HEAD..origin/main --quiet
 ### clean — マージ済み・孤立ワークツリーの自動削除
 
 マージ済みの PR に対応するワークツリー、および孤立した Agent worktree を自動削除する。
+削除完了後、消えた worktree を見続けるゾンビ tmux エージェントも自動 kill する（`kill-zombies` と同じ動作）。
 
 #### ワークフロー
 
@@ -118,6 +120,10 @@ git branch -d <ブランチ名>
 
 6. **いずれかが非空** → スキップしてユーザーに報告する（作業中 or 未プッシュの変更がある）
 
+#### worktree 削除後のゾンビ kill
+
+ワークツリー削除ステップが完了したら、`kill-zombies` サブコマンドと同じ手順でゾンビエージェントを掃除する（後述「kill-zombies — ゾンビ tmux エージェントの自動 kill」参照）。
+
 #### 返却フォーマット
 
 ```text
@@ -125,8 +131,9 @@ git branch -d <ブランチ名>
 削除: worktree-agent-abc123 (.claude/worktrees/agent-abc123) [Agent]
 スキップ: dev/100_zzz (未コミット変更あり)
 スキップ: worktree-agent-def456 (作業中) [Agent]
+Killed: ship-parallel-20260405/ship-243 pane=%176 worktree=/path/to/missing
 ---
-削除: 2件, スキップ: 2件
+削除: 2件, スキップ: 2件, Killed: 1件, Skipped: 0件
 ```
 
 ### remove — 指定ワークツリーの手動削除
@@ -151,6 +158,45 @@ git branch -d <ブランチ名>
 
 ```text
 削除: <ブランチ名> (<worktree_path>)
+```
+
+### kill-zombies — ゾンビ tmux エージェントの自動 kill
+
+ship-parallel が tmux ペインで起動した Agent は、対応する worktree が削除されると `cd: no such file or directory` のループに入り CPU を消費し続ける（Issue #253）。
+このサブコマンドは `~/.claude/teams/*/config.json` を走査し、worktree が消えた tmux 連動エージェントの tmux ペインを検出して kill する。
+
+#### ワークフロー
+
+実装は `.claude/lib/zombie_agent.sh` に集約されている。スキル実行時はこのスクリプトを呼び出すだけでよい。
+
+```bash
+bash "$CLAUDE_PROJECT_DIR/.claude/lib/zombie_agent.sh" kill
+```
+
+スクリプトの動作:
+
+1. `~/.claude/teams/*/config.json` を全走査
+2. `backendType == "tmux"` かつ `tmuxPaneId` 非空のメンバーを抽出
+3. `prompt` から `worktree パス: <path>` をパースして worktree 絶対パスを取得
+4. 該当パスのディレクトリが存在しない → ゾンビとして検出
+5. tmux サーバーが起動しており該当ペインが残存している → `tmux kill-pane -t <paneId>`
+6. tmux ペインが既に消えている / tmux サーバー未起動 → スキップ
+
+#### dry run（kill せずに一覧確認）
+
+```bash
+bash "$CLAUDE_PROJECT_DIR/.claude/lib/zombie_agent.sh" list
+```
+
+`<team>\t<member-name>\t<tmuxPaneId>\t<missing-worktree-path>` 形式で tab 区切り出力する。
+
+#### 返却フォーマット
+
+```text
+Killed: ship-parallel-20260405/ship-243 pane=%176 worktree=/path/to/missing
+Skipped: ship-parallel-20260405/ship-244 pane=%177 (既に消滅 or tmux 未起動) worktree=/path/to/missing2
+---
+Killed: 1, Skipped: 1
 ```
 
 ## 制約
