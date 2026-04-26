@@ -58,7 +58,7 @@ gh pr view {pr_number} --json state --jq '.state'
 ### 2.5. CI ステータスの取得
 
 ```bash
-gh pr view {pr_number} --json statusCheckRollup --jq '.statusCheckRollup[] | {name, status, conclusion}'
+gh pr view {pr_number} --json statusCheckRollup --jq '.statusCheckRollup[] | {name, status, conclusion, detailsUrl}'
 ```
 
 #### CI 状態の分類
@@ -71,9 +71,11 @@ gh pr view {pr_number} --json statusCheckRollup --jq '.statusCheckRollup[] | {na
 
 #### CI 失敗時のログ取得
 
-CI 失敗が 1 件以上ある場合、失敗ジョブのログを取得する:
+CI 失敗が 1 件以上ある場合、`detailsUrl` から `run_id` を抽出し、失敗ジョブのログを取得する:
 
 ```bash
+# detailsUrl 例: https://github.com/{owner}/{repo}/actions/runs/{run_id}/jobs/{job_id}
+# run_id の抽出: detailsUrl の /runs/ と /jobs/ の間のセグメント
 gh run view {run_id} --log-failed
 ```
 
@@ -148,7 +150,6 @@ gh api graphql -f query='
 - `isResolved == false` かつ先頭コメントが CodeRabbit のスレッドのみ抽出
 - 各スレッドの `id`（thread node ID）は却下時の resolve mutation で使用する
 
-**未解決0件 → 「未解決コメントなし」と報告して正常終了。**
 **未解決 0 件 かつ CI 失敗 0 件（PENDING 残存は許容）→ 「対応不要」と報告して正常終了。**
 **未解決あり または CI 失敗あり → ステップ6へ。**
 
