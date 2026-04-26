@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_pr_review_fix_ci.sh — /vibecorp:pr-review-fix の CI 失敗検知仕様ガード
+# test_pr_review_fix_ci.sh — /vibecorp:pr-fix の CI 失敗検知仕様ガード
 # 使い方: bash tests/test_pr_review_fix_ci.sh
 
 set -euo pipefail
@@ -22,9 +22,9 @@ fail() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILL_FILE="$PROJECT_DIR/skills/pr-review-fix/SKILL.md"
+SKILL_FILE="$PROJECT_DIR/skills/pr-fix/SKILL.md"
 
-echo "=== /vibecorp:pr-review-fix CI 失敗検知仕様ガード テスト ==="
+echo "=== /vibecorp:pr-fix CI 失敗検知仕様ガード テスト ==="
 echo ""
 
 # --- テスト1: SKILL.md の存在 ---
@@ -32,9 +32,9 @@ echo ""
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
-  pass "pr-review-fix SKILL.md が存在する"
+  pass "pr-fix SKILL.md が存在する"
 else
-  fail "pr-review-fix SKILL.md が存在しない: $SKILL_FILE"
+  fail "pr-fix SKILL.md が存在しない: $SKILL_FILE"
   exit 1
 fi
 
