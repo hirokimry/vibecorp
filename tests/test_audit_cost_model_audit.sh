@@ -83,17 +83,17 @@ fi
 echo ""
 echo "--- テスト3: 役割別判定ガイド ---"
 
-# C-suite + 合議分析員ロール
-for role in cfo cto cpo clo ciso accounting-analyst legal-analyst security-analyst; do
+# 判断品質ロール（C-suite + 合議分析員 + プロセス管理）
+for role in cfo cto cpo clo ciso accounting-analyst legal-analyst security-analyst sm; do
   if grep -q -e "\`${role}\`" "$SKILL_FILE"; then
-    pass "SKILL.md が C-suite/分析員ロール ${role} を列挙している"
+    pass "SKILL.md が判断品質ロール ${role} を列挙している"
   else
-    fail "SKILL.md が C-suite/分析員ロール ${role} を列挙していない"
+    fail "SKILL.md が判断品質ロール ${role} を列挙していない"
   fi
 done
 
 # 定型作業ロール
-for role in branch commit pr sm plan-architect; do
+for role in branch commit pr plan-architect plan-cost plan-testing; do
   if grep -q -e "\`${role}\`" "$SKILL_FILE"; then
     pass "SKILL.md が定型作業ロール ${role} を列挙している"
   else

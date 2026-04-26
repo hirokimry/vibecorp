@@ -52,9 +52,9 @@ YYYY-MM-DD（実施者: CFO エージェント / スキル: `/audit-cost`）
 
 ### 役割別判定
 
-#### 判断品質が存在意義のロール（C-suite + 合議制の分析員）
+#### 判断品質が存在意義のロール（C-suite + 合議制の分析員 + プロセス管理）
 
-対象: `cfo`, `cto`, `cpo`, `clo`, `ciso`, `accounting-analyst`, `legal-analyst`, `security-analyst`
+対象: `cfo`, `cto`, `cpo`, `clo`, `ciso`, `accounting-analyst`, `legal-analyst`, `security-analyst`, `sm`
 
 | エージェント | 現在のモデル | 判定 | 指摘区分 |
 |---|---|---|---|
@@ -63,7 +63,7 @@ YYYY-MM-DD（実施者: CFO エージェント / スキル: `/audit-cost`）
 
 #### 定型作業ロール（自動化エージェント）
 
-対象: `branch`, `commit`, `pr`, `sm`, `plan-architect`, `plan-cost`, `plan-dx`, `plan-legal`, `plan-performance`, `plan-security`, `plan-testing`
+対象: `branch`, `commit`, `pr`, `plan-architect`, `plan-cost`, `plan-dx`, `plan-legal`, `plan-performance`, `plan-security`, `plan-testing`
 
 | エージェント | 現在のモデル | 判定 | 指摘区分 |
 |---|---|---|---|

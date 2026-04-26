@@ -75,18 +75,20 @@ Critical / Major / Minor で指摘を分類してください。
 走査対象: `templates/claude/agents/*.md`（配布元・優先）および `.claude/agents/*.md`（導入先上書き）。
 各エージェントの YAML フロントマター `model:` 行を抽出し、役割と単価（`docs/cost-analysis.md` の「モデル単価」表）を突き合わせる。判定区分は以下のとおり。
 
-#### 判断品質が存在意義のロール（C-suite + 合議制の分析員）
+#### 判断品質が存在意義のロール（C-suite + 合議制の分析員 + プロセス管理）
 
-対象エージェント: `cfo`, `cto`, `cpo`, `clo`, `ciso`, `accounting-analyst`, `legal-analyst`, `security-analyst`
+対象エージェント: `cfo`, `cto`, `cpo`, `clo`, `ciso`, `accounting-analyst`, `legal-analyst`, `security-analyst`, `sm`
+
+`sm`（Scrum Master）は `.claude/rules/roles.md` で「並列/直列の実行判定・ブロッカー検出・次タスク提案」を担うプロセス管理の専門家として定義されており、判断品質が存在意義のロールに含める。
 
 - 推奨: Opus または Sonnet
-- **Haiku 指定 → Major 指摘**（品質劣化リスク。メタレビュー・合議の判断品質が落ちる）
+- **Haiku 指定 → Major 指摘**（品質劣化リスク。メタレビュー・合議・プロセス判断の品質が落ちる）
 - Sonnet 指定で Opus が望ましいケース → Minor 指摘（CFO が文脈で判定）
 - モデル未指定（親から継承）→ Minor 指摘（明示推奨）
 
 #### 定型作業ロール（自動化エージェント）
 
-対象エージェント: `branch`, `commit`, `pr`, `sm`, `plan-architect`, `plan-cost`, `plan-dx`, `plan-legal`, `plan-performance`, `plan-security`, `plan-testing`
+対象エージェント: `branch`, `commit`, `pr`, `plan-architect`, `plan-cost`, `plan-dx`, `plan-legal`, `plan-performance`, `plan-security`, `plan-testing`
 
 - 推奨: Sonnet または Haiku（定型作業に十分）
 - **Opus 指定 → Major 指摘**（過剰指定。`docs/cost-analysis.md` の「プリセット別の想定運用モード」で full プリセットの並列度が高くコスト超過リスクが大きい）
