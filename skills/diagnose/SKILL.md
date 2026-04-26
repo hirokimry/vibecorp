@@ -13,6 +13,8 @@ description: >
 コードベースを自律的に診断し、改善点を発見してフィルタリング後に GitHub Issue として起票する。
 **実装は行わない。起票と実装を分離することで暴走を防止する。**
 
+**スピード/UX 観点はモデル指定・コスト最適化には一切踏み込まない**。モデル指定の変更提案（Opus → Sonnet 等）・エージェント削減・合議制回数削減・並列度自体の削減・`max_issues_per_run` 等のコスト上限値の変更は CFO 管轄（Issue #354 系）に閉じ込め、品質劣化ルートを遮断する。スピード/UX 観点は逐次処理の並列化余地・同期待ちボトルネック・フック実行時間の肥大化・スキル間の冗長な再実行のみを対象とする。
+
 ## 使用方法
 
 ```bash
@@ -92,6 +94,17 @@ CTO エージェントに以下を依頼する:
 - テストカバレッジの不足
 - エラーハンドリングの改善余地
 - パフォーマンスボトルネック
+- スピード/UX（ユーザー待ち時間の短縮）:
+  - 並列化可能な逐次処理（独立したエージェント呼び出し・スキル呼び出し・テストが直列に並んでいる箇所）
+  - 同期待ちが長いフェーズ（CI 待ち・レビュー待ち等の構造的ボトルネック）
+  - フック実行時間の肥大化（PreToolUse / PostToolUse フックが 1 処理あたり閾値を超える）
+  - スキル間の冗長な再実行（同じチェック・同じ走査が複数スキルで重複実行されている）
+
+**スピード/UX 観点で出してはいけない提案（CFO 管轄に閉じ込める）**:
+- モデル指定の変更提案（Opus → Sonnet 等）は出さない
+- エージェント削減・合議制回数削減は出さない
+- 並列度自体の削減は出さない
+- `max_issues_per_run` / `max_issues_per_day` 等のコスト上限値の変更は出さない
 ```
 
 `--scope` が指定されている場合はそのディレクトリに限定して分析する。
@@ -150,8 +163,8 @@ SM エージェントに残った候補を渡し、`rules/autonomous-restriction
 不可領域:
 1. 認証（hooks/*auth*, hooks/*permission*, settings.json の permissions, gh auth, ANTHROPIC_API_KEY 扱い）
 2. 暗号（encrypt/decrypt/secret/credential/token を扱うコード）
-3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所）
-4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御）
+3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所、**モデル指定の変更（Opus → Sonnet 等）**）
+4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御、**エージェント削減・合議制回数削減・並列度自体の削減**）
 5. MVV（MVV.md 自体の変更）
 
 該当する候補には「除外」と判定し、理由として該当領域名を付記してください。
