@@ -21,16 +21,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 GITIGNORE="${SCRIPT_DIR}/.claude/.gitignore"
 TEMPLATE="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
 
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [[ -f "$path" ]]; then
-    pass "${desc}"
-  else
-    fail "${desc} (ファイル不在: ${path})"
-  fi
-}
-
 assert_entry_exists() {
   local desc="$1"
   local path="$2"

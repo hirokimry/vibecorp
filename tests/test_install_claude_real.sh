@@ -42,16 +42,6 @@ assert_symlink_to() {
   fi
 }
 
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -e "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
 assert_file_exists_not_symlink() {
   local desc="$1"
   local path="$2"

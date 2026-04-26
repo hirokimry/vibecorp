@@ -36,48 +36,6 @@ assert_allowed() {
   fi
 }
 
-assert_exit_code() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$actual" = "$expected" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: exit $expected, 実際: exit $actual)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$pattern' がファイルに含まれない)"
-  fi
-}
-
 # --- セットアップ / クリーンアップ ---
 
 setup_project_dir() {

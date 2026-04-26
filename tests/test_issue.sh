@@ -12,27 +12,6 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_MD="${SCRIPT_DIR}/skills/issue/SKILL.md"
 
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$pattern' がファイルに含まれない: $path)"
-  fi
-}
-
 # ============================================
 echo "=== /vibecorp:issue スキル テスト ==="
 # ============================================

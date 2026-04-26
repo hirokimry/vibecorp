@@ -31,58 +31,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_SH="${SCRIPT_DIR}/install.sh"
 TMPDIR_ROOT=""
 
-assert_exit_code() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$actual" = "$expected" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: exit $expected, 実際: exit $actual)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
-assert_file_executable() {
-  local desc="$1"
-  local path="$2"
-  if [ -x "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (実行権限なし: $path)"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q -e "$pattern" "$path" 2>/dev/null; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$pattern' がファイルに含まれない: $path)"
-  fi
-}
-
 # --- セットアップ / クリーンアップ ---
 
 create_test_repo() {

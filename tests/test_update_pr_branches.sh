@@ -33,17 +33,6 @@ assert_not_contains() {
 }
 
 # ファイルに対して直接 grep する（大きなファイルの変数展開問題を回避）
-assert_file_contains() {
-  local desc="$1"
-  local file="$2"
-  local needle="$3"
-  if grep -q "$needle" "$file"; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$needle' がファイル '$file' に見つからない)"
-  fi
-}
-
 # --- ワークフローファイル構造テスト ---
 
 echo "=== ワークフローファイル構造テスト ==="

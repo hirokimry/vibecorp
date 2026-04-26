@@ -17,32 +17,6 @@ ISSUE_SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
 PR_SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
 COMMIT_SKILL="${SCRIPT_DIR}/skills/commit/SKILL.md"
 
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [[ -f "$path" ]]; then
-    pass "${desc}"
-  else
-    fail "${desc} (ファイル不在: ${path})"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if [[ ! -f "$path" ]]; then
-    fail "${desc} (ファイル不在: ${path})"
-    return
-  fi
-  # -e でパターン終端を明示（shell.md 規約）
-  if grep -q -e "$pattern" "$path"; then
-    pass "${desc}"
-  else
-    fail "${desc} (パターン '${pattern}' が '${path}' に見つからない)"
-  fi
-}
-
 # ============================================
 echo "=== .claude/rules/communication.md が存在する ==="
 # ============================================

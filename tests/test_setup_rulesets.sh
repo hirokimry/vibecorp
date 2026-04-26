@@ -14,17 +14,6 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SETUP_SH="${SCRIPT_DIR}/setup-rulesets.sh"
 
-assert_exit_code() {
-  local desc="$1"
-  local expected="$2"
-  local actual="$3"
-  if [ "$actual" = "$expected" ]; then
-    pass "$desc"
-  else
-    fail "$desc (期待: exit $expected, 実際: exit $actual)"
-  fi
-}
-
 # ============================================
 echo "=== A. 引数パース ==="
 # ============================================

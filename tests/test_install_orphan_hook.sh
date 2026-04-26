@@ -27,26 +27,6 @@ TMPDIR_ROOT=""
 VIBECORP_COPY=""
 TEST_REPO=""
 
-assert_file_not_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ ! -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在する: $path)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
 assert_lock_has() {
   local desc="$1"
   local lock="$2"

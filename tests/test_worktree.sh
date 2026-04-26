@@ -8,16 +8,6 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
-assert_dir_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -d "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ディレクトリが存在しない: $path)"
-  fi
-}
-
 assert_dir_not_exists() {
   local desc="$1"
   local path="$2"
@@ -25,27 +15,6 @@ assert_dir_not_exists() {
     pass "$desc"
   else
     fail "$desc (ディレクトリが存在する: $path)"
-  fi
-}
-
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then
-    pass "$desc"
-  else
-    fail "$desc (ファイルが存在しない: $path)"
-  fi
-}
-
-assert_file_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
-    pass "$desc"
-  else
-    fail "$desc (パターン '$pattern' がファイルに含まれない: $path)"
   fi
 }
 

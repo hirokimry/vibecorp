@@ -12,12 +12,6 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_FILE="${SCRIPT_DIR}/skills/knowledge-pr/SKILL.md"
 
-assert_file_exists() {
-  local desc="$1"
-  local path="$2"
-  if [ -f "$path" ]; then pass "$desc"; else fail "$desc ($path が存在しない)"; fi
-}
-
 assert_contains() {
   local desc="$1"
   local pattern="$2"
