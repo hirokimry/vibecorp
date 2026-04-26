@@ -5,6 +5,8 @@
 
 ## エントリ
 
+- 2026-04-26 — marketplace 経由プラグイン自動ロード修正 Issue を OK と判定（install.sh の一括セットアップ完結とmarketplace.json公式準拠）
+
 - 2026-04-20 — Issue #361 README.md の不整合修正を実施（/issue の CPO 単独→3者ゲート、/autopilot のラベル縛り撤廃を反映）
 - 2026-04-18 — .claude/.gitignore テンプレート配布化 + 配布系アーキテクチャ再設計 Issue を OK と判定
 - 2026-04-18 — 配布バグ軽量修正5件（Issue #360 抜粋）を OK と判定

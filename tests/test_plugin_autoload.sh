@@ -85,10 +85,45 @@ else
 fi
 
 plugin_source=$(jq -r '.plugins[0].source' "$MARKETPLACE")
-if [[ "$plugin_source" == "." ]]; then
-  pass "marketplace.json の plugin source が \".\"（リポジトリルート）"
+if [[ "$plugin_source" == "./" ]]; then
+  pass "marketplace.json の plugin source が \"./\"（リポジトリルート）"
 else
   fail "marketplace.json の plugin source が期待値と異なる: $plugin_source"
+fi
+
+schema_val=$(jq -r '.["$schema"] // ""' "$MARKETPLACE")
+if [[ "$schema_val" == "https://anthropic.com/claude-code/marketplace.schema.json" ]]; then
+  pass "marketplace.json の \$schema が公式 URL"
+else
+  fail "marketplace.json の \$schema が期待値と異なる: $schema_val"
+fi
+
+mkt_desc=$(jq -r '.description // ""' "$MARKETPLACE")
+if [[ -n "$mkt_desc" ]]; then
+  pass "marketplace.json に description が存在する"
+else
+  fail "marketplace.json に description が存在しない"
+fi
+
+plugin_desc=$(jq -r '.plugins[0].description // ""' "$MARKETPLACE")
+if [[ -n "$plugin_desc" ]]; then
+  pass "marketplace.json の plugin に description が存在する"
+else
+  fail "marketplace.json の plugin に description が存在しない"
+fi
+
+skills_count=$(jq '.plugins[0].skills | length' "$MARKETPLACE")
+if [[ "$skills_count" -ge 1 ]]; then
+  pass "marketplace.json の plugin に skills 配列が存在する（${skills_count} 件）"
+else
+  fail "marketplace.json の plugin に skills 配列が存在しない、または空"
+fi
+
+skills_dir_count=$(find "${REPO_ROOT}/skills" -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
+if [[ "$skills_count" -eq "$skills_dir_count" ]]; then
+  pass "skills 配列の件数（${skills_count}）が skills/ ディレクトリ数と一致"
+else
+  fail "skills 配列の件数（${skills_count}）が skills/ ディレクトリ数（${skills_dir_count}）と不一致"
 fi
 
 # --- B. templates/settings.json.tpl の extraKnownMarketplaces / enabledPlugins ---
