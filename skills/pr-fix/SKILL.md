@@ -53,7 +53,46 @@ gh pr view {pr_number} --json state --jq '.state'
 
 - `MERGED` → 「PR #{pr_number} はマージ済みです」と報告して**正常終了**
 - `CLOSED` → 「PR #{pr_number} はクローズされています」と報告して**正常終了**
-- `OPEN` → ステップ3へ
+- `OPEN` → ステップ2.5へ
+
+### 2.5. CI ステータスの取得
+
+```bash
+gh pr view {pr_number} --json statusCheckRollup --jq '.statusCheckRollup[] | {name, status, conclusion, detailsUrl}'
+```
+
+#### CI 状態の分類
+
+| conclusion | 分類 | 行動 |
+|---|---|---|
+| `SUCCESS`, `NEUTRAL`, `SKIPPED` | CI green | 修正不要 |
+| `FAILURE`, `CANCELLED`, `TIMED_OUT`, `ACTION_REQUIRED` | CI 失敗 | 修正対象 |
+| `null`（`status` が `IN_PROGRESS` / `QUEUED`） | CI 待機（PENDING） | 修正対象外、次イテレーション待ち |
+
+#### CI 失敗時のログ取得
+
+CI 失敗が 1 件以上ある場合、`detailsUrl` から `run_id` を抽出し、失敗ジョブのログを取得する:
+
+```bash
+# detailsUrl 例: https://github.com/{owner}/{repo}/actions/runs/{run_id}/jobs/{job_id}
+# run_id の抽出: detailsUrl の /runs/ と /jobs/ の間のセグメント
+gh run view {run_id} --log-failed
+```
+
+末尾 200 行程度に絞り込んで修正コンテキストに渡す。
+
+#### 外部要因 CI 失敗の判定
+
+ログに以下のキーワードが含まれる場合は外部要因と判定し、CEO にエスカレーションして**停止する**:
+
+`Rate limit`, `429`, `ECONNREFUSED`, `network is unreachable`, `could not resolve host`, `npm install failed`, `ETIMEDOUT`, `ENOTFOUND`, `socket hang up`
+
+外部要因と判定した場合:
+- 「CI 失敗は外部要因（{キーワード}）のため、リポジトリ側の修正では解消できません」と報告して**停止する**
+
+#### CI green 判定
+
+全 check run の `conclusion` が `SUCCESS` / `NEUTRAL` / `SKIPPED` のいずれかで、かつ PENDING が 0 件の場合に CI green と判定する。
 
 ### 3. CodeRabbit 有効性の確認
 
@@ -111,8 +150,8 @@ gh api graphql -f query='
 - `isResolved == false` かつ先頭コメントが CodeRabbit のスレッドのみ抽出
 - 各スレッドの `id`（thread node ID）は却下時の resolve mutation で使用する
 
-**未解決0件 → 「未解決コメントなし」と報告して正常終了。**
-**未解決あり → ステップ6へ。**
+**未解決 0 件 かつ CI 失敗 0 件（PENDING 残存は許容）→ 「対応不要」と報告して正常終了。**
+**未解決あり または CI 失敗あり → ステップ6へ。**
 
 ### 6. 指摘の修正
 
@@ -139,7 +178,7 @@ gh api graphql -f query='
 
 #### 6.3 修正実行
 
-修正計画に従ってコードを修正する。
+修正計画に従ってコードを修正する。未解決コメントと CI 失敗を同一コンテキストで修正する。
 
 - **計画に記載された範囲のみを変更する**
 - 修正後、関連するテスト・lint を実行して通過を確認する
@@ -189,8 +228,10 @@ git push
 ## /vibecorp:pr-fix 完了
 
 - PR: #{pr_number}
-- 修正: {n}件
-- 却下: {n}件
+- レビュー修正: {n}件
+- レビュー却下: {n}件
+- CI 修正: {n}件
+- CI 待機: {n}件
 ```
 
 **マージ済みの場合:**
@@ -202,13 +243,14 @@ git push
 - 状態: マージ済み
 ```
 
-**未解決コメントなしの場合:**
+**対応不要の場合:**
 
 ```text
 ## /vibecorp:pr-fix 完了
 
 - PR: #{pr_number}
 - 未解決コメント: なし
+- CI: green（または PENDING {n}件）
 ```
 
 ## 制約

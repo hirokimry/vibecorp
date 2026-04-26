@@ -112,6 +112,7 @@ gh pr view <pr_number> \
 - `mergeStateStatus == DIRTY`
 - `mergeStateStatus == DRAFT`
 - `/vibecorp:pr-fix` が rate limit 停止を返した
+- `/vibecorp:pr-fix` が外部要因 CI 失敗を検知した
 
 #### teammate 配下の場合（SendMessage が利用可能）
 
