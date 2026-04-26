@@ -771,6 +771,8 @@ copy_managed_files() {
       rm -rf "${skills_dir}/autopilot"
       # エピック化スキルは full プリセット専用（3 者承認ゲートで CISO/CPO/SM が必須なため）
       rm -rf "${skills_dir}/plan-epic"
+      # エピックリリーススキルは full プリセット専用（エピック運用は full でのみ整備）
+      rm -rf "${skills_dir}/release-epic"
       rm -rf "${agents_dir}"
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
@@ -791,6 +793,8 @@ copy_managed_files() {
       rm -rf "${skills_dir}/autopilot"
       # エピック化スキルは full プリセット専用（3 者承認ゲートで CISO/CPO/SM が必須なため）
       rm -rf "${skills_dir}/plan-epic"
+      # エピックリリーススキルは full プリセット専用（エピック運用は full でのみ整備）
+      rm -rf "${skills_dir}/release-epic"
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
