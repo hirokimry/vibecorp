@@ -1,6 +1,6 @@
 #!/bin/bash
-# test_pr_review_loop.sh — /vibecorp:pr-fix-loop の同期ループ仕様ガード
-# 使い方: bash tests/test_pr_review_loop.sh
+# test_pr_fix_loop.sh — /vibecorp:pr-fix-loop の同期ループ仕様ガード
+# 使い方: bash tests/test_pr_fix_loop.sh
 
 set -euo pipefail
 
@@ -136,7 +136,7 @@ for state in "${STATES[@]}"; do
 done
 
 # CHANGES_REQUESTED 時に /vibecorp:pr-fix を同期呼び出しすることが明示されている
-if grep -q -e 'pr-fix' "$SKILL_FILE"; then
+if grep -Eq '/vibecorp:pr-fix([^[:alnum:]-]|$)' "$SKILL_FILE"; then
   pass "pr-fix の同期呼び出し記述が存在する"
 else
   fail "pr-fix の同期呼び出し記述が存在しない"
