@@ -171,11 +171,11 @@ else
   fail "/vibecorp:review-loop への worktree 引き継ぎ記載がない"
 fi
 
-# 6-3: /vibecorp:pr-review-loop への --worktree 引き継ぎ
-if grep -q '/vibecorp:pr-review-loop.*worktree' "$SKILL_FILE"; then
-  pass "/vibecorp:pr-review-loop への worktree 引き継ぎ記載がある"
+# 6-3: /vibecorp:pr-fix-loop への --worktree 引き継ぎ
+if grep -q '/vibecorp:pr-fix-loop.*worktree' "$SKILL_FILE"; then
+  pass "/vibecorp:pr-fix-loop への worktree 引き継ぎ記載がある"
 else
-  fail "/vibecorp:pr-review-loop への worktree 引き継ぎ記載がない"
+  fail "/vibecorp:pr-fix-loop への worktree 引き継ぎ記載がない"
 fi
 
 # 6-4: /vibecorp:plan-review-loop への --worktree 引き継ぎ

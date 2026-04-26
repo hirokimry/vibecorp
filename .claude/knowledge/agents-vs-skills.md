@@ -88,7 +88,7 @@ Agent ツールで以下を実行（model: sonnet, tools: Bash(限定), Edit, Wr
 skills/             ← Plugin 名前空間（/vibecorp:xxx）で呼び出し
   review/           ← CodeRabbit CLI実行 + カスタムレビュー
   review-loop/      ← validator(opus) → planner(opus) → fixer(sonnet) を内包
-  pr-review-loop/   ← 統合ワークフロー
+  pr-fix-loop/   ← 統合ワークフロー
   session-harvest/  ← 各 Role Agent を順次起動して知識蓄積
   ...
 ```
