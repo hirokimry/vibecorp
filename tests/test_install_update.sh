@@ -232,12 +232,20 @@ assert_file_contains "--update でカスタム版フックが保持される" "$
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
 
-# P2. --update で .claude/skills/ の互換スタブがクリーンアップされる（Phase 3）
+# P2. --update で旧 plugin_skills がマイグレーションされる
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# 旧スタブを模擬配置
+# 旧バージョンの lock を模擬（plugin_skills セクション付き）
+{
+  echo "  plugin_skills:"
+  echo "    - review"
+} >> "$R/.claude/vibecorp.lock"
+
+# 旧 skills/ コピーと .claude/skills/ スタブを模擬配置
+mkdir -p "$R/skills/review"
+echo "# 旧コピー" > "$R/skills/review/SKILL.md"
 mkdir -p "$R/.claude/skills/review"
 echo "# 旧スタブ" > "$R/.claude/skills/review/SKILL.md"
 mkdir -p "$R/.claude/skills/my-deploy"
@@ -245,11 +253,17 @@ echo "# デプロイ" > "$R/.claude/skills/my-deploy/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# lock に載っている管理スタブは削除される
-if [[ -d "$R/.claude/skills/review" ]]; then
-  fail "--update で管理スタブ(review)が削除されていない"
+# skills/review（plugin skills コピー）が削除される
+if [[ -d "$R/skills/review" ]]; then
+  fail "--update で skills/review が削除されていない"
 else
-  pass "--update で管理スタブ(review)が削除された"
+  pass "--update で skills/review がマイグレーションされた"
+fi
+# .claude/skills/review（互換スタブ）も削除される
+if [[ -d "$R/.claude/skills/review" ]]; then
+  fail "--update で .claude/skills/review スタブが削除されていない"
+else
+  pass "--update で .claude/skills/review スタブが削除された"
 fi
 # ユーザー独自スキルは残る
 assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
@@ -300,7 +314,12 @@ bash "$INSTALL_SH" --update 2>/dev/null
 
 # vibecorp 管理ファイルが存在
 assert_file_exists "--update 後に protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
-assert_dir_exists "--update 後に plugin review スキル存在" "$R/skills/review"
+# skills/ は作成されない（プラグインキャッシュに移行済み）
+if [[ -d "$R/skills" ]]; then
+  fail "--update 後に skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "--update 後に skills/ が作成されていない"
+fi
 # ユーザーファイルが保持
 assert_file_exists "--update 後にユーザーフック保持" "$R/.claude/hooks/custom.sh"
 assert_file_exists "--update 後にユーザースキル保持" "$R/.claude/skills/custom-skill/SKILL.md"
@@ -468,14 +487,22 @@ bash "$INSTALL_SH" --update --preset standard 2>/dev/null
 assert_file_contains "AB8: カスタム sync-gate が保持される" "$R/.claude/hooks/sync-gate.sh" "カスタム sync-gate"
 cleanup
 
-# AB9. 統合テスト: --update で旧スタブがクリーンアップされる
+# AB9. 統合テスト: --update で旧スタブ・旧コピーがマイグレーションされる
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# 旧スタブを模擬配置
+# 旧バージョンの lock を模擬（plugin_skills セクション付き）
+{
+  echo "  plugin_skills:"
+  echo "    - review"
+} >> "$R/.claude/vibecorp.lock"
+
+# 旧スタブ・旧コピーを模擬配置
 mkdir -p "$R/.claude/skills/review"
 echo "# 旧スタブ" > "$R/.claude/skills/review/SKILL.md"
+mkdir -p "$R/skills/review"
+echo "# 旧コピー" > "$R/skills/review/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
@@ -483,6 +510,11 @@ if [[ -d "$R/.claude/skills/review" ]]; then
   fail "AB9: 旧スタブ(review)が削除されていない"
 else
   pass "AB9: 旧スタブ(review)がクリーンアップされた"
+fi
+if [[ -d "$R/skills/review" ]]; then
+  fail "AB9: 旧コピー(skills/review)が削除されていない"
+else
+  pass "AB9: 旧コピー(skills/review)がマイグレーションされた"
 fi
 cleanup
 

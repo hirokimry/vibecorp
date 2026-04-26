@@ -32,8 +32,12 @@ assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hook
 assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
 assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
-# M2. vibecorp 管理 plugin スキルが配置される
-assert_dir_exists "plugin review スキルが存在" "$R/skills/review"
+# M2. skills/ は作成されない（プラグインキャッシュに移行済み）
+if [[ -d "$R/skills" ]]; then
+  fail "skills/ が作成されている（プラグインキャッシュに移行済み）"
+else
+  pass "skills/ が作成されていない"
+fi
 # ユーザー独自の .claude/skills/ は install で触らない
 mkdir -p "$R/.claude/skills/my-custom"
 echo "# カスタム" > "$R/.claude/skills/my-custom/SKILL.md"
