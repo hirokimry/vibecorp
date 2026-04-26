@@ -23,6 +23,7 @@
         "./skills/issue",
         "./skills/knowledge-pr",
         "./skills/plan",
+        "./skills/plan-epic",
         "./skills/plan-review-loop",
         "./skills/pr",
         "./skills/pr-review-fix",
