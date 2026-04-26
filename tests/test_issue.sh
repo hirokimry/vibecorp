@@ -113,6 +113,70 @@ assert_file_contains "却下時に CISO/CPO/SM の判定結果を表示する" "
 # 27. minimal プリセットでの安全性根拠が明記されている
 assert_file_contains "minimal プリセットの安全性根拠が記載されている" "$SKILL_MD" "minimal プリセットの安全性"
 
+# --- SM 自動判定（エピック/単発ルーティング） ---
+
+echo "--- SM 自動判定（エピック/単発ルーティング） ---"
+
+# 28. SM 自動判定ステップが存在する
+assert_file_contains "SM 自動判定ステップが存在する" "$SKILL_MD" "SM 自動判定"
+
+# 29. エピック/単発ルーティング の語が存在する
+assert_file_contains "エピック/単発ルーティングの記述がある" "$SKILL_MD" "エピック/単発ルーティング"
+
+# 30. 単発判定キーワード
+assert_file_contains "単発判定キーワードがある" "$SKILL_MD" "単発判定"
+
+# 31. エピック化判定キーワード
+assert_file_contains "エピック化判定キーワードがある" "$SKILL_MD" "エピック化判定"
+
+# 32. /plan-epic への参照がある
+assert_file_contains "/plan-epic への参照がある" "$SKILL_MD" "plan-epic"
+
+# 33. 判定基準: 複数要件の列挙
+assert_file_contains "判定基準: 複数要件の列挙が記載されている" "$SKILL_MD" "複数要件の列挙"
+
+# 34. 判定基準: ファイル領域の複数跨ぎ
+assert_file_contains "判定基準: ファイル領域の複数跨ぎが記載されている" "$SKILL_MD" "ファイル領域の複数跨ぎ"
+
+# 35. 判定基準: 並列実行可否
+assert_file_contains "判定基準: 並列実行可否が記載されている" "$SKILL_MD" "並列実行可否"
+
+# 36. CEO override セクションがある
+assert_file_contains "CEO override セクションがある" "$SKILL_MD" "CEO override"
+
+# 37. CEO override: 単発上書きの記述
+assert_file_contains "CEO override: 単発上書きの記述がある" "$SKILL_MD" "単発でいい"
+
+# 38. CEO override: エピック上書きの記述
+assert_file_contains "CEO override: エピック上書きの記述がある" "$SKILL_MD" "エピックにして"
+
+# 39. full プリセット限定が明記されている
+assert_file_contains "full プリセット限定の記述がある" "$SKILL_MD" "\`full\` プリセット"
+
+# 40. minimal / standard でスキップする旨
+assert_file_contains "minimal / standard スキップの記述がある" "$SKILL_MD" "\`minimal\` / \`standard\`"
+
+# 41. SM は 1 回のみ呼ぶ（合議なし）が明記されている
+assert_file_contains "SM 1回のみ呼ぶ記述がある" "$SKILL_MD" "\*\*1 回だけ\*\*"
+
+# 42. 合議なしが明記されている
+assert_file_contains "合議なしが明記されている" "$SKILL_MD" "合議は行わず"
+
+# 43. /plan-epic 未配置時のフォールバックが明記されている
+assert_file_contains "/plan-epic 未配置時のフォールバックが明記されている" "$SKILL_MD" "plan-epic\` スキルが配置されていない場合"
+
+# 44. 返却フォーマット（単発時）に判定結果セクションがある
+assert_file_contains "返却フォーマット（単発時）に判定結果がある" "$SKILL_MD" "SM 判定: 単発"
+
+# 45. 返却フォーマット（エピック時）に判定結果セクションがある
+assert_file_contains "返却フォーマット（エピック時）に判定結果がある" "$SKILL_MD" "SM 判定: エピック化"
+
+# 46. エピック化ルーティング時の返却フォーマットがある
+assert_file_contains "エピック化ルーティング時の返却フォーマットがある" "$SKILL_MD" "エピック化して起票しました"
+
+# 47. 透明性確保の記述
+assert_file_contains "透明性確保の記述がある" "$SKILL_MD" "透明性確保"
+
 # --- 制約 ---
 
 echo "--- 制約 ---"
