@@ -1,0 +1,57 @@
+[
+  {
+    "number": 421,
+    "title": "✨ feat: example feature",
+    "headRefName": "dev/350_example_feature",
+    "baseRefName": "main",
+    "createdAt": "2026-04-20T01:00:00Z",
+    "mergedAt": "2026-04-20T05:30:00Z",
+    "additions": 120,
+    "deletions": 30,
+    "commits": [
+      {"oid": "abc1"},
+      {"oid": "abc2"}
+    ],
+    "reviews": [
+      {"submittedAt": "2026-04-20T03:00:00Z", "state": "APPROVED"}
+    ],
+    "statusCheckRollup": [
+      {"name": "ci", "status": "COMPLETED", "conclusion": "SUCCESS", "startedAt": "2026-04-20T01:05:00Z", "completedAt": "2026-04-20T01:25:00Z"},
+      {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS", "startedAt": "2026-04-20T01:05:00Z", "completedAt": "2026-04-20T01:15:00Z"}
+    ]
+  },
+  {
+    "number": 422,
+    "title": "🐛 fix: another fix",
+    "headRefName": "dev/351_bugfix",
+    "baseRefName": "main",
+    "createdAt": "2026-04-21T09:00:00Z",
+    "mergedAt": "2026-04-21T10:30:00Z",
+    "additions": 5,
+    "deletions": 2,
+    "commits": [
+      {"oid": "def1"}
+    ],
+    "reviews": [],
+    "statusCheckRollup": [
+      {"name": "ci", "status": "COMPLETED", "conclusion": "SUCCESS", "startedAt": "2026-04-21T09:02:00Z", "completedAt": "2026-04-21T09:18:00Z"}
+    ]
+  },
+  {
+    "number": 423,
+    "title": "🔄 refactor: cleanup",
+    "headRefName": "feature/no_issue_branch",
+    "baseRefName": "main",
+    "createdAt": "2026-04-22T12:00:00Z",
+    "mergedAt": "2026-04-22T13:00:00Z",
+    "additions": 50,
+    "deletions": 40,
+    "commits": [
+      {"oid": "ghi1"}
+    ],
+    "reviews": [
+      {"submittedAt": "2026-04-22T12:30:00Z", "state": "APPROVED"}
+    ],
+    "statusCheckRollup": []
+  }
+]
