@@ -129,10 +129,4 @@ test_readme_has_pat_section
 
 # --- 結果 ---
 
-echo ""
-echo "=== 結果 ==="
-echo "合計: ${TOTAL} / 成功: ${PASSED} / 失敗: ${FAILED}"
-
-if [ "${FAILED}" -gt 0 ]; then
-  exit 1
-fi
+print_test_summary

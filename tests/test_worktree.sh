@@ -316,10 +316,4 @@ echo ""
 
 # ===== 結果 =====
 
-echo "==========================="
-echo "結果: $PASSED/$TOTAL 成功, $FAILED 失敗"
-echo "==========================="
-
-if [ "$FAILED" -gt 0 ]; then
-  exit 1
-fi
+print_test_summary

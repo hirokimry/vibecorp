@@ -12,17 +12,6 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_MD="${SCRIPT_DIR}/skills/diagnose/SKILL.md"
 
-assert_file_not_contains() {
-  local desc="$1"
-  local path="$2"
-  local pattern="$3"
-  if grep -q "$pattern" "$path" 2>/dev/null; then
-    fail "$desc (パターン '$pattern' がファイルに含まれる: $path)"
-  else
-    pass "$desc"
-  fi
-}
-
 # ============================================
 echo "=== /vibecorp:diagnose スキル テスト ==="
 # ============================================
@@ -133,20 +122,10 @@ assert_file_contains "stamp_dir/diagnose-active を touch する" "$SKILL_MD" 't
 assert_file_contains "vibecorp_state_path diagnose-active を rm -f する" "$SKILL_MD" 'rm -f "\$(vibecorp_state_path diagnose-active)"'
 
 # 23. 旧 .claude/state/diagnose-active パスが SKILL 内に残っていない（退行検知）
-if ! grep -q '\.claude/state/diagnose-active' "$SKILL_MD"; then
-  PASSED=$((PASSED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  PASS: 旧パス .claude/state/diagnose-active が SKILL に残っていない"
-else
-  FAILED=$((FAILED + 1))
-  TOTAL=$((TOTAL + 1))
-  echo "  FAIL: 旧パス .claude/state/diagnose-active が SKILL に残っている（退行）"
-fi
+assert_file_not_contains \
+  "旧パス .claude/state/diagnose-active が SKILL に残っていない" \
+  "$SKILL_MD" \
+  '\.claude/state/diagnose-active'
 
 # ============================================
-echo ""
-echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
-
-if [ "$FAILED" -gt 0 ]; then
-  exit 1
-fi
+print_test_summary
