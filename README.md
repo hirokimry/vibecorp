@@ -25,6 +25,17 @@ cd your-project
 path/to/vibecorp/install.sh --name your-project
 ```
 
+### プラグインのセットアップ（初回のみ）
+
+インストール後、Claude Code を起動して以下を実行する:
+
+```bash
+/plugin marketplace add hirokimry/vibecorp
+/plugin install vibecorp@vibecorp --scope project
+```
+
+これにより `/vibecorp:*` スキルが利用可能になる。スキルはプラグインキャッシュ（`~/.claude/plugins/cache/`）から配信されるため、導入先にスキルファイルは配置されない。
+
 ### バージョン指定インストール
 
 ```bash
@@ -140,7 +151,6 @@ which claude
 your-project/
 ├── .claude-plugin/
 │   └── plugin.json        # Plugin メタデータ
-├── skills/                # スキル（/vibecorp:xxx で呼び出し）
 ├── .claude/
 │   ├── hooks/             # フック（ファイル保護・ゲート制御）
 │   ├── agents/            # エージェント（standard 以上）
