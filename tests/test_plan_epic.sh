@@ -76,7 +76,7 @@ echo "--- F. install.sh のプリセット分岐 ---"
 assert_file_exists "install.sh が存在する" "$INSTALL_SH"
 
 # minimal / standard プリセットで plan-epic を削除する分岐がある
-PLAN_EPIC_DELETIONS=$(grep -c 'rm -rf "\${skills_dir}/plan-epic"' "$INSTALL_SH" || echo 0)
+PLAN_EPIC_DELETIONS=$(grep -c 'rm -rf "\${skills_dir}/plan-epic"' "$INSTALL_SH" || true)
 if [[ "$PLAN_EPIC_DELETIONS" -ge 2 ]]; then
   pass "install.sh に plan-epic 削除分岐が 2 箇所以上ある（minimal + standard）"
 else
