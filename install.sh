@@ -672,7 +672,6 @@ copy_managed_files() {
     fi
   fi
 
-
   # agents: 同名ファイルが既存ならスキップ
   if [[ -d "${SCRIPT_DIR}/templates/claude/agents" ]]; then
     mkdir -p "$agents_dir"
@@ -1865,7 +1864,8 @@ print_completion() {
 
 DONE
 
-  cat >&2 <<PLUGIN
+  if [[ "$UPDATE_MODE" != true ]]; then
+    cat >&2 <<PLUGIN
 
 🔌 プラグインのセットアップ（初回のみ）
 
@@ -1876,6 +1876,7 @@ DONE
   これにより /vibecorp:* スキルが利用可能になります。
 
 PLUGIN
+  fi
 
   # コンフリクトが発生したファイル／カスタマイズ保護でスキップされたファイルがあれば警告表示
   if [[ -n "$CONFLICT_FILES" ]]; then
