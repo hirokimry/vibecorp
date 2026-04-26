@@ -769,6 +769,8 @@ copy_managed_files() {
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
+      # エピック化スキルは full プリセット専用（3 者承認ゲートで CISO/CPO/SM が必須なため）
+      rm -rf "${skills_dir}/plan-epic"
       rm -rf "${agents_dir}"
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
@@ -787,6 +789,8 @@ copy_managed_files() {
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
       rm -rf "${skills_dir}/ship-parallel"
       rm -rf "${skills_dir}/autopilot"
+      # エピック化スキルは full プリセット専用（3 者承認ゲートで CISO/CPO/SM が必須なため）
+      rm -rf "${skills_dir}/plan-epic"
       # plan-cost / plan-legal は full プリセット限定
       rm -f "${agents_dir}/plan-cost.md"
       rm -f "${agents_dir}/plan-legal.md"
