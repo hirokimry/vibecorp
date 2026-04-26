@@ -58,11 +58,13 @@ echo ""
 # --- テスト1: teams ディレクトリが存在しない場合は空出力 ---
 
 echo "--- テスト1: teams ディレクトリ不在時の挙動 ---"
-CLAUDE_TEAMS_DIR="${TMPDIR_ROOT}/no-such-dir" output=$(list_zombies)
+# TEAMS_DIR は source 時に確定するため、関数内で参照される変数を直接差し替える
+# （CLAUDE_TEAMS_DIR の代入では効かないため shell 変数 TEAMS_DIR を一時退避→上書き→復元）
+_old_teams_dir="$TEAMS_DIR"
+TEAMS_DIR="${TMPDIR_ROOT}/no-such-dir"
+output=$(list_zombies)
+TEAMS_DIR="$_old_teams_dir"
 assert_eq "teams ディレクトリ不在 → 空出力" "" "$output"
-
-# 戻り値を再度通常に戻す
-export CLAUDE_TEAMS_DIR="$TEAMS_DIR"
 
 echo ""
 

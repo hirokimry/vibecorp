@@ -104,7 +104,7 @@ kill_zombies() {
       continue
     fi
 
-    if [[ -n "$active_panes" ]] && printf '%s\n' "$active_panes" | grep -qx "$pane_id"; then
+    if [[ -n "$active_panes" ]] && printf '%s\n' "$active_panes" | grep -Fqx "$pane_id"; then
       tmux kill-pane -t "$pane_id"
       printf 'Killed: %s/%s pane=%s worktree=%s\n' "$team" "$name" "$pane_id" "$worktree"
       killed=$((killed + 1))
