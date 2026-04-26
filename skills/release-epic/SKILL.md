@@ -70,11 +70,12 @@ GitHub 公式の sub-issue API で子 Issue 一覧を取得する。
 ```bash
 gh api \
   -H "Accept: application/vnd.github+json" \
+  --paginate \
   "/repos/<owner>/<repo>/issues/<親番号>/sub_issues"
 ```
 
 - `<owner>/<repo>` は `gh repo view --json owner,name --jq '.owner.login + "/" + .name'` で取得
-- `--paginate` を付けて全件取得する（既定 30 件超のエピック対応）
+- `--paginate` を必ず付けて全件取得する（既定 30 件超のエピック対応）
 
 公式仕様: https://docs.github.com/en/rest/issues/sub-issues
 
@@ -104,7 +105,9 @@ git ls-remote --heads origin "feature/epic-<親番号>*"
 
 - 0 件: 中断（「ブランチが未作成」と CEO に報告）
 - 2 件以上: 中断（「複数候補があります」と CEO に列挙報告）
-- 1 件: そのブランチ名を head に採用
+- 1 件: そのブランチ名を **完全一致の文字列**（例: `feature/epic-349_release_epic`）として保持し、後段の重複確認・PR 作成で同じ値を再利用する
+
+`gh pr list --head` および `gh pr create --head` はワイルドカードをサポートしないため（[公式ドキュメント](https://cli.github.com/manual/gh_pr_list)）、ステップ 7 で確定した完全一致のブランチ名を変数として保持しておくことが必須となる。
 
 ### 8. リリースノートの生成
 
@@ -136,19 +139,22 @@ PR タイトルは `🚀 release: epic #<親番号> <親タイトル>` の形式
 ### 9. 既存 PR の重複確認
 
 同一 head（feature ブランチ）→ base（main）の open PR が既に存在しないか確認する。
+ステップ 7 で確定した完全一致のブランチ名（例: `feature/epic-349_release_epic`）を `--head` に渡す（ワイルドカードは利用不可）。
 
 ```bash
-gh pr list --base main --head "feature/epic-<親番号>_*" --state open --json number,title,url
+gh pr list --base main --head "<ステップ7で確定した完全一致のブランチ名>" --state open --json number,title,url
 ```
 
 - 既存 PR が見つかった場合は新規作成せず CEO に報告して中断する（auto-merge 機構と衝突させないため）
 
 ### 10. リリース PR の作成
 
+ステップ 7 で確定した完全一致のブランチ名を `--head` にそのまま渡す。
+
 ```bash
 gh pr create \
   --base main \
-  --head "feature/epic-<親番号>_<要約>" \
+  --head "<ステップ7で確定した完全一致のブランチ名>" \
   --title "🚀 release: epic #<親番号> <親タイトル>" \
   --body "<生成したリリースノート>"
 ```
