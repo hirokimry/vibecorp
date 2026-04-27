@@ -5,7 +5,7 @@
 
 ## エントリ
 
-- 2026-04-28 — Issue #323 guide-gate.sh（Claude Code Guide 参照強制）を standard 以上に追加
+- 2026-04-28 — Issue `#323` — guide-gate.sh（Claude Code Guide 参照強制）を standard 以上に追加
 
 - 2026-04-26 — marketplace 経由プラグイン自動ロード修正 Issue を OK と判定（install.sh の一括セットアップ完結とmarketplace.json公式準拠）
 
