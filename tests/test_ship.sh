@@ -257,9 +257,85 @@ fi
 
 echo ""
 
-# --- テスト10: 互換スタブの廃止確認 ---
+# --- テスト10: sub-issue ベースブランチ検知 ---
 
-echo "--- テスト10: 互換スタブの廃止確認 ---"
+echo "--- テスト10: sub-issue ベースブランチ検知 ---"
+
+# 10-1: ベースブランチ決定ステップの存在
+if grep -q '### 1\. ベースブランチの決定' "$SKILL_FILE"; then
+  pass "ベースブランチ決定ステップが存在する"
+else
+  fail "ベースブランチ決定ステップが存在しない"
+fi
+
+# 10-2: parent issue 取得 API の記載
+if grep -q 'issues/.*/parent' "$SKILL_FILE"; then
+  pass "parent issue 取得 API の記載がある"
+else
+  fail "parent issue 取得 API の記載がない"
+fi
+
+# 10-3: feature/epic- ブランチの探索
+if grep -q 'feature/epic-' "$SKILL_FILE"; then
+  pass "feature/epic- ブランチの探索記載がある"
+else
+  fail "feature/epic- ブランチの探索記載がない"
+fi
+
+# 10-4: sub-issue でない場合の default branch フォールバック
+if grep -q 'defaultBranchRef' "$SKILL_FILE"; then
+  pass "sub-issue でない場合の default branch フォールバック記載がある"
+else
+  fail "sub-issue でない場合の default branch フォールバック記載がない"
+fi
+
+# 10-5: PR 作成時の --base 指定
+if grep -q -e '--base <ステップ1で決定したベースブランチ>' "$SKILL_FILE"; then
+  pass "PR 作成時の --base にステップ1のベースブランチ指定がある"
+else
+  fail "PR 作成時の --base にステップ1のベースブランチ指定がない"
+fi
+
+# 10-6: git ls-remote による親ブランチ探索
+if grep -q 'git ls-remote' "$SKILL_FILE"; then
+  pass "git ls-remote による親ブランチ探索記載がある"
+else
+  fail "git ls-remote による親ブランチ探索記載がない"
+fi
+
+# 10-7: 親ブランチ 0 件時の中断（介入ポイント）
+if grep -q '親エピックの feature ブランチが見つかりません' "$SKILL_FILE"; then
+  pass "親ブランチ 0 件時の中断記載がある"
+else
+  fail "親ブランチ 0 件時の中断記載がない"
+fi
+
+# 10-8: ベースブランチからの派生
+if grep -q 'origin/<ステップ1で決定したベースブランチ>' "$SKILL_FILE"; then
+  pass "ベースブランチからのブランチ派生記載がある"
+else
+  fail "ベースブランチからのブランチ派生記載がない"
+fi
+
+# 10-9: 結果報告にベース記載
+if grep -q 'ベース:.*feature/epic-' "$SKILL_FILE"; then
+  pass "結果報告にベースブランチの記載がある"
+else
+  fail "結果報告にベースブランチの記載がない"
+fi
+
+# 10-10: 介入ポイントにエピック関連の記載
+if grep -q '親エピックの feature ブランチが見つからない' "$SKILL_FILE"; then
+  pass "介入ポイントにエピック関連の中断条件がある"
+else
+  fail "介入ポイントにエピック関連の中断条件がない"
+fi
+
+echo ""
+
+# --- テスト11: 互換スタブの廃止確認 ---
+
+echo "--- テスト11: 互換スタブの廃止確認 ---"
 
 if [ -d "$PROJECT_DIR/.claude/skills/ship" ]; then
   fail ".claude/skills/ship/ が残存している（Phase 3 で廃止済み）"
