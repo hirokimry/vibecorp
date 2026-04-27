@@ -103,6 +103,13 @@ awk '/^preset:/ { print $2 }' "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml"
 
 <エピック全体の完了条件>
 
+## 📍 関連ファイル
+
+<!-- エピック全体で触れるファイル・モジュールのパス一覧（relevant file locations）。 -->
+<!-- Anthropic 公式推奨の初回プロンプト 4 要素のうち relevant file locations を起票時点で揃える。 -->
+- `<対象ファイル 1>`
+- `<対象ファイル 2>`
+
 ---
 この Issue は /vibecorp:plan-epic により起票されました。
 ```

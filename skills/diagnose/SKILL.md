@@ -224,13 +224,44 @@ gh issue list --label "diagnose" --state all --json createdAt --jq '[.[] | selec
 各 Issue には以下を付与する:
 - ラベル: `diagnose`
 - タイトルプレフィックス: `[diagnose]`
-- 本文末尾に自動起票メッセージ:
+- 本文には Anthropic 公式推奨の 4 要素を構造的に含める（後段の `/vibecorp:plan-review-loop` が完了条件を前提に走るため、空欄にしない）
 
-```text
+#### 自律起票時の本文テンプレ
+
+`/vibecorp:diagnose` が自律起票する Issue は、以下のセクション構造で本文を生成する:
+
+```markdown
+## 💡 概要
+
+<改善候補の概要 — 動作主語で「〜になる」「〜できるようになる」と書く>
+
+## 🎯 背景
+
+<なぜこの改善が必要か — CTO/CPO 分析の根拠>
+
+## 📝 提案
+
+<具体的な改善内容>
+
+## ✅ 完了条件
+
+<!-- 検証可能なチェックリスト形式（acceptance criteria）。空欄不可。 -->
+- [ ] <検証可能な完了条件 1>
+- [ ] <検証可能な完了条件 2>
+- [ ] tests/ 配下に検証テストが追加され、CI で通っている
+
+## 📍 関連ファイル
+
+<!-- 触れるファイル・モジュールのパス（relevant file locations）。空欄不可。 -->
+- `<対象ファイル 1>`
+- `<対象ファイル 2>`
+
 ---
 この Issue は /vibecorp:diagnose による自律改善ループで自動起票されました。
 実装は /vibecorp:ship で別途実行してください。
 ```
+
+`## ✅ 完了条件` と `## 📍 関連ファイル` セクションは必須。`/vibecorp:diagnose` が自律起票する場合も、CTO/CPO 分析時点でこの 2 要素を確定させてから `/vibecorp:issue` に渡すことで、`/vibecorp:issue` の CPO 4 要素チェック（ステップ 6b）を確実に通過させる。
 
 ### 10. diagnose-active スタンプ削除
 
