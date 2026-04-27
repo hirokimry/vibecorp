@@ -115,7 +115,28 @@ gh issue create --title "🎯 epic: <テーマ>" --body "<本文>" --label "epic
 
 `epic` ラベルがリポジトリに存在しない場合は `--label` を省略する（`gh label list` で確認）。
 
-### 5. 子 Issue の起票（/vibecorp:issue 経由）
+### 5. 親 feature ブランチの作成
+
+親エピックの feature ブランチを作成し、origin に push する。`/ship` が `git ls-remote` で自動検出するために必要。
+
+**5-1. default branch を取得:**
+
+```bash
+gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
+```
+
+**5-2. ブランチを作成して push:**
+
+```bash
+git switch -c "feature/epic-<親番号>_<要約>" "origin/<default_branch>"
+git push -u origin "feature/epic-<親番号>_<要約>"
+```
+
+- ブランチ名は `feature/epic-{親Issue番号}_{要約}` 形式（`docs/specification.md` のブランチ命名規約に準拠）
+- `<要約>` は親 Issue タイトルからスラッシュ・スペースを `_` に置換し、英数字・アンダースコア・ハイフンのみにサニタイズする
+- push まで完了させることで `/ship` の `git ls-remote --heads origin "feature/epic-<親番号>_*"` で確実に検出される
+
+### 6. 子 Issue の起票（/vibecorp:issue 経由）
 
 ステップ 3 で分解した子タスクを 1 件ずつ `/vibecorp:issue` スキル経由で起票する。
 
@@ -129,7 +150,7 @@ gh issue create --title "🎯 epic: <テーマ>" --body "<本文>" --label "epic
 - `/vibecorp:issue` の 3 者承認ゲート（CISO + CPO + SM）が自動で走る
 - いずれかの子 Issue が「除外」判定された場合は、その子 Issue だけスキップして CEO に報告する（親 Issue は残し、後から手動で追加可能とする）
 
-### 6. sub-issue API で親に紐付け
+### 7. sub-issue API で親に紐付け
 
 各子 Issue を GitHub 公式の sub-issue API で親 Issue に紐付ける。
 
@@ -147,7 +168,7 @@ gh api \
 
 公式仕様: https://docs.github.com/en/rest/issues/sub-issues
 
-### 7. 親 Issue 本文の更新
+### 8. 親 Issue 本文の更新
 
 親 Issue の本文のチェックリストを実際の子 Issue 番号に書き換える。
 
@@ -155,7 +176,7 @@ gh api \
 gh issue edit <親番号> --body "<更新後の本文>"
 ```
 
-### 8. 結果報告
+### 9. 結果報告
 
 ```text
 ## /vibecorp:plan-epic 完了
@@ -184,8 +205,8 @@ gh issue edit <親番号> --body "<更新後の本文>"
 |------|-----------|
 | full プリセットでない | ステップ 1 |
 | CEO が plan を承認しない | ステップ 3 |
-| 子 Issue 起票で 3 者承認ゲートが「除外」と判定 | ステップ 5 |
-| sub-issue API がエラーを返した | ステップ 6 |
+| 子 Issue 起票で 3 者承認ゲートが「除外」と判定 | ステップ 6 |
+| sub-issue API がエラーを返した | ステップ 7 |
 | gh CLI が認証されていない | 全ステップ共通 |
 
 ## 🪶 --dry-run モード
@@ -197,7 +218,7 @@ gh issue edit <親番号> --body "<更新後の本文>"
 3. plan mode で子タスク分解を提示
 4. 起票プレビュー（親 Issue 本文と子 Issue タイトル一覧をレポート出力）
 
-ステップ 4 以降の起票・API 呼び出しは行わない。
+ステップ 4 以降の起票・ブランチ作成・API 呼び出しは行わない。
 
 ## ⚠️ 制約
 

@@ -9,6 +9,18 @@ Issue 対応は以下の順序で進める:
 5. 実装
 6. PR 作成
 
+## ブランチ命名規約
+
+| 種別 | パターン | 例 |
+|------|---------|-----|
+| 通常 Issue | `dev/{Issue番号}_{要約}` | `dev/123_add_login` |
+| 親エピック（feature ブランチ） | `feature/epic-{Issue番号}_{要約}` | `feature/epic-345_plan_epic_skill` |
+| エピック配下の子 Issue | `dev/{Issue番号}_{要約}` | `dev/346_ship_epic_child` |
+
+- 親エピックの feature ブランチは `/plan-epic` が作成する（full プリセット専用）
+- 子 Issue のブランチは通常の `dev/` 命名に従うが、PR の base は親 feature ブランチとなる（`/ship` が自動判定する）
+- 要約は英語スネークケース 2〜4 語
+
 ## Issue の使い方
 
 - Issue の本文は設計の記録場所。設計・仕様に関する内容は本文を編集する

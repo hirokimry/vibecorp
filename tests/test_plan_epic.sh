@@ -53,25 +53,37 @@ assert_file_contains "sub-issue API 呼び出しがある" "$SKILL_MD" "sub_issu
 assert_file_contains "gh api の使用がある" "$SKILL_MD" "gh api"
 assert_file_contains "GitHub 公式ドキュメント URL がある" "$SKILL_MD" "docs.github.com/en/rest/issues/sub-issues"
 
-# --- D. --dry-run サポート ---
+# --- D. 親 feature ブランチの作成 ---
 
-echo "--- D. --dry-run サポート ---"
+echo "--- D. 親 feature ブランチの作成 ---"
+
+assert_file_contains "feature ブランチ作成ステップがある" "$SKILL_MD" "親 feature ブランチの作成"
+assert_file_contains "feature/epic- 命名規約の記述がある" "$SKILL_MD" "feature/epic-"
+assert_file_contains "default branch 取得コマンドがある" "$SKILL_MD" "gh repo view --json defaultBranchRef"
+assert_file_contains "default branch 起点で git switch -c する記述がある" "$SKILL_MD" "git switch -c"
+assert_file_contains "要約サニタイズ規則の記述がある" "$SKILL_MD" "サニタイズ"
+assert_file_contains "git push で origin に push する記述がある" "$SKILL_MD" "git push.*origin.*feature/epic-"
+assert_file_contains "git ls-remote で検出可能にする記述がある" "$SKILL_MD" "git ls-remote"
+
+# --- E. --dry-run サポート ---
+
+echo "--- E. --dry-run サポート ---"
 
 assert_file_contains "--dry-run の使用方法がある" "$SKILL_MD" "\-\-dry-run"
-assert_file_contains "--dry-run モードの説明がある" "$SKILL_MD" "起票・API 呼び出しは行わない\|起票しない"
+assert_file_contains "--dry-run モードの説明がある" "$SKILL_MD" "起票.*ブランチ作成.*API 呼び出しは行わない"
 
-# --- E. 制約・介入ポイント ---
+# --- F. 制約・介入ポイント ---
 
-echo "--- E. 制約・介入ポイント ---"
+echo "--- F. 制約・介入ポイント ---"
 
 assert_file_contains "コード変更禁止の制約がある" "$SKILL_MD" "コード変更は一切行わない"
 assert_file_contains "jq 文字列補間禁止の制約がある" "$SKILL_MD" "string interpolation"
 assert_file_contains "コマンド素直実行の制約がある" "$SKILL_MD" "コマンドをそのまま実行"
 assert_file_contains "介入ポイントの記述がある" "$SKILL_MD" "介入ポイント"
 
-# --- F. install.sh のプリセット分岐 ---
+# --- G. install.sh のプリセット分岐 ---
 
-echo "--- F. install.sh のプリセット分岐 ---"
+echo "--- G. install.sh のプリセット分岐 ---"
 
 assert_file_exists "install.sh が存在する" "$INSTALL_SH"
 
@@ -97,9 +109,9 @@ else
   fail "minimal / standard 両方のブロックに plan-epic 削除がない"
 fi
 
-# --- G. 返却フォーマット ---
+# --- H. 返却フォーマット ---
 
-echo "--- G. 返却フォーマット ---"
+echo "--- H. 返却フォーマット ---"
 
 assert_file_contains "結果報告フォーマットがある" "$SKILL_MD" "結果報告\|完了"
 assert_file_contains "親 Issue URL が報告に含まれる" "$SKILL_MD" "親 Issue\|親 URL"
