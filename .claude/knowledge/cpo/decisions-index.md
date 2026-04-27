@@ -5,10 +5,9 @@
 
 ## エントリ
 
-- 2026-04-28 — Issue #323 guide-gate.sh（Claude Code Guide 参照強制）を standard 以上に追加
-
-- 2026-04-26 — marketplace 経由プラグイン自動ロード修正 Issue を OK と判定（install.sh の一括セットアップ完結とmarketplace.json公式準拠）
-
+- 2026-04-25 — Plugin 名前空間 Phase 3: `.claude/skills/` 互換スタブ廃止を OK と判定
+- 2026-04-25 — ~/.zshrc へのシェル関数追記による --plugin-dir 自動付与 — 除外（Public Ready ガードレール・透明性バリューに抵触）
+- 2026-04-25 — scripts/dev.sh ラッパーによる --plugin-dir 自動付与 — OK（リポジトリ内完結・Public Ready 適合・透明性バリュー整合）
 - 2026-04-20 — Issue #361 README.md の不整合修正を実施（/issue の CPO 単独→3者ゲート、/autopilot のラベル縛り撤廃を反映）
 - 2026-04-18 — .claude/.gitignore テンプレート配布化 + 配布系アーキテクチャ再設計 Issue を OK と判定
 - 2026-04-18 — 配布バグ軽量修正5件（Issue #360 抜粋）を OK と判定
