@@ -59,6 +59,9 @@ echo "--- D. 親 feature ブランチの作成 ---"
 
 assert_file_contains "feature ブランチ作成ステップがある" "$SKILL_MD" "親 feature ブランチの作成"
 assert_file_contains "feature/epic- 命名規約の記述がある" "$SKILL_MD" "feature/epic-"
+assert_file_contains "default branch 取得コマンドがある" "$SKILL_MD" "gh repo view --json defaultBranchRef"
+assert_file_contains "default branch 起点で git switch -c する記述がある" "$SKILL_MD" "git switch -c"
+assert_file_contains "要約サニタイズ規則の記述がある" "$SKILL_MD" "サニタイズ"
 assert_file_contains "git push で origin に push する記述がある" "$SKILL_MD" "git push.*origin.*feature/epic-"
 assert_file_contains "git ls-remote で検出可能にする記述がある" "$SKILL_MD" "git ls-remote"
 
@@ -67,7 +70,7 @@ assert_file_contains "git ls-remote で検出可能にする記述がある" "$S
 echo "--- E. --dry-run サポート ---"
 
 assert_file_contains "--dry-run の使用方法がある" "$SKILL_MD" "\-\-dry-run"
-assert_file_contains "--dry-run モードの説明がある" "$SKILL_MD" "起票.*ブランチ作成.*API 呼び出しは行わない\|起票しない"
+assert_file_contains "--dry-run モードの説明がある" "$SKILL_MD" "起票.*ブランチ作成.*API 呼び出しは行わない"
 
 # --- F. 制約・介入ポイント ---
 
