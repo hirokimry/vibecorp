@@ -5,6 +5,11 @@
 
 ## エントリ
 
+- 2026-04-28 — Issue #427 — テストヘルパー（pass/fail/assert_*）重複定義削除で `test_agents_decisions.sh` のみ意図的に残存（出力スタイル差異のため対象外、PR 本文・実装計画に明記） (from CodeRabbit review on PR #427)
+- 2026-04-25 — ~/.zshrc シェル関数による --plugin-dir 自動付与案のレビュー — 動作は正しいが重複指定挙動の確認と CLAUDE.md 明記を推奨（案B+C 組み合わせ方針と整合）
+- 2026-04-25 — Plugin 名前空間 Phase 3 互換スタブ廃止 — plugin_skills セクションを照合基準に採用、廃止コードは生成ループ＋mkdir を一括削除
+- 2026-04-25 — CodeRabbit 修正整合性チェック（file-placement.md, plugin-namespace.md, install.sh）— 3件の変更に新たな矛盾なし。file-placement.md の廃止済み .claude/skills/ 行の残存は別途確認推奨
+- 2026-04-25 — Issue #359 Phase 3 ドキュメント整合性チェック — design-philosophy.md と file-placement.md の3層アーキテクチャ図に廃止済み .claude/skills/ 行が残存。要更新
 - 2026-04-24 — Issue #352 フォローアップ — docs/design-philosophy.md プラグイン配布方式セクションに Plugin 名前空間移行検討中（Phase 1 完了・Phase 2 待ち）を現行方針と並記
 - 2026-04-24 — Issue #352 — Plugin 名前空間 Phase 1 実機検証。Go 判定（`--plugin-dir .` で `vibecorp:review` の名前空間解決を実機確認。永続化方法が Phase 2 の課題）
 - 2026-04-23 — diagnose 上限ガードレール文書化 — 3ファイル間（autonomous-restrictions.md・vibecorp.yml・cost-analysis.md）の整合性確認、矛盾なし
