@@ -89,7 +89,7 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 
 **関連スキル:**
 
-- `/plan-epic`: 親エピックの Issue・feature ブランチ・子 Issue を一括作成する
+- `/plan-epic`: 親エピックの Issue・子 Issue を一括作成し sub-issue で紐付ける
 - `/ship`: 子 Issue の実装時に親 feature ブランチを自動検出して base に設定する
 - `/release-epic`: feature ブランチから main への集約 PR を作成する
 

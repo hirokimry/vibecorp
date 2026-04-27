@@ -58,7 +58,7 @@ gh api "/repos/<owner>/<repo>/issues/<番号>/parent" --jq '.number'
 ブランチ命名規約に従い `feature/epic-<親番号>_*` を origin から探索する。
 
 ```bash
-git ls-remote --heads origin "feature/epic-<親番号>*"
+git ls-remote --heads origin "feature/epic-<親番号>_*"
 ```
 
 - **0 件**: 中断（介入ポイント、CEO に「親エピックの feature ブランチが見つかりません」と報告）
