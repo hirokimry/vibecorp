@@ -5,6 +5,10 @@ language: ja
 base_branch: main
 protected_files:
   - MVV.md
+guide_gate:
+  extra_paths:
+    - templates/claude/
+    - install.sh
 diagnose:
   enabled: true
   max_issues_per_run: 5
