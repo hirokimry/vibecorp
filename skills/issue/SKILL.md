@@ -26,14 +26,34 @@ gh repo view --json owner,name,defaultBranchRef --jq '.owner.login + "/" + .name
 gh repo view --json owner --jq '.owner.login'
 ```
 
-### 2. 💬 ユーザーから Issue 内容を取得
+### 2. 💬 ユーザーから Issue 内容を取得（1 ターンバッチ質問）
 
-以下をユーザーに確認する:
+以下の **4 項目を 1 ターンでバッチ質問**する。複数ターンに分けない（公式の `Reduce the number of required user interactions` 原則）。CEO はまとめて入力するため、項目が増えてもターン数は増えない。
 
 - **タイトル**: Issue の内容（タイプは自動付与するため不要）
-- **本文**: Issue の詳細（Markdown 形式）
+- **本文**: Issue の詳細（Markdown 形式、💡概要 / 🎯背景 / 📝提案 等を含む）
+- **完了条件**: 検証可能なチェックリスト（acceptance criteria）。本文には `## ✅ 完了条件` セクションとして含める
+- **関連ファイル**: 触れるファイル・モジュールのパス一覧（relevant file locations）。本文には `## 📍 関連ファイル` セクションとして含める
 
-ユーザーが一度に両方提供した場合はそのまま使用する。
+ユーザーが一度に全項目を提供した場合はそのまま使用する。完了条件・関連ファイルが提供されない場合は、再度の対話を 1 ターン追加するのではなく、最初の 1 ターン内で 4 項目をまとめて要求する文面にする。
+
+#### 設計根拠（Anthropic 公式 Best practices）
+
+[Best practices for using Claude Opus 4.7 with Claude Code](https://claude.com/blog/best-practices-for-using-claude-opus-4-7-with-claude-code) の `Structuring interactive coding sessions` セクションに基づく:
+
+- **`Specify the task up front`**: 初回プロンプトに `intent / constraints / acceptance criteria / relevant file locations` の 4 要素を含める
+- **`Reduce the number of required user interactions`**: 質問はバッチ化する（every user turn adds reasoning overhead）
+
+vibecorp での 4 要素の肩代わり状況:
+
+| 要素 | 肩代わり手段 |
+|---|---|
+| `intent` | 本文（💡概要 / 🎯背景）に CEO が記述 |
+| `constraints` | `.claude/rules/` 一式が CLAUDE.md 経由で常駐（ヒアリング不要） |
+| `acceptance criteria` | 本文の `## ✅ 完了条件` セクション |
+| `relevant file locations` | 本文の `## 📍 関連ファイル` セクション |
+
+constraints は常駐ルールで自動補完されるため、CEO に追加で質問しない。残る 3 要素（intent / acceptance criteria / relevant file locations）を **1 ターンでバッチ質問**する。
 
 ### 3. 🧭 SM 自動判定（エピック/単発ルーティング）
 
@@ -171,7 +191,7 @@ CISO エージェント（`.claude/agents/ciso.md`）に以下を依頼する:
 判定: OK または 除外（該当領域名を明記）
 ```
 
-#### 6b. CPO フィルタリング（MVV / docs 整合）
+#### 6b. CPO フィルタリング（MVV / docs 整合 + 4 要素チェック）
 
 CPO エージェント（`.claude/agents/cpo.md`）に以下を依頼する:
 
@@ -185,9 +205,16 @@ CPO エージェント（`.claude/agents/cpo.md`）に以下を依頼する:
 - MVV.md のバリューに沿っているか
 - docs/specification.md / docs/design-philosophy.md と矛盾していないか
 - プリセットスコープの整合（full 専用機能が適切にスコープされているか）
+- Anthropic 公式推奨の 4 要素（intent / constraints / acceptance criteria / relevant file locations）が揃っているか
+  - intent: 本文（💡概要 / 🎯背景 / 📝提案 等）から達成したい目的が読み取れる
+  - constraints: `.claude/rules/` 常駐で肩代わりされるため Issue 単体での記述は不要（チェック対象外）
+  - acceptance criteria: 本文に `## ✅ 完了条件` セクションがあり、検証可能なチェックリストが書かれている（空欄不可）
+  - relevant file locations: 本文に `## 📍 関連ファイル` セクションがあり、触れるファイル・モジュールが列挙されている（空欄不可）
 
 判定: OK または 除外（理由を明記）
 ```
+
+**4 要素チェックの位置づけ**: Anthropic 公式が「初回プロンプトに含めろ」と明記している 4 要素のうち、constraints は `.claude/rules/` 常駐で自動補完されるため Issue 本文には不要。intent / acceptance criteria / relevant file locations が揃っていない Issue は後段の `/vibecorp:plan-review-loop` が空欄を前提に走り品質が落ちるため、起票時点で書き忘れを検出して除外する。
 
 #### 6c. SM フィルタリング（自律実行可否チェック）
 
