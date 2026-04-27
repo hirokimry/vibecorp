@@ -18,6 +18,7 @@
         "./skills/branch",
         "./skills/commit",
         "./skills/context7",
+        "./skills/cycle-metrics",
         "./skills/diagnose",
         "./skills/harvest-all",
         "./skills/issue",
