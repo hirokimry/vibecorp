@@ -964,8 +964,8 @@ coderabbit:
   enabled: true
 diagnose:
   enabled: true
-  max_issues_per_run: 5
-  max_issues_per_day: 10
+  max_issues_per_run: 7
+  max_issues_per_day: 14
   max_files_per_issue: 10
   scope: ""
   forbidden_targets:

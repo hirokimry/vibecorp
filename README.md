@@ -221,7 +221,7 @@ your-project/
 |---|---|
 | `/vibecorp:diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/vibecorp:ship-parallel` | 複数 Issue を並列に `/vibecorp:ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（課金リスクを伴う大規模並列実行のため） |
-| `/vibecorp:autopilot` | `/vibecorp:diagnose` → `/vibecorp:ship-parallel` の自律改善サイクルを1回実行。全 open Issue を対象に実行（ラベルによる絞り込みなし）。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 12h /vibecorp:autopilot` で定期実行可能。full プリセット専用 |
+| `/vibecorp:autopilot` | `/vibecorp:diagnose` → `/vibecorp:ship-parallel` の自律改善サイクルを1回実行。全 open Issue を対象に実行（ラベルによる絞り込みなし）。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 24h /vibecorp:autopilot` での定期実行を推奨（12h は Claude Max のレート制限を逼迫させやすいため非推奨。詳細は `docs/cost-analysis.md`）。full プリセット専用 |
 
 ## フック一覧
 
@@ -372,8 +372,8 @@ coderabbit:
 #     - install.sh
 diagnose:
   enabled: true            # /vibecorp:diagnose の有効化
-  max_issues_per_run: 5    # 1回の実行で起票する最大 Issue 数
-  max_issues_per_day: 10   # 1日あたりの最大 Issue 数
+  max_issues_per_run: 7    # 1回の実行で起票する最大 Issue 数
+  max_issues_per_day: 14   # 1日あたりの最大 Issue 数
   max_files_per_issue: 10  # 1 Issue あたりの最大対象ファイル数
   scope: ""                # 診断対象パス（空 = 全体）
   forbidden_targets:       # 診断で触れないファイル

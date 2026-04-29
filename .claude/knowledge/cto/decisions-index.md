@@ -5,6 +5,8 @@
 
 ## エントリ
 
+- 2026-04-29 — Source of Truth 起点の値同期検証パターン — vibecorp.yml を基準に5ファイル間の値同期を検証するテストパターンと awk 抽出関数を記録
+- 2026-04-29 — diagnose 上限ガードレール補記 — PR #247 で max_issues_per_run/day が 7/14 に変更されたため 2026-04-23 エントリに補記
 - 2026-04-28 — Issue #427 — テストヘルパー（pass/fail/assert_*）重複定義削除で `test_agents_decisions.sh` のみ意図的に残存（出力スタイル差異のため対象外、PR 本文・実装計画に明記） (from CodeRabbit review on PR #427)
 - 2026-04-25 — ~/.zshrc シェル関数による --plugin-dir 自動付与案のレビュー — 動作は正しいが重複指定挙動の確認と CLAUDE.md 明記を推奨（案B+C 組み合わせ方針と整合）
 - 2026-04-25 — Plugin 名前空間 Phase 3 互換スタブ廃止 — plugin_skills セクションを照合基準に採用、廃止コードは生成ループ＋mkdir を一括削除
