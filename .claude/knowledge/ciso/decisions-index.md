@@ -5,6 +5,8 @@
 
 ## エントリ
 
+- 2026-04-29 — Issue #442 knowledge 構造統一（monitoring ログ四半期集約 refactor）— 承認: リスクなし（deny パターン拡大方向、buffer フロー境界維持）
+
 - 2026-04-25 — 不可領域チェック: --plugin-dir 自動付与 scripts/dev.sh ラッパー方式 — OK（5分類いずれにも該当しない）
 
 - 2026-04-25 — 不可領域チェック: --plugin-dir 自動付与シェル関数（~/.zshrc 追加） — OK（5分類いずれにも該当しない）

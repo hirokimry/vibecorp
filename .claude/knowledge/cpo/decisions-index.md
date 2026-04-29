@@ -5,6 +5,8 @@
 
 ## エントリ
 
+- 2026-04-29 — PR #445 CodeRabbit 指摘 2 件（migration-knowledge-buffer.md glob 統一 / audit-cost・audit-security 誤検知防止）— OK（specification.md 自動反映フロー・deny glob と整合。README 未掲載は既存残留事項として分離）
+- 2026-04-29 — Issue #442 knowledge 構造統一計画（dev/442_unify_knowledge_structure）— OK（三領域統一・2段構成移行・揮発データ~/.cache/移動を承認、specification.md 更新スコープを確認事項として伝達）
 - 2026-04-25 — Plugin 名前空間 Phase 3: `.claude/skills/` 互換スタブ廃止を OK と判定
 - 2026-04-25 — ~/.zshrc へのシェル関数追記による --plugin-dir 自動付与 — 除外（Public Ready ガードレール・透明性バリューに抵触）
 - 2026-04-25 — scripts/dev.sh ラッパーによる --plugin-dir 自動付与 — OK（リポジトリ内完結・Public Ready 適合・透明性バリュー整合）

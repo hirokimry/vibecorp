@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-29 — Issue #442 PR（dev/442_unify_knowledge_structure） — monitoring ログ構造 refactor、API 課金影響なし確認、承認
 - 2026-04-28 — Issue #247 実装 PR（commit 05ac7ec） — §3 課金構造準拠レビュー、MUST/MUST NOT 全遵守・テスト 16/16 PASS 確認、承認
 - 2026-04-28 — Issue #247（第2版） — max_issues_per_run 最適値の再判断（Claude Max 20 前提）、per_run=3 撤回・per_run=7 + per_day=14 に引き上げ推奨
 - 2026-04-28 — Issue #247（第1版） — max_issues_per_run 最適値の CFO 判断、per_run=3 への引き下げ推奨（後に撤回）、cycle 単価を $22→$25 に訂正
