@@ -6,6 +6,8 @@
 ## エントリ
 
 - 2026-04-29 — Issue #442 knowledge 構造統一（monitoring ログ四半期集約 refactor）— 承認: リスクなし（deny パターン拡大方向、buffer フロー境界維持）
+- 2026-04-29 — Issue #448 修正コミット 41e0060 メタレビュー（実装後） — 承認: M-001/M-002/M-003 全修正確認、多層防御設計強度 OK、認証・credential 変更なし
+- 2026-04-29 — Issue #448 protect-knowledge-bash-writes.sh 実装計画メタレビュー — 差し戻し: Major 3点（env プレフィックス単一除去・bash -c バイパス未検出・buffer prefix false allow）を修正後に再提出
 
 - 2026-04-25 — 不可領域チェック: --plugin-dir 自動付与 scripts/dev.sh ラッパー方式 — OK（5分類いずれにも該当しない）
 
