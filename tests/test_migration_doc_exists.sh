@@ -97,14 +97,19 @@ echo "--- テスト8: ヘッダー文字列の agent / skill / docs 一致 ---"
 # 厳格指定された文字列。バリエーション禁止（半角カッコ・別語句・見出しレベル変更）
 HEADER='### 判断記録（記録先取得失敗）'
 
-# migration-knowledge-buffer.md にヘッダー文字列が含まれる（救済手順として明文化）
-if grep -qF -- "$HEADER" "$MIG_FILE"; then
-  pass "migration-knowledge-buffer.md にヘッダー文字列が記載されている"
+# migration-knowledge-buffer.md にヘッダー文字列が **単独行で** 記載されている
+# CodeRabbit 指摘 (PR #453 r3161539735): SoT として migration-knowledge-buffer.md には
+# ヘッダーを単独行（見出し）として示すため、行全体一致（-qxF）で検証する
+if grep -qxF -- "$HEADER" "$MIG_FILE"; then
+  pass "migration-knowledge-buffer.md にヘッダー文字列が単独行で記載されている（行全体一致）"
 else
-  fail "migration-knowledge-buffer.md にヘッダー文字列が無い"
+  fail "migration-knowledge-buffer.md にヘッダー文字列が単独行で無い"
 fi
 
 # C*O 6 体 + 分析員 3 体 = 9 ファイルにヘッダー文字列が含まれる
+# 注: C*O 6 体は説明文中で「### 判断記録（記録先取得失敗）」を引用するスタイルのため
+# 部分一致（-qF）で検証する。分析員 3 体はフォールバック出力例として行頭で書いているが、
+# 一貫性のため 9 体すべて部分一致で検証する（-qxF だと C*O 6 体が fail する）
 agents_dir="${PROJECT_DIR}/templates/claude/agents"
 expected_agents="cfo cto cpo ciso clo sm accounting-analyst security-analyst legal-analyst"
 agent_miss_count=0
