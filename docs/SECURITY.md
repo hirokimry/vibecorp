@@ -171,6 +171,71 @@ claude
 
 claude のメジャーバージョンアップ後は再検証を推奨する。
 
+## knowledge ガードレール（多層防御）
+
+`.claude/knowledge/{role}/decisions/` および `{role}/audit-log/` への作業ブランチ直書きは、Edit/Write 層と Bash 層の 2 つの PreToolUse hook で fail-secure deny される。書込みは buffer worktree 経由（`~/.cache/vibecorp/buffer-worktree/<repo-id>/`）のみ許可される。
+
+### 防御層の構成
+
+| 層 | フック | matcher | 検出対象 |
+|---|---|---|---|
+| Edit/Write 層 | `protect-knowledge-direct-writes.sh`（Issue #439） | `Edit\|Write\|MultiEdit` | Edit/Write/MultiEdit ツールでの直書き |
+| Bash 層 | `protect-knowledge-bash-writes.sh`（Issue #448） | `Bash` | Bash redirect / コマンド経由の直書き |
+
+**配置 preset**: 両 hook は **全 preset（minimal / standard / full）で配置される**。`install.sh` は `templates/claude/hooks/*.sh` を preset でフィルタせず順次コピーするため、minimal でも knowledge ガードレールは有効になる。`vibecorp.yml` の `hooks:` セクションで個別に無効化することは可能（推奨しない）。
+
+### Bash 層の検出対象パターン
+
+| パターン | 例 |
+|---|---|
+| 出力リダイレクト `>` `>>` | `echo foo >> .claude/knowledge/cfo/decisions/2026-Q2.md` |
+| `tee` / `tee -a` | `cat patch.md \| tee .claude/knowledge/security/audit-log/2026-Q2.md` |
+| `cp` / `mv` | `cp src.md .claude/knowledge/cto/decisions/2026-Q2.md` |
+| GNU sed `-i` / BSD sed `-i ''` | `sed -i 's/old/new/' .claude/knowledge/cfo/decisions/2026-Q2.md` |
+| `awk -i inplace` | `awk -i inplace '{print}' .claude/knowledge/cfo/decisions/2026-Q2.md` |
+
+> **heredoc**: `cat <<EOF > path` 形式は heredoc 専用パターンではなく、末尾の `>` redirect で結果的に捕捉される（実装は redirect で検知）。
+
+コマンド正規化により、以下のラッパー経由でも検出される:
+
+- 環境変数プレフィックス（`KEY=VALUE cat >> ...`）
+- `env` / `command` ラッパー（`env cat >> ...`、`command tee ...`）
+- `bash -c "..."` / `sh -c "..."` の展開
+
+### 既知ギャップ（多層防御で他層がカバー）
+
+以下は Bash 層で素通りするが、Edit/Write 層 + agent 定義の Edit/Write 強制でカバーされる:
+
+- `bash -c $'...'` 形式（`$''` quote）
+- shell function 経由
+- `eval "..."` 経由
+
+C\*O / 分析員エージェントは tools 宣言で `Edit, Write, MultiEdit` を持ち（C\*O 6 体は全員、分析員は accounting / security のみ Write を持つ。詳細は `docs/ai-organization.md` の「エージェント tools セット」表）、agent 定義の書込みセクションで「Bash redirect で knowledge 配下に書き込まない」と明文化されている（Issue #448）。
+
+### fail-secure 原則
+
+- パス正規化（realpath）に失敗した場合、deny パターンに合致するなら **deny を返す**（fail-closed）
+- macOS で BSD `realpath` が無い環境では python3 にフォールバック（共通ヘルパー: `templates/claude/lib/path_normalize.sh`）
+- buffer worktree のプレフィックス検証（3 段ガード: `buffer_dir 非空 + abs_buffer_dir 非空 + prefix 一致`）に失敗した場合は deny
+
+### 例外: harvest-all-active スタンプ
+
+`/vibecorp:harvest-all` のみ作業ブランチへの直接書込みを許可するため、ユーザー承認後に `~/.cache/vibecorp/state/<repo-id>/harvest-all-active` スタンプを発行し、Edit/Write 層 hook を一時的に通過させる。**ただし `decisions/` と `audit-log/` への書込みはスタンプがあっても deny を維持する**（C\*O 判断記録 / 分析員監査の責務領域は fail-secure で迂回不可）。これは Issue #439 設計判断 2 で確定された fail-secure ポリシー。
+
+### 救済手順
+
+作業ブランチに残った差分は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) の手順で buffer 経由に移送する。
+
+### BUFFER_DIR 取得失敗時の判断記録ヘッダー方針
+
+C\*O / 分析員エージェントが `BUFFER_DIR` 取得に失敗した場合、判断内容は固定ヘッダー名で呼出元に返却される。この方針は SECURITY.md が SoT として保持する（移行手順の詳細は `docs/migration-knowledge-buffer.md`）。
+
+- **固定ヘッダー文字列**: `### 判断記録（記録先取得失敗）`（全角カッコ・見出しレベル `###`）
+- **表記ゆれ禁止**: 半角カッコ（`(`）、別語句（`フォールバック判断記録`）、見出しレベル変更（`##`）等は全て検知漏れとなる
+- **アンカー検知必須**: 呼出元スキルは `grep -qxF -- '### 判断記録（記録先取得失敗）'`（行全体一致）または `^...$` で検知し、結果レポートの「⚠️ 手動反映が必要な判断記録」に転記する
+
+これにより BUFFER_DIR 取得失敗時の判断記録が無言で失われる事象（Issue #439 設計判断 5）を防ぐ。
+
 ## 自律実行承認ゲート（Issue #361）
 
 ### 3者承認ゲートの設計
@@ -211,7 +276,7 @@ minimal プリセットでは /vibecorp:autopilot スキル自体が配置され
 
 ## 事後監査
 
-`/vibecorp:audit-security`（full プリセット限定）で CISO による月次セキュリティ監査を自動化できる。直近30日間のコード変更を分析し、`knowledge/security/audit-YYYY-MM-DD.md` にレポートを保存する。Critical / Major 指摘がある場合は自動で `audit` + `security` ラベル付き Issue を起票する。
+`/vibecorp:audit-security`（full プリセット限定）で CISO による月次セキュリティ監査を自動化できる。直近 30 日間のコード変更を分析し、`knowledge/security/audit-log/YYYY-QN.md`（四半期集約）に追記し、`audit-log/audit-log-index.md` に 1 行サマリを追記する（Issue #442 で確立した分析員監査ログの 2 段構成）。Critical / Major 指摘がある場合は自動で `audit` + `security` ラベル付き Issue を起票する。
 
 ### 定期実行例
 
