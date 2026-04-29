@@ -3,7 +3,7 @@ name: cycle-metrics
 description: >
   Issue サイクル（/ship 1回）の所要時間・トークン量・ボトルネックを実測する。
   PR タイミングと Claude Code セッションログから集計し、
-  `knowledge/accounting/cycle-metrics-YYYY-MM-DD.md` に保存する。full プリセット限定。
+  `~/.cache/vibecorp/state/<repo-id>/cycle-metrics/YYYY-MM-DD.md` に保存する（揮発データ）。full プリセット限定。
   「/cycle-metrics」「サイクル計測」と言った時に使用。
 ---
 
@@ -80,17 +80,20 @@ bash skills/cycle-metrics/fetch-agent-metrics.sh --since "30 days ago" > /tmp/cy
 
 エージェント別の正確な紐付け（sidechain と subagent_type の対応）は best-effort で実装する。
 
-### 4. レポート生成
+### 4. レポート生成（揮発データ → ~/.cache/）
 
-PR と Agent の JSON を読み込んで Markdown レポートを生成する。
+PR と Agent の JSON を読み込んで Markdown レポートを生成する。出力先は **`~/.cache/vibecorp/state/<repo-id>/cycle-metrics/`** の揮発データ領域（`.claude/knowledge/` には書かない）。
 
 ```bash
+. "${CLAUDE_PROJECT_DIR:-.}/.claude/lib/common.sh"
 today=$(date -u +%Y-%m-%d)
-out=".claude/knowledge/accounting/cycle-metrics-${today}.md"
+state_dir="$(vibecorp_state_dir)"
+mkdir -p "${state_dir}/cycle-metrics"
+out="${state_dir}/cycle-metrics/${today}.md"
 bash skills/cycle-metrics/generate-report.sh /tmp/cycle-pr.json /tmp/cycle-agent.json "$out"
 ```
 
-レポートは `cycle-metrics-template.md` の雛形を埋める形で出力する。
+レポートは `cycle-metrics-template.md` の雛形を埋める形で出力する（テンプレート読取先は `.claude/knowledge/accounting/cycle-metrics-template.md` のまま、出力先のみ `~/.cache/` に変更）。
 
 ### 5. 結果報告
 
@@ -107,17 +110,17 @@ bash skills/cycle-metrics/generate-report.sh /tmp/cycle-pr.json /tmp/cycle-agent
 - 総トークン消費: Z（input / output / cache 内訳）
 
 ### 出力
-- レポート: knowledge/accounting/cycle-metrics-YYYY-MM-DD.md
+- レポート: ~/.cache/vibecorp/state/<repo-id>/cycle-metrics/YYYY-MM-DD.md
 ```
 
 ## CFO 監査との関係
 
 本スキルの出力は CFO が `/audit-cost` 監査時に **データ源** として参照する。ファイル名で責務を区別する:
 
-| ファイル | 担当 | 内容 |
-|---|---|---|
-| `audit-YYYY-MM-DD.md` | CFO（`/audit-cost`） | 監査判断（Critical/Major、Issue 起票要否） |
-| `cycle-metrics-YYYY-MM-DD.md` | `/cycle-metrics` | 実測データのみ（判断ロジックなし） |
+| ファイル | 場所 | 担当 | 内容 |
+|---|---|---|---|
+| `audit-log/YYYY-QN.md` | `.claude/knowledge/accounting/` | CFO（`/audit-cost`） | 監査判断（Critical/Major、Issue 起票要否） |
+| `cycle-metrics/YYYY-MM-DD.md` | `~/.cache/vibecorp/state/<repo-id>/` | `/cycle-metrics` | 実測データのみ（判断ロジックなし、揮発） |
 
 ## 制約
 
@@ -130,12 +133,13 @@ bash skills/cycle-metrics/generate-report.sh /tmp/cycle-pr.json /tmp/cycle-agent
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - `date -d`（GNU 固有）を使わない — `jq 'fromdateiso8601'` で BSD/GNU 両対応にする
 
-## buffer worktree への保存はしない
+## buffer worktree / .claude/knowledge/ への保存はしない
 
-本スキルの出力 `cycle-metrics-YYYY-MM-DD.md` は **データ生成専用**であり、CFO `/audit-cost` が読み取るための揮発データとして作業ブランチに保存する。`knowledge/buffer` 経由には載せない（Issue #439 で確定した方針）。
+本スキルの出力 `cycle-metrics/YYYY-MM-DD.md` は **揮発データ** であり、`~/.cache/vibecorp/state/<repo-id>/cycle-metrics/` 配下に保存する。`.claude/knowledge/` にも `knowledge/buffer` にも載せない（Issue #442 で確定した方針）。
 
 理由:
-- 監査判断（buffer 化対象）は `audit-YYYY-MM-DD.md` 側に集約され、`cycle-metrics-YYYY-MM-DD.md` は同日中に CFO が消費する一過性データのため
-- `protect-knowledge-direct-writes.sh` フックは `cycle-metrics-*.md` のパターンを deny 対象に含めない（`audit-*.md` のみ deny 対象）
+- 揮発データを git 履歴に永続化する設計誤りを避ける（Issue #442 の三領域分離方針）
+- 監査判断（buffer 化対象）は `audit-log/YYYY-QN.md` 側に集約され、`cycle-metrics/` は同日中に CFO が消費する一過性データのため
+- `protect-knowledge-direct-writes.sh` フックの deny パターン（`*/audit-log/*`）に該当しない（出力先が `.claude/knowledge/` 外）
 
-CFO 監査結果（`audit-YYYY-MM-DD.md`）は `/audit-cost` が `${BUFFER_DIR}/.claude/knowledge/accounting/` 経由で buffer に保存し、`/vibecorp:knowledge-pr` で main に反映される。
+CFO 監査結果（`audit-log/YYYY-QN.md`）は `/audit-cost` が `${BUFFER_DIR}/.claude/knowledge/accounting/audit-log/` 経由で buffer に保存し、`/vibecorp:knowledge-pr` で main に反映される。

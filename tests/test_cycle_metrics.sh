@@ -180,12 +180,14 @@ assert_file_contains "レポートにモデル別集計節がある" "$REPORT_OU
 assert_file_contains "レポートにボトルネック節がある" "$REPORT_OUT" "## ボトルネック"
 assert_file_contains "レポートにサブエージェント別節がある" "$REPORT_OUT" "## サブエージェント別呼び出し回数"
 
-# --- テスト9: 出力ファイル名規約 ---
+# --- テスト9: 出力ファイル名規約（Issue #442 で揮発データ ~/.cache/ 移行） ---
 echo ""
 echo "--- テスト9: 出力ファイル名規約 ---"
 
-assert_file_contains "SKILL.md に cycle-metrics-YYYY-MM-DD.md の保存先記述がある" "$SKILL_FILE" "cycle-metrics-"
-assert_file_contains "SKILL.md に knowledge/accounting/ パスがある" "$SKILL_FILE" "knowledge/accounting/"
+assert_file_contains "SKILL.md に YYYY-MM-DD.md の保存先記述がある" "$SKILL_FILE" "YYYY-MM-DD.md"
+assert_file_contains "SKILL.md に ~/.cache/vibecorp/state/ パス記述がある" "$SKILL_FILE" "~/.cache/vibecorp/state/"
+assert_file_contains "SKILL.md に cycle-metrics ディレクトリ参照がある" "$SKILL_FILE" "/cycle-metrics/"
+assert_file_contains "SKILL.md に vibecorp_state_dir ヘルパー利用がある" "$SKILL_FILE" "vibecorp_state_dir"
 
 # --- テスト10: テンプレートに必須セクション ---
 echo ""
@@ -195,12 +197,12 @@ assert_file_contains "テンプレートに PR サマリ節がある" "$TEMPLATE
 assert_file_contains "テンプレートにエージェント節がある" "$TEMPLATE" "## エージェント・トークン消費"
 assert_file_contains "テンプレートにボトルネック節がある" "$TEMPLATE" "## ボトルネック"
 
-# --- テスト11: buffer worktree 非対象明文化（Issue #439） ---
+# --- テスト11: buffer worktree / .claude/knowledge/ 非対象明文化（Issue #442） ---
 echo ""
-echo "--- テスト11: buffer worktree 非対象の明文化 ---"
+echo "--- テスト11: buffer worktree / .claude/knowledge/ 非対象の明文化 ---"
 
-assert_file_contains "SKILL.md に「buffer worktree への保存はしない」セクションがある" "$SKILL_FILE" "buffer worktree への保存はしない"
-assert_file_contains "SKILL.md にデータ生成専用の説明がある" "$SKILL_FILE" "データ生成専用"
-assert_file_contains "SKILL.md にフックが対象外であることの記載がある" "$SKILL_FILE" "protect-knowledge-direct-writes.sh"
+assert_file_contains "SKILL.md に「buffer worktree / .claude/knowledge/ への保存はしない」セクションがある" "$SKILL_FILE" "buffer worktree / .claude/knowledge/ への保存はしない"
+assert_file_contains "SKILL.md に揮発データの説明がある" "$SKILL_FILE" "揮発データ"
+assert_file_contains "SKILL.md にフックの deny パターン外であることの記載がある" "$SKILL_FILE" "protect-knowledge-direct-writes.sh"
 
 print_test_summary

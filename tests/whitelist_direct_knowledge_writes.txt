@@ -4,8 +4,8 @@
 # 形式: 1 行 1 ファイルパス（プロジェクトルート相対）
 # `#` で始まる行はコメントとして無視される
 
-# cycle-metrics: 作業ブランチ揮発データ（仕様）
-# data-only スキルで cycle-metrics-*.md は hook 対象外（audit-*.md だけが deny 対象）
+# cycle-metrics: ~/.cache/ への揮発データ出力（Issue #442）
+# .claude/knowledge/ 外への書込みのため hook 対象外。テンプレート参照箇所のみ残存
 skills/cycle-metrics/SKILL.md
 
 # harvest-all: スタンプ通過の例外（仕様）

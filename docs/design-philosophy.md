@@ -32,8 +32,23 @@ docs/（Source of Truth・仕様書群）
 
 特徴:
 - 持続的なアイデンティティがある（「私はCTOです」）
-- 自律的に判断し、`knowledge/{role}/decisions-index.md` + `decisions/YYYY-QN.md` の 2 段構成に蓄積する
+- 自律的に判断し、knowledge に**役割別の構造**で蓄積する（後述「knowledge 三領域構造」参照）
 - 他エージェントと権限境界がある（管轄ファイルが異なる）
+
+### knowledge 三領域構造（Issue #442）
+
+`.claude/knowledge/` は責務に応じて 3 つの領域に分離する:
+
+| 領域 | ロール | 構造 | 目的 |
+|---|---|---|---|
+| C-suite + SM | cto / cpo / cfo / ciso / clo / sm | `{role}/decisions-index.md` + `{role}/decisions/YYYY-QN.md` | 判断記録（四半期集約） |
+| 分析員 | accounting / security / legal | `{role}/audit-log/audit-log-index.md` + `{role}/audit-log/YYYY-QN.md` | 監査記録（四半期集約） |
+| 揮発データ | `/cycle-metrics` 等 | `~/.cache/vibecorp/state/<repo-id>/cycle-metrics/YYYY-MM-DD.md` | 同日中に消費する一過性データ。git 管理外 |
+
+設計方針:
+- **永続データ（判断・監査）は `.claude/knowledge/` 配下** に置き、index + 四半期アーカイブの 2 段構成で肥大化を防ぐ
+- **揮発データは XDG_CACHE_HOME 配下** に置き、git 履歴に永続化しない（Issue #335 で CISO の `decisions.md` が肥大化した教訓）
+- `.claude/knowledge/{role}/decisions/` および `{role}/audit-log/` への作業ブランチ直書きは `protect-knowledge-direct-writes.sh` フックで deny される（buffer worktree 経由のみ許可、fail-secure）
 
 ### skills 内のステップにするもの
 

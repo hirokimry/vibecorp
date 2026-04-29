@@ -126,23 +126,39 @@ else
   fail "作業ブランチ decisions-index.md deny されない: $result"
 fi
 
-# --- テスト6: audit-cost / audit-security → deny ---
+# --- テスト6: audit-log/ → deny（Issue #442 で audit-*.md → audit-log/* に移行） ---
 echo ""
-echo "--- テスト6: audit-*.md deny ---"
+echo "--- テスト6: {role}/audit-log/ deny ---"
 
-result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/accounting/audit-2026-04-29.md")
+result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/accounting/audit-log/2026-Q2.md")
 if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
-  pass "accounting/audit-*.md → deny"
+  pass "accounting/audit-log/2026-Q2.md → deny"
 else
-  fail "accounting/audit-*.md deny されない: $result"
+  fail "accounting/audit-log/2026-Q2.md deny されない: $result"
 fi
 
-result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/security/audit-2026-04-29.md")
+result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/accounting/audit-log/audit-log-index.md")
 if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
-  pass "security/audit-*.md → deny"
+  pass "accounting/audit-log/audit-log-index.md → deny"
 else
-  fail "security/audit-*.md deny されない: $result"
+  fail "accounting/audit-log/audit-log-index.md deny されない: $result"
 fi
+
+result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/security/audit-log/2026-Q2.md")
+if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
+  pass "security/audit-log/2026-Q2.md → deny"
+else
+  fail "security/audit-log/2026-Q2.md deny されない: $result"
+fi
+
+result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/legal/audit-log/2026-Q2.md")
+if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
+  pass "legal/audit-log/2026-Q2.md → deny"
+else
+  fail "legal/audit-log/2026-Q2.md deny されない: $result"
+fi
+
+# 旧パターン（audit-*.md フラット）は新構造で存在しないため deny テスト対象外
 
 # --- テスト7: パストラバーサル（../） → realpath 正規化後の判定で deny ---
 echo ""
@@ -183,6 +199,14 @@ if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
   pass "スタンプあり + decisions/ → fail-secure deny"
 else
   fail "スタンプあり + decisions/ deny されない（fail-secure 違反）: $result"
+fi
+
+# --- テスト8c: スタンプあり + audit-log/ → fail-secure deny（Issue #442） ---
+result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/accounting/audit-log/2026-Q2.md")
+if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
+  pass "スタンプあり + audit-log/ → fail-secure deny"
+else
+  fail "スタンプあり + audit-log/ deny されない（fail-secure 違反）: $result"
 fi
 
 rm -f "$HARVEST_STAMP_FILE"
@@ -265,6 +289,21 @@ if grep -F '### 判断記録（記録先取得失敗）' "$SPEC_FILE_FOR_HEADER"
   pass "audit-cost SKILL.md に厳格ヘッダ「### 判断記録（記録先取得失敗）」が存在する"
 else
   fail "audit-cost SKILL.md に厳格ヘッダがない"
+fi
+
+# --- テスト12: templates / 本体 同期検証（Issue #442） ---
+echo ""
+echo "--- テスト12: templates と本体の hook 同期 ---"
+
+BODY_HOOK_FILE="${PROJECT_DIR}/.claude/hooks/protect-knowledge-direct-writes.sh"
+if [ -f "$BODY_HOOK_FILE" ]; then
+  if diff -q "$HOOK_FILE" "$BODY_HOOK_FILE" >/dev/null 2>&1; then
+    pass "templates と本体の hook が同一"
+  else
+    fail "templates と本体の hook が乖離している（diff があります）"
+  fi
+else
+  pass "本体 hook 未配置（dogfood 環境のみ存在、新規 install では templates から配布）"
 fi
 
 print_test_summary
