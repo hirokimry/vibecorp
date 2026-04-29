@@ -48,8 +48,8 @@ vibecorp.yml の diagnose セクションから設定を読み込む。セクシ
 
 | 設定キー | デフォルト値 | 説明 |
 |---------|------------|------|
-| `max_issues_per_run` | 5 | 1回の実行で起票する最大 Issue 数 |
-| `max_issues_per_day` | 10 | 1日に起票する最大 Issue 数 |
+| `max_issues_per_run` | 7 | 1回の実行で起票する最大 Issue 数 |
+| `max_issues_per_day` | 14 | 1日に起票する最大 Issue 数 |
 | `max_files_per_issue` | 10 | 1つの Issue に含める最大ファイル数 |
 | `scope` | "" | デフォルトの走査スコープ（空=全体） |
 | `forbidden_targets` | (下記参照) | 改善対象から除外するパターン |

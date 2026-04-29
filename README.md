@@ -372,8 +372,8 @@ coderabbit:
 #     - install.sh
 diagnose:
   enabled: true            # /vibecorp:diagnose の有効化
-  max_issues_per_run: 5    # 1回の実行で起票する最大 Issue 数
-  max_issues_per_day: 10   # 1日あたりの最大 Issue 数
+  max_issues_per_run: 7    # 1回の実行で起票する最大 Issue 数
+  max_issues_per_day: 14   # 1日あたりの最大 Issue 数
   max_files_per_issue: 10  # 1 Issue あたりの最大対象ファイル数
   scope: ""                # 診断対象パス（空 = 全体）
   forbidden_targets:       # 診断で触れないファイル
