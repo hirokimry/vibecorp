@@ -217,3 +217,34 @@ git log --all --oneline -- '.claude/knowledge/accounting/cycle-metrics-*.md'
 . .claude/lib/common.sh
 echo "$(vibecorp_state_dir)/cycle-metrics/"
 ```
+
+## C\*O フォールバック判断記録の救済（Issue #439 設計判断 5）
+
+C\*O / 分析員エージェントが `BUFFER_DIR` 取得に失敗した場合、判断内容は所定のヘッダー名で呼出元に返却される。呼出元スキルがこれを検知して結果レポートに転記し、ユーザーに手動反映を促す。
+
+### ヘッダー名（厳格指定）
+
+```text
+### 判断記録（記録先取得失敗）
+```
+
+**バリエーション禁止**: 半角カッコ（`(`）、別語句（`フォールバック判断記録`）、見出しレベル変更（`##`）等は全て検知漏れとなる。エージェントは正確にこの文字列のみを出力する。
+
+### 検知の仕組み
+
+呼出元スキル（`/vibecorp:audit-cost` / `/vibecorp:audit-security` / `/vibecorp:sync-edit`）は agent 出力に対して以下で検知する:
+
+```bash
+if echo "$agent_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
+  # 結果レポートに「⚠️ 手動反映が必要な判断記録」ブロックとして転記
+fi
+```
+
+### ユーザー側の手動反映手順
+
+呼出元スキルから「⚠️ 手動反映が必要な判断記録」ブロックが返ってきた場合、本ドキュメント冒頭の「救済手順」（ステップ 1〜7）に従って判断記録を buffer 経由で main に反映する。stash の代わりに、エージェント出力の `### 判断記録（記録先取得失敗）` 配下のテキストを `~/.cache/vibecorp/buffer-worktree/<repo-id>/.claude/knowledge/{role}/decisions/{YYYY-QN}.md` に手動で追記し、index 更新後 `knowledge_buffer_commit` + `knowledge_buffer_push` + `/vibecorp:knowledge-pr` で main に反映する。
+
+### 設計意図
+
+- **無言データロスト回避**: BUFFER_DIR 取得失敗時にエージェントが判断記録を捨てるのではなく、ヘッダー付きで返すことで人間が必ず気づける
+- **検知の機械化**: 呼出元スキルが grep で確実に検知できるよう、ヘッダー文字列を完全一致で固定

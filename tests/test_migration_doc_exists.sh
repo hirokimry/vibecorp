@@ -90,4 +90,55 @@ assert_file_contains "ガードレールへの言及" "$SPEC_FILE" "protect-know
 assert_file_contains "migration ドキュメントへのリンク" "$SPEC_FILE" "migration-knowledge-buffer.md"
 assert_file_contains "Issue #439 の記載" "$SPEC_FILE" "Issue #439"
 
+# --- テスト8: 「### 判断記録（記録先取得失敗）」ヘッダー一致（Issue #452） ---
+echo ""
+echo "--- テスト8: ヘッダー文字列の agent / skill / docs 一致 ---"
+
+# 厳格指定された文字列。バリエーション禁止（半角カッコ・別語句・見出しレベル変更）
+HEADER='### 判断記録（記録先取得失敗）'
+
+# migration-knowledge-buffer.md にヘッダー文字列が含まれる（救済手順として明文化）
+if grep -qF -- "$HEADER" "$MIG_FILE"; then
+  pass "migration-knowledge-buffer.md にヘッダー文字列が記載されている"
+else
+  fail "migration-knowledge-buffer.md にヘッダー文字列が無い"
+fi
+
+# C*O 6 体 + 分析員 3 体 = 9 ファイルにヘッダー文字列が含まれる
+agents_dir="${PROJECT_DIR}/templates/claude/agents"
+expected_agents="cfo cto cpo ciso clo sm accounting-analyst security-analyst legal-analyst"
+agent_miss_count=0
+for agent in $expected_agents; do
+  agent_file="${agents_dir}/${agent}.md"
+  if [[ ! -f "$agent_file" ]]; then
+    fail "agent 定義ファイルが存在しない: ${agent}.md"
+    agent_miss_count=$((agent_miss_count + 1))
+    continue
+  fi
+  if ! grep -qF -- "$HEADER" "$agent_file"; then
+    fail "${agent}.md にヘッダー文字列「${HEADER}」が無い"
+    agent_miss_count=$((agent_miss_count + 1))
+  fi
+done
+if [[ "$agent_miss_count" -eq 0 ]]; then
+  pass "9 体の agent 定義（C*O 6 + 分析員 3）にヘッダー文字列が記載されている"
+fi
+
+# 検知側 skill (audit-security / audit-cost / sync-edit のいずれかにヘッダー grep が含まれる)
+skills_dir="${PROJECT_DIR}/skills"
+detect_pattern='### 判断記録（記録先取得失敗）'
+skill_match_count=0
+for skill_dir in audit-security audit-cost sync-edit; do
+  skill_file="${skills_dir}/${skill_dir}/SKILL.md"
+  [[ -f "$skill_file" ]] || continue
+  if grep -qF -- "$detect_pattern" "$skill_file"; then
+    skill_match_count=$((skill_match_count + 1))
+  fi
+done
+if [[ "$skill_match_count" -ge 1 ]]; then
+  pass "少なくとも 1 つの呼出元スキル（audit-security / audit-cost / sync-edit）にヘッダー検知パターンが含まれている"
+else
+  fail "呼出元スキルにヘッダー検知パターンが見つからない"
+fi
+
 print_test_summary

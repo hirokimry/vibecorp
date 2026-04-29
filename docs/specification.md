@@ -78,12 +78,12 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 | `/vibecorp:cycle-metrics` | ❌ | 揮発データ（`~/.cache/vibecorp/state/<repo-id>/cycle-metrics/YYYY-MM-DD.md` に保存、`.claude/knowledge/` 外） |
 | `/vibecorp:harvest-all` | ❌ | ユーザー承認後に直接書込み（`harvest-all-active` スタンプで hook 通過。ただし `audit-log/` と `decisions/` は fail-secure で迂回不可） |
 
-**ガードレール**: `templates/claude/hooks/protect-knowledge-direct-writes.sh` が以下を作業ブランチ直書きから deny する（buffer worktree 経由のみ許可）:
+**ガードレール**: `templates/claude/hooks/protect-knowledge-direct-writes.sh`（Edit/Write 層）と `templates/claude/hooks/protect-knowledge-bash-writes.sh`（Bash 層）の 2 層 hook が以下を作業ブランチ直書きから deny する（buffer worktree 経由のみ許可）:
 
 - `.claude/knowledge/{role}/decisions/`、`.claude/knowledge/{role}/decisions-index.md`（C*O 6 ロール: cfo/cto/cpo/ciso/clo/sm）
 - `.claude/knowledge/{role}/audit-log/`（分析員 3 ロール: accounting/security/legal の 4 半期集約 + audit-log-index.md）
 
-詳細・救済手順は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) を参照。
+防御層の構成・Bash 層の検出パターン・harvest-all-active スタンプ仕様・fail-secure 原則の詳細は [`docs/SECURITY.md` の「knowledge ガードレール（多層防御）」](SECURITY.md#knowledge-ガードレール多層防御) を参照。救済手順は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) を参照。
 
 ### エピック運用
 
