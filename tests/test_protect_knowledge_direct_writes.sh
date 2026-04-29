@@ -231,15 +231,14 @@ else
 fi
 
 # --- テスト10: realpath フォールバック（Python 代替）— 常に検証 ---
+# Issue #448 で _pkw_normalize_path は lib/path_normalize.sh に共通化された
 echo ""
 echo "--- テスト10: Python フォールバック常時検証 ---"
 
-# 関数定義のみを抽出した一時ファイルを作る
-fn_file="${TMPDIR_ROOT}/_pkw_fn.sh"
-awk '/^_pkw_normalize_path\(\)/,/^}$/' "$HOOK_FILE" > "$fn_file"
+LIB_FILE="${PROJECT_DIR}/templates/claude/lib/path_normalize.sh"
 
 # realpath を PATH から外して Python フォールバック経路を強制実行
-# 「native が使える環境では未検証」という穴を塞ぐ（PR で追加した経路を確実に踏ませる）
+# 「native が使える環境では未検証」という穴を塞ぐ
 empty_path="${TMPDIR_ROOT}/empty-bin"
 mkdir -p "$empty_path"
 # 必要最小限のコマンドだけ symlink（realpath は除外）
@@ -250,11 +249,11 @@ for cmd in bash python3 command; do
   fi
 done
 
-result=$(PATH="$empty_path" bash -c "source '${fn_file}'; _pkw_normalize_path '/foo/../bar/./baz'" 2>/dev/null || echo "FAIL")
-if [ "$result" = "/bar/baz" ]; then
+fallback_result=$(PATH="$empty_path" bash -c "source '${LIB_FILE}'; _pkw_normalize_path '/foo/../bar/./baz'" 2>/dev/null || echo "FAIL")
+if [ "${fallback_result}" = "/bar/baz" ]; then
   pass "Python フォールバック（realpath 不在強制）で /foo/../bar/./baz → /bar/baz"
 else
-  fail "Python フォールバック結果が期待外: $result（期待: /bar/baz）"
+  fail "Python フォールバック結果が期待外: ${fallback_result}（期待: /bar/baz）"
 fi
 
 # --- テスト11: deny メッセージの可読性 ---

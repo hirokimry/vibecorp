@@ -17,6 +17,9 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${HOOK_DIR}/../lib/common.sh"
 # shellcheck source=../lib/knowledge_buffer.sh
 source "${HOOK_DIR}/../lib/knowledge_buffer.sh"
+# shellcheck source=../lib/path_normalize.sh
+# パス正規化ヘルパー _pkw_normalize_path を共通 lib から取得（Issue #448）
+source "${HOOK_DIR}/../lib/path_normalize.sh"
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
@@ -24,21 +27,6 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
-
-# realpath -m が macOS BSD で利用不能な場合の Python フォールバック
-# Python コード内に変数展開を埋め込まず、引数渡しでインジェクション回避
-_pkw_normalize_path() {
-  local p="$1"
-  if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
-    realpath -m -- "$p"
-  elif command -v python3 >/dev/null 2>&1; then
-    # 引数渡しでインジェクション回避（変数展開を Python コードに埋め込まない）
-    # `--` は使わない（python3 -c は -c の値で「コード」を受け、それ以降の引数は sys.argv[1:] に入る）
-    python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$p"
-  else
-    return 1
-  fi
-}
 
 # パス正規化（パストラバーサル / シンボリックリンク対策）
 abs_file_path="$(_pkw_normalize_path "$FILE_PATH" 2>/dev/null || echo "")"
