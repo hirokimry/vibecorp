@@ -68,4 +68,52 @@ for role in cfo cto cpo ciso clo sm; do
   fi
 done
 
+# --- Issue #448: C*O 6 ロールに Edit/Write/MultiEdit が tools として宣言されている ---
+echo ""
+echo "--- Issue #448: tools フィールド検証 ---"
+
+for role in cfo cto cpo ciso clo sm; do
+  agent_file="${AGENTS_DIR}/${role}.md"
+  if [ ! -f "$agent_file" ]; then
+    fail "${role}: agent file が存在しない"
+    continue
+  fi
+  tools_line="$(grep '^tools:' "$agent_file" || echo "")"
+  if [ -z "$tools_line" ]; then
+    fail "${role}: tools フィールドがない"
+    continue
+  fi
+  if echo "$tools_line" | grep -qE '\bEdit\b'; then
+    pass "${role}: tools に Edit が含まれる"
+  else
+    fail "${role}: tools に Edit が含まれない（${tools_line}）"
+  fi
+  if echo "$tools_line" | grep -qE '\bWrite\b'; then
+    pass "${role}: tools に Write が含まれる"
+  else
+    fail "${role}: tools に Write が含まれない（${tools_line}）"
+  fi
+  if echo "$tools_line" | grep -qE '\bMultiEdit\b'; then
+    pass "${role}: tools に MultiEdit が含まれる"
+  else
+    fail "${role}: tools に MultiEdit が含まれない（${tools_line}）"
+  fi
+done
+
+# --- Issue #448: Bash redirect 禁止が agent 定義に明文化 ---
+echo ""
+echo "--- Issue #448: Bash redirect 禁止の明文化 ---"
+
+for role in cfo cto cpo ciso clo sm; do
+  agent_file="${AGENTS_DIR}/${role}.md"
+  if [ ! -f "$agent_file" ]; then
+    continue
+  fi
+  if grep -q "Bash redirect で knowledge 配下に書き込まない" "$agent_file"; then
+    pass "${role}: Bash redirect 禁止記述あり"
+  else
+    fail "${role}: Bash redirect 禁止記述がない"
+  fi
+done
+
 print_test_summary

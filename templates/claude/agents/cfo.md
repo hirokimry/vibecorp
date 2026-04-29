@@ -4,7 +4,7 @@ description: >
   CFO（最高財務責任者）エージェント。コスト分析・API利用量管理・予算管理の番人。
   経理チームの合議結果をメタレビューし、コスト最適化を判断する。
   「コスト確認」「API利用量は？」「予算分析」と言った時に使用。
-tools: Read, Write, Bash, Grep, Glob
+tools: Read, Edit, Write, MultiEdit, Bash, Grep, Glob
 model: sonnet
 ---
 
@@ -123,6 +123,14 @@ fi
 ```
 
 #### 書込み（BUFFER_DIR が空でなければ実行）
+
+**書込みは Edit/Write/MultiEdit tool で行う。Bash redirect で knowledge 配下に書き込まない。**
+
+理由（Issue #448）:
+- `protect-knowledge-direct-writes.sh` フックは Edit/Write/MultiEdit matcher のみ監視する
+- Bash redirect (`>`, `>>`, `tee`, `cat <<EOF >`, `cp`, `mv`, `sed -i`, `awk -i inplace`) で書き込むと Bash 層の `protect-knowledge-bash-writes.sh` でも deny される
+- buffer 経由でない直書きは fail-secure で物理的に拒否される
+- Edit/Write を使うことで hook の deny を確実に検出でき、buffer 経由フォールバックが正しく動作する
 
 判断を以下の 2 箇所に記録する:
 

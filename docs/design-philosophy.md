@@ -48,7 +48,26 @@ docs/（Source of Truth・仕様書群）
 設計方針:
 - **永続データ（判断・監査）は `.claude/knowledge/` 配下** に置き、index + 四半期アーカイブの 2 段構成で肥大化を防ぐ
 - **揮発データは XDG_CACHE_HOME 配下** に置き、git 履歴に永続化しない（Issue #335 で CISO の `decisions.md` が肥大化した教訓）
-- `.claude/knowledge/{role}/decisions/` および `{role}/audit-log/` への作業ブランチ直書きは `protect-knowledge-direct-writes.sh` フックで deny される（buffer worktree 経由のみ許可、fail-secure）
+- `.claude/knowledge/{role}/decisions/` および `{role}/audit-log/` への作業ブランチ直書きは **2 層のフック**で deny される（buffer worktree 経由のみ許可、fail-secure）
+
+### fail-secure 多層防御（Issue #448 で確立）
+
+`.claude/knowledge/` の保護は **Edit/Write 層** と **Bash 層** の 2 層で実装する。
+
+| 層 | フック | matcher | 担当 |
+|---|---|---|---|
+| Edit/Write 層 | `protect-knowledge-direct-writes.sh` | `Edit\|Write\|MultiEdit` | Edit/Write/MultiEdit ツール経由の書込みを deny |
+| Bash 層 | `protect-knowledge-bash-writes.sh` | `Bash` | `>`, `>>`, `tee`, `cp`, `mv`, `sed -i`, `awk -i inplace` 等の Bash 経由書込みを deny |
+
+両層で `audit-log/` `decisions/` への直書きを deny し、buffer worktree 経由でのみ許可する。
+
+**設計原則**:
+- C*O 6 エージェント（cfo/cto/cpo/ciso/clo/sm）には `Edit, Write, MultiEdit` を tools として宣言し、Edit/Write 経由の書込みを誘導する
+- agent 定義の書込みセクションで「Bash redirect 禁止」を明文化する
+- それでも Bash redirect を試みた場合は Bash 層で fail-secure deny される
+- 共通のパス正規化ヘルパー `lib/path_normalize.sh` を両フックから source して DRY を維持する
+
+**なぜ 2 層必要か**: 当初は Edit/Write 層のみで設計したが、エージェントが Bash redirect を選んだ場合に hook を素通りする経路が判明（Issue #448）。多層防御により agent の tool 選択に依存せず保護を維持する。
 
 ### skills 内のステップにするもの
 
