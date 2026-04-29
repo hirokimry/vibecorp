@@ -99,12 +99,45 @@ model: sonnet
 
 ### 4. 分析の記録
 
-`.claude/knowledge/accounting/reports.md` に追記する（ファイルがなければ作成する）。
+#### BUFFER_DIR が指定されている場合（合議制レビュー時）
 
-記録すべき内容：
-- 分析日時と対象範囲
-- 主要な数値（コスト、利用量）
-- 検出したリスクや異常値
+呼出元から `BUFFER_DIR` が渡されている場合、以下の 2 段で記録する:
+
+1. `${BUFFER_DIR}/.claude/knowledge/accounting/audit-log/YYYY-QN.md` に追記（四半期集約）
+2. `${BUFFER_DIR}/.claude/knowledge/accounting/audit-log/audit-log-index.md` に 1 行サマリを追記（新しい順で上）
+
+四半期計算は `(10#$month - 1) / 3 + 1` で算出（08/09 月の 8 進数解釈を回避）。
+
+追記書式:
+
+```markdown
+## YYYY-MM-DD — Issue #N — accounting-analyst
+
+### 対象範囲
+（分析対象の概要）
+
+### 検出事項
+（ポリシー違反、コスト増加要因等）
+```
+
+index 1 行サマリ書式:
+
+```markdown
+- YYYY-MM-DD — Issue #N — `accounting-analyst` 検出: N件 (ポリシー違反 N / コスト影響 N / MVV 不整合 N)
+```
+
+#### BUFFER_DIR が指定されていない場合
+
+stdout 出力のみ（直書きしない）。`.claude/knowledge/` 配下への直接書込は `protect-knowledge-direct-writes.sh` フックで deny される。
+
+#### 記録先取得失敗のフォールバック
+
+BUFFER_DIR が指定されていてもファイル書込に失敗した場合、stdout 出力に以下の見出しを含める。呼出元スキル（CFO の `/audit-cost` 等）が拾って結果レポートに転記する:
+
+```markdown
+### 判断記録（記録先取得失敗）
+（分析内容の本文）
+```
 
 ### 5. エスカレーション
 

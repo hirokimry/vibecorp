@@ -41,21 +41,25 @@ echo "--- テスト3: CFO プロンプトに BUFFER_DIR 注入 ---"
 
 assert_file_contains "CFO プロンプトに BUFFER_DIR= が含まれる" "$SKILL_FILE" 'BUFFER_DIR=${BUFFER_DIR}'
 
-# --- テスト4: 書込先が buffer worktree 内 ---
+# --- テスト4: 書込先が buffer worktree 内かつ audit-log/ 構造（Issue #442） ---
 echo ""
-echo "--- テスト4: 書込先が buffer worktree 内 ---"
+echo "--- テスト4: 書込先が buffer worktree 内 / audit-log 構造 ---"
 
-assert_file_contains 'cp 先が ${BUFFER_DIR}/.claude/knowledge/accounting/ である' "$SKILL_FILE" '${BUFFER_DIR}/.claude/knowledge/accounting'
+assert_file_contains '書込先が ${BUFFER_DIR}/.claude/knowledge/accounting/audit-log/ である' "$SKILL_FILE" '${BUFFER_DIR}/.claude/knowledge/accounting/audit-log'
+assert_file_contains '四半期集約ファイル名 YYYY-QN.md が登場する' "$SKILL_FILE" 'audit-log/YYYY-QN.md'
+assert_file_contains 'audit-log-index.md への 1 行サマリ追記がある' "$SKILL_FILE" 'audit-log-index.md'
+assert_file_contains '四半期計算ロジック (10#$month - 1) / 3 + 1 がある' "$SKILL_FILE" '(10#$month - 1) / 3 + 1'
 
-# --- テスト5: 旧パターン（作業ブランチ直書き）が無いこと ---
+# --- テスト5: 旧パターン（フラット audit-YYYY-MM-DD.md 直置き）が無いこと ---
 echo ""
-echo "--- テスト5: 作業ブランチ直書きパターンの除去 ---"
+echo "--- テスト5: 旧フラット構造パターンの除去 ---"
 
-# cp 行の宛先（2 行目）に ${BUFFER_DIR} を含まず .claude/knowledge/accounting/audit- を含む行が無いこと
-if grep -nE '\.claude/knowledge/accounting/audit-' "$SKILL_FILE" | grep -v '\${BUFFER_DIR}' >/dev/null 2>&1; then
-  fail 'cp 宛先が作業ブランチを指している（${BUFFER_DIR} 経由になっていない）'
+# cp 行で audit-YYYY-MM-DD.md（フラット直置き）パターンが残っていないこと
+# bash の variable expansion を回避するためシングルクォート + ヒアドキュメントパターンで安全に検証
+if grep -nE 'audit-\$\{today\}\.md' "$SKILL_FILE" >/dev/null 2>&1; then
+  fail 'audit-{today}.md（フラット直置き）パターンが残っている'
 else
-  pass "cp 宛先が作業ブランチ直書きパターンを含まない"
+  pass 'audit-{today}.md（フラット直置き）パターンが除去されている'
 fi
 
 # --- テスト6: フォールバック警告検知 ---

@@ -1,12 +1,13 @@
 #!/bin/bash
 # protect-knowledge-direct-writes.sh — knowledge/{role}/decisions/ 等の作業ブランチ直書きを deny する
 # Issue #439: knowledge への書込みは knowledge/buffer worktree 経由に統一する
+# Issue #442: 監査ログを {role}/audit-log/YYYY-QN.md の四半期集約構造に統一
 #
 # 設計:
 #   順序: realpath 正規化 → deny パターン判定 → buffer 配下判定 → スタンプは fail-secure で対象外
-#   decisions/ や audit-*.md は C*O 判断記録 / 監査の責務領域であり、harvest-all のスコープ外。
-#   harvest-all-active スタンプは「decisions/audit 以外への直書き」専用例外で、
-#   decisions/audit パターンに合致した時点でスタンプによる救済は受け付けない。
+#   decisions/ や {role}/audit-log/ は C*O 判断記録 / 監査の責務領域であり、harvest-all のスコープ外。
+#   harvest-all-active スタンプは「decisions/audit-log 以外への直書き」専用例外で、
+#   decisions/audit-log パターンに合致した時点でスタンプによる救済は受け付けない。
 
 set -euo pipefail
 
@@ -49,8 +50,7 @@ if [ -z "$abs_file_path" ]; then
   case "$FILE_PATH" in
     *.claude/knowledge/*/decisions/*.md|\
     *.claude/knowledge/*/decisions-index.md|\
-    *.claude/knowledge/accounting/audit-*.md|\
-    *.claude/knowledge/security/audit-*.md)
+    *.claude/knowledge/*/audit-log/*.md)
       # fail-closed: 正規化できないがパターン合致なので deny
       jq -n '{
         "hookSpecificOutput": {
@@ -72,8 +72,7 @@ is_deny_target=0
 case "$abs_file_path" in
   *.claude/knowledge/*/decisions/*.md|\
   *.claude/knowledge/*/decisions-index.md|\
-  *.claude/knowledge/accounting/audit-*.md|\
-  *.claude/knowledge/security/audit-*.md)
+  *.claude/knowledge/*/audit-log/*.md)
     is_deny_target=1
     ;;
 esac
@@ -95,16 +94,16 @@ if [ -n "$buffer_dir" ]; then
   fi
 fi
 
-# harvest-all-active スタンプ判定（decisions/audit パターンに合致したものは対象外・fail-secure）
-# 仕様: スタンプは knowledge/{role}/{topic}.md のような decisions/audit 以外への直書き許可専用。
-# decisions/ や audit-*.md は C*O 判断記録 / 監査の責務領域であり、スタンプ通過対象から除外する。
+# harvest-all-active スタンプ判定（decisions/audit-log パターンに合致したものは対象外・fail-secure）
+# 仕様: スタンプは knowledge/{role}/{topic}.md のような decisions/audit-log 以外への直書き許可専用。
+# decisions/ や {role}/audit-log/ は C*O 判断記録 / 監査の責務領域であり、スタンプ通過対象から除外する。
 
 # deny を返却
 jq -n '{
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": ".claude/knowledge/{role}/decisions/ や audit-*.md は knowledge/buffer worktree 経由で更新してください。\n\n復旧手順:\n1. . .claude/lib/knowledge_buffer.sh\n2. knowledge_buffer_ensure\n3. BUFFER_DIR=$(knowledge_buffer_worktree_dir)\n4. ファイルパスを ${BUFFER_DIR}/.claude/knowledge/... に置き換えて再実行\n\nスキル経由の場合: /vibecorp:session-harvest, /vibecorp:sync-edit, /vibecorp:audit-cost, /vibecorp:audit-security のいずれかを使用\n詳細: docs/specification.md の「自動反映フロー」節"
+    "permissionDecisionReason": ".claude/knowledge/{role}/decisions/ や {role}/audit-log/ は knowledge/buffer worktree 経由で更新してください。\n\n復旧手順:\n1. . .claude/lib/knowledge_buffer.sh\n2. knowledge_buffer_ensure\n3. BUFFER_DIR=$(knowledge_buffer_worktree_dir)\n4. ファイルパスを ${BUFFER_DIR}/.claude/knowledge/... に置き換えて再実行\n\nスキル経由の場合: /vibecorp:session-harvest, /vibecorp:sync-edit, /vibecorp:audit-cost, /vibecorp:audit-security のいずれかを使用\n詳細: docs/specification.md の「自動反映フロー」節"
   }
 }'
 exit 0

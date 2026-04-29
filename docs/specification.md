@@ -70,17 +70,19 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 |---|:---:|---|
 | `/vibecorp:session-harvest` | ✅ | 自動 |
 | `/vibecorp:review-harvest` | ✅ | 自動 |
-| `/vibecorp:audit-cost` | ✅ | Issue #439 で対応（CFO 監査レポート） |
-| `/vibecorp:audit-security` | ✅ | Issue #439 で対応（CISO 監査レポート） |
+| `/vibecorp:audit-cost` | ✅ | Issue #442 で対応（`accounting/audit-log/YYYY-QN.md` 追記 + index 1 行サマリ） |
+| `/vibecorp:audit-security` | ✅ | Issue #442 で対応（`security/audit-log/YYYY-QN.md` 追記 + index 1 行サマリ） |
 | `/vibecorp:sync-edit` | ✅ | Issue #439 で対応（C*O 委任編集の `knowledge/{role}/`） |
 | C*O 決定記録（CFO/CTO/CPO/CISO/CLO/SM） | ✅ | Issue #439 で対応（`decisions/{YYYY-QN}.md` / `decisions-index.md`） |
-| `/vibecorp:cycle-metrics` | ❌ | 揮発データ（CFO が同日消費）、`audit-*.md` 以外は hook 対象外 |
-| `/vibecorp:harvest-all` | ❌ | ユーザー承認後に直接書込み（`harvest-all-active` スタンプで hook 通過） |
+| 分析員監査記録（accounting/security/legal） | ✅ | Issue #442 で対応（`{role}/audit-log/{YYYY-QN}.md` / `audit-log-index.md`） |
+| `/vibecorp:cycle-metrics` | ❌ | 揮発データ（`~/.cache/vibecorp/state/<repo-id>/cycle-metrics/YYYY-MM-DD.md` に保存、`.claude/knowledge/` 外） |
+| `/vibecorp:harvest-all` | ❌ | ユーザー承認後に直接書込み（`harvest-all-active` スタンプで hook 通過。ただし `audit-log/` と `decisions/` は fail-secure で迂回不可） |
 
-**ガードレール**: `templates/claude/hooks/protect-knowledge-direct-writes.sh` が
-`.claude/knowledge/{role}/decisions/`、`.claude/knowledge/{role}/decisions-index.md` および
-`.claude/knowledge/accounting/audit-*.md` / `.claude/knowledge/security/audit-*.md` への作業ブランチ直書きを
-deny する（buffer worktree 経由のみ許可）。
+**ガードレール**: `templates/claude/hooks/protect-knowledge-direct-writes.sh` が以下を作業ブランチ直書きから deny する（buffer worktree 経由のみ許可）:
+
+- `.claude/knowledge/{role}/decisions/`、`.claude/knowledge/{role}/decisions-index.md`（C*O 6 ロール: cfo/cto/cpo/ciso/clo/sm）
+- `.claude/knowledge/{role}/audit-log/`（分析員 3 ロール: accounting/security/legal の 4 半期集約 + audit-log-index.md）
+
 詳細・救済手順は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) を参照。
 
 ### エピック運用

@@ -2,7 +2,7 @@
 name: audit-security
 description: >
   CISO による月次セキュリティ監査。直近30日間の変更から脆弱性・認証変更を分析し、
-  `knowledge/security/audit-YYYY-MM-DD.md` に記録する。full プリセット限定。
+  `knowledge/security/audit-log/YYYY-QN.md` に追記 + `audit-log-index.md` に 1 行サマリ追記する。full プリセット限定。
   「/vibecorp:audit-security」「セキュリティ監査」と言った時に使用。
 ---
 
@@ -87,25 +87,57 @@ Critical / Major / Minor で指摘を分類してください。
 OWASP Top 10 チェック表も埋めてください。
 ```
 
-### 4. レポート保存
+### 4. レポート保存（四半期集約 + index 追記）
 
-CISO の出力を **buffer worktree 内** の `${BUFFER_DIR}/.claude/knowledge/security/audit-YYYY-MM-DD.md` に保存する:
+CISO の出力を **buffer worktree 内** の `${BUFFER_DIR}/.claude/knowledge/security/audit-log/YYYY-QN.md` に **追記** する。さらに `audit-log-index.md` に 1 行サマリを追記する。
 
 ```bash
 today=$(date -u +%Y-%m-%d)
-mkdir -p "${BUFFER_DIR}/.claude/knowledge/security"
-cp .claude/knowledge/security/security-audit-template.md \
-   "${BUFFER_DIR}/.claude/knowledge/security/audit-${today}.md"
+year=$(date -u +%Y)
+month=$(date -u +%m)
+# 10#$month で 8 進数解釈を回避（08/09 が無効になる問題対策）
+quarter=$(( (10#$month - 1) / 3 + 1 ))
+target="${year}-Q${quarter}"
+
+mkdir -p "${BUFFER_DIR}/.claude/knowledge/security/audit-log"
+audit_file="${BUFFER_DIR}/.claude/knowledge/security/audit-log/${target}.md"
+index_file="${BUFFER_DIR}/.claude/knowledge/security/audit-log/audit-log-index.md"
+
+# 四半期ファイルがなければ初期化（初回作成時）
+if [ ! -f "$audit_file" ]; then
+  printf '# セキュリティ監査ログ — %s\n\n`/vibecorp:audit-security` および `security-analyst` 合議結果のアーカイブ。\n\n---\n\n' "$target" > "$audit_file"
+fi
+
+# index がなければ templates から初期化
+if [ ! -f "$index_file" ]; then
+  cp .claude/knowledge/security/audit-log/audit-log-index.md "$index_file" 2>/dev/null \
+    || cp templates/claude/knowledge/security/audit-log/audit-log-index.md "$index_file"
+fi
 ```
 
-テンプレート（`security-audit-template.md`）は作業ブランチから読み取り、書込先は buffer worktree。その後、CISO の出力内容で中身を置き換える。
+その後、CISO の出力内容を `${audit_file}` に統一書式（`## YYYY-MM-DD — Issue #N — /vibecorp:audit-security` 見出し）で追記し、`${index_file}` の `## 索引` セクション直後に 1 行サマリを追加する。
+
+**追記書式**:
+
+```markdown
+## YYYY-MM-DD — Issue #N — /vibecorp:audit-security
+
+### 監査範囲
+（CISO 出力の本文）
+```
+
+**index 1 行サマリ書式**:
+
+```markdown
+- YYYY-MM-DD — Issue #N — `/vibecorp:audit-security` Critical N / Major N / Minor N
+```
 
 ### 4.5. C*O フォールバック警告の検知
 
 CISO の出力に `### 判断記録（記録先取得失敗）` セクションが含まれる場合、CISO の自前 buffer 取得が失敗している。判断内容を結果レポート末尾の「⚠️ 手動反映が必要な判断記録」ブロックに転記し、ユーザーに `docs/migration-knowledge-buffer.md` の手順での手動反映を促す。
 
 ```bash
-if grep -q '^### 判断記録（記録先取得失敗）$' "${BUFFER_DIR}/.claude/knowledge/security/audit-${today}.md" 2>/dev/null \
+if grep -q '^### 判断記録（記録先取得失敗）$' "$audit_file" 2>/dev/null \
    || echo "$ciso_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
   fallback_warning=1
 fi
@@ -155,7 +187,8 @@ Minor のみの場合は起票しない（レポート保存のみ）。
 - A01 / A02 / A03 / A07 / A08: あり / なし
 
 ### 出力
-- レポート: ${BUFFER_DIR}/.claude/knowledge/security/audit-YYYY-MM-DD.md
+- レポート: ${BUFFER_DIR}/.claude/knowledge/security/audit-log/YYYY-QN.md（追記）
+- index: ${BUFFER_DIR}/.claude/knowledge/security/audit-log/audit-log-index.md（1 行サマリ追記）
 - 起票 Issue: {URL} / なし
 
 ### 出力ステータス

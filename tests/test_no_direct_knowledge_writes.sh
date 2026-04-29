@@ -61,7 +61,7 @@ for skill_file in "${PROJECT_DIR}"/skills/*/SKILL.md; do
   #   - `>` リダイレクトで書き込む
   #   - 「に書く」「に追記」「に保存」「に作成」等の日本語の書込み動詞と同一行
   # 単なる参照リンク（「- 設計判断: `<path>`」「参照:」「Read」「読み込む」等）は対象外
-  matches="$(grep -nE '`[^`$]*\.claude/knowledge/[^`]*/(decisions/|decisions-index|audit-)' "$skill_file" \
+  matches="$(grep -nE '`[^`$]*\.claude/knowledge/[^`]*/(decisions/|decisions-index|audit-log/)' "$skill_file" \
     | grep -v '\${BUFFER_DIR}' \
     | grep -v '#' \
     | grep -v -E '^[0-9]+:- 設計判断: ' \
