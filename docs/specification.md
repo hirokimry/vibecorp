@@ -78,8 +78,9 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 | `/vibecorp:harvest-all` | ❌ | ユーザー承認後に直接書込み（`harvest-all-active` スタンプで hook 通過） |
 
 **ガードレール**: `templates/claude/hooks/protect-knowledge-direct-writes.sh` が
-`.claude/knowledge/{role}/decisions/` および `.claude/knowledge/accounting/audit-*.md` /
-`.claude/knowledge/security/audit-*.md` への作業ブランチ直書きを deny する（buffer worktree 経由のみ許可）。
+`.claude/knowledge/{role}/decisions/`、`.claude/knowledge/{role}/decisions-index.md` および
+`.claude/knowledge/accounting/audit-*.md` / `.claude/knowledge/security/audit-*.md` への作業ブランチ直書きを
+deny する（buffer worktree 経由のみ許可）。
 詳細・救済手順は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) を参照。
 
 ### エピック運用

@@ -101,11 +101,8 @@ for agent_file in "${PROJECT_DIR}"/templates/claude/agents/*.md; do
   filtered="$(awk '
     /^### [0-9]+\. 判断の記録$/ { in_section = 1; next }
     in_section && /^### / { in_section = 0 }
-    in_section && /\*\*レガシー互換\*\*:/ { in_legacy = 1 }
-    in_section && in_legacy && /^[^*]/ && !/^[[:space:]]*$/ {
-      # 次の太字見出しが来るまでレガシー互換扱い
-      if ($0 ~ /^\*\*[^*]+\*\*:/) { in_legacy = 0; print; next }
-    }
+    in_section && /\*\*レガシー互換\*\*:/ { in_legacy = 1; next }
+    in_section && in_legacy && /^\*\*[^*]+\*\*:/ { in_legacy = 0; print; next }
     in_section && in_legacy { next }
     in_section { print }
   ' "$agent_file")"

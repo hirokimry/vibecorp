@@ -51,8 +51,8 @@ assert_file_contains 'cp 先が ${BUFFER_DIR}/.claude/knowledge/security/ であ
 echo ""
 echo "--- テスト5: 作業ブランチ直書きパターンの除去 ---"
 
-if grep -n -E '^\s*"\.claude/knowledge/security/audit-' "$SKILL_FILE" >/dev/null 2>&1; then
-  fail "cp 宛先が作業ブランチを指している（${BUFFER_DIR} 経由になっていない）"
+if grep -nE '\.claude/knowledge/security/audit-' "$SKILL_FILE" | grep -v '\${BUFFER_DIR}' >/dev/null 2>&1; then
+  fail 'cp 宛先が作業ブランチを指している（${BUFFER_DIR} 経由になっていない）'
 else
   pass "cp 宛先が作業ブランチ直書きパターンを含まない"
 fi

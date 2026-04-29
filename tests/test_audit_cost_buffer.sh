@@ -52,8 +52,8 @@ echo ""
 echo "--- テスト5: 作業ブランチ直書きパターンの除去 ---"
 
 # cp 行の宛先（2 行目）に ${BUFFER_DIR} を含まず .claude/knowledge/accounting/audit- を含む行が無いこと
-if grep -n -E '^\s*"\.claude/knowledge/accounting/audit-' "$SKILL_FILE" >/dev/null 2>&1; then
-  fail "cp 宛先が作業ブランチを指している（${BUFFER_DIR} 経由になっていない）"
+if grep -nE '\.claude/knowledge/accounting/audit-' "$SKILL_FILE" | grep -v '\${BUFFER_DIR}' >/dev/null 2>&1; then
+  fail 'cp 宛先が作業ブランチを指している（${BUFFER_DIR} 経由になっていない）'
 else
   pass "cp 宛先が作業ブランチ直書きパターンを含まない"
 fi

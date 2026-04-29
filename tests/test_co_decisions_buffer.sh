@@ -51,10 +51,12 @@ for role in cfo cto cpo ciso clo sm; do
 
   # ${BUFFER_DIR} を含まない `.claude/knowledge/{role}/decisions/` 相対パス言及（バックティック内）が無いこと
   if echo "$decisions_section" | grep -E '`\.claude/knowledge/'"${role}"'/decisions[/.]' >/dev/null 2>&1; then
-    # ただし、レガシー互換セクションは除外
+    # ただし、レガシー互換セクションは除外（次の太字見出しで legacy を閉じる）
     legacy_match="$(echo "$decisions_section" | awk '
-      /\*\*レガシー互換\*\*:/ { in_legacy = 1 }
-      !in_legacy { print }
+      /\*\*レガシー互換\*\*:/ { in_legacy = 1; next }
+      in_legacy && /^\*\*[^*]+\*\*:/ { in_legacy = 0; print; next }
+      in_legacy { next }
+      { print }
     ')"
     if echo "$legacy_match" | grep -E '`\.claude/knowledge/'"${role}"'/decisions[/.]' >/dev/null 2>&1; then
       fail "${role}: 判断の記録節（レガシー互換除外）に作業ブランチ直書きパスが残っている"

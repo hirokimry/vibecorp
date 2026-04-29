@@ -113,10 +113,14 @@ fi
 
 ### 4.6. buffer commit + push
 
+`knowledge_buffer_commit` は差分なしを成功扱い（exit 0）するため `|| true` は不要。実際の git エラーを握り潰さないために、commit 失敗時は push を中止する。
+
 ```bash
-knowledge_buffer_commit "chore(knowledge): audit-security ${today}" || true
 push_status="success"
-if ! knowledge_buffer_push; then
+if ! knowledge_buffer_commit "chore(knowledge): audit-security ${today}"; then
+  echo "[audit-security] commit 失敗。push は中止します。buffer 内容を確認してください: ${BUFFER_DIR}" >&2
+  push_status="failed (commit 失敗)"
+elif ! knowledge_buffer_push; then
   echo "[audit-security] push 失敗。commit は ${BUFFER_DIR} に保持。手動 push: git -C ${BUFFER_DIR} push origin knowledge/buffer" >&2
   push_status="failed (worktree に保持)"
 fi

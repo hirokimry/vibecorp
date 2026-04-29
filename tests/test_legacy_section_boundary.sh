@@ -21,10 +21,8 @@ filter_text() {
   awk '
     /^### [0-9]+\. 判断の記録$/ { in_section = 1; next }
     in_section && /^### / { in_section = 0 }
-    in_section && /\*\*レガシー互換\*\*:/ { in_legacy = 1 }
-    in_section && in_legacy && /^[^*]/ && !/^[[:space:]]*$/ {
-      if ($0 ~ /^\*\*[^*]+\*\*:/) { in_legacy = 0; print; next }
-    }
+    in_section && /\*\*レガシー互換\*\*:/ { in_legacy = 1; next }
+    in_section && in_legacy && /^\*\*[^*]+\*\*:/ { in_legacy = 0; print; next }
     in_section && in_legacy { next }
     in_section { print }
   '

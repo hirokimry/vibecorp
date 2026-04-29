@@ -43,7 +43,9 @@ run_hook() {
   local file_path="$1"
   local input
   input=$(printf '{"tool_input":{"file_path":"%s"}}' "$file_path")
-  echo "$input" | bash "$HOOK_FILE" 2>/dev/null || true
+  # exit status を握り潰さないために || true は使わない。
+  # 呼出元側で stdout の有無 + パターンマッチで判定する。
+  echo "$input" | bash "$HOOK_FILE" 2>/dev/null
 }
 
 # --- テスト2: file_path が空 → 関与せず通す ---
@@ -204,32 +206,31 @@ else
   fail "knowledge/cto/topic.md 通過しない: $result"
 fi
 
-# --- テスト10: realpath フォールバック（Python 代替） ---
+# --- テスト10: realpath フォールバック（Python 代替）— 常に検証 ---
 echo ""
-echo "--- テスト10: Python フォールバック同等性 ---"
+echo "--- テスト10: Python フォールバック常時検証 ---"
 
 # 関数定義のみを抽出した一時ファイルを作る
 fn_file="${TMPDIR_ROOT}/_pkw_fn.sh"
 awk '/^_pkw_normalize_path\(\)/,/^}$/' "$HOOK_FILE" > "$fn_file"
 
-# native realpath -m が利用可能か判定
-if realpath -m / >/dev/null 2>&1; then
-  # native の場合は native の出力と Python の出力が一致するか確認
-  python_result=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' '/foo/../bar/./baz' 2>/dev/null || echo "FAIL")
-  native_result=$(realpath -m -- '/foo/../bar/./baz' 2>/dev/null || echo "FAIL")
-  if [ "$python_result" = "$native_result" ] && [ "$python_result" = "/bar/baz" ]; then
-    pass "Python と native realpath が同等の結果を返す（${python_result}）"
-  else
-    fail "Python と native の結果が異なる（python=${python_result}, native=${native_result}, 期待=/bar/baz）"
+# realpath を PATH から外して Python フォールバック経路を強制実行
+# 「native が使える環境では未検証」という穴を塞ぐ（PR で追加した経路を確実に踏ませる）
+empty_path="${TMPDIR_ROOT}/empty-bin"
+mkdir -p "$empty_path"
+# 必要最小限のコマンドだけ symlink（realpath は除外）
+for cmd in bash python3 command; do
+  cmd_path="$(command -v "$cmd" 2>/dev/null)"
+  if [ -n "$cmd_path" ]; then
+    ln -sf "$cmd_path" "${empty_path}/${cmd}" 2>/dev/null || true
   fi
+done
+
+result=$(PATH="$empty_path" bash -c "source '${fn_file}'; _pkw_normalize_path '/foo/../bar/./baz'" 2>/dev/null || echo "FAIL")
+if [ "$result" = "/bar/baz" ]; then
+  pass "Python フォールバック（realpath 不在強制）で /foo/../bar/./baz → /bar/baz"
 else
-  # native が無い場合は関数自体を実行して Python フォールバックの動作を確認
-  result=$(bash -c "source '${fn_file}'; _pkw_normalize_path '/foo/../bar/./baz'" 2>/dev/null || echo "FAIL")
-  if [ "$result" = "/bar/baz" ]; then
-    pass "Python フォールバック単独で /foo/../bar/./baz → /bar/baz"
-  else
-    fail "Python フォールバック結果が期待外: $result（期待: /bar/baz）"
-  fi
+  fail "Python フォールバック結果が期待外: $result（期待: /bar/baz）"
 fi
 
 # --- テスト11: deny メッセージの可読性 ---
@@ -254,6 +255,16 @@ if [[ "$result" == *"/vibecorp:"* ]]; then
   pass "deny メッセージにスキル名「/vibecorp:」を含む"
 else
   fail "deny メッセージにスキル名がない"
+fi
+
+# C*O フォールバック失敗時の strict header 自体は deny メッセージには含めない（C*O 出力側の責務）。
+# ただし呼出元スキルが grep する厳格ヘッダ「### 判断記録（記録先取得失敗）」が
+# 関連 SKILL.md に正しく書かれていることを確認する。
+SPEC_FILE_FOR_HEADER="${PROJECT_DIR}/skills/audit-cost/SKILL.md"
+if grep -F '### 判断記録（記録先取得失敗）' "$SPEC_FILE_FOR_HEADER" >/dev/null 2>&1; then
+  pass "audit-cost SKILL.md に厳格ヘッダ「### 判断記録（記録先取得失敗）」が存在する"
+else
+  fail "audit-cost SKILL.md に厳格ヘッダがない"
 fi
 
 print_test_summary

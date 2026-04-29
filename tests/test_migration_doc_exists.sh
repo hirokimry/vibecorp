@@ -77,7 +77,15 @@ assert_file_contains "session-harvest 行" "$SPEC_FILE" "/vibecorp:session-harve
 assert_file_contains "audit-cost 行" "$SPEC_FILE" "/vibecorp:audit-cost"
 assert_file_contains "audit-security 行" "$SPEC_FILE" "/vibecorp:audit-security"
 assert_file_contains "sync-edit 行" "$SPEC_FILE" "/vibecorp:sync-edit"
-assert_file_contains "C*O 決定記録 行" "$SPEC_FILE" "C*O 決定記録"
+# `*` を grep のメタ文字として誤認しないよう、固定文字列として検査する
+if grep -F 'C*O 決定記録' "$SPEC_FILE" >/dev/null 2>&1; then
+  pass "C*O 決定記録 行（固定文字列マッチ）"
+else
+  fail "C*O 決定記録 行が見つからない"
+fi
+# Issue #439 完了条件: cycle-metrics / harvest-all は例外として明文化されているか
+assert_file_contains "cycle-metrics 行" "$SPEC_FILE" "/vibecorp:cycle-metrics"
+assert_file_contains "harvest-all 行" "$SPEC_FILE" "/vibecorp:harvest-all"
 assert_file_contains "ガードレールへの言及" "$SPEC_FILE" "protect-knowledge-direct-writes.sh"
 assert_file_contains "migration ドキュメントへのリンク" "$SPEC_FILE" "migration-knowledge-buffer.md"
 assert_file_contains "Issue #439 の記載" "$SPEC_FILE" "Issue #439"
