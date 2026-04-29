@@ -2,7 +2,7 @@
 
 Issue #439 のガードレール導入後、作業ブランチに残ってしまった `.claude/knowledge/{role}/decisions/` や `{role}/audit-log/` の差分を `knowledge/buffer` 経由で main に反映する手順。
 
-> Issue #442 で監査ログ構造が `audit-*.md` フラット → `{role}/audit-log/YYYY-QN.md` 四半期集約に変更されました。新構造の hook deny パターンは `^[^/]+/audit-log/` を含みます。
+> Issue #442 で監査ログ構造が `audit-*.md` フラット → `{role}/audit-log/YYYY-QN.md` 四半期集約に変更されました。新構造では `protect-knowledge-direct-writes.sh` が `.claude/knowledge/*/audit-log/*.md`（glob）を deny 対象に含みます。
 
 ## 状況
 
@@ -172,7 +172,7 @@ git log --follow .claude/knowledge/security/audit-log/2026-Q2.md  # 履歴確認
 
 ### 新規 audit-log-index.md 作成（buffer 経由）
 
-新構造の hook deny パターンは `^[^/]+/audit-log/` を含むため、作業ブランチでの直書きは不可。templates から buffer worktree にコピーする。
+新構造では hook deny 対象に `.claude/knowledge/*/audit-log/*.md`（glob）が含まれるため、作業ブランチでの直書きは不可。templates から buffer worktree にコピーする。
 
 ```bash
 . "$CLAUDE_PROJECT_DIR/.claude/lib/knowledge_buffer.sh"

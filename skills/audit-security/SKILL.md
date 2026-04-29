@@ -137,8 +137,10 @@ fi
 CISO の出力に `### 判断記録（記録先取得失敗）` セクションが含まれる場合、CISO の自前 buffer 取得が失敗している。判断内容を結果レポート末尾の「⚠️ 手動反映が必要な判断記録」ブロックに転記し、ユーザーに `docs/migration-knowledge-buffer.md` の手順での手動反映を促す。
 
 ```bash
-if grep -q '^### 判断記録（記録先取得失敗）$' "$audit_file" 2>/dev/null \
-   || echo "$ciso_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
+# 現在実行分の CISO 出力のみを検査する。
+# 四半期集約後は audit_file に過去 fallback エントリが残っている可能性があるため、
+# audit_file 全体走査による誤検知を避ける。
+if echo "$ciso_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
   fallback_warning=1
 fi
 ```
