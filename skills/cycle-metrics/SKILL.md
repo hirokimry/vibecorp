@@ -129,3 +129,13 @@ bash skills/cycle-metrics/generate-report.sh /tmp/cycle-pr.json /tmp/cycle-agent
 - **jq では string interpolation `\(...)` を使わない** — `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
 - `date -d`（GNU 固有）を使わない — `jq 'fromdateiso8601'` で BSD/GNU 両対応にする
+
+## buffer worktree への保存はしない
+
+本スキルの出力 `cycle-metrics-YYYY-MM-DD.md` は **データ生成専用**であり、CFO `/audit-cost` が読み取るための揮発データとして作業ブランチに保存する。`knowledge/buffer` 経由には載せない（Issue #439 で確定した方針）。
+
+理由:
+- 監査判断（buffer 化対象）は `audit-YYYY-MM-DD.md` 側に集約され、`cycle-metrics-YYYY-MM-DD.md` は同日中に CFO が消費する一過性データのため
+- `protect-knowledge-direct-writes.sh` フックは `cycle-metrics-*.md` のパターンを deny 対象に含めない（`audit-*.md` のみ deny 対象）
+
+CFO 監査結果（`audit-YYYY-MM-DD.md`）は `/audit-cost` が `${BUFFER_DIR}/.claude/knowledge/accounting/` 経由で buffer に保存し、`/vibecorp:knowledge-pr` で main に反映される。
