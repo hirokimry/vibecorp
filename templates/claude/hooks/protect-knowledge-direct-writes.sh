@@ -41,8 +41,30 @@ _pkw_normalize_path() {
 
 # パス正規化（パストラバーサル / シンボリックリンク対策）
 abs_file_path="$(_pkw_normalize_path "$FILE_PATH" 2>/dev/null || echo "")"
+
+# 正規化不能（realpath / python3 両方不在）の場合の fail-closed 判定
+# 原文 FILE_PATH に対して deny パターンを適用し、合致時のみ deny する。
+# 合致しない場合は関与せず通す（無関係ファイルへの誤 deny を避ける）。
 if [ -z "$abs_file_path" ]; then
-  exit 0  # 正規化不能なら関与せず通す（他の hook に委ねる）
+  case "$FILE_PATH" in
+    *.claude/knowledge/*/decisions/*.md|\
+    *.claude/knowledge/*/decisions-index.md|\
+    *.claude/knowledge/accounting/audit-*.md|\
+    *.claude/knowledge/security/audit-*.md)
+      # fail-closed: 正規化できないがパターン合致なので deny
+      jq -n '{
+        "hookSpecificOutput": {
+          "hookEventName": "PreToolUse",
+          "permissionDecision": "deny",
+          "permissionDecisionReason": "パス正規化に失敗（realpath / python3 が不在）。安全のため deny します。realpath（GNU coreutils）または python3 をインストールしてください。"
+        }
+      }'
+      exit 0
+      ;;
+    *)
+      exit 0  # 関与せず通す
+      ;;
+  esac
 fi
 
 # deny 対象パターン判定
@@ -62,10 +84,12 @@ if [ "$is_deny_target" -eq 0 ]; then
 fi
 
 # buffer worktree 配下なら許可（deny 対象でも buffer 経由は許可）
+# expected_prefix は vibecorp_cache_root を経由して XDG_CACHE_HOME を尊重する
+# （${HOME}/.cache 直書きだと XDG_CACHE_HOME 設定環境で誤 deny する）
 buffer_dir="$(knowledge_buffer_worktree_dir 2>/dev/null || true)"
 if [ -n "$buffer_dir" ]; then
   abs_buffer_dir="$(_pkw_normalize_path "$buffer_dir" 2>/dev/null || echo "")"
-  expected_prefix="${HOME}/.cache/vibecorp/buffer-worktree/"
+  expected_prefix="$(vibecorp_cache_root)/vibecorp/buffer-worktree/"
   if [ -n "$abs_buffer_dir" ] && [[ "$abs_buffer_dir" == "$expected_prefix"* ]] && [[ "$abs_file_path" == "${abs_buffer_dir}/"* ]]; then
     exit 0
   fi

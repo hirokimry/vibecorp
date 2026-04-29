@@ -12,8 +12,14 @@ PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
 HOOK_FILE="${PROJECT_DIR}/templates/claude/hooks/protect-knowledge-direct-writes.sh"
 
 TMPDIR_ROOT="$(mktemp -d)"
+# テスト中に作成されるスタンプファイルのトラッキング
+HARVEST_STAMP_FILE=""
 cleanup() {
   rm -rf "$TMPDIR_ROOT" || true
+  # テスト失敗時にスタンプファイルが残らないよう削除
+  if [ -n "$HARVEST_STAMP_FILE" ]; then
+    rm -f "$HARVEST_STAMP_FILE" || true
+  fi
 }
 trap cleanup EXIT
 
@@ -69,6 +75,33 @@ else
   fail "knowledge/ 外 → 出力あり: $result"
 fi
 
+# --- テスト3b: 正規 buffer worktree 配下の decisions/ → 許可（ポジティブケース） ---
+echo ""
+echo "--- テスト3b: 正規 buffer 配下の decisions/ 許可 ---"
+
+# 実 buffer worktree パスを取得（vibecorp_cache_root ベース）
+. "${PROJECT_DIR}/templates/claude/lib/common.sh"
+buffer_root="$(vibecorp_cache_root)/vibecorp/buffer-worktree"
+mkdir -p "${buffer_root}/test-allow-positive/.claude/knowledge/cfo/decisions"
+positive_path="${buffer_root}/test-allow-positive/.claude/knowledge/cfo/decisions/2026-Q2.md"
+
+# hook は knowledge_buffer_worktree_dir で「現在のリポジトリの buffer」を判定する
+# テストでは別の repo-id で擬似的に作るため、hook が「許可」するのは実際の buffer のみ。
+# よってこのケースは fake_buffer 的に「期待 prefix と一致する別パス」を許可するわけではない。
+# 代わりに、現在のリポジトリの buffer worktree ディレクトリパスを使う。
+real_buffer_dir="$(. "${PROJECT_DIR}/templates/claude/lib/knowledge_buffer.sh" && knowledge_buffer_worktree_dir)"
+mkdir -p "${real_buffer_dir}/.claude/knowledge/cfo/decisions"
+positive_in_real="${real_buffer_dir}/.claude/knowledge/cfo/decisions/2026-Q2.md"
+
+result=$(run_hook "$positive_in_real")
+if [ -z "$result" ]; then
+  pass "正規 buffer worktree 配下の decisions/ → 許可（ポジティブテスト）"
+else
+  fail "正規 buffer worktree 配下の decisions/ が deny された: $result"
+fi
+
+rm -rf "${buffer_root}/test-allow-positive"
+
 # --- テスト4: decisions/ への作業ブランチ直書き → deny ---
 echo ""
 echo "--- テスト4: decisions/ deny ---"
@@ -114,7 +147,8 @@ echo ""
 echo "--- テスト7: パストラバーサル ---"
 
 # 仮想 buffer 配下から ../ で workdir 直書きを試みる
-fake_buffer="${HOME}/.cache/vibecorp/buffer-worktree/test-repo-traversal"
+# TMPDIR_ROOT 内に作成すれば cleanup trap で自動削除される
+fake_buffer="${TMPDIR_ROOT}/fake-buffer-worktree"
 mkdir -p "$fake_buffer"
 evil_path="${fake_buffer}/../../../../tmp/.claude/knowledge/cfo/decisions/2026-Q2.md"
 result=$(run_hook "$evil_path")
@@ -123,16 +157,16 @@ if [[ "$result" == *'"permissionDecision":'*'"deny"'* ]]; then
 else
   fail "パストラバーサル経路 deny されない: $result"
 fi
-rm -rf "$fake_buffer"
 
 # --- テスト8a: harvest-all-active スタンプあり + 非 deny 対象 → 許可 ---
 echo ""
 echo "--- テスト8a: スタンプあり + 非 deny 対象 ---"
 
-# スタンプ作成
+# スタンプ作成（HARVEST_STAMP_FILE に記録して cleanup trap で削除）
 . "${PROJECT_DIR}/templates/claude/lib/common.sh"
 stamp_dir="$(vibecorp_state_mkdir)"
-touch "${stamp_dir}/harvest-all-active"
+HARVEST_STAMP_FILE="${stamp_dir}/harvest-all-active"
+touch "$HARVEST_STAMP_FILE"
 
 result=$(run_hook "${TMPDIR_ROOT}/.claude/knowledge/cfo/index.md")
 if [ -z "$result" ]; then
@@ -149,7 +183,8 @@ else
   fail "スタンプあり + decisions/ deny されない（fail-secure 違反）: $result"
 fi
 
-rm -f "${stamp_dir}/harvest-all-active"
+rm -f "$HARVEST_STAMP_FILE"
+HARVEST_STAMP_FILE=""
 
 # --- テスト9: knowledge/ の decisions/audit 以外 → 通過 ---
 echo ""
