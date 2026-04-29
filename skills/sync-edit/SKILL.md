@@ -115,6 +115,14 @@ rm -f "$(vibecorp_state_path agent-role)"
 
 各エージェントの出力に `### 判断記録（記録先取得失敗）` セクションが含まれる場合、当該エージェントの knowledge/ 書込みが buffer 取得失敗で失敗している。判断内容を結果レポート末尾の「⚠️ 手動反映が必要な判断記録」ブロックに転記し、ユーザーに `docs/migration-knowledge-buffer.md` の手順での手動反映を促す。
 
+ヘッダー名は厳格指定（バリエーション禁止）。検知は **アンカー付き grep**（行頭 `^` + 行末 `$`）で行うこと:
+
+```bash
+if echo "$agent_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
+  # 結果レポートに「⚠️ 手動反映が必要な判断記録」ブロックとして転記
+fi
+```
+
 ### 2.6. buffer commit + push（C*O 全員完了後 1 回のみ）
 
 `knowledge_buffer_commit` は差分なしを成功扱い（exit 0）するため `|| true` は不要。実際の git エラーを握り潰さないために、commit 失敗時は push を中止する。

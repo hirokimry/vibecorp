@@ -124,21 +124,33 @@ if [[ "$agent_miss_count" -eq 0 ]]; then
   pass "9 体の agent 定義（C*O 6 + 分析員 3）にヘッダー文字列が記載されている"
 fi
 
-# 検知側 skill (audit-security / audit-cost / sync-edit のいずれかにヘッダー grep が含まれる)
+# 検知側 skill (audit-security / audit-cost / sync-edit) 全てに **アンカー付き正規表現** での
+# ヘッダー検知実装が含まれることを検証する。
+# CodeRabbit 指摘:
+#   - 「いずれか 1 件マッチで pass」だと他 2 つが壊れても検知できない → 3 件全てを必須に強化
+#   - 要件「アンカー付き検知（^...$）」を skill 実装側が遵守しているか機械的に検証
 skills_dir="${PROJECT_DIR}/skills"
-detect_pattern='### 判断記録（記録先取得失敗）'
-skill_match_count=0
+# skill 実装内に literal で含まれるべき grep 正規表現（行頭 ^ + 行末 $ アンカー）
+anchored_regex='^### 判断記録（記録先取得失敗）$'
+skill_miss_count=0
 for skill_dir in audit-security audit-cost sync-edit; do
   skill_file="${skills_dir}/${skill_dir}/SKILL.md"
-  [[ -f "$skill_file" ]] || continue
-  if grep -qF -- "$detect_pattern" "$skill_file"; then
-    skill_match_count=$((skill_match_count + 1))
+  if [[ ! -f "$skill_file" ]]; then
+    fail "${skill_dir}/SKILL.md が存在しない"
+    skill_miss_count=$((skill_miss_count + 1))
+    continue
+  fi
+  # skill のコード例ブロックに `grep -q '^...$'` のような **アンカー付き正規表現** が
+  # literal 文字列として書かれていることを確認する（fixed string で安全に検索）
+  if grep -qF -- "$anchored_regex" "$skill_file"; then
+    : # OK: アンカー付き検知パターンを実装している
+  else
+    fail "${skill_dir}/SKILL.md にアンカー付きヘッダー検知正規表現（${anchored_regex}）が無い"
+    skill_miss_count=$((skill_miss_count + 1))
   fi
 done
-if [[ "$skill_match_count" -ge 1 ]]; then
-  pass "少なくとも 1 つの呼出元スキル（audit-security / audit-cost / sync-edit）にヘッダー検知パターンが含まれている"
-else
-  fail "呼出元スキルにヘッダー検知パターンが見つからない"
+if [[ "$skill_miss_count" -eq 0 ]]; then
+  pass "3 つの呼出元スキル（audit-security / audit-cost / sync-edit）すべてにアンカー付き正規表現でのヘッダー検知実装がある"
 fi
 
 print_test_summary

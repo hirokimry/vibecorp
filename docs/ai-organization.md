@@ -48,11 +48,11 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 
 | チーム | C-Level | 分析員 | 分析員の役割 | docs/ 編集権限 |
 |--------|---------|--------|-------------|---------------|
-| 法務チーム | CLO | 法務分析員（legal） | ライセンス分析・コンプライアンスチェック | `docs/POLICY.md` |
+| 法務チーム | CLO | 法務分析員（legal） | ライセンス分析・コンプライアンスチェック | なし（`docs/POLICY.md` は CLO 経由で編集） |
 | 経理チーム | CFO | 経理分析員（accounting） | API コスト計算・予算消化率の算出 | `docs/cost-analysis.md` |
 | セキュリティチーム | CISO | セキュリティ分析員（security） | 脆弱性スキャン・セキュリティポリシー検証 | `docs/SECURITY.md` |
 
-分析員は C-Level エージェントから呼び出され、結果を報告する。分析員が各管轄の docs/ ファイルを直接編集する権限を持つ（role-gate フックで制御）。
+分析員は C-Level エージェントから呼び出され、結果を報告する。`accounting-analyst` / `security-analyst` は各管轄の docs/ ファイルを直接編集する権限を持つ（role-gate フックで制御）。`legal-analyst` は Write 権限を持たないため（前述「エージェント tools セット」表参照）、`docs/POLICY.md` の編集は CLO に委任する。
 
 ## ワークフロー × C*O ゲート マトリクス
 
