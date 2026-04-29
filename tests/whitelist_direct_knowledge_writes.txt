@@ -1,0 +1,27 @@
+# test_no_direct_knowledge_writes.sh のホワイトリスト
+# Issue #439: knowledge への直接書込みを禁止するスキャナの除外対象
+#
+# 形式: 1 行 1 ファイルパス（プロジェクトルート相対）
+# `#` で始まる行はコメントとして無視される
+
+# cycle-metrics: 作業ブランチ揮発データ（仕様）
+# data-only スキルで cycle-metrics-*.md は hook 対象外（audit-*.md だけが deny 対象）
+skills/cycle-metrics/SKILL.md
+
+# harvest-all: スタンプ通過の例外（仕様）
+# harvest-all-active スタンプで hook を通過させるオンデマンドツール
+skills/harvest-all/SKILL.md
+
+# 本スキャナ自身の検査パターン記述で誤検知を避けるため除外
+tests/test_no_direct_knowledge_writes.sh
+tests/whitelist_direct_knowledge_writes.txt
+
+# 既存の knowledge ヘルパーは仕組み側のため対象外
+templates/claude/lib/knowledge_buffer.sh
+templates/claude/hooks/protect-knowledge-direct-writes.sh
+
+# migration ドキュメント自体に直書きパスの「説明」が入るのは想定内
+docs/migration-knowledge-buffer.md
+
+# specification.md の表組みに参照例として登場するため除外
+docs/specification.md

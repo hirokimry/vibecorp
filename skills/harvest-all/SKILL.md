@@ -166,6 +166,22 @@ ls -d <scope_path>
 
 `--dry-run` の場合はこのレポートを出力して終了する。
 
+### 6.5. ガードレール一時通過スタンプの設置（必須）
+
+`/vibecorp:harvest-all` は `.claude/knowledge/` への作業ブランチ直書きを行うが、`protect-knowledge-direct-writes.sh` フックがこの直書きを deny する設計である。本スキルはユーザーが個別承認した項目のみを反映するオンデマンドツールであり、`docs/specification.md` の「作業ブランチ直接書込フロー」例外として明示されているため、ステップ 7 の反映前に `harvest-all-active` スタンプを設置してフックを通過させる。
+
+**ただしスタンプは fail-secure 設計**: `.claude/knowledge/{role}/decisions/` および `.claude/knowledge/accounting/audit-*.md` / `.claude/knowledge/security/audit-*.md` への直書きはスタンプの有無にかかわらず常に deny される（C*O 判断記録 / 監査の責務領域は本スキルのスコープ外）。
+
+```bash
+# 反映前: ガードレール一時通過スタンプの設置
+. "$CLAUDE_PROJECT_DIR/.claude/lib/common.sh"
+stamp_dir="$(vibecorp_state_mkdir)"
+touch "${stamp_dir}/harvest-all-active"
+trap 'rm -f "${stamp_dir}/harvest-all-active"' EXIT
+```
+
+ステップ 8（結果報告）の後にスタンプを削除する（trap で異常終了時も削除されるが、正常終了時の明示削除も行う）。
+
 ### 7. ドキュメントへの直接反映
 
 ユーザーが承認した項目について、該当ファイルに直接反映する。
@@ -202,6 +218,20 @@ ls -d <scope_path>
 - 反映済み: {n} 件
 - スキップ（ユーザー判断）: {n} 件
 ```
+
+### 9. スタンプ削除（必須）
+
+ステップ 6.5 で設置した `harvest-all-active` スタンプを削除する。trap で異常終了時も削除されるが、正常終了時の明示削除も行う。
+
+```bash
+rm -f "${stamp_dir}/harvest-all-active"
+```
+
+## buffer worktree 経由ではない理由
+
+本スキルはユーザーが個別承認した項目のみを反映するオンデマンドツール。承認済み項目は session-harvest 等の自動収集と異なり、ユーザー判断で main へ直接 PR 化する想定。`docs/specification.md` の「作業ブランチ直接書込フロー」例外として明示されている。
+
+Phase 4 のガードレール hook（`protect-knowledge-direct-writes.sh`）を通過させるため、ステップ 6.5 で `harvest-all-active` スタンプを設置する。スタンプは fail-secure 設計で、`decisions/` および `audit-*.md` パターンには適用されない（C*O 判断記録 / 監査は本スキルのスコープ外）。
 
 ## 介入ポイント
 

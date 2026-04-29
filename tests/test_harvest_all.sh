@@ -306,6 +306,48 @@ fi
 
 echo ""
 
+# --- テスト14: harvest-all-active スタンプ手順（Issue #439） ---
+
+echo "--- テスト14: harvest-all-active スタンプ手順 ---"
+
+if grep -q 'harvest-all-active' "$SKILL_FILE"; then
+  pass "SKILL.md に harvest-all-active スタンプの記述がある"
+else
+  fail "SKILL.md に harvest-all-active スタンプの記述がない"
+fi
+
+if grep -q 'ガードレール一時通過スタンプ' "$SKILL_FILE"; then
+  pass "ガードレール一時通過スタンプの説明がある"
+else
+  fail "ガードレール一時通過スタンプの説明がない"
+fi
+
+if grep -q 'fail-secure' "$SKILL_FILE"; then
+  pass "fail-secure 設計の記述がある（decisions/audit はスタンプ対象外）"
+else
+  fail "fail-secure 設計の記述がない"
+fi
+
+echo ""
+
+# --- テスト15: buffer worktree 非対象の理由（Issue #439） ---
+
+echo "--- テスト15: buffer worktree 非対象の理由 ---"
+
+if grep -q 'buffer worktree 経由ではない理由' "$SKILL_FILE"; then
+  pass "buffer worktree 経由ではない理由セクションがある"
+else
+  fail "buffer worktree 経由ではない理由セクションがない"
+fi
+
+if grep -q '作業ブランチ直接書込フロー' "$SKILL_FILE"; then
+  pass "作業ブランチ直接書込フローの言及がある"
+else
+  fail "作業ブランチ直接書込フローの言及がない"
+fi
+
+echo ""
+
 # --- 結果 ---
 
 echo "==========================="

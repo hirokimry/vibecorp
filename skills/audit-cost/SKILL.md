@@ -28,6 +28,18 @@ awk '/^preset:[[:space:]]*/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' .c
 
 `full` 以外の場合は「/vibecorp:audit-cost は full プリセット専用です」と報告して終了する。
 
+### 1.5. buffer worktree の準備
+
+監査レポートは `knowledge/buffer` worktree 経由で main に反映する（`docs/specification.md` の「自動反映フロー」原則）。作業ブランチへの直書きは `protect-knowledge-direct-writes.sh` フックで deny される。
+
+```bash
+. "$CLAUDE_PROJECT_DIR/.claude/lib/knowledge_buffer.sh"
+knowledge_buffer_ensure || { echo "[audit-cost] buffer 準備失敗。作業ブランチへの直書きはフックで deny されるため処理を中止" >&2; exit 1; }
+knowledge_buffer_lock_acquire || { echo "[audit-cost] ロック取得失敗（${VIBECORP_LOCK_TIMEOUT:-60}s）" >&2; exit 2; }
+trap knowledge_buffer_lock_release EXIT
+BUFFER_DIR="$(knowledge_buffer_worktree_dir)"
+```
+
 ### 2. 監査範囲取得
 
 直近7日間の変更を取得する:
@@ -45,6 +57,11 @@ CFO エージェントに以下を渡して起動する（Agent ツール）:
 
 ```text
 あなたは CFO として、直近1週間のコード変更に対するコスト監査を実施してください。
+
+## buffer worktree（必須・判断記録の書込先）
+BUFFER_DIR=${BUFFER_DIR}
+
+判断記録は `${BUFFER_DIR}/.claude/knowledge/cfo/` 配下に書いてください（作業ブランチへの直書きはフックで deny されます）。
 
 ## 監査範囲
 git commit range: @{7 days ago}..HEAD
@@ -106,15 +123,42 @@ git log --since="7 days ago" -p -- 'templates/claude/agents/*.md' '.claude/agent
 
 ### 4. レポート保存
 
-CFO の出力を `knowledge/accounting/audit-YYYY-MM-DD.md` に保存する:
+CFO の出力を **buffer worktree 内** の `${BUFFER_DIR}/.claude/knowledge/accounting/audit-YYYY-MM-DD.md` に保存する:
 
 ```bash
 today=$(date -u +%Y-%m-%d)
+mkdir -p "${BUFFER_DIR}/.claude/knowledge/accounting"
 cp .claude/knowledge/accounting/cost-audit-template.md \
-   ".claude/knowledge/accounting/audit-${today}.md"
+   "${BUFFER_DIR}/.claude/knowledge/accounting/audit-${today}.md"
 ```
 
-その後、CFO の出力内容で中身を置き換える。
+テンプレート（`cost-audit-template.md`）は作業ブランチから読み取り、書込先は buffer worktree。その後、CFO の出力内容で中身を置き換える。
+
+### 4.5. C*O フォールバック警告の検知
+
+CFO の出力に `### 判断記録（記録先取得失敗）` セクションが含まれる場合、CFO の自前 buffer 取得が失敗している。判断内容を結果レポート末尾の「⚠️ 手動反映が必要な判断記録」ブロックに転記し、ユーザーに `docs/migration-knowledge-buffer.md` の手順での手動反映を促す。
+
+```bash
+if grep -q '^### 判断記録（記録先取得失敗）$' "${BUFFER_DIR}/.claude/knowledge/accounting/audit-${today}.md" 2>/dev/null \
+   || echo "$cfo_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
+  fallback_warning=1
+fi
+```
+
+### 4.6. buffer commit + push
+
+`knowledge_buffer_commit` は差分なしを成功扱い（exit 0）するため `|| true` は不要。実際の git エラーを握り潰さないために、commit 失敗時は push を中止する。
+
+```bash
+push_status="success"
+if ! knowledge_buffer_commit "chore(knowledge): audit-cost ${today}"; then
+  echo "[audit-cost] commit 失敗。push は中止します。buffer 内容を確認してください: ${BUFFER_DIR}" >&2
+  push_status="failed (commit 失敗)"
+elif ! knowledge_buffer_push; then
+  echo "[audit-cost] push 失敗。commit は ${BUFFER_DIR} に保持。手動 push: git -C ${BUFFER_DIR} push origin knowledge/buffer" >&2
+  push_status="failed (worktree に保持)"
+fi
+```
 
 ### 5. 異常検出時の Issue 起票
 
@@ -142,8 +186,17 @@ Minor のみの場合は起票しない（レポート保存のみ）。
 - Minor: N 件
 
 ### 出力
-- レポート: knowledge/accounting/audit-YYYY-MM-DD.md
+- レポート: ${BUFFER_DIR}/.claude/knowledge/accounting/audit-YYYY-MM-DD.md
 - 起票 Issue: {URL} / なし
+
+### 出力ステータス
+- レポート保存: 成功 / 失敗
+- buffer commit: 成功 / 失敗（差分なしスキップ）
+- buffer push: 成功 / 失敗（失敗時は ${BUFFER_DIR} に保持。手動 push 手順を出力）
+
+### ⚠️ 手動反映が必要な判断記録（CFO フォールバック発動時のみ）
+{CFO 出力の「### 判断記録（記録先取得失敗）」セクションをここに転記}
+→ docs/migration-knowledge-buffer.md の手順で手動反映してください
 ```
 
 ## 定期実行
@@ -159,7 +212,8 @@ Minor のみの場合は起票しない（レポート保存のみ）。
 
 - **コード変更は一切行わない** — 監査レポートと Issue 起票のみ
 - **モデル指定の自動変更は行わない** — CFO は警告のみ。`model:` 行の書き換えは人間または `/vibecorp:ship` 経由で行う
-- `git add` / `git commit` / `git push` は実行しない
+- `git add` / `git commit` / `git push` は `knowledge_buffer_*` ヘルパー経由でのみ実行する（buffer worktree 内に限定）
+- 作業ブランチには直書きしない（`protect-knowledge-direct-writes.sh` フックで deny される）
 - `--force`、`--hard`、`--no-verify` は使用しない
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない

@@ -99,13 +99,32 @@ model: sonnet
 
 ### 4. 判断の記録
 
+判断は `${BUFFER_DIR}/.claude/knowledge/clo/...` に書く。`BUFFER_DIR` は呼出元から **プロンプト文字列内に展開された値** として渡される（サブエージェントは親の環境変数を継承しないため）。
+
+#### BUFFER_DIR 確認（必須）
+
+```bash
+if [ -z "${BUFFER_DIR:-}" ]; then
+  echo "[clo] BUFFER_DIR 未注入。自前で取得します（運用上は呼出元スキルで注入を推奨）" >&2
+  . "$CLAUDE_PROJECT_DIR/.claude/lib/knowledge_buffer.sh"
+  if ! knowledge_buffer_ensure; then
+    echo "[clo] BUFFER_DIR 取得失敗。判断記録は本レビュー結果（標準出力）にのみ含めて返却します" >&2
+    BUFFER_DIR=""
+  else
+    BUFFER_DIR="$(knowledge_buffer_worktree_dir)"
+  fi
+fi
+```
+
+#### 書込み（BUFFER_DIR が空でなければ実行）
+
 判断を以下の 2 箇所に記録する:
 
-1. `.claude/knowledge/clo/decisions/{YYYY-QN}.md` に詳細を追記
-   - ディレクトリ `.claude/knowledge/clo/decisions/` が存在しなければ作成する
+1. `${BUFFER_DIR}/.claude/knowledge/clo/decisions/{YYYY-QN}.md` に詳細を追記
+   - ディレクトリ `${BUFFER_DIR}/.claude/knowledge/clo/decisions/` が存在しなければ作成する
    - ファイルがなければ新規作成（H1 ヘッダ `# CLO 判断記録 {YYYY-QN}` を付与）
    - YYYY-QN は判断日付の四半期（01-03 → Q1、04-06 → Q2、07-09 → Q3、10-12 → Q4）
-2. `.claude/knowledge/clo/decisions-index.md` のエントリセクションに 1 行サマリを追記
+2. `${BUFFER_DIR}/.claude/knowledge/clo/decisions-index.md` のエントリセクションに 1 行サマリを追記
    - 書式: `- YYYY-MM-DD — Issue #NNN または トピック名 — 結論の一行要約`
    - 新しい順で上に追加
    - `decisions-index.md` が存在する場合は追記する
@@ -113,7 +132,11 @@ model: sonnet
 
 **書き込み順序**: アーカイブ → インデックスの順で書く。アーカイブ成功後に index 追記が失敗しても、次回 step 1 で index エントリ欠落を検知し補完できる（逆順だと index のみ更新され archive が無い不整合になる）。
 
-**レガシー互換**: `decisions-index.md` が存在せず `decisions.md` のみ存在する場合は、`decisions.md` へ追記する（このケースでは `decisions-index.md` は作成しない）。移行手順は `docs/migration-decisions-index.md` 参照。
+`BUFFER_DIR` が空（フォールバック失敗）の場合: 判断内容を本レビュー結果の「`### 判断記録（記録先取得失敗）`」セクションに含めて呼出元に返却し、人間または呼出元側で手動反映する。これにより無言データロストを回避する。
+
+**ヘッダー名は厳格指定**: 必ず正確な文字列「`### 判断記録（記録先取得失敗）`」で出力する。バリエーション（例: `## フォールバック判断記録`、`### 判断記録 (記録失敗)`、半角カッコ等）は禁止する。呼出元スキルはこのヘッダーで grep して検知するため、表記ゆれは検知漏れにつながる。
+
+**レガシー互換**: `${BUFFER_DIR}/.claude/knowledge/clo/decisions-index.md` が存在せず `${BUFFER_DIR}/.claude/knowledge/clo/decisions.md` のみ存在する場合は、`decisions.md` へ追記する（このケースでは `decisions-index.md` は作成しない）。移行手順は `docs/migration-decisions-index.md` 参照。
 
 記録すべき内容：
 - 法務判断の内容と根拠

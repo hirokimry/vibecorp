@@ -195,4 +195,12 @@ assert_file_contains "テンプレートに PR サマリ節がある" "$TEMPLATE
 assert_file_contains "テンプレートにエージェント節がある" "$TEMPLATE" "## エージェント・トークン消費"
 assert_file_contains "テンプレートにボトルネック節がある" "$TEMPLATE" "## ボトルネック"
 
+# --- テスト11: buffer worktree 非対象明文化（Issue #439） ---
+echo ""
+echo "--- テスト11: buffer worktree 非対象の明文化 ---"
+
+assert_file_contains "SKILL.md に「buffer worktree への保存はしない」セクションがある" "$SKILL_FILE" "buffer worktree への保存はしない"
+assert_file_contains "SKILL.md にデータ生成専用の説明がある" "$SKILL_FILE" "データ生成専用"
+assert_file_contains "SKILL.md にフックが対象外であることの記載がある" "$SKILL_FILE" "protect-knowledge-direct-writes.sh"
+
 print_test_summary
