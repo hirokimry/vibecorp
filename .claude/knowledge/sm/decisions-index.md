@@ -5,6 +5,7 @@
 
 ## エントリ
 
+- 2026-04-29 — Issue #448 実装計画のメタレビュー — OK。autonomous-restrictions.md 全5分類に非該当。hook chain 責務分離適切（Edit/Write 層 vs Bash 層）。Phase 1→2 強依存・直列必須。SM-1: permissions.allow vs hook deny 優先順位の実機確認推奨。ブロッカーなし
 - 2026-04-29 — Issue #442 実装計画のメタレビュー — OK。autonomous-restrictions.md 全5分類に非該当。harvest-all-active スタンプは §4 ガードレール対象外。Phase G→C→B 直列依存妥当、D+E は並列可能。ブロッカーなし
 
 - 2026-04-28 — autopilot 再判定（#437 merged・#247 再設計済み） — ship 推奨: #247（手動限定）, #312。グループ A 並列: #312+#337。install.sh チェーン: #247→#339→#347→#311
