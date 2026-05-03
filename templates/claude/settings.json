@@ -18,6 +18,8 @@
       "Edit(.claude/rules/**)",
       "Write(.claude/plans/**)",
       "Edit(.claude/plans/**)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/skills/**)",
       "Write(//Users/**/.cache/vibecorp/plans/**)",
       "Edit(//Users/**/.cache/vibecorp/plans/**)",
       "Write(//Users/**/.cache/vibecorp/state/**)",
