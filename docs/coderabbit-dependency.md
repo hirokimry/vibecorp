@@ -157,3 +157,7 @@ coderabbit:
 - `coderabbit.enabled` が `true`（デフォルト）の場合、`.coderabbit.yaml` テンプレートを配置（既存ファイルがあればスキップ）
 - Branch Protection の Required status checks に CodeRabbit を含めるかは `.coderabbit.yaml` の存在で `resolve_github_checks()` が判定
 - CodeRabbit がない環境でもインストールは成功する
+
+## 関連: claude-code-action（並走 AI レビュー基盤）
+
+vibecorp は CodeRabbit の代替として claude-code-action を並走させる方針を [#455](https://github.com/hirokimry/vibecorp/issues/455) で確定している。claude-code-action の OAuth 認証経路（`CLAUDE_CODE_OAUTH_TOKEN` の取得・登録・revocation）は [`docs/claude-code-action-auth.md`](claude-code-action-auth.md) を SoT とする。本ドキュメントは CodeRabbit 単独構成の挙動を規定し、2 ツール並走前提への本格改訂は Issue [#472](https://github.com/hirokimry/vibecorp/issues/472) で対応する。

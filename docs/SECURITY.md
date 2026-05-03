@@ -12,7 +12,16 @@
 
 ## 認証・認可
 
-（認証方式・認可モデルの概要を記載）
+### claude-code-action（GitHub Actions 上の Claude 起動）
+
+GitHub Actions 上で claude-code-action を Claude Max 定額内で動かすための OAuth 認証経路は [`docs/claude-code-action-auth.md`](claude-code-action-auth.md) を SoT とする。以下を含む:
+
+- Bot 用 PAT vs GitHub App の選定判断（**PAT 推奨**）
+- `CLAUDE_CODE_OAUTH_TOKEN` の取得・リポジトリ secrets 登録手順
+- Forked PR への対処方針（`pull_request_target` + ラベルゲート）
+- Revocation 手順（漏洩時の即時無効化フロー、四半期ローテーション運用）
+
+漏洩兆候を検知した場合は `docs/claude-code-action-auth.md` の「4. Revocation 手順」を即時実行し、`knowledge/security/audit-log/YYYY-QN.md` に記録する。
 
 ## データ保護
 
