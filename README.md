@@ -117,7 +117,7 @@ which claude
 
 #### リモート運用時の注意
 
-非対応環境で split-pane mode を使うと teammate の承認プロンプトが可視化されず、リモート閲覧（スマホ・Web）からは承認不能になる。Issue #369 で観測済み。`.claude/settings.json` の `permissions.allow` には `.claude/knowledge/**` / `.claude/plans/**` / `.claude/rules/**` / `~/.cache/vibecorp/{plans,state}/**` が事前登録されており（[公式 docs の "Too many permission prompts" 推奨](https://code.claude.com/docs/en/agent-teams#too-many-permission-prompts)に基づく）、これら領域の teammate 書込は承認要求が発生しない。
+非対応環境で split-pane mode を使うと teammate の承認プロンプトが可視化されず、リモート閲覧（スマホ・Web）からは承認不能になる。Issue #369 で観測済み。`.claude/settings.json` の `permissions.allow` には `.claude/knowledge/**` / `.claude/plans/**` / `.claude/rules/**` / `.claude/skills/**` / `~/.cache/vibecorp/{plans,state}/**` が事前登録されており（[公式 docs の "Too many permission prompts" 推奨](https://code.claude.com/docs/en/agent-teams#too-many-permission-prompts)に基づく）、これら領域の teammate 書込は承認要求が発生しない。
 
 ## インストール時に適用される git config（local）
 
@@ -562,7 +562,9 @@ path/to/vibecorp/install.sh --name my-project --no-migrate
       "Write(.claude/rules/**)",
       "Edit(.claude/rules/**)",
       "Write(.claude/plans/**)",
-      "Edit(.claude/plans/**)"
+      "Edit(.claude/plans/**)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/skills/**)"
     ]
   },
   "hooks": {
