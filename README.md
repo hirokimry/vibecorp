@@ -141,7 +141,7 @@ which claude
 |---|---|---|---|---|---|
 | **minimal** | /vibecorp:review, /vibecorp:review-loop, /vibecorp:pr-fix, /vibecorp:pr-fix-loop, /vibecorp:pr, /vibecorp:commit, /vibecorp:issue, /vibecorp:ship, /vibecorp:plan, /vibecorp:branch, /vibecorp:plan-review-loop, /vibecorp:worktree, /vibecorp:approve-audit | protect-files, protect-branch, block-api-bypass, command-log | なし | Claude Max 定額内 | 個人〜小規模 |
 | **standard** | 上記 + /vibecorp:review-harvest, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all, /vibecorp:context7 | 上記 + sync-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
-| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
+| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:plan-epic, /vibecorp:release-epic, /vibecorp:cycle-metrics | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 
@@ -215,13 +215,16 @@ your-project/
 | `/vibecorp:harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/vibecorp:context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-### full プリセットで追加（4スキル）
+### full プリセットで追加（6スキル）
 
 | スキル | 説明 |
 |---|---|
 | `/vibecorp:diagnose` | コードベースを自律的に診断し、改善点を発見 → フィルタリング → GitHub Issue 起票。実装は行わない |
 | `/vibecorp:ship-parallel` | 複数 Issue を並列に `/vibecorp:ship` 実行。SM エージェントで依存関係を分析し同時進行。full プリセット専用（課金リスクを伴う大規模並列実行のため） |
 | `/vibecorp:autopilot` | `/vibecorp:diagnose` → `/vibecorp:ship-parallel` の自律改善サイクルを1回実行。全 open Issue を対象に実行（ラベルによる絞り込みなし）。デフォルトは ship 前にユーザー確認、`--auto` で省略可能。`/loop 24h /vibecorp:autopilot` での定期実行を推奨（12h は Claude Max のレート制限を逼迫させやすいため非推奨。詳細は `docs/cost-analysis.md`）。full プリセット専用 |
+| `/vibecorp:plan-epic` | 親エピックの Issue と子 Issue を一括作成し sub-issue で紐付ける。feature ブランチ（`feature/epic-{Issue番号}_{要約}`）を作成する。full プリセット専用（エピック運用は大規模機能開発向け） |
+| `/vibecorp:release-epic` | feature ブランチから main への集約 PR を作成する。全子 Issue がマージされたエピックを main に取り込む最終ステップ。full プリセット専用 |
+| `/vibecorp:cycle-metrics` | 開発サイクルの計測データ（スループット・リードタイム等）を集計し、`~/.cache/vibecorp/state/<repo-id>/cycle-metrics/` に出力する。揮発データのため `.claude/knowledge/` 外に保存される |
 
 ## フック一覧
 
