@@ -58,6 +58,8 @@ assert_file_contains_fixed "ロールバック判断"           "$SUMMARY_TPL" "
 assert_file_contains_fixed "重複指摘率の集計"           "$SUMMARY_TPL" "重複指摘率"
 assert_file_contains_fixed "完了判定 A+B のみ"        "$SUMMARY_TPL" "## 検証完了判定基準"
 assert_file_contains_fixed "本番切替が別セクション"    "$SUMMARY_TPL" "## 本番運用切替判定（検証完了の後段）"
+assert_file_contains_fixed "B 契約の表ヘッダー固定"     "$SUMMARY_TPL" "| 契約 | CodeRabbit | claude-action | 並走時挙動 |"
+assert_file_contains_fixed "B 契約の判定値（✅⚠️❌）"  "$SUMMARY_TPL" "✅ / ⚠️ / ❌"
 
 # ============================================
 # 3. C*O 合議基準 docs
@@ -76,6 +78,8 @@ assert_file_contains_fixed "cadence 24h → 36h"     "$DEPENDENCY" "cadence 24h 
 assert_file_contains_fixed "NG 時の対応"             "$DEPENDENCY" "### NG 時の対応"
 assert_file_contains_fixed "ロールバック手順への参照" "$DEPENDENCY" "ai-review-rollback.md"
 assert_file_contains_fixed "週次サマリテンプレへの参照" "$DEPENDENCY" "weekly-summary.md"
+assert_file_contains_fixed "C*O 合議の判定ルール（4 役全員 OK）" "$DEPENDENCY" "4 役全員が OK 判定の場合のみ"
+assert_file_contains_fixed "C*O 合議の判定ルール（NG 1 名で延長）" "$DEPENDENCY" "1 名でも NG または保留の場合は検証期間を延長する"
 
 # ============================================
 # 4. C・D 契約は判定外であることが明記されている
