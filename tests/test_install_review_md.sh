@@ -242,4 +242,41 @@ bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_contains_fixed "フォールバック !**/*.lock" "$R/.coderabbit.yaml" '!**/*.lock'
 cleanup
 
+# ============================================
+# 10. skip_paths 内のコメント行・空行を読み飛ばす（途中終了しない）
+# ============================================
+echo ""
+echo "--- 10. skip_paths 内のコメント行・空行が安全に読み飛ばされる ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+coderabbit:
+  enabled: true
+claude_action:
+  enabled: true
+  skip_paths:
+    # コメント行 (このコメントの後のパスも取り込めること)
+    - "*.lock"
+
+    - "node_modules/**"
+    # 末尾コメント
+    - "vendor/**"
+EOF
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# REVIEW.md にコメント行直後の skip_paths も含まれることを確認
+assert_file_contains_fixed "コメント直後のパス *.lock" "$R/REVIEW.md" '- "*.lock"'
+assert_file_contains_fixed "空行を挟んだ node_modules/**" "$R/REVIEW.md" '- "node_modules/**"'
+assert_file_contains_fixed "途中コメント後の vendor/**" "$R/REVIEW.md" '- "vendor/**"'
+cleanup
+
 print_test_summary

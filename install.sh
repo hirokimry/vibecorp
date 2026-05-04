@@ -1158,6 +1158,9 @@ _read_skip_paths() {
     /^claude_action:[[:space:]]*$/ { in_action = 1; next }
     in_action && /^[^[:space:]#]/ { exit }
     in_action && /^[[:space:]]+skip_paths:[[:space:]]*$/ { in_paths = 1; next }
+    # skip_paths ブロック内のコメント行・空行は読み飛ばす（途中終了させない）
+    in_paths && /^[[:space:]]*#/ { next }
+    in_paths && /^[[:space:]]*$/ { next }
     in_paths && /^[[:space:]]+[^[:space:]-]/ && !/^[[:space:]]+-/ { exit }
     in_paths && /^[[:space:]]*-[[:space:]]*/ {
       sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
