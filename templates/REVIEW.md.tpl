@@ -10,10 +10,7 @@
 
 レビューの severity 判定と捌き方は以下の Source of Truth を参照してください:
 
-- `.claude/rules/severity/coderabbit.md` — CodeRabbit 互換 5 段階定義（Critical / Major / Minor / Trivial / Info）
-- `.claude/rules/severity/claude-action.md` — vibecorp 独自定義（CodeRabbit と同期）
-- `.claude/rules/review-handling.md` — severity × intent の捌き基準
-- `.claude/rules/review-observations.md` — レビュー観点
+- `.claude/rules/review-criteria.md` — severity 判定基準（Critical / Major / Minor / Trivial / Info）と捌き方
 
 REVIEW.md 自体には実体ルールを書きません（実体は `.claude/rules/` 配下が SoT）。
 

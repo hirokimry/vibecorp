@@ -1238,6 +1238,17 @@ generate_review_md() {
     return 0
   fi
 
+  # 利用者が手動配置した REVIEW.md（管理外: lock に base_hash 記録なし）は上書きしない。
+  # merge_or_overwrite は base_hash 不在時にデフォルトで上書きする仕様だが、REVIEW.md は
+  # ユーザー編集を想定するため初回 install / 旧バージョンからの移行で既存ファイルを保護する。
+  if [[ -f "$target" ]]; then
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    if [[ ! -f "$lock" ]] || [[ -z "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      log_skip "REVIEW.md は vibecorp 管理外のため既存ファイルを保護"
+      return 0
+    fi
+  fi
+
   # language / skip_paths を取得して REVIEW.md を生成
   local language
   language=$(awk '/^language:[[:space:]]*/ { sub(/^language:[[:space:]]*/, ""); print; exit }' "$yml")

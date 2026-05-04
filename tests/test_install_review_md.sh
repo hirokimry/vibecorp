@@ -36,8 +36,7 @@ R="$TMPDIR_ROOT"
 assert_file_exists "REVIEW.md が生成される" "$R/REVIEW.md"
 assert_file_contains "claude-code-action 言及"     "$R/REVIEW.md" "anthropics/claude-code-action"
 assert_file_contains "Source of Truth セクション" "$R/REVIEW.md" "Source of Truth"
-assert_file_contains "review-handling.md 参照"    "$R/REVIEW.md" "review-handling.md"
-assert_file_contains "review-observations.md 参照" "$R/REVIEW.md" "review-observations.md"
+assert_file_contains "review-criteria.md 参照"    "$R/REVIEW.md" "review-criteria.md"
 
 # テスト中はワイルドカード等のメタ文字を含むパターンを照合するため、
 # grep -F による固定文字列検索を行うアサート関数を使用する
@@ -103,6 +102,21 @@ assert_file_contains_fixed "coderabbit: !*.lock"        "$R/.coderabbit.yaml" '-
 assert_file_contains_fixed "coderabbit: !.git/**"       "$R/.coderabbit.yaml" '- "!.git/**"'
 assert_file_contains_fixed "coderabbit: !node_modules/**" "$R/.coderabbit.yaml" '- "!node_modules/**"'
 assert_file_contains_fixed "coderabbit: !dist/**"       "$R/.coderabbit.yaml" '- "!dist/**"'
+cleanup
+
+# ============================================
+# 4c. 既存ユーザー REVIEW.md は初回 install で上書きされない
+# ============================================
+echo ""
+echo "--- 4c. 利用者が手動配置した REVIEW.md は初回 install で保護される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+
+# vibecorp install 前に手動で REVIEW.md を配置
+echo "# user-managed REVIEW (do not overwrite)" > "$R/REVIEW.md"
+
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+assert_file_contains_fixed "ユーザー REVIEW.md が保持される" "$R/REVIEW.md" "user-managed REVIEW"
 cleanup
 
 # ============================================
