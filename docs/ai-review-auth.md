@@ -96,12 +96,14 @@ vibecorp は **revocation スクリプトを提供しない**。理由:
 | 条件 | install.sh の挙動 |
 |---|---|
 | `vibecorp.yml` 不在 | スキップ（return 0） |
-| `claude_action` セクション不在 | スキップ（return 0） |
+| `claude_action` セクション不在（旧 vibecorp.yml） | `ensure_claude_action_section` が `enabled: true` でセクションを自動追加し、その後 `verify_claude_action_secrets` が走る |
 | `claude_action.enabled: false` | スキップ（return 0） |
 | `gh` CLI 未導入 | スキップログを出力して return 0 |
 | `gh auth status` 失敗（未認証） | スキップログを出力して return 0 |
 | `claude_action.enabled: true` + `CLAUDE_CODE_OAUTH_TOKEN` 登録あり | INFO ログ「登録済み」 |
 | `claude_action.enabled: true` + `CLAUDE_CODE_OAUTH_TOKEN` 未登録 | WARN ログ + 設定方法案内 |
+
+`ensure_claude_action_section` は **既存値を絶対に上書きしない**（利用者カスタマイズ尊重）。明示的に `enabled: false` を設定したリポジトリは `--update` 後も `false` のまま維持される。
 
 ### 警告メッセージの内容
 
