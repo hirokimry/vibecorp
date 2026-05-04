@@ -86,7 +86,7 @@ Agent ツールで以下を実行（model: sonnet, tools: Bash(限定), Edit, Wr
   ciso.md
 
 skills/             ← Plugin 名前空間（/vibecorp:xxx）で呼び出し
-  review/           ← CodeRabbit CLI実行 + カスタムレビュー
+  review/           ← Claude Code CLI 実行（`claude -p`）+ カスタムレビュー
   review-loop/      ← validator(opus) → planner(opus) → fixer(sonnet) を内包
   pr-fix-loop/   ← 統合ワークフロー
   session-harvest/  ← 各 Role Agent を順次起動して知識蓄積
