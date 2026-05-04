@@ -1,0 +1,60 @@
+name: AI Review
+
+# vibecorp が配布する claude-code-action AI レビューワークフロー
+# Source of Truth: docs/ai-review-auth.md（認証経路）, docs/coderabbit-dependency.md（並走運用）
+
+on:
+  pull_request:
+    # draft 状態ではレビュー不要、コスト節約のため ready_for_review でも走らせる
+    types: [opened, synchronize, ready_for_review]
+
+# CISO 要件 (#464): 最小権限。contents は読取のみ、レビューコメント書き込みのため pull-requests / issues は write
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  intent-label-check:
+    name: intent ラベル数チェック
+    runs-on: ubuntu-latest
+    # CISO 要件 (#464): Fork PR では secrets にアクセスできないため実行しない
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: 1 PR 1 intent 厳守チェック
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          intent_count=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
+            --jq '[.[] | select(.name | startswith("intent/"))] | length')
+          if [[ "$intent_count" -gt 1 ]]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ 複数の intent ラベルが付与されています。1 PR 1 intent ルールに従い、ラベルを 1 つに修正してから再 push してください。"
+            exit 1
+          fi
+
+  claude-review:
+    name: Claude Code Action AI レビュー
+    needs: intent-label-check
+    runs-on: ubuntu-latest
+    # CISO 要件 (#464): Fork PR では secrets にアクセスできないため実行しない
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude Code Action 実行
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # 詳細プロンプト (REVIEW.md), skip_paths 適用は #465 で実装
+          # auto-resolve は #466 で実装
+          # approve / request_changes 発行は #467 で実装
