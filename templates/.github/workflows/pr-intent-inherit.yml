@@ -31,11 +31,12 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # PR 本文から Issue 番号を抽出
-          # 対応キーワード: close / closes / closed / fix / fixes / fixed / resolve / resolves / resolved / refs（大小文字区別なし）
+          # 対応キーワード: close / closes / closed / fix / fixes / fixed / resolve / resolves / resolved / ref / refs（大小文字区別なし）
           body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
 
           # 「キーワード #数字」と「キーワード URL/issues/数字」の両方をマッチ
-          issue_numbers=$(echo "$body" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs)[[:space:]]+#[0-9]+|(close[sd]?|fix(es|ed)?|resolve[sd]?|refs)[[:space:]]+https?://[^[:space:]]+/issues/[0-9]+' \
+          # ref / refs 両対応（/vibecorp:pr の --ref オプション運用と整合）
+          issue_numbers=$(echo "$body" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#[0-9]+|(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+https?://[^[:space:]]+/issues/[0-9]+' \
             | grep -oE '[0-9]+$' \
             | sort -u || true)
 

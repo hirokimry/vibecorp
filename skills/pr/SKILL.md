@@ -99,7 +99,7 @@ PR 作成前に対応 Issue から `intent/*` ラベルを取得して `gh pr cr
 # 対応 Issue の intent/* ラベルを取得（許可 7 種のみ）
 allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
 ISSUE_INTENTS=$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/issues/${ISSUE_NUMBER}/labels" \
-  | jq --argjson allowed "$allowed" -r '[.[] | .name | select(IN($allowed[]))][]' 2>/dev/null)
+  | jq --argjson allowed "$allowed" -r '[.[] | .name | select(IN($allowed[]))][]')
 
 # --label オプションを構築（intent/* + 必要に応じて他のラベル）
 LABEL_ARGS=""
@@ -144,7 +144,7 @@ PR 作成 + auto-merge 設定が完了した後、セッションで生まれた
 # 新規 PR の場合のみ実行（既存 PR 更新時はスキップ）
 if [ -z "${PR_NUMBER:-}" ]; then
   PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
-    "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml" 2>/dev/null || echo "")"
+    "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml")"
   case "$PRESET" in
     standard|full)
       # /vibecorp:session-harvest は minimal プリセットでは配置されないため standard 以上のみ
