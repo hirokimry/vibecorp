@@ -131,6 +131,39 @@ assert_file_not_exists "base snapshot も削除される" "$R/.claude/vibecorp-b
 cleanup
 
 # ============================================
+# 5b2. 既に target が削除済み + snapshot だけ残っている状態でも snapshot が掃除される
+# （stale snapshot による次回誤削除を防ぐ回帰テスト）
+# ============================================
+echo ""
+echo "--- 5b2. target 削除済み + snapshot 残存 → snapshot も掃除される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+
+# enabled: true で初回 install
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+
+# target を手動削除（利用者が ai-review.yml を直接 rm したケース）
+rm -f "$R/.github/workflows/ai-review.yml"
+assert_file_exists "snapshot は残っている" "$R/.claude/vibecorp-base/.github/workflows/ai-review.yml"
+
+# enabled を false に切替
+yml="$R/.claude/vibecorp.yml"
+tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+awk '
+  /^claude_action:/ { in_block = 1; print; next }
+  in_block && /^[[:space:]]+enabled:/ {
+    print "  enabled: false"
+    next
+  }
+  in_block && /^[^[:space:]#]/ { in_block = 0 }
+  { print }
+' "$yml" > "$tmp" && mv "$tmp" "$yml"
+
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_exists "snapshot が掃除される（target 不在でも）" "$R/.claude/vibecorp-base/.github/workflows/ai-review.yml"
+cleanup
+
+# ============================================
 # 5c. 利用者が手動配置した ai-review.yml は claude_action.enabled: false でも残置される
 # ============================================
 echo ""

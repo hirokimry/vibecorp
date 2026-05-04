@@ -1157,17 +1157,26 @@ generate_ai_review_workflow() {
     # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review.yml は削除して
     # AI レビューを実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
     # 触らない（誤削除防止）。
-    # base snapshot も同時に削除しないと、後から利用者が手動で ai-review.yml を再配置した際に
-    # 引き続き「管理下」と誤認されて誤削除される。snapshot を消すことで「管理外」状態に戻す。
+    #
+    # base snapshot は $target の有無に関係なく必ず削除する。snapshot だけが残っていると
+    # 次回 generate_vibecorp_lock() がそこから base_hash を再生成し、後で利用者が手動で
+    # 置いた ai-review.yml まで「管理下」と誤認されて削除される。
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    local was_managed="false"
+    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      was_managed="true"
+    fi
+
+    # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
+    local base_snapshot
+    base_snapshot=$(get_base_snapshot "$rel_path")
+    if [[ -n "$base_snapshot" ]]; then
+      rm -f "$base_snapshot"
+    fi
+
     if [[ -f "$target" ]]; then
-      local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-      if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      if [[ "$was_managed" == "true" ]]; then
         rm -f "$target"
-        local base_snapshot
-        base_snapshot=$(get_base_snapshot "$rel_path")
-        if [[ -n "$base_snapshot" ]]; then
-          rm -f "$base_snapshot"
-        fi
         log_info ".github/workflows/ai-review.yml を削除（claude_action.enabled: false）"
       else
         log_skip ".github/workflows/ai-review.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
