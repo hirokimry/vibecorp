@@ -17,6 +17,8 @@ claude_action:
     - "build/**"
     - ".cache/**"
     - "vendor/**"
+branch_protection:
+  required_approvals: 1
 guide_gate:
   extra_paths:
     - templates/claude/
