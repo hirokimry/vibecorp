@@ -5,6 +5,16 @@ language: ja
 base_branch: main
 protected_files:
   - MVV.md
+claude_action:
+  enabled: true
+  skip_paths:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
 guide_gate:
   extra_paths:
     - templates/claude/

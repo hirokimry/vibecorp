@@ -963,6 +963,16 @@ protected_files:
   - MVV.md
 coderabbit:
   enabled: true
+claude_action:
+  enabled: true
+  skip_paths:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
 diagnose:
   enabled: true
   max_issues_per_run: 7
@@ -978,6 +988,90 @@ diagnose:
 $(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
+}
+
+ensure_claude_action_section() {
+  # 既存 vibecorp.yml に claude_action セクション（および未定義キー）を追加する。
+  # 既存値は絶対に上書きしない（利用者カスタマイズを尊重）。
+  #
+  # 仕様根拠: Issue #468 最終確定 3「既存 vibecorp.yml の設定値を保ち、未定義キーだけ追加」
+  # bash 3.2 互換、`sed -i` 禁止（mktemp + mv で原子的置換）。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action: セクション全体の存在確認
+  if ! grep -q -e "^claude_action:" "$yml"; then
+    # ファイル末尾が改行で終わっていない場合は改行を補う（追記境界の壊れ防止）
+    if [[ -s "$yml" ]] && [[ "$(tail -c 1 "$yml")" != $'\n' ]]; then
+      printf '\n' >> "$yml"
+    fi
+    cat >> "$yml" <<'YAML'
+claude_action:
+  enabled: true
+  skip_paths:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
+YAML
+    log_info "vibecorp.yml に claude_action セクションを追加"
+    return 0
+  fi
+
+  # セクションは存在する。各キーの有無を確認（awk でブロック単位パース）
+  local has_enabled has_skip_paths
+  has_enabled=$(awk '
+    /^claude_action:/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:/ { print "yes"; exit }
+  ' "$yml")
+  has_skip_paths=$(awk '
+    /^claude_action:/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+skip_paths:/ { print "yes"; exit }
+  ' "$yml")
+
+  if [[ "$has_enabled" == "yes" && "$has_skip_paths" == "yes" ]]; then
+    return 0
+  fi
+
+  # 欠けているキーをセクション末尾に挿入する（次のトップレベルキー直前 or EOF）
+  local tmp
+  tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+  awk \
+    -v add_enabled="${has_enabled:-no}" \
+    -v add_skip_paths="${has_skip_paths:-no}" '
+    BEGIN { in_block = 0; appended = 0 }
+    function emit_missing() {
+      if (add_enabled != "yes") print "  enabled: true"
+      if (add_skip_paths != "yes") {
+        print "  skip_paths:"
+        print "    - \"*.lock\""
+        print "    - \".git/**\""
+        print "    - \"node_modules/**\""
+        print "    - \"dist/**\""
+        print "    - \"build/**\""
+        print "    - \".cache/**\""
+        print "    - \"vendor/**\""
+      }
+      appended = 1
+    }
+    {
+      if (in_block && /^[^[:space:]#]/ && !appended) {
+        emit_missing()
+        in_block = 0
+      }
+      print
+      if (/^claude_action:/) in_block = 1
+    }
+    END {
+      if (in_block && !appended) emit_missing()
+    }
+  ' "$yml" > "$tmp" && mv "$tmp" "$yml"
+  log_info "vibecorp.yml の claude_action セクションに不足キーを追加"
 }
 
 generate_coderabbit_yaml() {
@@ -2083,6 +2177,7 @@ main() {
   copy_isolation_templates
   setup_claude_real_symlink
   generate_vibecorp_yml
+  ensure_claude_action_section
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
