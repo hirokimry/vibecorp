@@ -6,12 +6,12 @@ name: PR Intent Label Inherit
 
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
   pull-requests: write
-  issues: read
+  issues: write
 
 concurrency:
   group: pr-intent-inherit-${{ github.event.pull_request.number }}

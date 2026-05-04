@@ -32,11 +32,11 @@ SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
 echo ""
 echo "--- 1. pr-intent-inherit.yml ワークフロー ---"
 assert_file_exists "templates 側にワークフロー" "$WF"
-assert_file_contains "PR opened/edited トリガー" "$WF" "opened, edited"
+assert_file_contains "PR opened/edited/synchronize/reopened トリガー" "$WF" "opened, edited, synchronize, reopened"
 assert_file_contains "Fork PR 除外"              "$WF" "head.repo.full_name == github.repository"
 assert_file_contains "draft 除外"                "$WF" "!github.event.pull_request.draft"
 assert_file_contains "permissions: pull-requests: write" "$WF" "pull-requests: write"
-assert_file_contains "permissions: issues: read"  "$WF" "issues: read"
+assert_file_contains "permissions: issues: write"  "$WF" "issues: write"
 
 # ============================================
 # 2. Issue 番号抽出のキーワード対応
