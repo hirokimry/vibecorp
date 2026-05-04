@@ -1877,6 +1877,13 @@ create_labels() {
     "refactor:d4c5f9:リファクタリング"
     "priority/high:b60205:優先度: 高"
     "priority/low:c2e0c6:優先度: 低"
+    "intent/feature:0e8a16:新機能を確実に動かす（影響を与える系）"
+    "intent/bugfix:b60205:既存バグを最小修正で直す（影響を与える系）"
+    "intent/performance:fbca04:性能を測定可能な形で改善する（影響を与える系）"
+    "intent/security:5319e7:脆弱性を塞ぐ（影響を与える系）"
+    "intent/refactor:d4c5f9:構造の品質を高める（挙動不変系）"
+    "intent/infra:c5def5:開発基盤の品質を底上げする（挙動不変系）"
+    "intent/docs:0075ca:ドキュメントの正確性を担保する（挙動不変系）"
   )
 
   # 既存ラベル一覧を取得
