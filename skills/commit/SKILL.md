@@ -51,16 +51,57 @@ git log --oneline -5
 
 ### 4. コミットメッセージ生成と実行
 
-**タイプ:** `feat`(新機能) / `fix`(修正) / `docs`(文書) / `style`(整形) / `refactor`(改善) / `test`(テスト) / `chore`(雑務)
+#### 4a. CC 11 種から prefix を選ぶ（vibecorp 厳格定義）
 
-**ルール:**
+Conventional Commits 11 種すべてを採用する。各 prefix の vibecorp 厳格定義は `docs/conventional-commits.md` を参照（`refactor` は挙動不変厳格化、`chore` は依存メジャー更新不可、`build` はランタイム挙動変更不可、等）。
+
+| CC prefix | 用途 |
+|-----------|------|
+| `feat` | 新機能追加（観測可能な挙動が新たに加わる） |
+| `fix` | バグ修正（セキュリティ脆弱性も含む） |
+| `perf` | 性能改善（観測可能な性能特性が変わる） |
+| `refactor` | 構造改善（**挙動不変**、公開 API リネーム不可） |
+| `style` | フォーマット・スタイル修正のみ |
+| `docs` | ドキュメントのみ（コード本体に影響しない） |
+| `test` | テストコードのみ（本番コード触れない） |
+| `ci` | CI 設定のみ |
+| `chore` | 雑務（**挙動不変**、依存メジャー更新で API 変わるなら不可） |
+| `build` | ビルドシステム（**挙動不変**、ランタイム挙動変えるなら不可） |
+| `revert` | 過去 commit の差し戻し |
+
+#### 4b. CC prefix → 絵文字 1:1 マッピング
+
+`docs/conventional-commits.md` 確定の絵文字 11 種を必ず使う:
+
+| CC prefix | 絵文字 |
+|-----------|------|
+| feat | ✨ |
+| fix | 🐛 |
+| perf | ⚡ |
+| refactor | 🔄 |
+| style | 💄 |
+| docs | 📖 |
+| test | 🧪 |
+| ci | 🔧 |
+| chore | ⚙️ |
+| build | 📦 |
+| revert | ⏪ |
+
+#### 4c. intent 主導で prefix を選ぶ（主従関係）
+
+Issue 駆動のブランチ（`dev/<番号>_*`）の場合、Issue のラベル（`intent/*`）が intent を示している。intent → CC prefix の主従順で対応 prefix を選ぶ（`.claude/rules/intent-labels.md` の絶対条件、逆引き禁止）。Issue ラベル未確認でもコミット内容から intent を先に確定し、対応 prefix を選ぶ。
+
+#### 4d. ルール
+
 - 件名・本文は CEO が読むため `.claude/rules/communication.md` に従って**動作主語**で書く（「〜になった／〜できるようになった」）
-- 件名は動作主語・ピリオドなし・最大30文字
+- 件名フォーマット: `<emoji> <CC prefix>: <動作主語の subject>`（scope を付ける場合は `<emoji> <CC prefix>(<scope>): <subject>`）
+- 件名は動作主語・ピリオドなし・推奨 50 文字以下
 - Issue番号はブランチ名から抽出（例: `dev/12345_feature` → #12345）
 - 本文は変更内容を箇条書き
+- `revert` PR は `intent/bugfix` ラベル付与済みのため、コミット側でも prefix `revert` + 絵文字 ⏪ を使う
 
 ```bash
-git commit -m "<type>: <subject>
+git commit -m "<emoji> <CC prefix>: <subject>
 
 https://github.com/{REPO_OWNER}/{REPO_NAME}/issues/{ISSUE_NUMBER}
 
