@@ -48,7 +48,9 @@ fi
 echo "=== PR #${PR_NUMBER} のレビュー比較メトリクス収集 ==="
 
 # 1. 全レビューコメントを取得
-all_review_comments=$(gh api "repos/$(gh repo view --json nameWithOwner --jq '.nameWithOwner')/pulls/${PR_NUMBER}/comments" --paginate)
+# gh api --paginate は複数ページがある場合に複数の JSON 配列を連結して出力するため、
+# jq -s 'add' で全配列を 1 つの配列に統合する（100件以上のコメントでも正確にカウント）
+all_review_comments=$(gh api "repos/$(gh repo view --json nameWithOwner --jq '.nameWithOwner')/pulls/${PR_NUMBER}/comments" --paginate | jq -s 'add')
 
 # 2. CodeRabbit / claude-action それぞれの bot ユーザーで分類
 # CodeRabbit の bot user: coderabbitai[bot]
