@@ -1501,8 +1501,9 @@ configure_github_repo() {
         exit
       }
     ' "$yml")
-    # 数字のみ受理、それ以外はデフォルト 1
-    if [[ "$val" =~ ^[0-9]+$ ]]; then
+    # 1 以上の整数のみ受理（0 や非数値はデフォルト 1 にフォールバック）
+    # 0 を許すと「approve N件以上必須」の前提を崩すため明示的に拒否
+    if [[ "$val" =~ ^[1-9][0-9]*$ ]]; then
       required_approvals="$val"
     fi
   fi

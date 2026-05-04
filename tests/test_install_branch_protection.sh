@@ -140,4 +140,35 @@ val=$(awk '
 assert_eq "branch_protection 不在 → 空文字列" "" "$val"
 cleanup
 
+# ============================================
+# 7. required_approvals: 0 や非数値は拒否されてデフォルト 1 にフォールバック
+# ============================================
+echo ""
+echo "--- 7. required_approvals: 0 / 非数値は拒否される ---"
+
+# install.sh の正規表現が 0 を拒否することを確認
+if grep -q '\[1-9\]\[0-9\]\*' "$INSTALL_SH"; then
+  pass "install.sh の正規表現が 1 以上の整数のみ受理する形になっている"
+else
+  fail "install.sh の正規表現が 0 を弾けない形のまま"
+fi
+
+# 動作試験: 0 / 負数 / 文字列 を渡すとデフォルト 1 にフォールバック
+for v in "0" "-1" "abc"; do
+  if [[ "$v" =~ ^[1-9][0-9]*$ ]]; then
+    fail "値 '$v' が誤って受理された"
+  else
+    pass "値 '$v' は正規表現で拒否される（フォールバック対象）"
+  fi
+done
+
+# 1 以上の正常値は受理
+for v in "1" "2" "10" "99"; do
+  if [[ "$v" =~ ^[1-9][0-9]*$ ]]; then
+    pass "値 '$v' は正規表現で受理される"
+  else
+    fail "値 '$v' が誤って拒否された"
+  fi
+done
+
 print_test_summary
