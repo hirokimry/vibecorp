@@ -64,9 +64,40 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
 
 `pull_request_target` トリガーを使えば Fork PR でも secrets を渡せるが、**OWASP リスク（Fork 側の悪意あるコードに secrets を握られる）が高い**ため採用しない。AI レビューを諦めて人間レビューに委ねる方が安全である。
 
-### 自然な動作
+### 防御的実装
 
-ワークフロー側は通常の `pull_request` トリガーを使う。Fork PR では secrets 不在で claude-action が起動できず、自動的にスキップされる。明示的な if 条件は不要。
+ワークフロー側は通常の `pull_request` トリガーを使う。Fork PR では secrets 不在で claude-action が起動できず、自然にスキップされるが、**多層防御の観点から各ジョブに明示的な if 条件を設置する**:
+
+```yaml
+jobs:
+  intent-label-check:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+  claude-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+```
+
+理由:
+- Fork PR では「secrets がないので落ちる」という暗黙の挙動に依存せず、明示的なゲートで早期 skip させる方がレビュー追跡上わかりやすい（`if:` 条件不一致時はジョブ失敗ではなく skip 扱い）
+- 将来 `pull_request_target` を誤って混入した場合の事故を防ぐ
+- CISO 要件 (#464) として「secrets スコープが認証領域を侵食しないこと」の機械的保証を満たす
+
+### ワークフロー構成
+
+`templates/.github/workflows/ai-review.yml`（vibecorp 配布版）の主要要素:
+
+| 要素 | 値・条件 | 根拠 |
+|---|---|---|
+| `on.pull_request.types` | `[opened, synchronize, ready_for_review]` | 開封・push・draft 解除でレビュー起動 |
+| ジョブ `if:` 条件 | `head.repo.full_name == github.repository && !github.event.pull_request.draft` | Fork PR と draft PR を多層防御で除外 |
+| `permissions.contents` | `read` | コード読取のみ、書込不要（CISO 最小権限） |
+| `permissions.pull-requests` | `write` | レビューコメント書込が必要 |
+| `permissions.issues` | `write` | intent-label-check のコメント投稿が必要 |
+| `concurrency.group` | `ai-review-${{ pr.number }}` | 同一 PR への push 連打を直列化してコスト抑制 |
+| `concurrency.cancel-in-progress` | `true` | 古い実行は中断して最新コミットのみレビュー |
+| `intent-label-check` ジョブ | `intent/*` ラベル数が 2 以上で fail コメント | 1 PR 1 intent ルール (#469) の機械的強制 |
+| `claude-review` ジョブ | `anthropics/claude-code-action@v1` 呼び出し | OAuth Token 認証で起動 |
+
+`types: [opened, synchronize, ready_for_review]` だけでは draft PR への push（`synchronize`）でもジョブが起動するため、ジョブの `if:` で `!github.event.pull_request.draft` を明示する。
 
 ## 4. secrets 漏洩時の revocation 手順
 
