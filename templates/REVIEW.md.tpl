@@ -10,7 +10,9 @@
 
 レビューの severity 判定と捌き方は以下の Source of Truth を参照してください:
 
-- `.claude/rules/review-criteria.md` — severity 判定基準（Critical / Major / Minor / Trivial / Info）と捌き方
+- `.claude/rules/severity/claude-action.md` — vibecorp の severity 5 段階定義（Critical / Major / Minor / Trivial / Info）
+- `.claude/rules/review-handling.md` — intent × severity の捌き基準
+- `.claude/rules/review-observations.md` — 各 intent のレビュー観点（挙動不変性の確認等を含む）
 
 REVIEW.md 自体には実体ルールを書きません（実体は `.claude/rules/` 配下が SoT）。
 

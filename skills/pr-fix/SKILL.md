@@ -157,7 +157,7 @@ gh api graphql -f query='
 
 #### 6.1 妥当性検証
 
-`.claude/rules/review-criteria.md` の判定基準に従い、指摘を分類する。
+`.claude/rules/review-handling.md` の捌き基準（intent × severity）と `.claude/rules/severity/claude-action.md` / `severity/coderabbit.md` の severity 定義に従い、指摘を分類する。
 設計方針に関わる大きな変更はユーザーに確認する。
 
 #### 6.2 修正計画

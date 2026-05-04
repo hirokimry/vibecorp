@@ -168,11 +168,11 @@ else
   fail "Major 以上で PR コメント投稿の記述が存在しない"
 fi
 
-# review-criteria.md への参照
-if grep -q -e 'review-criteria.md' "$SKILL_FILE"; then
-  pass "review-criteria.md への参照が存在する"
+# review-handling.md への参照（旧 review-criteria.md は #470 で 4 ファイル分割）
+if grep -q -e 'review-handling.md' "$SKILL_FILE"; then
+  pass "review-handling.md への参照が存在する"
 else
-  fail "review-criteria.md への参照が存在しない"
+  fail "review-handling.md への参照が存在しない"
 fi
 
 echo ""

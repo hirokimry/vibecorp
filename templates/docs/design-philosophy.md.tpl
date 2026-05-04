@@ -44,7 +44,7 @@ docs/（Source of Truth・仕様書群）
 
 - **CLI実行型**: CodeRabbit CLI、カスタムレビューコマンド等
 - **タスク実行型**: 計画に基づくコード修正
-- **判断するがアイデンティティ不要**: レビュー妥当性判定、修正計画策定（共通基準は `.claude/rules/review-criteria.md` に定義）
+- **判断するがアイデンティティ不要**: レビュー妥当性判定、修正計画策定（共通基準は `.claude/rules/severity/coderabbit.md` / `severity/claude-action.md` / `review-handling.md` / `review-observations.md` に定義）
 
 いずれもスキル内のステップとして直接実行する。
 
