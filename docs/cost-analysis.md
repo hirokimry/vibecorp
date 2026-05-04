@@ -120,6 +120,34 @@ claude-code-action の Bot 認証に **リポジトリ管理者個人の Claude 
 - `/vibecorp:ship-parallel` / `/vibecorp:autopilot` を多発させると、リポ管理者本人の対話用クォータも同枠から削られる
 - レート制限到達時、Claude Max は遅延、`ANTHROPIC_API_KEY` 設定時は通知なしで API 従量課金にフォールバックする（前節の「実行モード別の課金モデル」参照）
 
+### `/vibecorp:review` ローカル経路のコスト経路シフト（Issue #499）
+
+`/vibecorp:review` のローカルレビュー経路は CodeRabbit CLI（`cr review --plain`）から Claude Code CLI 直接呼び出し（`claude -p`）に置換された（Issue #499）。これによりコスト経路が以下のようにシフトしている。
+
+| 経路 | 旧（CodeRabbit CLI） | 新（Claude Code CLI 直接呼び出し） |
+|---|---|---|
+| 課金主体 | CodeRabbit Free 枠（3 reviews/hour、無料） | Claude Max OAuth quota（個人クォータ消費）または API 従量課金 |
+| 並列上限 | 3 並列で枯渇（`/vibecorp:ship-parallel` 5 並列で破綻） | Claude Max レート枠まで（5 並列で破綻しない） |
+| チーム運用時の共有負担 | なし（無料） | あり（リポ管理者個人クォータを全員分のレビューで消費） |
+
+ローカルレビューも `claude-code-action` と同じ「Bot 経由 Claude Max OAuth」のレート枯渇リスクに晒されることになるため、本セクションのチーム運用時の共有負担・緩和策は `/vibecorp:review` ローカル経路にも適用される。
+
+### `/vibecorp:review` の `ANTHROPIC_API_KEY` 混在 fail-fast
+
+`/vibecorp:review` のローカル経路は、起動時に `ANTHROPIC_API_KEY` 環境変数が設定されていれば exit 1 で停止する（fail-fast）。
+
+理由:
+- `claude -p` の非対話モードは `ANTHROPIC_API_KEY` があると OAuth より優先して **API 従量課金経路に自動切替**してしまう
+- ローカルレビューは反復実行されるため、利用者が気づかない間に従量課金が積み上がるリスクが大きい
+- Issue #455 コメント 8 で CEO が「`ANTHROPIC_API_KEY` 混在環境を fail-fast」を明示指定済み
+
+fail-fast 時、エラーメッセージで以下の対処を案内する:
+
+- `unset ANTHROPIC_API_KEY` で環境変数を解除する（OAuth 経路に切り替わる）
+- もしくは `docs/ai-review-auth.md` を参照して `claude setup-token` で OAuth トークンを発行する
+
+意図的に `ANTHROPIC_API_KEY` で API 従量課金運用したい上級ユーザーは、`/vibecorp:review` を経由せず直接 `claude -p` をシェルで叩く運用を取れる（vibecorp は利用者のシェル運用を制限しない）。
+
 ### チーム運用時の共有負担
 
 複数メンバーが PR を出す **チーム運用では、メンバー全員の PR レビューが「リポジトリ管理者」個人の Max クォータから消費される**。
