@@ -53,10 +53,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: REVIEW.md をプロンプトに読み込む
+        id: review_prompt
+        run: |
+          if [[ -f REVIEW.md ]]; then
+            {
+              echo "prompt<<EOF_REVIEW_MD"
+              cat REVIEW.md
+              echo "EOF_REVIEW_MD"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "prompt=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Claude Code Action 実行
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # 詳細プロンプト (REVIEW.md), skip_paths 適用は #465 で実装
+          prompt: ${{ steps.review_prompt.outputs.prompt }}
           # auto-resolve は #466 で実装
           # approve / request_changes 発行は #467 で実装

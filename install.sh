@@ -1102,10 +1102,70 @@ generate_coderabbit_yaml() {
   local lang_code
   lang_code=$(resolve_coderabbit_language "$LANGUAGE")
 
-  sed \
-    -e "s|{{LANGUAGE}}|${lang_code}|g" \
-    "$template" > "$target"
+  # vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters 形式に変換
+  # awk -v では改行を含む値を渡せないため、一時ファイル経由で getline する
+  local path_filters_file
+  path_filters_file="$(mktemp -t coderabbit_path_filters.XXXXXX)"
+  _render_coderabbit_path_filters "$yml" > "$path_filters_file"
+
+  awk -v lang="$lang_code" -v paths_file="$path_filters_file" '
+    /\{\{PATH_FILTERS_BLOCK\}\}/ {
+      while ((getline line < paths_file) > 0) print line
+      close(paths_file)
+      next
+    }
+    {
+      gsub(/\{\{LANGUAGE\}\}/, lang)
+      print
+    }
+  ' "$template" > "$target"
+
+  rm -f "$path_filters_file"
   log_info ".coderabbit.yaml を生成"
+}
+
+# vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters ブロックに変換する
+# vibecorp の各 skip_path に `!` プレフィックスを付け、CodeRabbit の除外指定形式にする。
+# 出力例:
+#   path_filters:
+#     - "!*.lock"
+#     - "!.git/**"
+_render_coderabbit_path_filters() {
+  local yml="$1"
+  local skip_paths
+  skip_paths=$(_read_skip_paths "$yml")
+
+  if [[ -z "$skip_paths" ]]; then
+    # フォールバック: 旧来のデフォルト（lock ファイル除外）
+    printf '  path_filters:\n    - "!**/*.lock"\n'
+    return 0
+  fi
+
+  printf '  path_filters:\n'
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    printf '    - "!%s"\n' "$path"
+  done <<<"$skip_paths"
+}
+
+# vibecorp.yml の claude_action.skip_paths からパス文字列を 1 行ずつ取り出す
+# （前後ダブルクォートは除去）
+_read_skip_paths() {
+  local yml="$1"
+  [[ -f "$yml" ]] || return 0
+
+  awk '
+    /^claude_action:[[:space:]]*$/ { in_action = 1; next }
+    in_action && /^[^[:space:]#]/ { exit }
+    in_action && /^[[:space:]]+skip_paths:[[:space:]]*$/ { in_paths = 1; next }
+    in_paths && /^[[:space:]]+[^[:space:]-]/ && !/^[[:space:]]+-/ { exit }
+    in_paths && /^[[:space:]]*-[[:space:]]*/ {
+      sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      gsub(/^"|"$/, "", $0)
+      print
+    }
+  ' "$yml"
 }
 
 generate_ci_workflow() {
@@ -1120,6 +1180,101 @@ generate_ci_workflow() {
   mkdir -p "${REPO_ROOT}/.github/workflows"
   cp "$template" "$target"
   log_info ".github/workflows/test.yml を生成"
+}
+
+generate_review_md() {
+  # claude-code-action 用プロンプト REVIEW.md を生成する。
+  # 仕様根拠: Issue #465 最終確定（vibecorp.yml の language / claude_action.skip_paths を反映）
+  #
+  # - claude_action.enabled: false の場合は生成しない
+  # - 既存ファイルがあれば 3-way マージ（merge_or_overwrite）
+  local target="${REPO_ROOT}/REVIEW.md"
+  local template="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
+  local rel_path="REVIEW.md"
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  [[ -f "$template" ]] || return 0
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action.enabled の判定
+  local enabled="true"
+  local val
+  val=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$yml")
+  if [[ "$val" == "false" ]]; then
+    enabled="false"
+  fi
+
+  if [[ "$enabled" == "false" ]]; then
+    # generate_ai_review_workflow と同じパターンで snapshot/target を掃除する
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    local was_managed="false"
+    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      was_managed="true"
+    fi
+    local base_snapshot
+    base_snapshot=$(get_base_snapshot "$rel_path")
+    if [[ -n "$base_snapshot" ]]; then
+      rm -f "$base_snapshot"
+    fi
+    if [[ -f "$target" ]]; then
+      if [[ "$was_managed" == "true" ]]; then
+        rm -f "$target"
+        log_info "REVIEW.md を削除（claude_action.enabled: false）"
+      else
+        log_skip "REVIEW.md は vibecorp 管理外のため残置（claude_action.enabled: false）"
+      fi
+    else
+      log_skip "REVIEW.md の生成をスキップ（claude_action.enabled: false）"
+    fi
+    return 0
+  fi
+
+  # language / skip_paths を取得して REVIEW.md を生成
+  local language
+  language=$(awk '/^language:[[:space:]]*/ { sub(/^language:[[:space:]]*/, ""); print; exit }' "$yml")
+  language="${language:-ja}"
+
+  # skip_paths を `- "<path>"` 形式のブロックとして一時ファイルに書き出す
+  # awk -v では改行を含む値を渡せないため、getline で読み込む
+  local skip_paths_file
+  skip_paths_file="$(mktemp -t review_md_skip_paths.XXXXXX)"
+  local has_skip_paths=0
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    printf -- '- "%s"\n' "$path" >> "$skip_paths_file"
+    has_skip_paths=1
+  done < <(_read_skip_paths "$yml")
+  if [[ "$has_skip_paths" -eq 0 ]]; then
+    echo "（skip_paths は空です）" > "$skip_paths_file"
+  fi
+
+  # 一時ファイルにレンダリング → merge_or_overwrite で 3-way マージ
+  local rendered_tmp
+  rendered_tmp="$(mktemp -t REVIEW.md.XXXXXX)"
+  awk -v lang="$language" -v skip_file="$skip_paths_file" '
+    /\{\{SKIP_PATHS_BLOCK\}\}/ {
+      while ((getline line < skip_file) > 0) print line
+      close(skip_file)
+      next
+    }
+    {
+      gsub(/\{\{LANGUAGE\}\}/, lang)
+      print
+    }
+  ' "$template" > "$rendered_tmp"
+
+  merge_or_overwrite "$rendered_tmp" "$target" "$rel_path" || true
+  rm -f "$rendered_tmp" "$skip_paths_file"
+  log_info "REVIEW.md を生成"
 }
 
 generate_ai_review_workflow() {
@@ -2266,6 +2421,7 @@ main() {
 
   generate_coderabbit_yaml
   generate_ci_workflow
+  generate_review_md
   generate_ai_review_workflow
   configure_github_repo
   verify_claude_action_secrets
