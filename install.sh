@@ -23,6 +23,7 @@ OS=""
 # ── ユーティリティ ─────────────────────────────────────
 
 log_info()     { printf '\033[32m[INFO]\033[0m     %s\n' "$*" >&2; }
+log_warn()     { printf '\033[33m[WARN]\033[0m     %s\n' "$*" >&2; }
 log_error()    { printf '\033[31m[ERROR]\033[0m    %s\n' "$*" >&2; }
 log_skip()     { printf '\033[33m[SKIP]\033[0m     %s\n' "$*" >&2; }
 log_merge()    { printf '\033[36m[MERGE]\033[0m    %s\n' "$*" >&2; }
@@ -1174,6 +1175,64 @@ configure_github_repo() {
   fi
 }
 
+verify_claude_action_secrets() {
+  # claude_action.enabled: true のとき GitHub secrets に CLAUDE_CODE_OAUTH_TOKEN が
+  # 登録されているかを確認する。未登録なら WARN を出力して設定を促す（exit はしない）。
+  #
+  # 仕様の Source of Truth: docs/ai-review-auth.md「install.sh の secrets 検証」
+  # 議論結果根拠: Issue #462 最終確定 5（install.sh の secrets 検証ロジック: 入れる）
+  #
+  # vibecorp.yml の claude_action セクション schema 自体は #468 で追加されるため、
+  # セクション不在時は no-op として安全にスキップする。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action.enabled をブロック単位でパース（次のトップレベルキーで停止）
+  # shell.md「YAML パース」ルールに従い grep -A は使わず awk でブロック抽出する
+  local enabled
+  enabled=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$yml")
+
+  if [[ "$enabled" != "true" ]]; then
+    return 0
+  fi
+
+  # gh CLI が利用できない場合はスキップ
+  if ! command -v gh >/dev/null 2>&1; then
+    log_skip "gh CLI が見つかりません。CLAUDE_CODE_OAUTH_TOKEN の確認は手動で行ってください"
+    return 0
+  fi
+
+  # GitHub 認証済みか確認
+  if ! gh auth status >/dev/null 2>&1; then
+    log_skip "gh が未認証のため CLAUDE_CODE_OAUTH_TOKEN の確認をスキップします"
+    return 0
+  fi
+
+  # gh secret list の出力先頭カラムが secret 名（タブ区切り）
+  # awk で先頭フィールドだけ抜き出して完全一致で判定する（部分一致を防ぐ）
+  if gh secret list 2>/dev/null | awk '{print $1}' | grep -qx 'CLAUDE_CODE_OAUTH_TOKEN'; then
+    log_info "CLAUDE_CODE_OAUTH_TOKEN が登録されています"
+    return 0
+  fi
+
+  log_warn "CLAUDE_CODE_OAUTH_TOKEN が登録されていません"
+  cat >&2 <<'WARN_BODY'
+       claude-code-action を有効化するには以下を実行してください:
+         claude setup-token
+         gh secret set CLAUDE_CODE_OAUTH_TOKEN
+       詳細: docs/ai-review-auth.md
+WARN_BODY
+}
+
 setup_git_config() {
   # vibecorp 運用（Issue 駆動 + squash マージ + 短寿命ブランチ）に合わせた
   # local git config を適用する。squash マージ後の `git pull origin main` で
@@ -2032,6 +2091,7 @@ main() {
   generate_coderabbit_yaml
   generate_ci_workflow
   configure_github_repo
+  verify_claude_action_secrets
   setup_git_config
 
   generate_settings_json
