@@ -166,7 +166,7 @@ SM エージェントに残った候補を渡し、`rules/autonomous-restriction
 3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所、**モデル指定の変更（Opus → Sonnet 等）**）
 4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御、**エージェント削減・合議制回数削減・並列度自体の削減**）
 5. MVV（MVV.md 自体の変更）
-6. CI エージェント（GitHub Actions）（.github/workflows/claude*.yml / ai-review.yml の permissions / secrets / pull_request_target / Fork PR 除外条件、CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY の参照方式、GitHub App の権限スコープ追加）
+6. CI エージェント（GitHub Actions）（.github/workflows/claude*.{yml,yaml} / ai-review.{yml,yaml} の permissions / secrets / pull_request_target / Fork PR 除外条件、CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY の参照方式、GitHub App の権限スコープ追加）
 
 該当する候補には「除外」と判定し、理由として該当領域名を付記してください。
 ```
