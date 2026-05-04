@@ -1122,6 +1122,66 @@ generate_ci_workflow() {
   log_info ".github/workflows/test.yml を生成"
 }
 
+generate_ai_review_workflow() {
+  # claude-code-action 用ワークフロー（ai-review.yml）の配布。
+  # 仕様根拠: Issue #461 最終確定（claude_action.enabled で制御 + 既存ファイルは 3-way マージ）
+  #
+  # 1. vibecorp.yml の claude_action.enabled を確認（未定義/false なら生成しない）
+  # 2. 既存ファイルがあれば merge_or_overwrite による 3-way マージ
+  # 3. 無ければテンプレートをコピー
+  local target="${REPO_ROOT}/.github/workflows/ai-review.yml"
+  local template="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
+  local rel_path=".github/workflows/ai-review.yml"
+
+  # claude_action.enabled の判定（awk でブロック単位パース）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local enabled="true"
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '
+      /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[^[:space:]#]/ { exit }
+      in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+        sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+        sub(/[[:space:]]*$/, "", $0)
+        print
+        exit
+      }
+    ' "$yml")
+    if [[ "$val" == "false" ]]; then
+      enabled="false"
+    fi
+  fi
+
+  if [[ "$enabled" == "false" ]]; then
+    # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review.yml は削除して
+    # AI レビューを実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
+    # 触らない（誤削除防止）。
+    if [[ -f "$target" ]]; then
+      local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+      if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+        rm -f "$target"
+        log_info ".github/workflows/ai-review.yml を削除（claude_action.enabled: false）"
+      else
+        log_skip ".github/workflows/ai-review.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
+      fi
+    else
+      log_skip ".github/workflows/ai-review.yml の生成をスキップ（claude_action.enabled: false）"
+    fi
+    return 0
+  fi
+
+  if [[ ! -f "$template" ]]; then
+    return 0
+  fi
+
+  mkdir -p "${REPO_ROOT}/.github/workflows"
+
+  # 既存ファイルがあれば 3-way マージ、無ければ単純コピー
+  merge_or_overwrite "$template" "$target" "$rel_path" || true
+  log_info ".github/workflows/ai-review.yml を生成"
+}
+
 print_manual_guidance() {
   local base_branch="$1"
   local checks="$2"
@@ -1593,6 +1653,11 @@ copy_workflows() {
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")
+    # ai-review.yml は generate_ai_review_workflow() が claude_action.enabled
+    # の判定と 3-way マージを担うため、ここでは扱わない
+    if [[ "$name" == "ai-review.yml" ]]; then
+      continue
+    fi
     if [[ -f "${dest}/${name}" ]]; then
       log_skip "workflows/${name} は既存のためスキップ"
     else
@@ -2185,6 +2250,7 @@ main() {
 
   generate_coderabbit_yaml
   generate_ci_workflow
+  generate_ai_review_workflow
   configure_github_repo
   verify_claude_action_secrets
   setup_git_config
