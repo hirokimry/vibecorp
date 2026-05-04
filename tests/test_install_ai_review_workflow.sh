@@ -71,6 +71,8 @@ echo "--- 4. intent ラベル数チェック ---"
 assert_file_contains "intent-label-check ジョブ" "$yml" "intent-label-check:"
 assert_file_contains "1 PR 1 intent ルール記述" "$yml" "1 PR 1 intent"
 assert_file_contains "intent/ プレフィックス検査" "$yml" "intent/"
+assert_file_contains "intent ラベル 0 件 fail 検知"  "$yml" 'intent_count.*-eq 0'
+assert_file_contains "intent ラベル 2 件以上 fail 検知" "$yml" 'intent_count.*-gt 1'
 assert_file_contains "fail 時の exit 1"            "$yml" "exit 1"
 cleanup
 

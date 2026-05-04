@@ -34,6 +34,11 @@ jobs:
         run: |
           intent_count=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
             --jq '[.[] | select(.name | startswith("intent/"))] | length')
+          if [[ "$intent_count" -eq 0 ]]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ intent/* ラベルが付与されていません。1 PR 1 intent ルール（intent/feature, intent/bugfix, intent/performance, intent/security, intent/refactor, intent/infra, intent/docs から 1 つ）に従い、ラベルを 1 つ付与してから再 push してください。詳細は .claude/rules/intent-labels.md を参照。"
+            exit 1
+          fi
           if [[ "$intent_count" -gt 1 ]]; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ 複数の intent ラベルが付与されています。1 PR 1 intent ルールに従い、ラベルを 1 つに修正してから再 push してください。"
