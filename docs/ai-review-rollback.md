@@ -34,9 +34,12 @@ claude_action:
 
 `install.sh` は `claude_action.enabled: false` を検出し、以下を行う:
 
-- `.github/workflows/ai-review.yml` を削除する
-- `REVIEW.md` を削除する
+- `.github/workflows/ai-review.yml` を削除する（**vibecorp 管理下のファイルのみ**）
+- `REVIEW.md` を削除する（**vibecorp 管理下のファイルのみ**）
 - 既存の Branch Protection 設定（`required_approvals` 等）は **そのまま残る**
+
+> [!NOTE]
+> 「vibecorp 管理下」とは `.claude/vibecorp.lock` に `base_hash` が記録されているファイルを指す。利用者が手動で配置したファイル（`base_hash` 無し）は誤削除防止のため **残置** される（`install.sh:1328-1357`）。`base_hash` の管理は `install.sh:1222-1245` を参照。
 
 ### 3. 進行中の PR を確認する
 
@@ -59,8 +62,8 @@ claude-code-action による review が pending の PR があれば、`gh pr rev
 |------|--------------|
 | CodeRabbit | ✅ 有効（4 契約全て履行） |
 | claude-code-action | ❌ 無効 |
-| `.github/workflows/ai-review.yml` | 削除済み |
-| `REVIEW.md` | 削除済み |
+| `.github/workflows/ai-review.yml` | vibecorp 管理下なら削除 / 管理外なら残置 |
+| `REVIEW.md` | vibecorp 管理下なら削除 / 管理外なら残置 |
 | `vibecorp.yml` の `claude_action.skip_paths` | 残存（再有効化時に再利用） |
 | Branch Protection | 設定維持（手動で戻す） |
 
