@@ -973,6 +973,8 @@ claude_action:
     - "build/**"
     - ".cache/**"
     - "vendor/**"
+branch_protection:
+  required_approvals: 1
 diagnose:
   enabled: true
   max_issues_per_run: 7
@@ -1483,9 +1485,32 @@ configure_github_repo() {
   local merged_checks_display
   merged_checks_display=$(echo "$merged_contexts" | jq -r 'join(", ")')
 
+  # vibecorp.yml から required_approvals を読み取る（未設定時はデフォルト 1）
+  # awk でブロック単位パース（shell.md「YAML パース」ルール準拠）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local required_approvals=1
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '
+      /^branch_protection:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[^[:space:]#]/ { exit }
+      in_block && /^[[:space:]]+required_approvals:[[:space:]]*/ {
+        sub(/^[[:space:]]+required_approvals:[[:space:]]*/, "", $0)
+        sub(/[[:space:]]*$/, "", $0)
+        print
+        exit
+      }
+    ' "$yml")
+    # 数字のみ受理、それ以外はデフォルト 1
+    if [[ "$val" =~ ^[0-9]+$ ]]; then
+      required_approvals="$val"
+    fi
+  fi
+
   local protection_json
   protection_json=$(jq -n \
     --argjson contexts "$merged_contexts" \
+    --argjson required_approvals "$required_approvals" \
     '{
       required_status_checks: {
         strict: true,
@@ -1495,7 +1520,7 @@ configure_github_repo() {
         dismiss_stale_reviews: true,
         require_code_owner_reviews: false,
         require_last_push_approval: false,
-        required_approving_review_count: 1
+        required_approving_review_count: $required_approvals
       },
       enforce_admins: true,
       restrictions: null,
@@ -1508,7 +1533,7 @@ configure_github_repo() {
   local put_error
   if put_error=$(echo "$protection_json" | gh api "repos/${name_with_owner}/branches/${base_branch}/protection" \
     -X PUT --input - 2>&1 >/dev/null); then
-    log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve必須）"
+    log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve ${required_approvals}件以上必須、push 毎に既存 approve 自動 dismiss）"
   else
     log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）: ${put_error}"
     print_manual_guidance "$base_branch" "$merged_checks_display"
