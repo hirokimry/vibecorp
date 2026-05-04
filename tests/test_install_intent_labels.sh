@@ -25,11 +25,15 @@ INSTALL_SH="${SCRIPT_DIR}/install.sh"
 echo ""
 echo "--- 1. VIBECORP_LABELS に intent/* 7 種が登録されている ---"
 
+# install.sh 全体ではなく VIBECORP_LABELS=( ... ) ブロック内だけを対象に検証する
+# （他箇所の文字列出現で偽陽性が出るのを防ぐ）
+vibecorp_labels_block=$(awk '/VIBECORP_LABELS=\(/,/^[[:space:]]*\)/' "$INSTALL_SH")
+
 for intent in intent/feature intent/bugfix intent/performance intent/security intent/refactor intent/infra intent/docs; do
-  if grep -q -F -- "\"$intent:" "$INSTALL_SH"; then
-    pass "intent ラベル '$intent' が VIBECORP_LABELS に含まれる"
+  if echo "$vibecorp_labels_block" | grep -q -F -- "\"$intent:"; then
+    pass "intent ラベル '$intent' が VIBECORP_LABELS ブロック内に含まれる"
   else
-    fail "intent ラベル '$intent' が VIBECORP_LABELS に含まれない"
+    fail "intent ラベル '$intent' が VIBECORP_LABELS ブロック内に含まれない"
   fi
 done
 
@@ -57,10 +61,14 @@ echo "--- 3. intent-labels.md が rules テンプレートとして存在する 
 assert_file_exists "templates/claude/rules/intent-labels.md" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md"
 
 # 主要記述の存在
-assert_file_contains "intent ラベル 7 種の表"   "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "intent/feature"
 assert_file_contains "主従関係の明記"           "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "主従関係"
 assert_file_contains "1 Issue / 1 PR / 1 intent" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "1 つだけ"
 assert_file_contains "判定主体: COO"            "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "COO"
+
+# テンプレート内に 7 種すべてが含まれることを確認
+for intent in intent/feature intent/bugfix intent/performance intent/security intent/refactor intent/infra intent/docs; do
+  assert_file_contains "テンプレートに $intent が含まれる" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "$intent"
+done
 
 # ============================================
 # 4. install で .claude/rules/intent-labels.md が配置される
@@ -72,7 +80,10 @@ bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists ".claude/rules/intent-labels.md が配布される" "$R/.claude/rules/intent-labels.md"
-assert_file_contains "配布版にも intent ラベル 7 種" "$R/.claude/rules/intent-labels.md" "intent/feature"
+# 配布版にも 7 種すべてが含まれることを確認
+for intent in intent/feature intent/bugfix intent/performance intent/security intent/refactor intent/infra intent/docs; do
+  assert_file_contains "配布版に $intent が含まれる" "$R/.claude/rules/intent-labels.md" "$intent"
+done
 cleanup
 
 # ============================================
