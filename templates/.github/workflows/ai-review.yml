@@ -33,9 +33,11 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # 許可ラベル 7 種のホワイトリストでカウント（intent/unknown 等の未知ラベル混入を弾く）
+          # gh api の --jq は --argjson を受けないため、gh api で生 JSON を取得して jq に
+          # パイプし、jq 側で --argjson を渡す
           allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
           intent_count=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
-            --jq --argjson allowed "$allowed" '[.[] | .name | select(IN($allowed[]))] | length')
+            | jq --argjson allowed "$allowed" '[.[] | .name | select(IN($allowed[]))] | length')
           if [[ "$intent_count" -eq 0 ]]; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ intent/* ラベルが付与されていません（許可 7 種のうち 1 つを付ける必要があります）。1 PR 1 intent ルール（intent/feature, intent/bugfix, intent/performance, intent/security, intent/refactor, intent/infra, intent/docs から 1 つ）に従い、ラベルを 1 つ付与してから再 push してください。詳細は .claude/rules/intent-labels.md を参照。"
