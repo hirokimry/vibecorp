@@ -1228,7 +1228,7 @@ verify_claude_action_secrets() {
   cat >&2 <<'WARN_BODY'
        claude-code-action を有効化するには以下を実行してください:
          claude setup-token
-         gh secret set CLAUDE_CODE_OAUTH_TOKEN
+         gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
        詳細: docs/ai-review-auth.md
 WARN_BODY
 }

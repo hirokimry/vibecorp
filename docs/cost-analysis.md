@@ -144,8 +144,9 @@ claude-code-action の Bot 認証に **リポジトリ管理者個人の Claude 
 
 ### 推奨運用
 
+- 注記: 本セクションの cadence 36h 推奨は、`CLAUDE_CODE_OAUTH_TOKEN`（個人 Max OAuth）で claude-code-action を運用する場合の適用条件。Bot 専用 Max 別契約や `ANTHROPIC_API_KEY` 従量課金運用時は、次節「自律実行の上限ガードレール」のデフォルト 24h 推奨に従うこと
 - MUST: 個人 Max OAuth で claude-code-action を有効化する前に、本セクションの共有負担リスクをチームに周知すること
-- SHOULD: チーム運用かつ複数メンバーが日常的に PR を出す環境では cadence を 36 時間以上に伸ばすこと
+- SHOULD: チーム運用かつ複数メンバーが日常的に PR を出す環境では cadence を 36 時間以上に伸ばすこと（個人 Max OAuth 運用時の適用条件下）
 - SHOULD: 月次コストレビューで `CLAUDE_CODE_OAUTH_TOKEN` のレート枯渇発生有無を確認し、枯渇が常態化する場合は Bot 専用 Max 別契約への移行を検討すること
 
 ## 自律実行の上限ガードレール
