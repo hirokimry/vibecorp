@@ -1,6 +1,6 @@
 ---
 name: review
-description: "実装レビューを実行する。CodeRabbit CLI とカスタムレビュアーを並列で呼び出す。ユーザーが「/review」「レビューして」と言った時に使用。"
+description: "実装レビューを実行する。Claude Code CLI 直接呼び出しとカスタムレビュアーを並列で呼び出す。ユーザーが「/review」「レビューして」と言った時に使用。"
 ---
 
 **ultrathink**
@@ -30,23 +30,66 @@ git diff --name-only --cached
 
 ## 2. レビュー実行
 
-### CodeRabbit CLI
+### ローカルレビュー（Claude Code CLI 直接呼び出し）
 
-**まず `vibecorp.yml` の `coderabbit.enabled` を確認する:**
+ローカルレビューは Claude Code CLI（`claude -p`）を直接呼び出して `REVIEW.md` をプロンプトとして渡す。Issue #499（親エピック #455 コメント 8）で確定した経路。CodeRabbit CLI（`cr review --plain`）の Free 枠 3 reviews/hour 制約から解放され、`/vibecorp:ship-parallel` 5 並列でも破綻しない。
+
+コスト経路と認証経路の詳細は `docs/cost-analysis.md`（「`/vibecorp:review` ローカル経路のコスト経路シフト」「`/vibecorp:review` の `ANTHROPIC_API_KEY` 混在 fail-fast」）と `docs/ai-review-auth.md`（OAuth トークン）を参照。
+
+**`coderabbit.enabled` フラグとの関係**: ローカル Claude Code CLI 経路は `coderabbit.enabled` フラグの **影響を受けない**（常に実行）。`coderabbit.enabled` は `.coderabbit.yaml` 配布制御 + CodeRabbit Bot（CI 側）制御専用であり、ローカル経路には作用しない（`docs/ai-review-dependency.md` の意味論変更を参照）。
+
+#### ガード 1: `ANTHROPIC_API_KEY` 混在 fail-fast
+
+`claude -p` の非対話モードは `ANTHROPIC_API_KEY` があると OAuth より優先して API 従量課金経路に自動切替するため、起動前にチェックして fail-fast する:
 
 ```bash
-awk '/^coderabbit:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' \
-  "$CLAUDE_PROJECT_DIR"/.claude/vibecorp.yml
+if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+  echo "[ERROR] ANTHROPIC_API_KEY が設定されています。" >&2
+  echo "        非対話モード -p で API 従量課金にフォールバックする恐れがあるため、ローカルレビューを中止します。" >&2
+  echo "        対処: 'unset ANTHROPIC_API_KEY' で解除するか、docs/ai-review-auth.md を参照して 'claude setup-token' で OAuth 経路に切り替えてください。" >&2
+  exit 1
+fi
 ```
 
-- 結果が `false` → **CodeRabbit CLI セクション全体をスキップ**し、レポートに「CodeRabbit: 無効（vibecorp.yml で coderabbit.enabled: false）」と記載する
-- 結果が `true` または空（未定義）→ 以下を実行
+#### ガード 2: `REVIEW.md` 存在確認
 
 ```bash
-cr review --plain
+if [[ ! -f "$CLAUDE_PROJECT_DIR/REVIEW.md" ]]; then
+  echo "[WARN] REVIEW.md が存在しません。ローカルレビューをスキップします。" >&2
+  # 後続セクションへ進む（カスタムレビュアー / 結果報告）
+fi
 ```
 
-`cr` が利用できない場合はスキップし、レポートにその旨を記載する。
+worktree モードでは `<path>/REVIEW.md` を参照する（`$CLAUDE_PROJECT_DIR` を `<path>` に置換）。
+
+#### 本体: stdin パイプ方式で `claude -p` を呼ぶ
+
+REVIEW.md 末尾にローカル出力指示を heredoc で連結し、stdin から `claude -p` に渡す:
+
+```bash
+{
+  cat "$CLAUDE_PROJECT_DIR/REVIEW.md"
+  cat <<'TAIL'
+
+## ローカルレビュー出力指示
+
+stdout に severity マーカー（🔴🟠🟡🔵⚪）付きで指摘を列挙してください:
+
+- 各指摘に「ファイル:行番号」と「修正提案」を含める
+- 末尾にサマリ（指摘総数 / severity 別件数）を出力
+- GitHub には投稿しない（CI 側 claude-code-action の責務）
+TAIL
+} | claude -p --allowed-tools "Bash,Read,Grep,Glob"
+```
+
+設計上の注意:
+
+- **`--bare` フラグは絶対に使わない**: `--bare` は OAuth を読まず `ANTHROPIC_API_KEY` 必須になる。Claude Max 定額運用が崩れる
+- **`--allowed-tools` の範囲**: ローカル経路は stdout 出力で完結するため、読取系のみ許可（`Bash,Read,Grep,Glob`）。`Write,Edit,mcp__github_inline_comment__create_inline_comment` 等の書き込み系・GitHub 投稿系は不許可（GitHub 投稿は CI 側 claude-code-action の責務）
+- **`--prompt-file` フラグは使わない**: Claude Code CLI のバージョン依存があるため、Unix 標準の stdin パイプ方式を採用
+- **GitHub Actions では `CLAUDE_CODE_OAUTH_TOKEN` を明示**: 既存 `templates/.github/workflows/ai-review.yml` で `claude-code-action@v1` 経由で実装済み（本スキルではローカル経路のみを扱う）
+
+`claude` コマンドが利用できない場合はスキップし、レポートにその旨を記載する。
 
 ### カスタムレビュアー
 
@@ -86,14 +129,17 @@ touch "${STAMP_DIR}/review-ok"
 ```text
 ## レビュー結果
 
-### CodeRabbit
-- {指摘サマリ}
+### ローカルレビュー（Claude Code CLI）
+- {severity マーカー（🔴🟠🟡🔵⚪）付き指摘サマリ}
 
 ### {カスタムレビュアー名}
 - {指摘サマリ}
 
 ### サマリ
 - 指摘総数: {件数}
-- 重大: {件数}
-- 提案: {件数}
+- 🔴 Critical: {件数}
+- 🟠 Major: {件数}
+- 🟡 Minor: {件数}
+- 🔵 Trivial: {件数}
+- ⚪ Info: {件数}
 ```

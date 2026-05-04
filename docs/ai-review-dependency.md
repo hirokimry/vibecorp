@@ -187,6 +187,53 @@ claude-action を一時的に無効化する手順は `docs/ai-review-rollback.m
 
 CFO が週次サマリを記録する際のテンプレートは `.claude/knowledge/cfo/templates/weekly-summary.md` 参照。
 
+## 既存 CodeRabbit CLI 利用者の移行パス（Issue #499）
+
+`/vibecorp:review` のローカルレビュー経路は **CodeRabbit CLI（`cr review --plain`）から Claude Code CLI 直接呼び出し（`claude -p`）に置換** された（Issue #499、親エピック #455 コメント 8 で CEO 確定）。本セクションは既存 CodeRabbit CLI 利用者の移行方針を整理する。
+
+### 何が変わったか
+
+| 観点 | 旧（〜本変更前） | 新（本変更後） |
+|---|---|---|
+| ローカル `/vibecorp:review` の実体 | `cr review --plain` を内部で呼ぶ | `claude -p` で `REVIEW.md` をプロンプトに直接呼ぶ |
+| 並列実行時のレート制限 | CodeRabbit Free 3 reviews/hour で枯渇 | Claude Max レート枠まで（5 並列でも破綻しない） |
+| 認証経路 | CodeRabbit Pro 契約 or Free 枠 | Claude Max OAuth トークン（`claude setup-token`） |
+| `coderabbit.enabled: false` 時のローカル経路 | スキップされる | **常に実行**（CodeRabbit と無関係になったため） |
+
+### CodeRabbit Bot（CI 側）は引き続き並走可能
+
+`coderabbit.enabled: true` を維持すれば、CodeRabbit Bot は PR 自動レビューで従来どおり動作する（Pro / Free いずれも）。本変更は **ローカル経路のみ** が対象であり、Bot 並走運用は影響を受けない。
+
+並走時の挙動（approve 2 個の AND ゲート、重複指摘の捌き方）は本ドキュメント上節を参照。
+
+### `cr` を直接叩く運用は禁止しない
+
+`/vibecorp:review` を経由せず、シェルで直接 `cr review --plain` を叩く運用は引き続き可能。vibecorp は利用者のシェル運用を制限しない。CodeRabbit CLI の Free 枠 3 reviews/hour で十分な利用者は、この運用を選べる。
+
+### `cr` 利用継続のオプトイン経路は新設しない
+
+`vibecorp.yml` に `claude_action.local_review_tool: cr` のような設定キーを追加して旧挙動に戻すオプトイン経路は **新設しない**。理由:
+
+- `/vibecorp:ship-parallel` 5 並列で破綻する制約は本変更で解消したい根本問題そのものであり、デフォルトで残すと本変更の意義を損なう
+- 設定キーを増やすとメンテナンスコストが恒常的に発生する
+- `cr` を直接叩く運用は前項のとおり禁止しないため、利用継続したい利用者の選択肢は確保されている
+- CodeRabbit Bot（CI 側）は `coderabbit.enabled: true` で並走継続できるため、CodeRabbit エコシステムからの完全離脱は強制されない
+
+### `coderabbit.enabled` フラグの意味論変更
+
+本変更により、`coderabbit.enabled` フラグの意味論は以下に絞られる:
+
+- `coderabbit.enabled: true` — `.coderabbit.yaml` を配布し、CodeRabbit Bot（CI 側）を有効化する
+- `coderabbit.enabled: false` — `.coderabbit.yaml` を配布しない。CodeRabbit Bot は無効化される。**ローカル `/vibecorp:review` には影響しない**（Claude Code CLI 直接呼び出しは常に実行される）
+
+完了条件「`coderabbit.enabled: false` 設定でも `/vibecorp:review` が完走する後方互換」は、本変更により CodeRabbit 依存が消えたため自動充足される。
+
+### コスト影響
+
+ローカル `/vibecorp:review` のコスト経路が「CodeRabbit Free 3/hour quota（無料）」から「Claude Max OAuth quota（個人クォータ）消費」にシフトする。チーム運用時の共有負担リスクは `docs/cost-analysis.md` の「Bot 経由 Claude Max OAuth のレート枯渇リスク」「`/vibecorp:review` ローカル経路のコスト経路シフト（Issue #499）」セクションを参照。
+
+`/vibecorp:review` 起動時に `ANTHROPIC_API_KEY` が設定されていると exit 1 で fail-fast する。意図しない API 従量課金を防ぐためのガード（Issue #455 コメント 8 で CEO 指定）。
+
 ## 関連
 
 - 認証経路: `docs/ai-review-auth.md`
