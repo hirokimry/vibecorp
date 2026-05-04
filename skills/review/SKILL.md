@@ -55,10 +55,13 @@ fi
 
 REVIEW.md が存在する場合のみ `claude -p` を呼ぶ。不在時は警告を出してローカルレビューをスキップする（後続のカスタムレビュアー / 結果報告は継続する）。worktree モードでは `<path>/REVIEW.md` を参照する（`$CLAUDE_PROJECT_DIR` を `<path>` に置換）。
 
-REVIEW.md 末尾にローカル出力指示を heredoc で連結し、stdin から `claude -p` に渡す:
+REVIEW.md 末尾にローカル出力指示を heredoc で連結し、stdin から `claude -p` に渡す。`claude` コマンド未導入環境と REVIEW.md 不在の両ケースで安全にスキップする:
 
 ```bash
-if [[ ! -f "$CLAUDE_PROJECT_DIR/REVIEW.md" ]]; then
+if ! command -v claude >/dev/null 2>&1; then
+  echo "[WARN] claude コマンドが利用できません。ローカルレビューをスキップします。" >&2
+  # 後続セクション（カスタムレビュアー / 結果報告）へ進む
+elif [[ ! -f "$CLAUDE_PROJECT_DIR/REVIEW.md" ]]; then
   echo "[WARN] REVIEW.md が存在しません。ローカルレビューをスキップします。" >&2
   # 後続セクション（カスタムレビュアー / 結果報告）へ進む
 else
@@ -84,8 +87,7 @@ fi
 - **`--allowed-tools` の範囲**: ローカル経路は stdout 出力で完結するため、読取系のみ許可（`Bash,Read,Grep,Glob`）。`Write,Edit,mcp__github_inline_comment__create_inline_comment` 等の書き込み系・GitHub 投稿系は不許可（GitHub 投稿は CI 側 claude-code-action の責務）
 - **`--prompt-file` フラグは使わない**: Claude Code CLI のバージョン依存があるため、Unix 標準の stdin パイプ方式を採用
 - **GitHub Actions では `CLAUDE_CODE_OAUTH_TOKEN` を明示**: 既存 `templates/.github/workflows/ai-review.yml` で `claude-code-action@v1` 経由で実装済み（本スキルではローカル経路のみを扱う）
-
-`claude` コマンドが利用できない場合はスキップし、レポートにその旨を記載する。
+- **スキップ方針**: `claude` 未導入 / `REVIEW.md` 不在 のいずれもローカルレビューを安全にスキップして後続セクションへ進む。レポートにスキップ理由を記載する
 
 ### カスタムレビュアー
 
