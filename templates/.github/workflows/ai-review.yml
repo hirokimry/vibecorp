@@ -23,7 +23,8 @@ jobs:
     name: intent ラベル数チェック
     runs-on: ubuntu-latest
     # CISO 要件 (#464): Fork PR では secrets にアクセスできないため実行しない
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # draft 状態では走らせない（synchronize イベントは types フィルタを越えて draft でも発火するため明示除外）
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     steps:
       - name: 1 PR 1 intent 厳守チェック
         env:
@@ -44,7 +45,8 @@ jobs:
     needs: intent-label-check
     runs-on: ubuntu-latest
     # CISO 要件 (#464): Fork PR では secrets にアクセスできないため実行しない
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # draft 状態では走らせない（synchronize イベントは types フィルタを越えて draft でも発火するため明示除外）
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4

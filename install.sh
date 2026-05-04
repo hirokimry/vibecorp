@@ -1154,7 +1154,20 @@ generate_ai_review_workflow() {
   fi
 
   if [[ "$enabled" == "false" ]]; then
-    log_skip ".github/workflows/ai-review.yml の生成をスキップ（claude_action.enabled: false）"
+    # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review.yml は削除して
+    # AI レビューを実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
+    # 触らない（誤削除防止）。
+    if [[ -f "$target" ]]; then
+      local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+      if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+        rm -f "$target"
+        log_info ".github/workflows/ai-review.yml を削除（claude_action.enabled: false）"
+      else
+        log_skip ".github/workflows/ai-review.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
+      fi
+    else
+      log_skip ".github/workflows/ai-review.yml の生成をスキップ（claude_action.enabled: false）"
+    fi
     return 0
   fi
 

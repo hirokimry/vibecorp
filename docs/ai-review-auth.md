@@ -77,7 +77,7 @@ jobs:
 ```
 
 理由:
-- Fork PR では「secrets がないので落ちる」という暗黙の挙動に依存せず、明示的なゲートで早期 fail させる方がレビュー追跡上わかりやすい
+- Fork PR では「secrets がないので落ちる」という暗黙の挙動に依存せず、明示的なゲートで早期 skip させる方がレビュー追跡上わかりやすい（`if:` 条件不一致時はジョブ失敗ではなく skip 扱い）
 - 将来 `pull_request_target` を誤って混入した場合の事故を防ぐ
 - CISO 要件 (#464) として「secrets スコープが認証領域を侵食しないこと」の機械的保証を満たす
 
@@ -87,7 +87,8 @@ jobs:
 
 | 要素 | 値・条件 | 根拠 |
 |---|---|---|
-| `on.pull_request.types` | `[opened, synchronize, ready_for_review]` | draft 状態ではコスト節約のため走らせない |
+| `on.pull_request.types` | `[opened, synchronize, ready_for_review]` | 開封・push・draft 解除でレビュー起動 |
+| ジョブ `if:` 条件 | `head.repo.full_name == github.repository && !github.event.pull_request.draft` | Fork PR と draft PR を多層防御で除外 |
 | `permissions.contents` | `read` | コード読取のみ、書込不要（CISO 最小権限） |
 | `permissions.pull-requests` | `write` | レビューコメント書込が必要 |
 | `permissions.issues` | `write` | intent-label-check のコメント投稿が必要 |
@@ -95,6 +96,8 @@ jobs:
 | `concurrency.cancel-in-progress` | `true` | 古い実行は中断して最新コミットのみレビュー |
 | `intent-label-check` ジョブ | `intent/*` ラベル数が 2 以上で fail コメント | 1 PR 1 intent ルール (#469) の機械的強制 |
 | `claude-review` ジョブ | `anthropics/claude-code-action@v1` 呼び出し | OAuth Token 認証で起動 |
+
+`types: [opened, synchronize, ready_for_review]` だけでは draft PR への push（`synchronize`）でもジョブが起動するため、ジョブの `if:` で `!github.event.pull_request.draft` を明示する。
 
 ## 4. secrets 漏洩時の revocation 手順
 

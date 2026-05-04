@@ -44,6 +44,7 @@ yml="$R/.github/workflows/ai-review.yml"
 
 assert_file_contains "on: pull_request" "$yml" "pull_request:"
 assert_file_contains "ready_for_review トリガー" "$yml" "ready_for_review"
+assert_file_contains "draft PR 除外ガード"     "$yml" '!github.event.pull_request.draft'
 assert_file_contains "permissions: contents: read" "$yml" "contents: read"
 assert_file_contains "permissions: pull-requests: write" "$yml" "pull-requests: write"
 assert_file_contains "permissions: issues: write" "$yml" "issues: write"
@@ -95,6 +96,65 @@ EOF
 
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_not_exists "enabled: false なら ai-review.yml は無い" "$R/.github/workflows/ai-review.yml"
+cleanup
+
+# ============================================
+# 5b. enabled: true → false で既存 ai-review.yml が削除される
+# ============================================
+echo ""
+echo "--- 5b. enabled: true → false で管理下 ai-review.yml が削除される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+
+# まず enabled: true で初回 install
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+assert_file_exists "初回 install で ai-review.yml 配置" "$R/.github/workflows/ai-review.yml"
+
+# vibecorp.yml の claude_action.enabled を false に切替
+yml="$R/.claude/vibecorp.yml"
+tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+awk '
+  /^claude_action:/ { in_block = 1; print; next }
+  in_block && /^[[:space:]]+enabled:/ {
+    print "  enabled: false"
+    next
+  }
+  in_block && /^[^[:space:]#]/ { in_block = 0 }
+  { print }
+' "$yml" > "$tmp" && mv "$tmp" "$yml"
+
+# --update で削除されることを確認
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_not_exists "--update 後に管理下 ai-review.yml が削除される" "$R/.github/workflows/ai-review.yml"
+cleanup
+
+# ============================================
+# 5c. 利用者が手動配置した ai-review.yml は claude_action.enabled: false でも残置される
+# ============================================
+echo ""
+echo "--- 5c. 管理外（base_hash 無し）の ai-review.yml は残置される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude" "$R/.github/workflows"
+
+# vibecorp 管理外で手動配置（vibecorp.lock 不在 → base_hash 無し）
+echo "name: user-defined" > "$R/.github/workflows/ai-review.yml"
+
+# vibecorp.yml だけ配置して --update（claude_action.enabled: false）
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+claude_action:
+  enabled: false
+EOF
+
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "管理外の ai-review.yml は残置される" "$R/.github/workflows/ai-review.yml"
+assert_file_contains "中身も保持される" "$R/.github/workflows/ai-review.yml" "user-defined"
 cleanup
 
 # ============================================
@@ -150,12 +210,19 @@ else
   fail "install.sh に ai-review.yml の明示的な扱いがない"
 fi
 
-# copy_workflows() 関数の中で continue 文があることを確認（重複処理防止）
+# copy_workflows() 関数内で `if [[ "$name" == "ai-review.yml" ]]` 直後に continue があることを確認
+# 単純な grep "continue" だと `[[ -f "$f" ]] || continue` でも一致するため、
+# ai-review.yml 専用分岐の continue だけを抽出して厳密に検証する
 copy_workflows_block=$(awk '/^copy_workflows\(\) \{/,/^\}$/' "$INSTALL_SH")
-if echo "$copy_workflows_block" | grep -q "ai-review.yml" && echo "$copy_workflows_block" | grep -q "continue"; then
-  pass "copy_workflows() で ai-review.yml がスキップされる"
+if echo "$copy_workflows_block" | awk '
+  /\[\[ "\$name" == "ai-review\.yml" \]\]/ { in_branch = 1; next }
+  in_branch && /continue/ { found = 1; exit }
+  in_branch && /^[[:space:]]*fi/ { in_branch = 0 }
+  END { exit !found }
+'; then
+  pass "copy_workflows() の ai-review.yml 専用分岐内で continue が使われている"
 else
-  fail "copy_workflows() で ai-review.yml がスキップされない（重複生成のリスク）"
+  fail "copy_workflows() の ai-review.yml 分岐に continue がない（重複生成のリスク）"
 fi
 
 print_test_summary
