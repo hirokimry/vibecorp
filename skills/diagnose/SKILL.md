@@ -26,7 +26,7 @@ description: >
 ## 前提条件
 
 - **full プリセット専用**（CTO/CPO/CISO/SM エージェントがフィルタリングに必要）
-- **3者承認ゲート**: CISO + CPO + SM の3者フィルタで自律実行不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）を自動除外する（rules/autonomous-restrictions.md 準拠）
+- **3者承認ゲート**: CISO + CPO + SM の3者フィルタで自律実行不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント）を自動除外する（rules/autonomous-restrictions.md 準拠）
 
 ## ワークフロー
 
@@ -166,6 +166,7 @@ SM エージェントに残った候補を渡し、`rules/autonomous-restriction
 3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所、**モデル指定の変更（Opus → Sonnet 等）**）
 4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御、**エージェント削減・合議制回数削減・並列度自体の削減**）
 5. MVV（MVV.md 自体の変更）
+6. CI エージェント（GitHub Actions）（.github/workflows/claude*.yml / ai-review.yml の permissions / secrets / pull_request_target / Fork PR 除外条件、CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY の参照方式、GitHub App の権限スコープ追加）
 
 該当する候補には「除外」と判定し、理由として該当領域名を付記してください。
 ```
@@ -205,7 +206,7 @@ gh issue list --label "diagnose" --state all --json createdAt --jq '[.[] | selec
 - 発見: {n} 件
 - CISO 除外: {n} 件（自己制約緩和）
 - CPO 除外: {n} 件（MVV 不整合）
-- SM 除外: {n} 件（不可領域 — 認証 / 暗号 / 課金構造 / ガードレール / MVV）
+- SM 除外: {n} 件（不可領域 — 認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント）
 - 上限除外: {n} 件
 - 最終候補: {n} 件
 
