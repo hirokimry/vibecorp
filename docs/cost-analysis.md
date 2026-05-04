@@ -220,3 +220,78 @@ claude-code-action の Bot 認証に **リポジトリ管理者個人の Claude 
   - 定型作業ロールでの Opus 指定は過剰指定（Major）
   - モデル未指定（親継承）は明示推奨（Minor）
   - 判定は本ドキュメントの「モデル単価」表と「プリセット別の想定運用モード」を根拠とし、CFO は警告のみ行う（自動変更は行わない）
+
+## monthly cost cap 運用方針
+
+vibecorp は月次コスト上限の自動制御機構を **意図的に持たない**。代わりに本節の手動運用ガイドラインを提供する。利用者は本節に従って自身の運用環境で上限管理を行うこと（Issue #471 / 親エピック #455）。
+
+なお、本ドキュメント冒頭の「予算アラート」節（MUST: 月間予算の 100% 到達時に自動停止または承認フロー発動）における「100% 到達時」とは、後述の **Anthropic Console の 100% 通知を起点として利用者が手動で停止／承認フローを実施する運用**を指す。vibecorp 自体が自動停止する機構は実装しない。
+
+### 設計判断の根拠
+
+- **claude-code-action のデフォルトに任せる**: PR ごとの `max_tokens` / 大規模 PR の閾値は claude-code-action のデフォルト挙動（タイムアウト 10 分、Issue #466）に委ねる。vibecorp 独自の閾値設定キーは追加しない
+- **新規キー追加は行わない**（`vibecorp.yml` 側 / claude-code-action 側ともに）: `vibecorp.yml` の `claude_action.enabled` と `claude_action.skip_paths` という既存 2 キー（Issue #468 確定）のみで運用する。月次コスト上限・PR ごとの max_tokens を表現する新規キーは本リリースでは `vibecorp.yml` にも claude-code-action 側設定にも追加しない
+- **GitHub Actions minutes 監視機構も持たない**: GitHub Settings → Billing で利用者が手動確認する（後述）
+
+### Claude Max 定額環境での実質上限（90M token/月）
+
+`Claude Max 20`（$200/月）定額プランで `/vibecorp:autopilot` を **24 時間ごと cadence で運用した場合**の、**入力 + 出力の合算月間トークン消費 約 90M token を目安**とする。これは Issue #455 の CFO 条件付き承認における目安値であり、レート制限（5 時間あたりのトークン上限）への接触余裕を確保する基準である。
+
+| 指標 | 目安 |
+|------|------|
+| 月間トークン消費上限（Claude Max 20 定額、入力 + 出力合算） | **約 90M token/月** |
+| 前提運用条件 | full プリセット + `/vibecorp:autopilot` 24 時間ごと |
+| 24 時間ごと運用での 1 日あたり消費（入力 + 出力合算） | 約 3M token/日 |
+| 推奨運用 cadence | 24 時間ごと（`/loop /vibecorp:autopilot 24h`） |
+
+90M token/月の目安値は Issue #475（実機検証期間）で実測補正する。Claude Max 定額内で動く限り追加課金は発生しないが、レート制限に到達した場合は `ANTHROPIC_API_KEY` への自動フォールバックが働く可能性があるため、Anthropic Console での使用量モニタリング（次節）と Monthly spend limit 設定（次節）を必ず併用すること。
+
+### Anthropic Console 使用量アラート設定手順
+
+`ANTHROPIC_API_KEY` を設定して vibecorp を運用する利用者は、Anthropic Console で月額使用量アラートを必ず有効化すること。vibecorp は API 経由で自動設定する機構を持たないため、利用者が手動で設定する。
+
+#### 設定手順
+
+1. [Anthropic Console](https://console.anthropic.com/) にログインする
+2. 左サイドバー `Settings` → `Billing` → `Usage limits` を開く
+3. `Monthly spend limit` は **CFO 承認の月次上限（約 90M token/月の想定 USD 換算額）に基づいて設定する**。換算の目安は本ドキュメントの「モデル単価」表（Sonnet 4.6: 入力 $3 / 出力 $15 per 1M token）と「概算コスト」表（`/vibecorp:autopilot` 1 サイクル 約 $28）から算出する。`/vibecorp:autopilot` 24 時間ごと運用なら **月額上限 約 $840**（cf. 「自律実行の上限ガードレール」節の試算表）を Monthly spend limit に設定するのが推奨。最小例（テスト用途）として $100 を設定してもよい
+4. `Email notifications` セクションで以下を有効化する:
+   - 80% 到達時通知（`Notify at 80% of limit`）
+   - 100% 到達時通知（`Notify at 100% of limit`）
+5. 通知先メールアドレスを Anthropic アカウントのメールに設定する
+
+#### 推奨閾値
+
+| 運用形態 | アラート設定 | 推奨 Monthly spend limit |
+|---------|-------------|------------------------|
+| Claude Max 定額のみ（`ANTHROPIC_API_KEY` 未設定） | 設定不要（追加課金が発生しないため） | — |
+| `ANTHROPIC_API_KEY` 併用（Max フォールバック含む） | 月額予算の 80% / 100% アラート必須 | CFO 承認の月次上限（約 90M token/月想定で 約 $840、24h cadence 満枠時） |
+| API Key のみ運用（Max なし） | 月額予算の 50% / 80% / 100% アラート推奨 | CFO 承認の月次上限（同上） |
+
+- MUST: `ANTHROPIC_API_KEY` を設定する場合、Anthropic Console の使用量アラートを有効化すること（再掲、cf. 「実行モード別の課金モデル」節の推奨運用）
+- SHOULD: Anthropic Console の `Usage` ダッシュボードを月次でレビューし、想定との乖離を確認すること
+
+### GitHub Actions minutes の手動確認方法
+
+claude-code-action は GitHub Actions 上で実行されるため、Actions minutes を消費する。vibecorp は独自の Actions minutes 監視機構を持たないため、GitHub ダッシュボードでの手動確認を推奨する。
+
+#### 確認手順
+
+1. GitHub の対象リポジトリまたは組織の `Settings` を開く
+2. 左サイドバー `Billing and plans` → `Plans and usage` を開く
+3. `Actions` セクションで以下を確認する:
+   - 当月の使用 minutes（`Minutes used this month`）
+   - 残 minutes（`Minutes remaining`）
+   - 課金対象 minutes（プライベートリポジトリの場合）
+4. 想定を超えている場合、`.github/workflows/` の trigger 条件（特に claude-code-action の `on:` 節）を見直す
+
+#### 推奨確認頻度
+
+| プラン | 推奨確認頻度 |
+|-------|-------------|
+| GitHub Free（個人 / Public リポジトリ） | minutes 課金なし、確認不要 |
+| GitHub Free（個人 / Private リポジトリ、月 2,000 分無料枠） | 月次 |
+| GitHub Team / Enterprise | 月次 |
+
+- SHOULD: 月次で GitHub Settings → Billing → Plans and usage の Actions セクションを目視確認すること
+- NOTE: vibecorp は GitHub Actions minutes の自動アラート機構を提供しない。閾値超過の即時検知が必要な利用者は GitHub Marketplace の「Actions usage monitoring」系サードパーティアクションを別途導入すること
