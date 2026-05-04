@@ -168,7 +168,7 @@ your-project/
 │   ├── design-philosophy.md
 │   ├── specification.md
 │   ├── team-permissions.md
-│   ├── coderabbit-dependency.md
+│   ├── ai-review-dependency.md
 │   ├── conventional-commits.md
 │   └── file-placement.md
 ├── .github/
