@@ -133,7 +133,7 @@ fi
 
 ### 2. 妥当性検証
 
-`.claude/rules/review-handling.md`（intent × severity の捌き基準）と `.claude/rules/severity/claude-action.md` / `severity/coderabbit.md`（severity 定義）に従い、`/vibecorp:review` と合議制（full プリセット時）の両方の指摘を統合して分類する。
+`.claude/rules/review-handling.md`（intent × severity の捌き基準）と `.claude/rules/severity/claude-action.md` / `.claude/rules/severity/coderabbit.md`（severity 定義）に従い、`/vibecorp:review` と合議制（full プリセット時）の両方の指摘を統合して分類する。
 
 - 同一観点の重複は 1 件にまとめる（出典は両方を残す）
 - Critical / Major は intent 問わず必ず対応、Minor / Trivial / Info は intent の重視軸該当時のみ対応

@@ -30,6 +30,16 @@
 
 severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。
 
+### Info の扱い（CodeRabbit 公式定義との差分・重要）
+
+CodeRabbit 公式定義（`severity/coderabbit.md`）では Info = 「情報提供のみ、対応不要」と扱われる。一方、本ドキュメント（vibecorp 運用ルール）では Info も **重視軸に該当する場合は対応する** に拡張する。
+
+**優先順位**: 本ドキュメント `review-handling.md` が **vibecorp 運用ルールの最終判定** として優先する。`severity/coderabbit.md` / `severity/claude-action.md` は severity の **定義**（重大度の意味）を記録するもので、修正対象の **判定** は本ドキュメントが行う。
+
+なぜ拡張するか:
+- vibecorp の「intent 重視軸」は PR スコープを狭く保つための運用判定軸であり、その軸に該当する Info 指摘は **無視すると重視軸の品質が落ちる**
+- CodeRabbit 公式の「Info = 対応不要」は CodeRabbit の汎用デフォルトであり、vibecorp 固有の運用要件を反映していない
+
 ## 設計の根拠
 
 - **1 PR 1 intent 厳守**（`.claude/rules/intent-labels.md`）と整合。PR のスコープを狭く保つ
