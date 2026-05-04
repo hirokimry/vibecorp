@@ -86,4 +86,21 @@ assert_file_contains_fixed "判定外（並走で観測）" "$DEPENDENCY" "**判
 assert_file_contains_fixed "二重指摘ノイズ"        "$DEPENDENCY" "二重指摘ノイズ閾値"
 assert_file_contains_fixed "利用者不満"            "$DEPENDENCY" "利用者不満ゼロ"
 
+# ============================================
+# 5. Bot approve 経路の動作確認と代替手段（CFO 承認条件 3）
+# ============================================
+echo ""
+echo "--- 5. Bot approve 動作確認 + 代替手段 ---"
+assert_file_contains_fixed "Bot approve 経路セクション見出し"  "$DEPENDENCY" "### Bot approve 経路の動作確認と代替手段（CFO 承認条件 3）"
+assert_file_contains_fixed "動作確認方法（週次記録）"         "$DEPENDENCY" "#### 動作確認方法（週次サマリで記録）"
+assert_file_contains_fixed "代替手段見出し"                  "$DEPENDENCY" "#### 代替手段（Bot approve が機能しない場合）"
+assert_file_contains_fixed "CodeRabbit approve 代替"         "$DEPENDENCY" "CodeRabbit が approve する設定を活用"
+assert_file_contains_fixed "人間 approve 必須化"             "$DEPENDENCY" "人間レビュアーが必ず approve するルール"
+assert_file_contains_fixed "required_approvals: 0 緊急時"    "$DEPENDENCY" "required_approvals: 0"
+assert_file_contains_fixed "GitHub App 再構築"              "$DEPENDENCY" "GitHub App の認証経路を再構築"
+assert_file_contains_fixed "発動判定基準"                    "$DEPENDENCY" "#### 代替手段の発動判定基準"
+assert_file_contains_fixed "Bot approve 失敗 3 PR"          "$DEPENDENCY" "Bot approve 失敗が連続 3 PR 以上"
+assert_file_contains_fixed "Bot 認証エラー 24h"              "$DEPENDENCY" "Bot 認証エラーが連続 24h 以上"
+assert_file_contains_fixed "マージ 48h 滞り"                "$DEPENDENCY" "マージが 48h 以上滞る"
+
 print_test_summary
