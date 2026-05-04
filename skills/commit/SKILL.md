@@ -129,5 +129,7 @@ git log --oneline -1
 ## 返却フォーマット
 
 ```text
-<commit-hash> <type>: <subject>
+<commit-hash> <emoji> <CC prefix>: <subject>
 ```
+
+scope 付きの場合は `<emoji> <CC prefix>(<scope>): <subject>` 形式を使う（タイトル形式と統一）。
