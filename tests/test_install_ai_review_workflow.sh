@@ -49,6 +49,8 @@ assert_file_contains "permissions: contents: read" "$yml" "contents: read"
 assert_file_contains "permissions: pull-requests: write" "$yml" "pull-requests: write"
 assert_file_contains "permissions: issues: write" "$yml" "issues: write"
 assert_file_contains "concurrency 設定" "$yml" "concurrency:"
+assert_file_contains "concurrency.group 値"           "$yml" 'group: ai-review-${{ github.event.pull_request.number }}'
+assert_file_contains "concurrency.cancel-in-progress" "$yml" "cancel-in-progress: true"
 assert_file_contains "Fork PR 除外条件" "$yml" 'github.event.pull_request.head.repo.full_name == github.repository'
 
 # ============================================
@@ -58,6 +60,8 @@ echo ""
 echo "--- 3. claude-code-action 呼び出し ---"
 assert_file_contains "anthropics/claude-code-action@v1" "$yml" "anthropics/claude-code-action@v1"
 assert_file_contains "claude_code_oauth_token 渡し" "$yml" "claude_code_oauth_token: \${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+assert_file_contains "fetch-depth: 0 (差分取得)"  "$yml" "fetch-depth: 0"
+assert_file_contains "needs: intent-label-check" "$yml" "needs: intent-label-check"
 
 # ============================================
 # 4. intent ラベル数チェックジョブ
@@ -67,6 +71,32 @@ echo "--- 4. intent ラベル数チェック ---"
 assert_file_contains "intent-label-check ジョブ" "$yml" "intent-label-check:"
 assert_file_contains "1 PR 1 intent ルール記述" "$yml" "1 PR 1 intent"
 assert_file_contains "intent/ プレフィックス検査" "$yml" "intent/"
+assert_file_contains "fail 時の exit 1"            "$yml" "exit 1"
+cleanup
+
+# ============================================
+# 4b. claude_action セクション不在時はデフォルト true として生成される
+# ============================================
+echo ""
+echo "--- 4b. claude_action セクション不在 → デフォルト true で生成される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+
+# claude_action セクションを完全に省いた古い形式の vibecorp.yml
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+coderabbit:
+  enabled: true
+EOF
+
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "セクション不在 → ai-review.yml が生成される" "$R/.github/workflows/ai-review.yml"
 cleanup
 
 # ============================================
