@@ -36,7 +36,9 @@ R="$TMPDIR_ROOT"
 assert_file_exists "REVIEW.md が生成される" "$R/REVIEW.md"
 assert_file_contains "claude-code-action 言及"     "$R/REVIEW.md" "anthropics/claude-code-action"
 assert_file_contains "Source of Truth セクション" "$R/REVIEW.md" "Source of Truth"
-assert_file_contains "review-criteria.md 参照"    "$R/REVIEW.md" "review-criteria.md"
+assert_file_contains "review-handling.md 参照"    "$R/REVIEW.md" "review-handling.md"
+assert_file_contains "review-observations.md 参照" "$R/REVIEW.md" "review-observations.md"
+assert_file_contains "severity/claude-action.md 参照" "$R/REVIEW.md" "severity/claude-action.md"
 
 # テスト中はワイルドカード等のメタ文字を含むパターンを照合するため、
 # grep -F による固定文字列検索を行うアサート関数を使用する

@@ -186,4 +186,7 @@ PR / Issue / commit のタイトルは以下のいずれか:
 
 - intent ラベル定義の SoT: `.claude/rules/intent-labels.md`
 - communication 規約: `.claude/rules/communication.md`
-- レビュー判定基準: `.claude/rules/review-criteria.md`（#470 で 4 ファイル分割予定）
+- severity 公式定義: `.claude/rules/severity/coderabbit.md`
+- severity 実体版: `.claude/rules/severity/claude-action.md`
+- レビュー捌き基準: `.claude/rules/review-handling.md`
+- レビュー観点: `.claude/rules/review-observations.md`

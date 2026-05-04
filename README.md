@@ -155,7 +155,7 @@ your-project/
 │   ├── hooks/             # フック（ファイル保護・ゲート制御）
 │   ├── agents/            # エージェント（standard 以上）
 │   ├── knowledge/         # 役割別の判断基準・判断記録（standard 以上）
-│   ├── rules/             # コーディング規約（intent-labels.md / review-criteria.md / shell.md 等）
+│   ├── rules/             # コーディング規約（intent-labels.md / severity/coderabbit.md / severity/claude-action.md / review-handling.md / review-observations.md / shell.md 等）
 │   ├── vibecorp.yml       # プロジェクト設定
 │   ├── vibecorp.lock      # バージョン固定 + マニフェスト
 │   ├── settings.json      # フック設定

@@ -1912,21 +1912,28 @@ copy_rules() {
   local dest="${REPO_ROOT}/.claude/rules"
   mkdir -p "$dest"
 
-  for rule in "${src}"/*.md; do
-    local basename
-    basename=$(basename "$rule")
-    if [[ "$UPDATE_MODE" == true ]]; then
-      merge_or_overwrite "$rule" "${dest}/${basename}" "rules/${basename}" || true
-      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
-    elif [[ -f "${dest}/${basename}" ]]; then
-      log_skip "rules/${basename} は既存のためスキップ"
-    else
-      cp "$rule" "${dest}/${basename}"
-      save_base_snapshot "$rule" "rules/${basename}"
-      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
-      log_info "rules/${basename} をコピー"
+  # トップレベル *.md と 1 階層下のサブディレクトリ（severity/ 等）の *.md を対象とする
+  # find -maxdepth 2 でサブディレクトリ 1 階層まで対応（深いネストは想定外）
+  while IFS= read -r rule; do
+    [[ -f "$rule" ]] || continue
+    local rel_path="${rule#${src}/}"  # 例: severity/coderabbit.md
+    local rel_dir
+    rel_dir=$(dirname "$rel_path")
+    if [[ "$rel_dir" != "." ]]; then
+      mkdir -p "${dest}/${rel_dir}"
     fi
-  done
+    if [[ "$UPDATE_MODE" == true ]]; then
+      merge_or_overwrite "$rule" "${dest}/${rel_path}" "rules/${rel_path}" || true
+      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
+    elif [[ -f "${dest}/${rel_path}" ]]; then
+      log_skip "rules/${rel_path} は既存のためスキップ"
+    else
+      cp "$rule" "${dest}/${rel_path}"
+      save_base_snapshot "$rule" "rules/${rel_path}"
+      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
+      log_info "rules/${rel_path} をコピー"
+    fi
+  done < <(find "$src" -maxdepth 2 -type f -name "*.md" 2>/dev/null)
 }
 
 copy_docs() {
