@@ -115,42 +115,64 @@ override が適用された場合、返却時に「CEO override: あり」を明
   - `/vibecorp:plan-epic` の出力（親 Issue URL + 子 Issue URL 一覧）をそのまま CEO に返す
   - エピック化判定時は本スキルのステップ 4 以降（タイプ判定・3 者承認ゲート・起票）は実行しない（`/plan-epic` 側で必要なゲートが実装される前提）
 
-### 4. 🏷️ タイプ判定・ラベル自動付与
+### 4. 🏷️ intent ラベル判定 + CC prefix 選択（COO 主体・FIX）
 
-まずリポジトリの既存ラベル一覧を取得する。
+#### 4a. COO による intent 判定
 
-```bash
-gh label list --json name --jq '.[].name' --limit 100
-```
+旧 type 14 種のキーワード判定表は **廃止**（Issue #469 議論結論）。COO（メインセッション）が Issue 本文を読んで文脈で intent ラベルを判定する。
 
-次に、タイトルと本文のテキストからキーワードベースでタイプを判定し、対応するラベル候補を決定する。
-タイプは Conventional Commits 形式と統一する。
+判定対象は **`.claude/rules/intent-labels.md` の 7 種**:
 
-| タイプ | 絵文字 | キーワード | ラベル候補 |
-|-------|-------|-----------|-----------|
-| `feat` | ✨ | 機能, 追加, 改善, feature, enhance | `enhancement` |
-| `fix` | 🐛 | バグ, 不具合, エラー, bug, fix, crash | `bug` |
-| `docs` | 📖 | ドキュメント, README, docs, 仕様書 | `documentation` |
-| `test` | 🧪 | テスト, test, coverage, 検証 | `testing` |
-| `refactor` | 🔄 | リファクタ, refactor, 整理, 統一, 移行 | `refactor` |
-| `design` | 📋 | 設計, design, 計画, plan, スキーマ, 分析 | `design` |
-| `chore` | ⚙️ | 雑務, 依存, chore, deps | — |
-| `ci` | 🔧 | CI, workflow, pipeline, Actions | — |
-| `security` | 🔒 | セキュリティ, 認証, protection, auth, gate | — |
-| `perf` | ⚡ | パフォーマンス, 高速化, 最適化, performance | — |
-| `agent` | 🤖 | エージェント, agent, 自律 | — |
-| `integrate` | 🔌 | 統合, 連携, integration | — |
-| `release` | 🚀 | リリース, 公開, publish, deploy | — |
-| `template` | 📦 | テンプレート, template, プリセット | — |
+- `intent/feature` — 新機能を確実に動かす（影響を与える系）
+- `intent/bugfix` — 既存バグを最小修正で直す（影響を与える系）
+- `intent/performance` — 性能を測定可能な形で改善する（影響を与える系）
+- `intent/security` — 脆弱性を塞ぐ（影響を与える系）
+- `intent/refactor` — 構造の品質を高める（挙動不変系）
+- `intent/infra` — 開発基盤の品質を底上げする（挙動不変系）
+- `intent/docs` — ドキュメントの正確性を担保する（挙動不変系）
 
-**ラベル付与ルール**: 候補ラベルのうち、リポジトリに存在するものだけを付与する。存在しないラベルは除外する。
+**絶対条件**: 1 Issue 1 intent 厳守。複数 intent にまたがる変更は Issue を分割するよう CEO に提案する。
 
-**タイトル形式**: `<emoji> <type>: <subject>`
+#### 4b. COO による CC prefix 選択
 
-- タイプはキーワードマッチで自動決定する
-- 複数マッチした場合は最初にマッチしたタイプを採用し、存在するラベルは全て付与する
-- マッチなしの場合はタイプなし（プレフィックスなし）、ラベルなしで起票する
-- ユーザーが既にタイプ付きタイトルを入力した場合はそのまま使用する
+intent → CC prefix の主従順で対応 prefix を選ぶ（逆引き禁止、`docs/conventional-commits.md` の絶対条件）。
+
+| intent ラベル | 対応する CC prefix |
+|--------------|------------------|
+| `intent/feature` | `feat` |
+| `intent/bugfix` | `fix`, `revert`（差し戻しは regression 修正の一形態） |
+| `intent/performance` | `perf`, `feat`（性能向上目的の機能）, `fix`（パフォーマンス系バグ） |
+| `intent/security` | `fix`（脆弱性修正）, `feat`（セキュリティ機能追加）, `chore`（依存パッケージのセキュリティアップデート） |
+| `intent/refactor` | `refactor`, `style` |
+| `intent/infra` | `test`, `ci`, `chore`, `build` |
+| `intent/docs` | `docs` |
+
+同じ intent に対応する prefix が複数ある場合は、内容に応じて最も適切なものを COO が選ぶ。
+
+#### 4c. CC prefix → 絵文字 1:1 マッピング
+
+`docs/conventional-commits.md` 確定の絵文字 11 種:
+
+| CC prefix | 絵文字 |
+|-----------|------|
+| feat | ✨ |
+| fix | 🐛 |
+| perf | ⚡ |
+| refactor | 🔄 |
+| style | 💄 |
+| docs | 📖 |
+| test | 🧪 |
+| ci | 🔧 |
+| chore | ⚙️ |
+| build | 📦 |
+| revert | ⏪ |
+
+**タイトル形式**: `<emoji> <CC prefix>: <動作主語の subject>`
+
+- COO が intent → prefix → 絵文字の順で確定する（逆順禁止）
+- 既存ラベル（`bug` / `enhancement` 等）はリポジトリに存在する場合のみ付与する
+- ユーザーが既にタイプ付きタイトルを入力していても、判定は **常に本文から intent を先に確定**する（intent → prefix の主従順、絶対条件）。本文から確定した intent と既存タイトルの prefix が整合しない場合は、本文を優先して prefix と絵文字をタイトル側で修正する
+- 既存ラベル一覧は `gh label list --json name --jq '.[].name' --limit 100` で取得する
 
 ### 5. 👤 Assignees 決定
 
@@ -187,6 +209,7 @@ CISO エージェント（`.claude/agents/ciso.md`）に以下を依頼する:
 3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所）
 4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御）
 5. MVV（MVV.md 自体の変更）
+6. CI エージェント（GitHub Actions）（`.github/workflows/claude*.{yml,yaml}` / `.github/workflows/ai-review.{yml,yaml}` の `permissions` / `secrets` 参照変更、`pull_request_target` への変更、`CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` の参照方式変更、Fork PR 除外条件削除・緩和、GitHub App 権限スコープ追加）
 
 判定: OK または 除外（該当領域名を明記）
 ```
@@ -226,7 +249,7 @@ SM エージェント（`.claude/agents/sm.md`）に以下を依頼する:
 タイトル: <タイトル>
 本文: <本文>
 
-不可領域5分類（認証 / 暗号 / 課金構造 / ガードレール / MVV）のいずれかに該当する変更を Issue が意図している場合は「除外」と判定し、該当領域名を付記してください。
+不可領域 6 分類（認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント）のいずれかに該当する変更を Issue が意図している場合は「除外」と判定し、該当領域名を付記してください。
 
 判定: OK または 除外（該当領域名を明記）
 ```
@@ -242,10 +265,12 @@ SM エージェント（`.claude/agents/sm.md`）に以下を依頼する:
 ### 7. 🚀 Issue 起票
 
 ```bash
-gh issue create --title "<emoji> <type>: <subject>" --body "<本文>" --assignee "<assignee>" --label "<label1>" --label "<label2>"
+gh issue create --title "<emoji> <CC prefix>: <subject>" --body "<本文>" --assignee "<assignee>" --label "intent/<intent>" --label "<additional_label_if_any>"
 ```
 
-ラベルなしの場合は `--label` オプションを省略する。
+- **`intent/*` ラベルは必須**（COO が ステップ 4a で確定したもの 1 つだけ）
+- 既存ラベル（`bug` / `enhancement` 等）はリポジトリに存在し、内容に該当する場合のみ追加付与する
+- ラベルが intent のみの場合は `--label "intent/<intent>"` のみ指定する
 
 ### 8. ✅ 結果報告
 
