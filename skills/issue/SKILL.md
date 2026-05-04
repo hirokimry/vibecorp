@@ -171,7 +171,7 @@ intent → CC prefix の主従順で対応 prefix を選ぶ（逆引き禁止、
 
 - COO が intent → prefix → 絵文字の順で確定する（逆順禁止）
 - 既存ラベル（`bug` / `enhancement` 等）はリポジトリに存在する場合のみ付与する
-- ユーザーが既にタイプ付きタイトルを入力していれば、その prefix と整合する intent を選ぶ
+- ユーザーが既にタイプ付きタイトルを入力していても、判定は **常に本文から intent を先に確定**する（intent → prefix の主従順、絶対条件）。本文から確定した intent と既存タイトルの prefix が整合しない場合は、本文を優先して prefix と絵文字をタイトル側で修正する
 - 既存ラベル一覧は `gh label list --json name --jq '.[].name' --limit 100` で取得する
 
 ### 5. 👤 Assignees 決定
