@@ -60,17 +60,28 @@ echo ""
 for f in "${real_files[@]}"; do
   echo "--- $(basename "$f") ---"
 
+  # 必須キー欠落を先に検証（jq -e で型・存在確認）
+  for required in '.pr_number' '.intent' '.expected_severity_counts'; do
+    if ! jq -e "${required}" "$f" >/dev/null; then
+      echo "  ❌ 必須キー '${required}' が欠落または null（${f}）" >&2
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      continue 2
+    fi
+  done
+
   pr_number=$(jq -r '.pr_number' "$f")
   intent=$(jq -r '.intent' "$f")
-  description=$(jq -r '.description' "$f")
+  description=$(jq -r '.description // ""' "$f")
   expected_critical=$(jq -r '.expected_severity_counts.critical // 0' "$f")
   expected_major=$(jq -r '.expected_severity_counts.major // 0' "$f")
   expected_minor=$(jq -r '.expected_severity_counts.minor // 0' "$f")
+  expected_trivial=$(jq -r '.expected_severity_counts.trivial // 0' "$f")
+  expected_info=$(jq -r '.expected_severity_counts.info // 0' "$f")
   expected_keyword_min_match=$(jq -r '.expected_keyword_min_match // 1' "$f")
 
   echo "  PR #${pr_number} (intent: ${intent})"
   echo "  説明: ${description}"
-  echo "  期待件数: critical=${expected_critical}, major=${expected_major}, minor=${expected_minor}"
+  echo "  期待件数: critical=${expected_critical}, major=${expected_major}, minor=${expected_minor}, trivial=${expected_trivial}, info=${expected_info}"
   echo "  期待キーワード最低マッチ数: ${expected_keyword_min_match}"
 
   # 実装方針:
