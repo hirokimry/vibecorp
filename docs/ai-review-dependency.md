@@ -93,6 +93,100 @@ CodeRabbit 側の `.coderabbit.yaml` の主要設定値:
 
 claude-code-action 側の挙動は `REVIEW.md`（vibecorp 配布のプロンプト）と `templates/.github/workflows/ai-review.yml`（ジョブ定義）で記述する。
 
+## 実機検証完了判定（Issue #475 確定）
+
+vibecorp プロジェクト自身で `coderabbit.enabled: true` + `claude_action.enabled: true` の並走を 2 週間継続し、以下全てを充足した場合に検証完了とする。
+
+### 完了判定基準（A + B）
+
+| 要素 | 内容 | 判定方法 |
+|------|------|---------|
+| A. レート消費 | Claude Max 90M token/月の目安以内 | 週次サマリ × 2 回の合計、`.claude/knowledge/cfo/decisions/` に記録 |
+| B. 4 契約動作 | auto-review / approve 切替 / auto-resolve / 日本語 全部機能 | 週次サマリ × 2 回で全 ✅ |
+
+C（二重指摘ノイズ閾値）/ D（利用者不満ゼロ）は **判定外**（並走で観測するが完了判定には含めない）。
+
+### C*O 合議による本番運用切替
+
+完了判定を満たしたら、以下 4 役の合議で本番運用への切替を決定する。
+
+| 役 | 評価観点 |
+|-----|---------|
+| CFO | レート消費・コスト面の評価（Claude Max 90M token/月以内、超過時 cadence 調整方針） |
+| CISO | 認証領域への影響なし確認（`.claude/rules/autonomous-restrictions.md` 全 6 領域への抵触なし） |
+| CTO | 技術品質の評価（4 契約の挙動、既知の運用問題、ロールバック手順の動作） |
+| CPO | 利用者体験の評価（レビューノイズ、誤検知率、回帰検出の有効性） |
+
+4 役全員が OK 判定の場合のみ「本番運用」へ移行する。1 名でも NG または保留の場合は検証期間を延長する。
+
+### 「本番運用」の定義
+
+vibecorp プロジェクト自身が claude-action 主軸で運用される状態を指す。
+
+- vibecorp の PR レビューは claude-action を中心に運用する
+- CodeRabbit は並走継続（オプション扱い、利用者は無効化可能）
+- 利用者向けプリセット既定値（`coderabbit.enabled` / `claude_action.enabled`）の切替は別途検討事項（本 Issue では vibecorp 自身の運用切替のみ）
+
+### 超過時の cadence 調整
+
+A 契約のレート消費が 90M token/月を超過する見通しが立った場合、CFO 判断で以下のいずれかを実施する。
+
+- (a) **cadence 24h → 36h に即伸長**: claude-action のスケジュール起動間隔を伸ばす
+- (b) **`claude_action.enabled: false` にロールバック**: `docs/ai-review-rollback.md` 参照
+- (c) **検証期間延長**: 様子見を 1 週間追加
+
+判断は週次サマリで記録し、CEO の承認を得てから実施する。
+
+### NG 時の対応
+
+完了判定が NG（A or B 不足）の場合、以下のいずれかを CEO 判断で選択する。
+
+- 期間延長（さらに 1 週間並走）
+- スコープ縮小（`claude_action.enabled: false`、CodeRabbit のみ運用継続）
+- 設計再検討（Issue #475 を reopen して論点整理）
+
+### Bot approve 経路の動作確認と代替手段（CFO 承認条件 3）
+
+Issue #455 CFO 条件付き承認の遵守事項 3「Bot approve 代替手段の事前検討」を充足するため、検証期間中の Bot approve 経路の動作確認と、機能しない場合の代替手段を以下の通り定める。
+
+#### 動作確認方法（週次サマリで記録）
+
+検証期間中、毎週末に以下を確認し、週次サマリ「2. 4 契約動作確認（B 契約）」の `② approve / request_changes 切替` 行に結果を記入する。
+
+- ✅ claude-action が `gh pr review --approve` または `--request-changes` を発行できているか
+- ✅ Branch Protection の `required_approvals` が満たされて auto-merge が発火するか
+- ✅ Bot 認証エラー時に警告コメントが投稿されるか（#467 確定の挙動）
+- ✅ マージが滞らないか（PR open から 24h 以内に approve / request_changes が出ているか）
+
+#### 代替手段（Bot approve が機能しない場合）
+
+代替案は **検証期間中に発動した場合** または **本番運用切替前に Bot approve が機能しないことが判明した場合** に CEO 判断で選択する。
+
+| # | 代替手段 | 想定シナリオ |
+|---|---------|------------|
+| 1 | **CodeRabbit が approve する設定を活用** | claude-action の Bot approve が機能しない場合、`.coderabbit.yaml` の `request_changes_workflow: true`（既定）で CodeRabbit を approve 役にする |
+| 2 | **人間レビュアーが必ず approve するルール** | 両 Bot とも approve 不可の場合、Branch Protection の `required_approvals` を維持しつつ人間 approve を必須化する |
+| 3 | **`required_approvals: 0` に下げる** | 緊急時のみ。Bot approve も人間 approve も使えず保護機能を一時的に落とす（`vibecorp.yml` 編集 → `install.sh --update`、戻し手順は `docs/ai-review-rollback.md` 参照）|
+| 4 | **GitHub App の認証経路を再構築** | OAuth Token / GitHub App の権限不足が原因の場合、`docs/ai-review-auth.md` の手順で再構築する（恒久対応）|
+
+#### 代替手段の発動判定基準
+
+検証期間中に以下のいずれかが発生した場合、CEO は代替手段の発動を判断する。
+
+- ⚠️ Bot approve 失敗が連続 3 PR 以上発生
+- ⚠️ Bot 認証エラーが連続 24h 以上継続
+- ⚠️ マージが 48h 以上滞る PR が 2 件以上発生
+
+判断結果は週次サマリの「ロールバック判断」セクションに記録する。
+
+### ロールバック手順
+
+claude-action を一時的に無効化する手順は `docs/ai-review-rollback.md` 参照。スクリプト化は **しない**（Issue #475 議論結論）。
+
+### 週次サマリテンプレート
+
+CFO が週次サマリを記録する際のテンプレートは `.claude/knowledge/cfo/templates/weekly-summary.md` 参照。
+
 ## 関連
 
 - 認証経路: `docs/ai-review-auth.md`
