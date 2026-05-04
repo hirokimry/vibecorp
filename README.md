@@ -371,6 +371,16 @@ protected_files:           # 編集を禁止するファイル
   - MVV.md
 coderabbit:
   enabled: true            # CodeRabbit 設定ファイルの生成（true/false）
+claude_action:
+  enabled: true            # claude-code-action の有効化（true/false）
+  skip_paths:              # AI レビュー対象から除外するパス（業界標準）
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
 # guide_gate:
 #   extra_paths:            # デフォルトスコープに追加する監視パス
 #     - templates/claude/
@@ -403,6 +413,10 @@ diagnose:
 #### coderabbit
 
 `coderabbit.enabled` を `false` にすると `.coderabbit.yaml` の生成がスキップされる。
+
+#### claude_action
+
+`claude_action.enabled` を `false` にすると claude-code-action による AI レビューが無効化される。`coderabbit.enabled: true` と併用することで CodeRabbit と claude-code-action の並走運用が可能。`skip_paths` で AI レビュー対象から除外するパス（lock ファイル・依存・ビルド成果物等）を指定する。`enabled: true` 時は `install.sh` 実行時に GitHub secrets に `CLAUDE_CODE_OAUTH_TOKEN` が登録されているか確認し、未登録なら警告を出す（詳細は `docs/ai-review-auth.md`）。
 
 #### guide_gate
 
