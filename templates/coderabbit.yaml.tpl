@@ -7,6 +7,7 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    auto_incremental_review: true
     base_branches:
       - ".*"
 

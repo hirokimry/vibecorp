@@ -146,4 +146,4 @@ message: "PR #<番号> で /vibecorp:pr-fix-loop が <理由> により escalati
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する（[根拠](docs/design-philosophy.md#jq-string-interpolation-の禁止)）
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
 - **Bash は 1 コマンド 1 呼び出しに分割する** — `cd ... && cmd | head 2>/dev/null` のように cd + パイプ + リダイレクトを含む compound command は Claude Code 本体の built-in security check で止められる（参照: #258）
-- **`/loop` や `ScheduleWakeup` を使わない** — このスキルは teammate のターン内で同期完遂することが要件（[根拠](docs/coderabbit-dependency.md#vibecorppr-fix-loop依存度-高)）
+- **`/loop` や `ScheduleWakeup` を使わない** — このスキルは teammate のターン内で同期完遂することが要件（[根拠](docs/ai-review-dependency.md#4-契約--ツール-責任分担表)）
