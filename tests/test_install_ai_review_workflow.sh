@@ -126,6 +126,8 @@ awk '
 # --update で削除されることを確認
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_not_exists "--update 後に管理下 ai-review.yml が削除される" "$R/.github/workflows/ai-review.yml"
+# base snapshot も削除されないと、後から手動配置されたファイルが「管理下」と誤認される
+assert_file_not_exists "base snapshot も削除される" "$R/.claude/vibecorp-base/.github/workflows/ai-review.yml"
 cleanup
 
 # ============================================
