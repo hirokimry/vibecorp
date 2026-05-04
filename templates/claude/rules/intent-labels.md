@@ -1,6 +1,6 @@
-vibecorp の Issue / PR には `intent/*` ラベルを **原則 1 つだけ** 付与すること。
+vibecorp の Issue / PR には `intent/*` ラベルを **必ず 1 つだけ** 付与すること。
 
-**例外**: `revert` 系（過去 commit を取り消す目的の PR）は `docs/conventional-commits.md` で intent ラベル付与なしの「対象外」として定義されているため、`intent/*` ラベルを付けない（CI の `intent-label-check` ジョブで fail にならないよう、revert PR には別途運用判断が必要）。
+**revert PR の扱い**: `docs/conventional-commits.md` で `revert` を「intent ラベル付与なし対象（レビュー対象外）」と定義しているのは、CC prefix → intent の M:N マッピング表での扱い（revert は intent カテゴリに自然対応しない）の話。実際の **revert PR にも intent ラベル 1 つを付与すること**（差し戻しの目的に応じて、例: 回帰修正 → `intent/bugfix`、構造リファクタの取り消し → `intent/refactor`）。CI の `intent-label-check` ジョブは revert PR を特別扱いしないため、ラベル不在は fail になる。
 
 ## intent ラベル 7 種
 
