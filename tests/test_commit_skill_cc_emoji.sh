@@ -92,6 +92,8 @@ echo ""
 echo "--- 5. タイトル形式 ---"
 assert_file_contains_fixed "タイトル形式 <emoji> <CC prefix>: <subject>" "$SKILL" "<emoji> <CC prefix>: <subject>"
 assert_file_contains_fixed "scope 付き形式" "$SKILL" "<emoji> <CC prefix>(<scope>): <subject>"
+assert_file_contains       "件名にピリオドなしルール"   "$SKILL" "ピリオドなし"
+assert_file_contains       "件名 50 文字推奨ルール"    "$SKILL" "50 文字"
 
 # ============================================
 # 6. revert の扱い（intent/bugfix）
