@@ -35,7 +35,8 @@ setup_mock_gh() {
 
   case "$mode" in
     missing)
-      # gh を見つからなくする = PATH を MOCK_BIN_DIR のみに絞る（gh を置かない）
+      # missing は run_verify 側で `command` シェル組込みを shadow して扱うため
+      # ここでは gh モックを置かない（モックを置くと CI で逆効果になる）
       ;;
     noauth)
       cat > "${MOCK_BIN_DIR}/gh" <<'GHSH'
@@ -89,23 +90,40 @@ GHSH
 
 # install.sh の verify_claude_action_secrets を呼んで stderr を捕捉する
 # 第 2 引数の mode に応じて gh モックを切り替える
+#
+# missing モードは単に PATH から gh を消すだけだと CI 環境（gh が /usr/bin/gh など
+# 標準パスに入っている）で漏れるため、`command` シェル組込みを関数で shadow して
+# `command -v gh` を強制的に失敗させる方式を採る。これによりホスト環境に依存せず
+# 常に「gh 未導入」と同じ分岐を踏ませられる。
 run_verify() {
   local repo_root="$1"
   local mode="$2"
-  setup_mock_gh "$mode"
 
-  # REPO_ROOT を一時的に上書きして関数を呼ぶ
-  # PATH を MOCK_BIN_DIR + 必要最小限のシステムパスに絞る（実 gh を遮断する）
   local saved_repo_root="${REPO_ROOT:-}"
   REPO_ROOT="$repo_root"
 
-  # capture stderr; stdout 不要
   local out
-  out=$(PATH="${MOCK_BIN_DIR}:/usr/bin:/bin" verify_claude_action_secrets 2>&1 >/dev/null || true)
+  if [[ "$mode" == "missing" ]]; then
+    # gh が PATH にあっても無くても、必ず not-found 扱いにする
+    out=$(
+      command() {
+        if [[ "$1" == "-v" && "$2" == "gh" ]]; then
+          return 1
+        fi
+        builtin command "$@"
+      }
+      verify_claude_action_secrets 2>&1 >/dev/null
+      true
+    )
+  else
+    setup_mock_gh "$mode"
+    # MOCK_BIN_DIR を PATH 先頭に置き、システム gh より優先する
+    out=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null || true)
+    rm -rf "$MOCK_BIN_DIR" || true
+    MOCK_BIN_DIR=""
+  fi
 
   REPO_ROOT="$saved_repo_root"
-  rm -rf "$MOCK_BIN_DIR" || true
-  MOCK_BIN_DIR=""
   echo "$out"
 }
 
@@ -270,7 +288,7 @@ GHSH
 chmod +x "${MOCK_BIN_DIR}/gh"
 saved_repo_root="${REPO_ROOT:-}"
 REPO_ROOT="$TMP9"
-OUT=$(PATH="${MOCK_BIN_DIR}:/usr/bin:/bin" verify_claude_action_secrets 2>&1 >/dev/null || true)
+OUT=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null || true)
 REPO_ROOT="$saved_repo_root"
 rm -rf "$MOCK_BIN_DIR" || true
 MOCK_BIN_DIR=""
