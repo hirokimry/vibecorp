@@ -35,13 +35,48 @@ echo ""
 echo "--- 1. claude-review ジョブの timeout-minutes: 10 ---"
 WF="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
 assert_file_contains_fixed "timeout-minutes: 10 設定" "$WF" "timeout-minutes: 10"
-# claude-review ジョブブロック内に配置されていることを確認
-# awk で claude-review: 〜 ファイル末まで抽出（最後のジョブなので EOF まで）
-claude_review_block=$(awk '/^  claude-review:/{flag=1} flag' "$WF")
+# claude-review ジョブブロック内に配置されていることを job 単位で厳密に確認
+# 抽出範囲を「claude-review: の次のトップレベルジョブ開始」または「ファイル末」まで限定
+# これにより後続ジョブが追加されても正確に claude-review ブロックだけを切り出せる
+claude_review_block=$(awk '
+  /^  claude-review:/ { flag=1; print; next }
+  flag && /^  [a-z][a-z0-9-]*:[[:space:]]*$/ { exit }
+  flag { print }
+' "$WF")
 if echo "$claude_review_block" | grep -q -F -- "timeout-minutes: 10"; then
   pass "timeout-minutes: 10 が claude-review ジョブ内に配置されている"
 else
   fail "timeout-minutes: 10 が claude-review ジョブ内に配置されていない"
+fi
+
+# 後続ジョブが追加されても誤検知しないことを回帰テストする
+# （現在 claude-review が最後のジョブだが、将来追加されても安全であることを保証）
+synthetic_yml=$(cat <<'YAML'
+jobs:
+  intent-label-check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  claude-review:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  follow-up-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo
+YAML
+)
+synthetic_block=$(echo "$synthetic_yml" | awk '
+  /^  claude-review:/ { flag=1; print; next }
+  flag && /^  [a-z][a-z0-9-]*:[[:space:]]*$/ { exit }
+  flag { print }
+')
+if echo "$synthetic_block" | grep -q -F -- "timeout-minutes: 10"; then
+  fail "後続 follow-up-job の timeout-minutes が誤って拾われた（抽出範囲が広すぎる）"
+else
+  pass "後続ジョブの timeout-minutes は誤検知されない（抽出範囲が job 単位に限定されている）"
 fi
 
 # ============================================
