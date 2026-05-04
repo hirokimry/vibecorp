@@ -38,8 +38,8 @@ assert_file_contains "claude_action: セクション" "$R/.claude/vibecorp.yml" 
 assert_file_contains "enabled: true デフォルト"   "$R/.claude/vibecorp.yml" "enabled: true"
 assert_file_contains "skip_paths: 含まれる"        "$R/.claude/vibecorp.yml" "skip_paths:"
 
-# skip_paths の業界標準 7 件が含まれることを検証（順序固定）
-for pattern in "*.lock" ".git/" "node_modules/" "dist/" "build/" ".cache/" "vendor/"; do
+# skip_paths の業界標準 7 件が含まれることを検証（YAML リスト要素として完全一致）
+for pattern in '- "*.lock"' '- ".git/**"' '- "node_modules/**"' '- "dist/**"' '- "build/**"' '- ".cache/**"' '- "vendor/**"'; do
   if grep -q -F -- "$pattern" "$R/.claude/vibecorp.yml"; then
     pass "skip_paths に '$pattern' が含まれる"
   else
@@ -92,7 +92,7 @@ run_ensure_with_yml() {
   mkdir -p "${tmp_root}/.claude"
   printf '%s' "$yml_content" > "${tmp_root}/.claude/vibecorp.yml"
 
-  REPO_ROOT="$tmp_root" ensure_claude_action_section >/dev/null 2>&1 || true
+  REPO_ROOT="$tmp_root" ensure_claude_action_section >/dev/null 2>&1
 
   cat "${tmp_root}/.claude/vibecorp.yml"
   rm -rf "$tmp_root"
@@ -236,7 +236,7 @@ fi
 # 3-7. vibecorp.yml 不在時は no-op
 tmp_root="$(mktemp -d)"
 mkdir -p "${tmp_root}/.claude"
-REPO_ROOT="$tmp_root" ensure_claude_action_section >/dev/null 2>&1 || true
+REPO_ROOT="$tmp_root" ensure_claude_action_section >/dev/null 2>&1
 if [[ ! -f "${tmp_root}/.claude/vibecorp.yml" ]]; then
   pass "vibecorp.yml 不在時は no-op（ファイル作成しない）"
 else

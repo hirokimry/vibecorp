@@ -5,6 +5,8 @@ language: ja
 base_branch: main
 protected_files:
   - MVV.md
+coderabbit:
+  enabled: true
 claude_action:
   enabled: true
   skip_paths:
