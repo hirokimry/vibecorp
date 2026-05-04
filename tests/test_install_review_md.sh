@@ -211,6 +211,8 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "ai-review.yml に REVIEW.md 読込ステップ" "$R/.github/workflows/ai-review.yml" "REVIEW.md をプロンプトに読み込む"
 assert_file_contains "claude-code-action に prompt 引き渡し" "$R/.github/workflows/ai-review.yml" "prompt: \${{ steps.review_prompt.outputs.prompt }}"
+# heredoc delimiter は固定でなくランダム化されている（REVIEW.md 本文との衝突回避）
+assert_file_contains_fixed "heredoc delimiter のランダム化"  "$R/.github/workflows/ai-review.yml" 'EOF_REVIEW_MD_$(date +%s)_${RANDOM}'
 cleanup
 
 # ============================================
@@ -277,6 +279,50 @@ bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_contains_fixed "コメント直後のパス *.lock" "$R/REVIEW.md" '- "*.lock"'
 assert_file_contains_fixed "空行を挟んだ node_modules/**" "$R/REVIEW.md" '- "node_modules/**"'
 assert_file_contains_fixed "途中コメント後の vendor/**" "$R/REVIEW.md" '- "vendor/**"'
+cleanup
+
+# ============================================
+# 11. skip_paths が single quote で書かれていても正しくパースされる
+# ============================================
+echo ""
+echo "--- 11. single-quoted skip_paths が正しく剥がされる ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+
+# YAML として妥当な single quote 形式の skip_paths
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+coderabbit:
+  enabled: true
+claude_action:
+  enabled: true
+  skip_paths:
+    - '*.lock'
+    - 'vendor/**'
+EOF
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+# REVIEW.md には double-quote 形式で出力されることを確認（single quote が剥がされている）
+assert_file_contains_fixed "REVIEW.md: single quote が剥がれて *.lock"   "$R/REVIEW.md" '- "*.lock"'
+assert_file_contains_fixed "REVIEW.md: single quote が剥がれて vendor"   "$R/REVIEW.md" '- "vendor/**"'
+
+# .coderabbit.yaml にも double-quote 形式で出力（! プレフィックス付き）
+assert_file_contains_fixed "coderabbit: !*.lock 正規化"      "$R/.coderabbit.yaml" '- "!*.lock"'
+assert_file_contains_fixed "coderabbit: !vendor/** 正規化"   "$R/.coderabbit.yaml" '- "!vendor/**"'
+
+# single quote が混入していないことの確認
+if grep -q -F -- "'*.lock'" "$R/.coderabbit.yaml"; then
+  fail "coderabbit.yaml に single quote が残っている（剥がし忘れ）"
+else
+  pass "coderabbit.yaml に single quote が残っていない"
+fi
 cleanup
 
 print_test_summary

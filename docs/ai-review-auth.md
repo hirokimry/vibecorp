@@ -95,7 +95,7 @@ jobs:
 | `concurrency.group` | `ai-review-${{ pr.number }}` | 同一 PR への push 連打を直列化してコスト抑制 |
 | `concurrency.cancel-in-progress` | `true` | 古い実行は中断して最新コミットのみレビュー |
 | `intent-label-check` ジョブ | `intent/*` ラベル数が 2 以上で fail コメント | 1 PR 1 intent ルール (#469) の機械的強制 |
-| `claude-review` の `REVIEW.md をプロンプトに読み込む` step | `cat REVIEW.md` を `EOF_REVIEW_MD` heredoc で `$GITHUB_OUTPUT` の `prompt` に流す | リポジトリ直下の `REVIEW.md` を AI レビュープロンプトとして claude-code-action に引き渡す |
+| `claude-review` の `REVIEW.md をプロンプトに読み込む` step | `cat REVIEW.md` をランダム delimiter（`EOF_REVIEW_MD_$(date +%s)_${RANDOM}`）の heredoc で `$GITHUB_OUTPUT` の `prompt` に流す | リポジトリ直下の `REVIEW.md` を AI レビュープロンプトとして claude-code-action に引き渡す。delimiter をランダム化して REVIEW.md 本文に同名行が含まれた場合の事故を防ぐ |
 | `claude-review` ジョブ | `anthropics/claude-code-action@v1` 呼び出し（`prompt: ${{ steps.review_prompt.outputs.prompt }}`）| OAuth Token 認証で起動、REVIEW.md の内容をプロンプトとして使用 |
 
 `types: [opened, synchronize, ready_for_review]` だけでは draft PR への push（`synchronize`）でもジョブが起動するため、ジョブの `if:` で `!github.event.pull_request.draft` を明示する。

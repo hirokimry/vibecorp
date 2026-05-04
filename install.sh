@@ -1165,7 +1165,8 @@ _read_skip_paths() {
     in_paths && /^[[:space:]]*-[[:space:]]*/ {
       sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
       sub(/[[:space:]]*$/, "", $0)
-      gsub(/^"|"$/, "", $0)
+      # YAML の double quote と single quote (\047 = octal for ASCII 0x27) の双方を剥がす
+      gsub(/^["\047]|["\047]$/, "", $0)
       print
     }
   ' "$yml"

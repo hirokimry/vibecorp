@@ -56,11 +56,13 @@ jobs:
       - name: REVIEW.md をプロンプトに読み込む
         id: review_prompt
         run: |
+          # heredoc delimiter は実行毎に一意なランダム値にする（REVIEW.md 本文に同名行が含まれる事故対策）
+          delimiter="EOF_REVIEW_MD_$(date +%s)_${RANDOM}"
           if [[ -f REVIEW.md ]]; then
             {
-              echo "prompt<<EOF_REVIEW_MD"
+              echo "prompt<<${delimiter}"
               cat REVIEW.md
-              echo "EOF_REVIEW_MD"
+              echo "${delimiter}"
             } >> "$GITHUB_OUTPUT"
           else
             echo "prompt=" >> "$GITHUB_OUTPUT"
