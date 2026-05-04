@@ -95,6 +95,12 @@ GHSH
 # 標準パスに入っている）で漏れるため、`command` シェル組込みを関数で shadow して
 # `command -v gh` を強制的に失敗させる方式を採る。これによりホスト環境に依存せず
 # 常に「gh 未導入」と同じ分岐を踏ませられる。
+#
+# 終了コードは RUN_VERIFY_RC グローバルに保存する。docs/ai-review-auth.md §5 の
+# 「警告のみで install.sh は失敗扱いにしない（exit 0 継続）」要件を後段で
+# `assert_run_verify_rc_zero` により検証するため、`|| true` で握りつぶさない。
+RUN_VERIFY_RC=0
+
 run_verify() {
   local repo_root="$1"
   local mode="$2"
@@ -103,8 +109,10 @@ run_verify() {
   REPO_ROOT="$repo_root"
 
   local out
+  local rc
   if [[ "$mode" == "missing" ]]; then
     # gh が PATH にあっても無くても、必ず not-found 扱いにする
+    set +e
     out=$(
       command() {
         if [[ "$1" == "-v" && "$2" == "gh" ]]; then
@@ -113,18 +121,34 @@ run_verify() {
         builtin command "$@"
       }
       verify_claude_action_secrets 2>&1 >/dev/null
-      true
     )
+    rc=$?
+    set -e
   else
     setup_mock_gh "$mode"
     # MOCK_BIN_DIR を PATH 先頭に置き、システム gh より優先する
-    out=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null || true)
+    set +e
+    out=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null)
+    rc=$?
+    set -e
     rm -rf "$MOCK_BIN_DIR" || true
     MOCK_BIN_DIR=""
   fi
 
   REPO_ROOT="$saved_repo_root"
+  RUN_VERIFY_RC=$rc
   echo "$out"
+}
+
+# verify_claude_action_secrets は WARN を出しても exit 0 を維持する仕様
+# （docs/ai-review-auth.md §5）。run_verify 直後に呼んで rc==0 をアサートする。
+assert_run_verify_rc_zero() {
+  local case_label="$1"
+  if [[ "${RUN_VERIFY_RC}" -eq 0 ]]; then
+    pass "${case_label}: verify_claude_action_secrets が exit 0 を維持する"
+  else
+    fail "${case_label}: verify_claude_action_secrets が非 0 で終了 (rc=${RUN_VERIFY_RC})"
+  fi
 }
 
 # テスト用の vibecorp.yml を作成するヘルパー
@@ -147,6 +171,7 @@ if [[ -z "$OUT" ]]; then
 else
   fail "vibecorp.yml 不在時に出力あり: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 1"
 rm -rf "$TMP1" || true
 
 # ── ケース 2: claude_action セクション不在 → no-op ──────
@@ -159,6 +184,7 @@ if [[ -z "$OUT" ]]; then
 else
   fail "claude_action セクション不在時に出力あり: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 2"
 rm -rf "$TMP2" || true
 
 # ── ケース 3: claude_action.enabled: false → no-op ──────
@@ -173,6 +199,7 @@ if [[ -z "$OUT" ]]; then
 else
   fail "claude_action.enabled: false で出力あり: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 3"
 rm -rf "$TMP3" || true
 
 # ── ケース 4: claude_action.enabled: true + gh 未導入 → log_skip ──
@@ -187,6 +214,7 @@ if echo "$OUT" | grep -q "gh CLI が見つかりません"; then
 else
   fail "gh 未導入時の SKIP メッセージなし: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 4"
 rm -rf "$TMP4" || true
 
 # ── ケース 5: claude_action.enabled: true + gh 未認証 → log_skip ──
@@ -201,6 +229,7 @@ if echo "$OUT" | grep -q "gh が未認証"; then
 else
   fail "gh 未認証時の SKIP メッセージなし: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 5"
 rm -rf "$TMP5" || true
 
 # ── ケース 6: claude_action.enabled: true + secrets 登録あり → log_info ──
@@ -220,6 +249,7 @@ if echo "$OUT" | grep -q "WARN"; then
 else
   pass "secrets 登録ありで WARN が出力されない"
 fi
+assert_run_verify_rc_zero "ケース 6"
 rm -rf "$TMP6" || true
 
 # ── ケース 7: claude_action.enabled: true + secrets 未登録 → log_warn ──
@@ -244,6 +274,9 @@ if echo "$OUT" | grep -q "docs/ai-review-auth.md"; then
 else
   fail "WARN 本文に docs/ai-review-auth.md への参照がない: ${OUT}"
 fi
+# 重要: 未登録時も WARN を出すだけで exit 0 を維持することを明示検証
+# （docs/ai-review-auth.md §5「警告のみで install.sh は失敗扱いにしない」）
+assert_run_verify_rc_zero "ケース 7"
 rm -rf "$TMP7" || true
 
 # ── ケース 8: 別のセクションの enabled キーが誤ってマッチしない ──
@@ -260,6 +293,7 @@ if [[ -z "$OUT" ]]; then
 else
   fail "セクション境界が壊れて誤判定: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 8"
 rm -rf "$TMP8" || true
 
 # ── ケース 9: 部分一致するシークレット名が誤マッチしない ──
@@ -288,7 +322,10 @@ GHSH
 chmod +x "${MOCK_BIN_DIR}/gh"
 saved_repo_root="${REPO_ROOT:-}"
 REPO_ROOT="$TMP9"
-OUT=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null || true)
+set +e
+OUT=$(PATH="${MOCK_BIN_DIR}:${PATH}" verify_claude_action_secrets 2>&1 >/dev/null)
+RUN_VERIFY_RC=$?
+set -e
 REPO_ROOT="$saved_repo_root"
 rm -rf "$MOCK_BIN_DIR" || true
 MOCK_BIN_DIR=""
@@ -297,6 +334,7 @@ if echo "$OUT" | grep -q "CLAUDE_CODE_OAUTH_TOKEN が登録されていません
 else
   fail "部分一致するシークレット名で誤マッチ発生: ${OUT}"
 fi
+assert_run_verify_rc_zero "ケース 9"
 rm -rf "$TMP9" || true
 
 # ── ケース 10: log_warn 関数が定義されている ──
