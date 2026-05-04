@@ -178,6 +178,7 @@ your-project/
 │   └── workflows/
 │       ├── test.yml       # CI ワークフロー
 │       └── ai-review.yml  # AI レビューワークフロー（claude_action.enabled: true 時のみ）
+├── REVIEW.md              # AI レビュープロンプト（claude_action.enabled: true 時のみ）
 ├── .coderabbit.yaml       # CodeRabbit 設定
 └── MVV.md                 # Mission / Vision / Values
 ```
@@ -418,6 +419,13 @@ diagnose:
 #### claude_action
 
 `claude_action.enabled` を `false` にすると claude-code-action による AI レビューが無効化される。`coderabbit.enabled: true` と併用することで CodeRabbit と claude-code-action の並走運用が可能。`skip_paths` で AI レビュー対象から除外するパス（lock ファイル・依存・ビルド成果物等）を指定する。`enabled: true` 時は `install.sh` 実行時に GitHub secrets に `CLAUDE_CODE_OAUTH_TOKEN` が登録されているか確認し、未登録なら警告を出す（詳細は `docs/ai-review-auth.md`）。
+
+`skip_paths` は **単一の入力源** として以下に自動反映される:
+
+- `REVIEW.md` の skip rules セクション（claude-code-action 用）
+- `.coderabbit.yaml` の `path_filters`（CodeRabbit 用、各エントリに `!` プレフィックスが付く）
+
+`vibecorp.yml` の値を変更して `--update` を実行すれば両方が一度に書き換わるため、CodeRabbit と claude-code-action の skip 設定が乖離しない。
 
 #### guide_gate
 
