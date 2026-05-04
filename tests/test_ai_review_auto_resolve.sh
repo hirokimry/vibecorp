@@ -40,7 +40,7 @@ assert_file_contains_fixed "timeout-minutes: 10 設定" "$WF" "timeout-minutes: 
 # これにより後続ジョブが追加されても正確に claude-review ブロックだけを切り出せる
 claude_review_block=$(awk '
   /^  claude-review:/ { flag=1; print; next }
-  flag && /^  [a-z][a-z0-9-]*:[[:space:]]*$/ { exit }
+  flag && /^  [A-Za-z_][A-Za-z0-9_-]*:[[:space:]]*$/ { exit }
   flag { print }
 ' "$WF")
 if echo "$claude_review_block" | grep -q -F -- "timeout-minutes: 10"; then
@@ -70,13 +70,38 @@ YAML
 )
 synthetic_block=$(echo "$synthetic_yml" | awk '
   /^  claude-review:/ { flag=1; print; next }
-  flag && /^  [a-z][a-z0-9-]*:[[:space:]]*$/ { exit }
+  flag && /^  [A-Za-z_][A-Za-z0-9_-]*:[[:space:]]*$/ { exit }
   flag { print }
 ')
 if echo "$synthetic_block" | grep -q -F -- "timeout-minutes: 10"; then
   fail "後続 follow-up-job の timeout-minutes が誤って拾われた（抽出範囲が広すぎる）"
 else
   pass "後続ジョブの timeout-minutes は誤検知されない（抽出範囲が job 単位に限定されている）"
+fi
+
+# 大文字 / アンダースコア混じりの job ID でも正しく境界判定できることを保証する
+synthetic_yml_complex=$(cat <<'YAML'
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  Follow_Up_JOB:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo
+YAML
+)
+synthetic_block_complex=$(echo "$synthetic_yml_complex" | awk '
+  /^  claude-review:/ { flag=1; print; next }
+  flag && /^  [A-Za-z_][A-Za-z0-9_-]*:[[:space:]]*$/ { exit }
+  flag { print }
+')
+if echo "$synthetic_block_complex" | grep -q -F -- "timeout-minutes: 10"; then
+  fail "大文字 / アンダースコア混じりの後続 job の timeout-minutes が誤って拾われた"
+else
+  pass "大文字 / アンダースコア混じりの後続 job も境界判定できる"
 fi
 
 # ============================================
