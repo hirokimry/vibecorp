@@ -75,6 +75,8 @@ assert_file_contains "intent/ プレフィックス検査" "$yml" "intent/"
 assert_file_contains "intent ラベル 0 件 fail 検知"  "$yml" 'intent_count.*-eq 0'
 assert_file_contains "intent ラベル 2 件以上 fail 検知" "$yml" 'intent_count.*-gt 1'
 assert_file_contains "fail 時の exit 1"            "$yml" "exit 1"
+# intent-label-check は checkout を行わないため gh pr comment が repo を解決できる必要がある（#504 / CR Major 指摘で発覚）
+assert_file_contains "PRコメントに --repo \"\$REPO\" 明示（回帰防止）" "$yml" 'gh pr comment "$PR_NUMBER" --repo "$REPO"'
 cleanup
 
 # ============================================

@@ -38,14 +38,24 @@ assert_file_contains "draft 除外"                "$WF" "!github.event.pull_req
 assert_file_contains "permissions: pull-requests: write" "$WF" "pull-requests: write"
 assert_file_contains "permissions: issues: write"  "$WF" "issues: write"
 # gh コマンドの --repo "$REPO" 明示は引数順序に依存しない形で検査（formatting 変更耐性）
-# 該当 gh コマンドを含む行を抽出し、その行に --repo "$REPO" が含まれることを確認
+# 該当 gh コマンドを含む **全ての行** に --repo "$REPO" が含まれることを確認
+# （複数行マッチ時に 1 行でも --repo が欠けていれば fail、偽陽性回避）
 assert_line_has_repo_flag() {
   local desc="$1"
   local cmd_pattern="$2"
-  if grep -E -- "$cmd_pattern" "$WF" 2>/dev/null | grep -q -F -- '--repo "$REPO"'; then
-    pass "$desc"
+  local matched_lines without_repo total
+  matched_lines="$(grep -E -- "$cmd_pattern" "$WF" 2>/dev/null || true)"
+  if [ -z "$matched_lines" ]; then
+    fail "$desc (パターン '${cmd_pattern}' に一致する行が見つからない: ${WF})"
+    return
+  fi
+  total=$(printf '%s\n' "$matched_lines" | wc -l | tr -d ' ')
+  # grep -v が no-match (rc=1) で set -e トラップに引っかかるのを `|| true` で抑制
+  without_repo=$( { printf '%s\n' "$matched_lines" | grep -v -F -- '--repo "$REPO"' || true; } | wc -l | tr -d ' ')
+  if [ "$without_repo" -eq 0 ]; then
+    pass "$desc (全 ${total} 行で --repo \"\$REPO\" 確認)"
   else
-    fail "$desc (パターン '${cmd_pattern}' を含む行に --repo \"\$REPO\" が見当たらない: ${WF})"
+    fail "$desc (${total} 行中 ${without_repo} 行で --repo \"\$REPO\" が欠けている: ${WF})"
   fi
 }
 assert_line_has_repo_flag "gh pr view に --repo 明示"    'gh pr view "\$PR_NUMBER"'
