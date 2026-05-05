@@ -151,10 +151,13 @@ assert_file_contains "issues.opened トリガー対象" \
   "opened"
 assert_file_contains "0 件 fail 検知" \
   "$R/.github/workflows/intent-label-issue-check.yml" \
-  'intent_count.*-eq 0'
+  'allowed_intent.*-eq 0'
 assert_file_contains "2 件以上 fail 検知" \
   "$R/.github/workflows/intent-label-issue-check.yml" \
-  'intent_count.*-gt 1'
+  'allowed_intent.*-gt 1'
+assert_file_contains "未知 intent/* ラベル混入 fail 検知" \
+  "$R/.github/workflows/intent-label-issue-check.yml" \
+  'unknown_intent.*-gt 0'
 cleanup
 
 # ============================================

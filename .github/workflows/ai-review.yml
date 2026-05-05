@@ -35,18 +35,30 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          # 許可ラベル 7 種のホワイトリストでカウント（intent/unknown 等の未知ラベル混入を弾く）
-          # gh api の --jq は --argjson を受けないため、gh api で生 JSON を取得して jq に
-          # パイプし、jq 側で --argjson を渡す
+          # intent/* ラベルの全体数と許可ラベル 7 種のカウントを別々に取得
+          # 全体数 != 許可数 → 未知の intent/* (intent/unknown 等) が混在 → fail
+          # gh api の --jq は --argjson を受けないため、gh api で生 JSON を取得して jq にパイプ
           allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
-          intent_count=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
-            | jq --argjson allowed "$allowed" '[.[] | .name | select(IN($allowed[]))] | length')
-          if [[ "$intent_count" -eq 0 ]]; then
+          counts=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
+            | jq --argjson allowed "$allowed" '{
+                total_intent: ([.[] | .name | select(startswith("intent/"))] | length),
+                allowed_intent: ([.[] | .name | select(IN($allowed[]))] | length)
+              }')
+          total_intent=$(jq -r '.total_intent' <<< "$counts")
+          allowed_intent=$(jq -r '.allowed_intent' <<< "$counts")
+          unknown_intent=$(( total_intent - allowed_intent ))
+
+          if [[ "$unknown_intent" -gt 0 ]]; then
+            gh pr comment "$PR_NUMBER" --repo "$REPO" \
+              --body "⚠️ 許可されていない intent/* ラベルが含まれています。1 PR 1 intent ルールに従い、許可 7 種（intent/feature, intent/bugfix, intent/performance, intent/security, intent/refactor, intent/infra, intent/docs）から 1 つだけ付与してください。"
+            exit 1
+          fi
+          if [[ "$allowed_intent" -eq 0 ]]; then
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
               --body "⚠️ intent/* ラベルが付与されていません（許可 7 種のうち 1 つを付ける必要があります）。1 PR 1 intent ルール（intent/feature, intent/bugfix, intent/performance, intent/security, intent/refactor, intent/infra, intent/docs から 1 つ）に従い、ラベルを 1 つ付与してから再 push してください。詳細は .claude/rules/intent-labels.md を参照。"
             exit 1
           fi
-          if [[ "$intent_count" -gt 1 ]]; then
+          if [[ "$allowed_intent" -gt 1 ]]; then
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
               --body "⚠️ 複数の intent ラベル（許可 7 種のうち）が付与されています。1 PR 1 intent ルールに従い、ラベルを 1 つに修正してから再 push してください。"
             exit 1

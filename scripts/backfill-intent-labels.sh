@@ -24,6 +24,11 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "エラー: jq が必要です" >&2
+  exit 1
+fi
+
 if ! gh repo view >/dev/null 2>&1; then
   echo "エラー: GitHub リポジトリに接続されていません" >&2
   exit 1
@@ -56,7 +61,8 @@ echo ""
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "--- 対象 Issue 一覧（--dry-run） ---"
-  echo "$issues_json" | jq -r '.[] | select([.labels[].name | startswith("intent/")] | any | not) | "#\(.number): \(.title)"'
+  # jq 文字列補間 \(...) は Bash 上で \ がエスケープ・() がサブシェル扱いされるため + 結合を使う（.claude/rules/shell.md）
+  echo "$issues_json" | jq -r '.[] | select([.labels[].name | startswith("intent/")] | any | not) | "#" + (.number|tostring) + ": " + .title'
   exit 0
 fi
 
@@ -72,7 +78,9 @@ while IFS= read -r issue; do
   echo "タイトル: ${title}"
   echo ""
   echo "本文:"
-  gh issue view "$num" --json body --jq '.body' | head -20
+  # head -20 を使うと set -o pipefail 下で gh が SIGPIPE で exit 141 になりスクリプト全体が落ちる
+  # sed -n '1,20p' は標準入力を最後まで読み切るので SIGPIPE が発生しない
+  gh issue view "$num" --json body --jq '.body' | sed -n '1,20p'
   echo ""
   echo "intent ラベル候補:"
   for i in "${!INTENT_LABELS[@]}"; do
