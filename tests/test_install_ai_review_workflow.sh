@@ -48,6 +48,7 @@ assert_file_contains "draft PR 除外ガード"     "$yml" '!github.event.pull_r
 assert_file_contains "permissions: contents: read" "$yml" "contents: read"
 assert_file_contains "permissions: pull-requests: write" "$yml" "pull-requests: write"
 assert_file_contains "permissions: issues: write" "$yml" "issues: write"
+assert_file_contains "permissions: id-token: write (claude-code-action OIDC 必須要件、#505)" "$yml" "id-token: write"
 assert_file_contains "concurrency 設定" "$yml" "concurrency:"
 assert_file_contains "concurrency.group 値"           "$yml" 'group: ai-review-${{ github.event.pull_request.number }}'
 assert_file_contains "concurrency.cancel-in-progress" "$yml" "cancel-in-progress: true"
@@ -74,6 +75,14 @@ assert_file_contains "intent/ プレフィックス検査" "$yml" "intent/"
 assert_file_contains "intent ラベル 0 件 fail 検知"  "$yml" 'intent_count.*-eq 0'
 assert_file_contains "intent ラベル 2 件以上 fail 検知" "$yml" 'intent_count.*-gt 1'
 assert_file_contains "fail 時の exit 1"            "$yml" "exit 1"
+# intent-label-check は checkout を行わないため gh pr comment が repo を解決できる必要がある（#504 / CR Major 指摘で発覚）
+# 失敗分岐は 2 つ（intent_count == 0 / intent_count > 1）。両方で --repo を必須化する（片側欠落見逃し防止）
+repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
+if [[ "$repo_flag_count" -eq 2 ]]; then
+  pass "gh pr comment の全失敗分岐（2 件）で --repo \"\$REPO\" 明示"
+else
+  fail "gh pr comment の --repo \"\$REPO\" が 2 件存在すべきところ ${repo_flag_count} 件: ${yml}"
+fi
 cleanup
 
 # ============================================

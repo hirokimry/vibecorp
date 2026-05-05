@@ -9,10 +9,13 @@ on:
     types: [opened, synchronize, ready_for_review]
 
 # CISO 要件 (#464): 最小権限。contents は読取のみ、レビューコメント書き込みのため pull-requests / issues は write
+# id-token: write は claude-code-action@v1 が GitHub OIDC token を介して GitHub App identity を証明するために必須
+# （Claude API 認証用の CLAUDE_CODE_OAUTH_TOKEN とは別系統、Issue #505 で例外承認済み）
 permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -39,12 +42,12 @@ jobs:
           intent_count=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" \
             | jq --argjson allowed "$allowed" '[.[] | .name | select(IN($allowed[]))] | length')
           if [[ "$intent_count" -eq 0 ]]; then
-            gh pr comment "$PR_NUMBER" \
+            gh pr comment "$PR_NUMBER" --repo "$REPO" \
               --body "⚠️ intent/* ラベルが付与されていません（許可 7 種のうち 1 つを付ける必要があります）。1 PR 1 intent ルール（intent/feature, intent/bugfix, intent/performance, intent/security, intent/refactor, intent/infra, intent/docs から 1 つ）に従い、ラベルを 1 つ付与してから再 push してください。詳細は .claude/rules/intent-labels.md を参照。"
             exit 1
           fi
           if [[ "$intent_count" -gt 1 ]]; then
-            gh pr comment "$PR_NUMBER" \
+            gh pr comment "$PR_NUMBER" --repo "$REPO" \
               --body "⚠️ 複数の intent ラベル（許可 7 種のうち）が付与されています。1 PR 1 intent ルールに従い、ラベルを 1 つに修正してから再 push してください。"
             exit 1
           fi

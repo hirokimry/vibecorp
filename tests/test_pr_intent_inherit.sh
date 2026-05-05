@@ -32,11 +32,37 @@ SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
 echo ""
 echo "--- 1. pr-intent-inherit.yml ワークフロー ---"
 assert_file_exists "templates 側にワークフロー" "$WF"
-assert_file_contains "PR opened/edited/synchronize/reopened トリガー" "$WF" "opened, edited, synchronize, reopened"
+assert_file_contains "PR opened/edited/synchronize/reopened/ready_for_review トリガー" "$WF" "opened, edited, synchronize, reopened, ready_for_review"
 assert_file_contains "Fork PR 除外"              "$WF" "head.repo.full_name == github.repository"
 assert_file_contains "draft 除外"                "$WF" "!github.event.pull_request.draft"
 assert_file_contains "permissions: pull-requests: write" "$WF" "pull-requests: write"
 assert_file_contains "permissions: issues: write"  "$WF" "issues: write"
+# gh コマンドの --repo "$REPO" 明示は引数順序に依存しない形で検査（formatting 変更耐性）
+# 該当 gh コマンドを含む **全ての行** に --repo "$REPO" が含まれることを確認
+# （複数行マッチ時に 1 行でも --repo が欠けていれば fail、偽陽性回避）
+assert_line_has_repo_flag() {
+  local desc="$1"
+  local cmd_pattern="$2"
+  local matched_lines without_repo total
+  matched_lines="$(grep -E -- "$cmd_pattern" "$WF" 2>/dev/null || true)"
+  if [ -z "$matched_lines" ]; then
+    fail "$desc (パターン '${cmd_pattern}' に一致する行が見つからない: ${WF})"
+    return
+  fi
+  total=$(printf '%s\n' "$matched_lines" | wc -l | tr -d ' ')
+  # grep -v が no-match (rc=1) で set -e トラップに引っかかるのを `|| true` で抑制
+  without_repo=$( { printf '%s\n' "$matched_lines" | grep -v -F -- '--repo "$REPO"' || true; } | wc -l | tr -d ' ')
+  if [ "$without_repo" -eq 0 ]; then
+    pass "$desc (全 ${total} 行で --repo \"\$REPO\" 確認)"
+  else
+    fail "$desc (${total} 行中 ${without_repo} 行で --repo \"\$REPO\" が欠けている: ${WF})"
+  fi
+}
+assert_line_has_repo_flag "gh pr view に --repo 明示"    'gh pr view "\$PR_NUMBER"'
+assert_line_has_repo_flag "gh pr comment に --repo 明示" 'gh pr comment "\$PR_NUMBER"'
+assert_line_has_repo_flag "gh pr edit に --repo 明示"    'gh pr edit "\$PR_NUMBER"'
+# 「gh issue edit を PR に使わない」semantic 改善（PR 操作には gh pr edit を使う）
+assert_file_not_contains   "gh issue edit を PR に使わない" "$WF" "gh issue edit"
 
 # ============================================
 # 2. Issue 番号抽出のキーワード対応
