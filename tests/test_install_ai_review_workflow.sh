@@ -76,7 +76,13 @@ assert_file_contains "intent ラベル 0 件 fail 検知"  "$yml" 'intent_count.
 assert_file_contains "intent ラベル 2 件以上 fail 検知" "$yml" 'intent_count.*-gt 1'
 assert_file_contains "fail 時の exit 1"            "$yml" "exit 1"
 # intent-label-check は checkout を行わないため gh pr comment が repo を解決できる必要がある（#504 / CR Major 指摘で発覚）
-assert_file_contains "PRコメントに --repo \"\$REPO\" 明示（回帰防止）" "$yml" 'gh pr comment "$PR_NUMBER" --repo "$REPO"'
+# 失敗分岐は 2 つ（intent_count == 0 / intent_count > 1）。両方で --repo を必須化する（片側欠落見逃し防止）
+repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
+if [[ "$repo_flag_count" -eq 2 ]]; then
+  pass "gh pr comment の全失敗分岐（2 件）で --repo \"\$REPO\" 明示"
+else
+  fail "gh pr comment の --repo \"\$REPO\" が 2 件存在すべきところ ${repo_flag_count} 件: ${yml}"
+fi
 cleanup
 
 # ============================================

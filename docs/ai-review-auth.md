@@ -78,13 +78,14 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
 ```yaml
 jobs:
   intent-label-check:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
   claude-review:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
 ```
 
 理由:
 - Fork PR では「secrets がないので落ちる」という暗黙の挙動に依存せず、明示的なゲートで早期 skip させる方がレビュー追跡上わかりやすい（`if:` 条件不一致時はジョブ失敗ではなく skip 扱い）
+- `!github.event.pull_request.draft` は `synchronize` イベントが draft 状態でも発火する GitHub 仕様を相殺するための明示除外（`ready_for_review` トリガーで起動する設計と整合させる）
 - 将来 `pull_request_target` を誤って混入した場合の事故を防ぐ
 - CISO 要件 (#464) として「secrets スコープが認証領域を侵食しないこと」の機械的保証を満たす
 
