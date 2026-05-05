@@ -14,6 +14,10 @@
 
 （認証方式・認可モデルの概要を記載）
 
+### claude-code-action OAuth 認証経路
+
+vibecorp の AI レビュー（claude-code-action）における OAuth 認証経路（GitHub App + Claude Max OAuth + secrets 運用 + 漏洩時 revocation 手順）は [`docs/ai-review-auth.md`](ai-review-auth.md) を Source of Truth とする。Forked PR では secrets が渡らないため AI レビュー対象外となる仕様も同ドキュメントに記載。
+
 ## データ保護
 
 ### 機密情報の取り扱い

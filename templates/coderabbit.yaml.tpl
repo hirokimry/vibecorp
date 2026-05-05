@@ -7,6 +7,7 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    auto_incremental_review: true
     base_branches:
       - ".*"
 
@@ -15,8 +16,7 @@ reviews:
   auto_resolve:
     enabled: true
 
-  path_filters:
-    - "!**/*.lock"
+{{PATH_FILTERS_BLOCK}}
 
   path_instructions:
     - path: "**"

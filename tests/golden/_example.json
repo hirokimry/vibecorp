@@ -1,0 +1,19 @@
+{
+  "pr_number": 123,
+  "pr_url": "https://github.com/hirokimry/vibecorp/pull/123",
+  "intent": "intent/feature",
+  "description": "（サンプル）新機能 X を追加した PR の golden データ。実機検証期間 (#475) で本物のデータに置き換える。",
+  "expected_severity_counts": {
+    "critical": 0,
+    "major": 1,
+    "minor": 1,
+    "trivial": 0,
+    "info": 0
+  },
+  "expected_keywords": [
+    "仕様逸脱",
+    "エッジケース",
+    "新規 API"
+  ],
+  "expected_keyword_min_match": 1
+}

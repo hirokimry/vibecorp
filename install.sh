@@ -23,6 +23,7 @@ OS=""
 # ── ユーティリティ ─────────────────────────────────────
 
 log_info()     { printf '\033[32m[INFO]\033[0m     %s\n' "$*" >&2; }
+log_warn()     { printf '\033[33m[WARN]\033[0m     %s\n' "$*" >&2; }
 log_error()    { printf '\033[31m[ERROR]\033[0m    %s\n' "$*" >&2; }
 log_skip()     { printf '\033[33m[SKIP]\033[0m     %s\n' "$*" >&2; }
 log_merge()    { printf '\033[36m[MERGE]\033[0m    %s\n' "$*" >&2; }
@@ -962,6 +963,18 @@ protected_files:
   - MVV.md
 coderabbit:
   enabled: true
+claude_action:
+  enabled: true
+  skip_paths:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
+branch_protection:
+  required_approvals: 1
 diagnose:
   enabled: true
   max_issues_per_run: 7
@@ -977,6 +990,90 @@ diagnose:
 $(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
+}
+
+ensure_claude_action_section() {
+  # 既存 vibecorp.yml に claude_action セクション（および未定義キー）を追加する。
+  # 既存値は絶対に上書きしない（利用者カスタマイズを尊重）。
+  #
+  # 仕様根拠: Issue #468 最終確定 3「既存 vibecorp.yml の設定値を保ち、未定義キーだけ追加」
+  # bash 3.2 互換、`sed -i` 禁止（mktemp + mv で原子的置換）。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action: セクション全体の存在確認
+  if ! grep -q -e "^claude_action:" "$yml"; then
+    # ファイル末尾が改行で終わっていない場合は改行を補う（追記境界の壊れ防止）
+    if [[ -s "$yml" ]] && [[ "$(tail -c 1 "$yml")" != $'\n' ]]; then
+      printf '\n' >> "$yml"
+    fi
+    cat >> "$yml" <<'YAML'
+claude_action:
+  enabled: true
+  skip_paths:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
+YAML
+    log_info "vibecorp.yml に claude_action セクションを追加"
+    return 0
+  fi
+
+  # セクションは存在する。各キーの有無を確認（awk でブロック単位パース）
+  local has_enabled has_skip_paths
+  has_enabled=$(awk '
+    /^claude_action:/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:/ { print "yes"; exit }
+  ' "$yml")
+  has_skip_paths=$(awk '
+    /^claude_action:/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+skip_paths:/ { print "yes"; exit }
+  ' "$yml")
+
+  if [[ "$has_enabled" == "yes" && "$has_skip_paths" == "yes" ]]; then
+    return 0
+  fi
+
+  # 欠けているキーをセクション末尾に挿入する（次のトップレベルキー直前 or EOF）
+  local tmp
+  tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+  awk \
+    -v add_enabled="${has_enabled:-no}" \
+    -v add_skip_paths="${has_skip_paths:-no}" '
+    BEGIN { in_block = 0; appended = 0 }
+    function emit_missing() {
+      if (add_enabled != "yes") print "  enabled: true"
+      if (add_skip_paths != "yes") {
+        print "  skip_paths:"
+        print "    - \"*.lock\""
+        print "    - \".git/**\""
+        print "    - \"node_modules/**\""
+        print "    - \"dist/**\""
+        print "    - \"build/**\""
+        print "    - \".cache/**\""
+        print "    - \"vendor/**\""
+      }
+      appended = 1
+    }
+    {
+      if (in_block && /^[^[:space:]#]/ && !appended) {
+        emit_missing()
+        in_block = 0
+      }
+      print
+      if (/^claude_action:/) in_block = 1
+    }
+    END {
+      if (in_block && !appended) emit_missing()
+    }
+  ' "$yml" > "$tmp" && mv "$tmp" "$yml"
+  log_info "vibecorp.yml の claude_action セクションに不足キーを追加"
 }
 
 generate_coderabbit_yaml() {
@@ -1007,10 +1104,74 @@ generate_coderabbit_yaml() {
   local lang_code
   lang_code=$(resolve_coderabbit_language "$LANGUAGE")
 
-  sed \
-    -e "s|{{LANGUAGE}}|${lang_code}|g" \
-    "$template" > "$target"
+  # vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters 形式に変換
+  # awk -v では改行を含む値を渡せないため、一時ファイル経由で getline する
+  local path_filters_file
+  path_filters_file="$(mktemp -t coderabbit_path_filters.XXXXXX)"
+  _render_coderabbit_path_filters "$yml" > "$path_filters_file"
+
+  awk -v lang="$lang_code" -v paths_file="$path_filters_file" '
+    /\{\{PATH_FILTERS_BLOCK\}\}/ {
+      while ((getline line < paths_file) > 0) print line
+      close(paths_file)
+      next
+    }
+    {
+      gsub(/\{\{LANGUAGE\}\}/, lang)
+      print
+    }
+  ' "$template" > "$target"
+
+  rm -f "$path_filters_file"
   log_info ".coderabbit.yaml を生成"
+}
+
+# vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters ブロックに変換する
+# vibecorp の各 skip_path に `!` プレフィックスを付け、CodeRabbit の除外指定形式にする。
+# 出力例:
+#   path_filters:
+#     - "!*.lock"
+#     - "!.git/**"
+_render_coderabbit_path_filters() {
+  local yml="$1"
+  local skip_paths
+  skip_paths=$(_read_skip_paths "$yml")
+
+  if [[ -z "$skip_paths" ]]; then
+    # フォールバック: 旧来のデフォルト（lock ファイル除外）
+    printf '  path_filters:\n    - "!**/*.lock"\n'
+    return 0
+  fi
+
+  printf '  path_filters:\n'
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    printf '    - "!%s"\n' "$path"
+  done <<<"$skip_paths"
+}
+
+# vibecorp.yml の claude_action.skip_paths からパス文字列を 1 行ずつ取り出す
+# （前後ダブルクォートは除去）
+_read_skip_paths() {
+  local yml="$1"
+  [[ -f "$yml" ]] || return 0
+
+  awk '
+    /^claude_action:[[:space:]]*$/ { in_action = 1; next }
+    in_action && /^[^[:space:]#]/ { exit }
+    in_action && /^[[:space:]]+skip_paths:[[:space:]]*$/ { in_paths = 1; next }
+    # skip_paths ブロック内のコメント行・空行は読み飛ばす（途中終了させない）
+    in_paths && /^[[:space:]]*#/ { next }
+    in_paths && /^[[:space:]]*$/ { next }
+    in_paths && /^[[:space:]]+[^[:space:]-]/ && !/^[[:space:]]+-/ { exit }
+    in_paths && /^[[:space:]]*-[[:space:]]*/ {
+      sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      # YAML の double quote と single quote (\047 = octal for ASCII 0x27) の双方を剥がす
+      gsub(/^["\047]|["\047]$/, "", $0)
+      print
+    }
+  ' "$yml"
 }
 
 generate_ci_workflow() {
@@ -1025,6 +1186,188 @@ generate_ci_workflow() {
   mkdir -p "${REPO_ROOT}/.github/workflows"
   cp "$template" "$target"
   log_info ".github/workflows/test.yml を生成"
+}
+
+generate_review_md() {
+  # claude-code-action 用プロンプト REVIEW.md を生成する。
+  # 仕様根拠: Issue #465 最終確定（vibecorp.yml の language / claude_action.skip_paths を反映）
+  #
+  # - claude_action.enabled: false の場合は生成しない
+  # - 既存ファイルがあれば 3-way マージ（merge_or_overwrite）
+  local target="${REPO_ROOT}/REVIEW.md"
+  local template="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
+  local rel_path="REVIEW.md"
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+
+  [[ -f "$template" ]] || return 0
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action.enabled の判定
+  local enabled="true"
+  local val
+  val=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$yml")
+  if [[ "$val" == "false" ]]; then
+    enabled="false"
+  fi
+
+  if [[ "$enabled" == "false" ]]; then
+    # generate_ai_review_workflow と同じパターンで snapshot/target を掃除する
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    local was_managed="false"
+    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      was_managed="true"
+    fi
+    local base_snapshot
+    base_snapshot=$(get_base_snapshot "$rel_path")
+    if [[ -n "$base_snapshot" ]]; then
+      rm -f "$base_snapshot"
+    fi
+    if [[ -f "$target" ]]; then
+      if [[ "$was_managed" == "true" ]]; then
+        rm -f "$target"
+        log_info "REVIEW.md を削除（claude_action.enabled: false）"
+      else
+        log_skip "REVIEW.md は vibecorp 管理外のため残置（claude_action.enabled: false）"
+      fi
+    else
+      log_skip "REVIEW.md の生成をスキップ（claude_action.enabled: false）"
+    fi
+    return 0
+  fi
+
+  # 利用者が手動配置した REVIEW.md（管理外: lock に base_hash 記録なし）は上書きしない。
+  # merge_or_overwrite は base_hash 不在時にデフォルトで上書きする仕様だが、REVIEW.md は
+  # ユーザー編集を想定するため初回 install / 旧バージョンからの移行で既存ファイルを保護する。
+  if [[ -f "$target" ]]; then
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    if [[ ! -f "$lock" ]] || [[ -z "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      log_skip "REVIEW.md は vibecorp 管理外のため既存ファイルを保護"
+      return 0
+    fi
+  fi
+
+  # language / skip_paths を取得して REVIEW.md を生成
+  local language
+  language=$(awk '/^language:[[:space:]]*/ { sub(/^language:[[:space:]]*/, ""); print; exit }' "$yml")
+  language="${language:-ja}"
+
+  # skip_paths を `- "<path>"` 形式のブロックとして一時ファイルに書き出す
+  # awk -v では改行を含む値を渡せないため、getline で読み込む
+  local skip_paths_file
+  skip_paths_file="$(mktemp -t review_md_skip_paths.XXXXXX)"
+  local has_skip_paths=0
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    printf -- '- "%s"\n' "$path" >> "$skip_paths_file"
+    has_skip_paths=1
+  done < <(_read_skip_paths "$yml")
+  if [[ "$has_skip_paths" -eq 0 ]]; then
+    echo "（skip_paths は空です）" > "$skip_paths_file"
+  fi
+
+  # 一時ファイルにレンダリング → merge_or_overwrite で 3-way マージ
+  local rendered_tmp
+  rendered_tmp="$(mktemp -t REVIEW.md.XXXXXX)"
+  awk -v lang="$language" -v skip_file="$skip_paths_file" '
+    /\{\{SKIP_PATHS_BLOCK\}\}/ {
+      while ((getline line < skip_file) > 0) print line
+      close(skip_file)
+      next
+    }
+    {
+      gsub(/\{\{LANGUAGE\}\}/, lang)
+      print
+    }
+  ' "$template" > "$rendered_tmp"
+
+  merge_or_overwrite "$rendered_tmp" "$target" "$rel_path" || true
+  rm -f "$rendered_tmp" "$skip_paths_file"
+  log_info "REVIEW.md を生成"
+}
+
+generate_ai_review_workflow() {
+  # claude-code-action 用ワークフロー（ai-review.yml）の配布。
+  # 仕様根拠: Issue #461 最終確定（claude_action.enabled で制御 + 既存ファイルは 3-way マージ）
+  #
+  # 1. vibecorp.yml の claude_action.enabled を確認（未定義/false なら生成しない）
+  # 2. 既存ファイルがあれば merge_or_overwrite による 3-way マージ
+  # 3. 無ければテンプレートをコピー
+  local target="${REPO_ROOT}/.github/workflows/ai-review.yml"
+  local template="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
+  local rel_path=".github/workflows/ai-review.yml"
+
+  # claude_action.enabled の判定（awk でブロック単位パース）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local enabled="true"
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '
+      /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[^[:space:]#]/ { exit }
+      in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+        sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+        sub(/[[:space:]]*$/, "", $0)
+        print
+        exit
+      }
+    ' "$yml")
+    if [[ "$val" == "false" ]]; then
+      enabled="false"
+    fi
+  fi
+
+  if [[ "$enabled" == "false" ]]; then
+    # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review.yml は削除して
+    # AI レビューを実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
+    # 触らない（誤削除防止）。
+    #
+    # base snapshot は $target の有無に関係なく必ず削除する。snapshot だけが残っていると
+    # 次回 generate_vibecorp_lock() がそこから base_hash を再生成し、後で利用者が手動で
+    # 置いた ai-review.yml まで「管理下」と誤認されて削除される。
+    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
+    local was_managed="false"
+    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+      was_managed="true"
+    fi
+
+    # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
+    local base_snapshot
+    base_snapshot=$(get_base_snapshot "$rel_path")
+    if [[ -n "$base_snapshot" ]]; then
+      rm -f "$base_snapshot"
+    fi
+
+    if [[ -f "$target" ]]; then
+      if [[ "$was_managed" == "true" ]]; then
+        rm -f "$target"
+        log_info ".github/workflows/ai-review.yml を削除（claude_action.enabled: false）"
+      else
+        log_skip ".github/workflows/ai-review.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
+      fi
+    else
+      log_skip ".github/workflows/ai-review.yml の生成をスキップ（claude_action.enabled: false）"
+    fi
+    return 0
+  fi
+
+  if [[ ! -f "$template" ]]; then
+    return 0
+  fi
+
+  mkdir -p "${REPO_ROOT}/.github/workflows"
+
+  # 既存ファイルがあれば 3-way マージ、無ければ単純コピー
+  merge_or_overwrite "$template" "$target" "$rel_path" || true
+  log_info ".github/workflows/ai-review.yml を生成"
 }
 
 print_manual_guidance() {
@@ -1142,9 +1485,33 @@ configure_github_repo() {
   local merged_checks_display
   merged_checks_display=$(echo "$merged_contexts" | jq -r 'join(", ")')
 
+  # vibecorp.yml から required_approvals を読み取る（未設定時はデフォルト 1）
+  # awk でブロック単位パース（shell.md「YAML パース」ルール準拠）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local required_approvals=1
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '
+      /^branch_protection:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[^[:space:]#]/ { exit }
+      in_block && /^[[:space:]]+required_approvals:[[:space:]]*/ {
+        sub(/^[[:space:]]+required_approvals:[[:space:]]*/, "", $0)
+        sub(/[[:space:]]*$/, "", $0)
+        print
+        exit
+      }
+    ' "$yml")
+    # 1 以上の整数のみ受理（0 や非数値はデフォルト 1 にフォールバック）
+    # 0 を許すと「approve N件以上必須」の前提を崩すため明示的に拒否
+    if [[ "$val" =~ ^[1-9][0-9]*$ ]]; then
+      required_approvals="$val"
+    fi
+  fi
+
   local protection_json
   protection_json=$(jq -n \
     --argjson contexts "$merged_contexts" \
+    --argjson required_approvals "$required_approvals" \
     '{
       required_status_checks: {
         strict: true,
@@ -1154,7 +1521,7 @@ configure_github_repo() {
         dismiss_stale_reviews: true,
         require_code_owner_reviews: false,
         require_last_push_approval: false,
-        required_approving_review_count: 1
+        required_approving_review_count: $required_approvals
       },
       enforce_admins: true,
       restrictions: null,
@@ -1167,11 +1534,69 @@ configure_github_repo() {
   local put_error
   if put_error=$(echo "$protection_json" | gh api "repos/${name_with_owner}/branches/${base_branch}/protection" \
     -X PUT --input - 2>&1 >/dev/null); then
-    log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve必須）"
+    log_info "ブランチ保護を設定（${base_branch}: CI必須、PR必須、approve ${required_approvals}件以上必須、push 毎に既存 approve 自動 dismiss）"
   else
     log_error "ブランチ保護の設定に失敗しました（admin 権限が必要です）: ${put_error}"
     print_manual_guidance "$base_branch" "$merged_checks_display"
   fi
+}
+
+verify_claude_action_secrets() {
+  # claude_action.enabled: true のとき GitHub secrets に CLAUDE_CODE_OAUTH_TOKEN が
+  # 登録されているかを確認する。未登録なら WARN を出力して設定を促す（exit はしない）。
+  #
+  # 仕様の Source of Truth: docs/ai-review-auth.md「install.sh の secrets 検証」
+  # 議論結果根拠: Issue #462 最終確定 5（install.sh の secrets 検証ロジック: 入れる）
+  #
+  # vibecorp.yml の claude_action セクション schema 自体は #468 で追加されるため、
+  # セクション不在時は no-op として安全にスキップする。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # claude_action.enabled をブロック単位でパース（次のトップレベルキーで停止）
+  # shell.md「YAML パース」ルールに従い grep -A は使わず awk でブロック抽出する
+  local enabled
+  enabled=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$yml")
+
+  if [[ "$enabled" != "true" ]]; then
+    return 0
+  fi
+
+  # gh CLI が利用できない場合はスキップ
+  if ! command -v gh >/dev/null 2>&1; then
+    log_skip "gh CLI が見つかりません。CLAUDE_CODE_OAUTH_TOKEN の確認は手動で行ってください"
+    return 0
+  fi
+
+  # GitHub 認証済みか確認
+  if ! gh auth status >/dev/null 2>&1; then
+    log_skip "gh が未認証のため CLAUDE_CODE_OAUTH_TOKEN の確認をスキップします"
+    return 0
+  fi
+
+  # gh secret list の出力先頭カラムが secret 名（タブ区切り）
+  # awk で先頭フィールドだけ抜き出して完全一致で判定する（部分一致を防ぐ）
+  if gh secret list 2>/dev/null | awk '{print $1}' | grep -qx 'CLAUDE_CODE_OAUTH_TOKEN'; then
+    log_info "CLAUDE_CODE_OAUTH_TOKEN が登録されています"
+    return 0
+  fi
+
+  log_warn "CLAUDE_CODE_OAUTH_TOKEN が登録されていません"
+  cat >&2 <<'WARN_BODY'
+       claude-code-action を有効化するには以下を実行してください:
+         claude setup-token
+         gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
+       詳細: docs/ai-review-auth.md
+WARN_BODY
 }
 
 setup_git_config() {
@@ -1440,6 +1865,11 @@ copy_workflows() {
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")
+    # ai-review.yml は generate_ai_review_workflow() が claude_action.enabled
+    # の判定と 3-way マージを担うため、ここでは扱わない
+    if [[ "$name" == "ai-review.yml" ]]; then
+      continue
+    fi
     if [[ -f "${dest}/${name}" ]]; then
       log_skip "workflows/${name} は既存のためスキップ"
     else
@@ -1473,6 +1903,13 @@ create_labels() {
     "refactor:d4c5f9:リファクタリング"
     "priority/high:b60205:優先度: 高"
     "priority/low:c2e0c6:優先度: 低"
+    "intent/feature:0e8a16:新機能を確実に動かす（影響を与える系）"
+    "intent/bugfix:b60205:既存バグを最小修正で直す（影響を与える系）"
+    "intent/performance:fbca04:性能を測定可能な形で改善する（影響を与える系）"
+    "intent/security:5319e7:脆弱性を塞ぐ（影響を与える系）"
+    "intent/refactor:d4c5f9:構造の品質を高める（挙動不変系）"
+    "intent/infra:c5def5:開発基盤の品質を底上げする（挙動不変系）"
+    "intent/docs:0075ca:ドキュメントの正確性を担保する（挙動不変系）"
   )
 
   # 既存ラベル一覧を取得
@@ -1501,21 +1938,28 @@ copy_rules() {
   local dest="${REPO_ROOT}/.claude/rules"
   mkdir -p "$dest"
 
-  for rule in "${src}"/*.md; do
-    local basename
-    basename=$(basename "$rule")
-    if [[ "$UPDATE_MODE" == true ]]; then
-      merge_or_overwrite "$rule" "${dest}/${basename}" "rules/${basename}" || true
-      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
-    elif [[ -f "${dest}/${basename}" ]]; then
-      log_skip "rules/${basename} は既存のためスキップ"
-    else
-      cp "$rule" "${dest}/${basename}"
-      save_base_snapshot "$rule" "rules/${basename}"
-      COPIED_RULES="${COPIED_RULES}${basename}"$'\n'
-      log_info "rules/${basename} をコピー"
+  # トップレベル *.md と 1 階層下のサブディレクトリ（severity/ 等）の *.md を対象とする
+  # find -maxdepth 2 でサブディレクトリ 1 階層まで対応（深いネストは想定外）
+  while IFS= read -r rule; do
+    [[ -f "$rule" ]] || continue
+    local rel_path="${rule#${src}/}"  # 例: severity/coderabbit.md
+    local rel_dir
+    rel_dir=$(dirname "$rel_path")
+    if [[ "$rel_dir" != "." ]]; then
+      mkdir -p "${dest}/${rel_dir}"
     fi
-  done
+    if [[ "$UPDATE_MODE" == true ]]; then
+      merge_or_overwrite "$rule" "${dest}/${rel_path}" "rules/${rel_path}" || true
+      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
+    elif [[ -f "${dest}/${rel_path}" ]]; then
+      log_skip "rules/${rel_path} は既存のためスキップ"
+    else
+      cp "$rule" "${dest}/${rel_path}"
+      save_base_snapshot "$rule" "rules/${rel_path}"
+      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
+      log_info "rules/${rel_path} をコピー"
+    fi
+  done < <(find "$src" -maxdepth 2 -type f -name "*.md" 2>/dev/null)
 }
 
 copy_docs() {
@@ -2024,6 +2468,7 @@ main() {
   copy_isolation_templates
   setup_claude_real_symlink
   generate_vibecorp_yml
+  ensure_claude_action_section
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
@@ -2031,7 +2476,10 @@ main() {
 
   generate_coderabbit_yaml
   generate_ci_workflow
+  generate_review_md
+  generate_ai_review_workflow
   configure_github_repo
+  verify_claude_action_secrets
   setup_git_config
 
   generate_settings_json

@@ -93,9 +93,26 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 
 **新規作成:**
 
+PR 作成前に対応 Issue から `intent/*` ラベルを取得して `gh pr create --label` で継承する（Issue #487 確定: スキル経由なら確実）。CI ワークフロー（`pr-intent-inherit.yml`）も保険として動作するが、利用者が `gh pr create` 直叩きしないケースをスキル側で確実に拾う。
+
 ```bash
-git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH"
+# 対応 Issue の intent/* ラベルを取得（許可 7 種のみ）
+allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
+ISSUE_INTENTS=$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/issues/${ISSUE_NUMBER}/labels" \
+  | jq --argjson allowed "$allowed" -r '[.[] | .name | select(IN($allowed[]))][]')
+
+# --label オプションを構築（intent/* + 必要に応じて他のラベル）
+LABEL_ARGS=""
+while IFS= read -r intent; do
+  [[ -z "$intent" ]] && continue
+  LABEL_ARGS+=" --label $intent"
+done <<<"$ISSUE_INTENTS"
+
+# PR 作成（intent ラベル継承付き）
+git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH" $LABEL_ARGS
 ```
+
+Issue に intent ラベルがない場合は `LABEL_ARGS` が空となり、`pr-intent-inherit.yml` も発火後に Issue 側へ警告コメントを残す。利用者は Issue にラベルを付与してから PR を再 push する。
 
 **auto-merge の有効化（新規作成時のみ）:**
 
@@ -127,7 +144,7 @@ PR 作成 + auto-merge 設定が完了した後、セッションで生まれた
 # 新規 PR の場合のみ実行（既存 PR 更新時はスキップ）
 if [ -z "${PR_NUMBER:-}" ]; then
   PRESET="$(awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' \
-    "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml" 2>/dev/null || echo "")"
+    "${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml")"
   case "$PRESET" in
     standard|full)
       # /vibecorp:session-harvest は minimal プリセットでは配置されないため standard 以上のみ
