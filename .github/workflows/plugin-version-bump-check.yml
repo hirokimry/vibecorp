@@ -1,0 +1,55 @@
+name: Plugin Version Bump Check
+
+# .claude-plugin/marketplace.json の plugins[0].skills が変化した PR で
+# .claude-plugin/plugin.json の version が bump されていない場合に警告コメントを投稿する。
+# Issue #458「PR #459 で発生した plugin.json bump 漏れの再発防止」の実装。
+#
+# 設計方針（CPO 申し送り通り「初期版は警告のみ・非ブロック」）:
+# - workflow は continue-on-error: true で失敗しても緑で完了させる
+# - required check には登録しない（マージブロックしない）
+# - 警告コメントで利用者に気づかせ、手動で plugin.json を bump してもらう
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.claude-plugin/marketplace.json'
+      - '.claude-plugin/plugin.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: plugin-version-bump-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  plugin-version-bump-check:
+    name: plugin.json bump 漏れチェック
+    runs-on: ubuntu-latest
+    # Fork PR は secrets が渡らないため除外
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: チェックアウト（fetch-depth 0 で base 履歴も取得）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: bump 漏れ検査
+        id: bump_check
+        continue-on-error: true
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: |
+          bash scripts/check-plugin-version-bump.sh "$BASE_REF" "HEAD"
+
+      - name: bump 漏れ警告コメント投稿
+        if: steps.bump_check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" \
+            --body "⚠️ \`.claude-plugin/marketplace.json\` の \`plugins[0].skills\` が変更されていますが、\`.claude-plugin/plugin.json\` の \`version\` が bump されていません。利用者は新しいスキルを取得するために version bump を必要とします（PR #459 と同種の取りこぼし防止）。マージ前に \`.claude-plugin/plugin.json\` の \`version\` を更新してください。本チェックは警告のみ・非ブロックです。"
