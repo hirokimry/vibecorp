@@ -1596,6 +1596,10 @@ verify_claude_action_secrets() {
          claude setup-token
          gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
        詳細: docs/ai-review-auth.md
+
+       なお secret 名が登録されていても値が空文字列の場合、
+       ai-review.yml の preflight ガードが PR にコメントを残して
+       claude-code-action 起動を明示的に止めます（Issue #509）。
 WARN_BODY
 }
 

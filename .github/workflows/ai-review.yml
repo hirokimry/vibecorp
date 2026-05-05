@@ -74,6 +74,31 @@ jobs:
     # #466 確定 4: タイムアウト 10 分（中規模 PR 完走、超過時はワークフロー失敗）
     timeout-minutes: 10
     steps:
+      # Issue #509: claude-code-action 起動前に CLAUDE_CODE_OAUTH_TOKEN の値が空でないことを確認する。
+      # 空の場合は claude-code-action 内部で「Either ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN is required」
+      # の validation エラー (exit 1) で死亡し、required check 未登録のため auto-merge を妨げず
+      # レビュー pipeline が静かに死ぬ問題が PR #508 のログで発覚した（"claude_code_oauth_token": ""）。
+      # 本ステップは workdir が空 (checkout 前) なので gh は --repo $REPO で明示する必要がある。
+      - name: claude-code-action 起動前 preflight ガード
+        env:
+          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [[ -z "${OAUTH_TOKEN}" ]]; then
+            # 同種の警告コメントが既にある場合は重複投稿しない（synchronize イベントの push ごと重複防止）
+            existing=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json comments \
+              --jq '[.comments[] | select(.body | startswith("⚠️ AI レビュー（claude-code-action）が起動できません"))] | length')
+            if [[ "${existing:-0}" -eq 0 ]]; then
+              gh pr comment "$PR_NUMBER" --repo "$REPO" \
+                --body "⚠️ AI レビュー（claude-code-action）が起動できません。リポジトリ secret \`CLAUDE_CODE_OAUTH_TOKEN\` が未設定または空です。\`claude setup-token\` でトークンを取得し、\`gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo ${REPO}\` で登録してください。詳細は \`docs/ai-review-auth.md\` を参照。"
+            fi
+            echo "❌ CLAUDE_CODE_OAUTH_TOKEN が未設定または空のため claude-code-action 起動を中止します" >&2
+            exit 1
+          fi
+          echo "✅ CLAUDE_CODE_OAUTH_TOKEN preflight 通過"
+
       - name: チェックアウト
         uses: actions/checkout@v4
         with:

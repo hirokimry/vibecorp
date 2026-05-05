@@ -78,14 +78,33 @@ assert_file_contains "intent ラベル 0 件 fail 検知"           "$yml" 'allo
 assert_file_contains "intent ラベル 2 件以上 fail 検知"        "$yml" 'allowed_intent.*-gt 1'
 assert_file_contains "未知 intent/* ラベル混入 fail 検知"     "$yml" 'unknown_intent.*-gt 0'
 assert_file_contains "fail 時の exit 1"                      "$yml" "exit 1"
-# intent-label-check は checkout を行わないため gh pr comment が repo を解決できる必要がある（#504 / CR Major 指摘で発覚）
-# 失敗分岐は 3 つ（unknown_intent > 0 / allowed_intent == 0 / allowed_intent > 1）。全てで --repo を必須化する
+# intent-label-check と preflight ガードはともに checkout を行わないため gh pr comment が repo を解決できる必要がある
+# (#504 / CR Major 指摘で発覚、#509 で preflight 追加)
+# 失敗分岐は 4 つ:
+#   intent-label-check: unknown_intent > 0 / allowed_intent == 0 / allowed_intent > 1（3 件）
+#   preflight:          OAUTH_TOKEN 空（1 件）
+# 全てで --repo を必須化する
 repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
-if [[ "$repo_flag_count" -eq 3 ]]; then
-  pass "gh pr comment の全失敗分岐（3 件）で --repo \"\$REPO\" 明示"
+if [[ "$repo_flag_count" -eq 4 ]]; then
+  pass "gh pr comment の全失敗分岐（4 件: intent x3 + preflight x1）で --repo \"\$REPO\" 明示"
 else
-  fail "gh pr comment の --repo \"\$REPO\" が 3 件存在すべきところ ${repo_flag_count} 件: ${yml}"
+  fail "gh pr comment の --repo \"\$REPO\" が 4 件存在すべきところ ${repo_flag_count} 件: ${yml}"
 fi
+
+# ============================================
+# 3b. preflight ガード（Issue #509）
+# ============================================
+echo ""
+echo "--- 3b. preflight ガード（CLAUDE_CODE_OAUTH_TOKEN 空判定） ---"
+assert_file_contains "preflight ステップ名"          "$yml" "claude-code-action 起動前 preflight ガード"
+assert_file_contains "OAUTH_TOKEN env 受け取り"     "$yml" "OAUTH_TOKEN: \${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+assert_file_contains "OAUTH_TOKEN 空判定"           "$yml" '\[\[ -z "${OAUTH_TOKEN}" \]\]'
+assert_file_contains "claude-code-action 起動できません 警告文" \
+  "$yml" "claude-code-action）が起動できません"
+assert_file_contains "claude setup-token 案内"     "$yml" "claude setup-token"
+assert_file_contains "preflight 通過時の echo"     "$yml" "preflight 通過"
+assert_file_contains "重複コメント防止 existing 取得" "$yml" 'existing=\$(gh pr view "\$PR_NUMBER" --repo "\$REPO"'
+
 cleanup
 
 # ============================================
