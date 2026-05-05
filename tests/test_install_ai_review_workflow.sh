@@ -43,6 +43,8 @@ echo "--- 2. CISO 要件の主要要素 ---"
 yml="$R/.github/workflows/ai-review.yml"
 
 assert_file_contains "on: pull_request" "$yml" "pull_request:"
+assert_file_contains "opened トリガー"          "$yml" "opened"
+assert_file_contains "synchronize トリガー"     "$yml" "synchronize"
 assert_file_contains "ready_for_review トリガー" "$yml" "ready_for_review"
 assert_file_contains "draft PR 除外ガード"     "$yml" '!github.event.pull_request.draft'
 assert_file_contains "permissions: contents: read" "$yml" "contents: read"
