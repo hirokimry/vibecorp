@@ -30,15 +30,22 @@
 
 severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。
 
-### Info の扱い（CodeRabbit 公式定義との差分・重要）
+### Info の扱い（severity 定義は同じ、判定で拡張）
 
-CodeRabbit 公式定義（`severity/coderabbit.md`）では Info = 「情報提供のみ、対応不要」と扱われる。一方、本ドキュメント（vibecorp 運用ルール）では Info も **重視軸に該当する場合は対応する** に拡張する。
+severity の **定義** は CodeRabbit と完全一致させる（`severity/coderabbit.md` / `severity/claude-action.md` 参照）。Info の定義もそのまま「情報提供のみ、対応不要」のまま変えない。
 
-**優先順位**: 本ドキュメント `review-handling.md` が **vibecorp 運用ルールの最終判定** として優先する。`severity/coderabbit.md` / `severity/claude-action.md` は severity の **定義**（重大度の意味）を記録するもので、修正対象の **判定** は本ドキュメントが行う。
+ただし **修正対象とするかどうかの判定** は本ドキュメント（`review-handling.md`）が vibecorp 独自運用として別途行う。Info も **判定の側で**「重視軸に該当する場合は対応する」に拡張する。
 
-なぜ拡張するか:
+| 観点 | severity 定義 | 修正対象判定 |
+|------|------|------|
+| 役割 | 重大度の意味を CodeRabbit と完全一致させて記録 | vibecorp の運用要件で修正対象か否かを決める |
+| ファイル | `severity/coderabbit.md` / `severity/claude-action.md` | 本ファイル（`review-handling.md`） |
+| Info の扱い | CodeRabbit と同じ「情報提供のみ、対応不要」 | 重視軸該当なら対応、外なら管轄外（vibecorp 独自）|
+
+なぜ判定で拡張するか:
 - vibecorp の「intent 重視軸」は PR スコープを狭く保つための運用判定軸であり、その軸に該当する Info 指摘は **無視すると重視軸の品質が落ちる**
 - CodeRabbit 公式の「Info = 対応不要」は CodeRabbit の汎用デフォルトであり、vibecorp 固有の運用要件を反映していない
+- severity 定義そのものを書き換えるのではなく、**判定の側でだけ** vibecorp 独自運用を入れることで、CodeRabbit 公式仕様との完全一致を保ちつつ vibecorp 要件にも応える
 
 ## 設計の根拠
 

@@ -67,8 +67,12 @@ jobs:
           unique_intents=$(echo -n "$inherited" | sort -u)
           if [[ -z "$unique_intents" ]]; then
             if [[ -n "$missing_intent_issues" ]]; then
-              gh pr comment "$PR_NUMBER" --repo "$REPO" \
-                --body "⚠️ 対応 Issue（${missing_intent_issues}）に intent/* ラベルが付与されていません。Issue 側で intent ラベルを 1 つ付与してから PR を再 push してください。詳細は \`.claude/rules/intent-labels.md\` を参照。"
+              # 同じ警告コメントが既に投稿されていればスキップ（synchronize イベントの push ごと重複防止）
+              existing_warning=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json comments --jq '[.comments[] | select(.body | startswith("⚠️ 対応 Issue"))] | length' 2>/dev/null || echo "0")
+              if [[ "${existing_warning:-0}" -eq 0 ]]; then
+                gh pr comment "$PR_NUMBER" --repo "$REPO" \
+                  --body "⚠️ 対応 Issue（${missing_intent_issues}）に intent/* ラベルが付与されていません。Issue 側で intent ラベルを 1 つ付与してから PR を再 push してください。詳細は \`.claude/rules/intent-labels.md\` を参照。"
+              fi
             fi
             echo "Issue 側に intent ラベルがないため継承不可。"
             exit 0

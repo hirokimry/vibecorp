@@ -189,7 +189,7 @@ if [ -f "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml" ]; then
 fi
 ```
 
-preset が `standard` または `full` の場合のみ、CISO + CPO + SM の3者で `.claude/rules/autonomous-restrictions.md` に定義された自律実行不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV）と、プロダクト方針の整合性を判定する。いずれかのエージェントが「除外」判定した場合は起票を中止する。
+preset が `standard` または `full` の場合のみ、CISO + CPO + SM の3者で `.claude/rules/autonomous-restrictions.md` に定義された自律実行不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント）と、プロダクト方針の整合性を判定する。いずれかのエージェントが「除外」判定した場合は起票を中止する。
 
 **責務分離の根拠**: `/vibecorp:autopilot` / `/vibecorp:ship-parallel` の自律ループが全 open Issue を対象とするため、不可領域の門番は起票側（本スキルと `/vibecorp:diagnose`）に集約する。ship 側は起票済み Issue を信頼して実行する。
 
@@ -330,7 +330,7 @@ gh issue create --title "<emoji> <CC prefix>: <subject>" --body "<本文>" --ass
 ### 判定結果
 - CISO: {OK / 除外（理由）}
 - CPO: {OK / 除外（理由）}
-- SM: {OK / 除外（該当領域: 認証 / 暗号 / 課金構造 / ガードレール / MVV のいずれか）}
+- SM: {OK / 除外（該当領域: 認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント のいずれか）}
 
 ### 却下理由
 <除外と判定したエージェントの理由を要約>

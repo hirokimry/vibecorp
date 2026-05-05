@@ -32,7 +32,7 @@ git diff --name-only --cached
 
 ### ローカルレビュー（Claude Code CLI 直接呼び出し）
 
-ローカルレビューは Claude Code CLI（`claude -p`）を直接呼び出して `REVIEW.md` をプロンプトとして渡す。Issue #499（親エピック #455 コメント 8）で確定した経路。CodeRabbit CLI（`cr review --plain`）の Free 枠 3 reviews/hour 制約から解放され、`/vibecorp:ship-parallel` 5 並列でも破綻しない。
+ローカルレビューは Claude Code CLI（`claude -p`）を直接呼び出して `REVIEW.md` をプロンプトとして渡す。Issue #499（親エピック #455 コメント 8）で確定した経路。CodeRabbit CLI（`cr review --plain`）の Free 枠 3 reviews/hour 制約から外れ、**制約の種類が Claude Max OAuth 個人クォータに切り替わる**（`docs/cost-analysis.md` の個人 Max クォータ枯渇リスク参照、無制限ではない点に注意）。
 
 コスト経路と認証経路の詳細は `docs/cost-analysis.md`（「`/vibecorp:review` ローカル経路のコスト経路シフト」「`/vibecorp:review` の `ANTHROPIC_API_KEY` 混在 fail-fast」）と `docs/ai-review-auth.md`（OAuth トークン）を参照。
 

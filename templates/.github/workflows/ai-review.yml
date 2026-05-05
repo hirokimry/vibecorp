@@ -1,7 +1,7 @@
 name: AI Review
 
 # vibecorp が配布する claude-code-action AI レビューワークフロー
-# Source of Truth: docs/ai-review-auth.md（認証経路）, docs/coderabbit-dependency.md（並走運用）
+# Source of Truth: docs/ai-review-auth.md（認証経路）, docs/ai-review-dependency.md（並走運用）
 
 on:
   pull_request:

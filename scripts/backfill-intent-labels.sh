@@ -61,7 +61,10 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 # 1 件ずつ処理
-echo "$issues_json" | jq -c '.[] | select([.labels[].name | startswith("intent/")] | any | not)' | while IFS= read -r issue; do
+# プロセス置換 < <(...) を使うことで while ループが pipe の subshell ではなく現シェルで走る。
+# pipe で while を回すと内部の `read -r choice` が pipe の次行（次の Issue データ）を奪ってしまい、
+# 対話入力にならないため必ずプロセス置換を使う。
+while IFS= read -r issue; do
   num=$(echo "$issue" | jq -r '.number')
   title=$(echo "$issue" | jq -r '.title')
 
@@ -78,7 +81,8 @@ echo "$issues_json" | jq -c '.[] | select([.labels[].name | startswith("intent/"
   echo "  s) スキップ"
   echo "  q) 終了"
   printf "選択: "
-  read -r choice
+  # /dev/tty から直接読み取り。pipe / プロセス置換が stdin を奪っても確実にユーザー入力を読む
+  read -r choice < /dev/tty
 
   case "$choice" in
     [1-7])
@@ -98,6 +102,6 @@ echo "$issues_json" | jq -c '.[] | select([.labels[].name | startswith("intent/"
       ;;
   esac
   echo ""
-done
+done < <(echo "$issues_json" | jq -c '.[] | select([.labels[].name | startswith("intent/")] | any | not)')
 
 echo "=== 完了 ==="

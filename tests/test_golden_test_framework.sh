@@ -45,7 +45,17 @@ done
 echo ""
 echo "--- 3. _example.json のスキーマ ---"
 EX="${SCRIPT_DIR}/tests/golden/_example.json"
-if jq -e '.pr_number, .pr_url, .intent, .description, .expected_severity_counts, .expected_keywords, .expected_keyword_min_match' "$EX" >/dev/null 2>&1; then
+# jq -e '.a, .b' は最後の式のみで終了コードが決まり、先頭欠落を検知できないため
+# has() の論理積で各キーの存在を厳密検証する
+if jq -e '
+  has("pr_number") and
+  has("pr_url") and
+  has("intent") and
+  has("description") and
+  has("expected_severity_counts") and
+  has("expected_keywords") and
+  has("expected_keyword_min_match")
+' "$EX" >/dev/null 2>&1; then
   pass "_example.json が必須フィールドを全て持つ"
 else
   fail "_example.json が必須フィールドを欠いている"
