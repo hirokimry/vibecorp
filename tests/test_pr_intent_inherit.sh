@@ -37,9 +37,22 @@ assert_file_contains "Fork PR 除外"              "$WF" "head.repo.full_name ==
 assert_file_contains "draft 除外"                "$WF" "!github.event.pull_request.draft"
 assert_file_contains "permissions: pull-requests: write" "$WF" "pull-requests: write"
 assert_file_contains "permissions: issues: write"  "$WF" "issues: write"
-assert_file_contains_fixed "gh pr view に --repo 明示"     "$WF" "gh pr view \"\$PR_NUMBER\" --repo \"\$REPO\""
-assert_file_contains_fixed "gh pr comment に --repo 明示"  "$WF" "gh pr comment \"\$PR_NUMBER\" --repo \"\$REPO\""
-assert_file_contains_fixed "gh issue edit に --repo 明示"  "$WF" "gh issue edit \"\$PR_NUMBER\" --repo \"\$REPO\""
+# gh コマンドの --repo "$REPO" 明示は引数順序に依存しない形で検査（formatting 変更耐性）
+# 該当 gh コマンドを含む行を抽出し、その行に --repo "$REPO" が含まれることを確認
+assert_line_has_repo_flag() {
+  local desc="$1"
+  local cmd_pattern="$2"
+  if grep -E -- "$cmd_pattern" "$WF" 2>/dev/null | grep -q -F -- '--repo "$REPO"'; then
+    pass "$desc"
+  else
+    fail "$desc (パターン '${cmd_pattern}' を含む行に --repo \"\$REPO\" が見当たらない: ${WF})"
+  fi
+}
+assert_line_has_repo_flag "gh pr view に --repo 明示"    'gh pr view "\$PR_NUMBER"'
+assert_line_has_repo_flag "gh pr comment に --repo 明示" 'gh pr comment "\$PR_NUMBER"'
+assert_line_has_repo_flag "gh pr edit に --repo 明示"    'gh pr edit "\$PR_NUMBER"'
+# 「gh issue edit を PR に使わない」semantic 改善（PR 操作には gh pr edit を使う）
+assert_file_not_contains   "gh issue edit を PR に使わない" "$WF" "gh issue edit"
 
 # ============================================
 # 2. Issue 番号抽出のキーワード対応
