@@ -9,10 +9,13 @@ on:
     types: [opened, synchronize, ready_for_review]
 
 # CISO 要件 (#464): 最小権限。contents は読取のみ、レビューコメント書き込みのため pull-requests / issues は write
+# id-token: write は claude-code-action@v1 が GitHub OIDC token を介して GitHub App identity を証明するために必須
+# （Claude API 認証用の CLAUDE_CODE_OAUTH_TOKEN とは別系統、Issue #505 で例外承認済み）
 permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}

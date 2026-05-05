@@ -48,6 +48,7 @@ assert_file_contains "draft PR 除外ガード"     "$yml" '!github.event.pull_r
 assert_file_contains "permissions: contents: read" "$yml" "contents: read"
 assert_file_contains "permissions: pull-requests: write" "$yml" "pull-requests: write"
 assert_file_contains "permissions: issues: write" "$yml" "issues: write"
+assert_file_contains "permissions: id-token: write (claude-code-action OIDC 必須要件、#505)" "$yml" "id-token: write"
 assert_file_contains "concurrency 設定" "$yml" "concurrency:"
 assert_file_contains "concurrency.group 値"           "$yml" 'group: ai-review-${{ github.event.pull_request.number }}'
 assert_file_contains "concurrency.cancel-in-progress" "$yml" "cancel-in-progress: true"
