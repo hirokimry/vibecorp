@@ -6,7 +6,7 @@ name: PR Intent Label Inherit
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
         run: |
           # PR 本文から Issue 番号を抽出
           # 対応キーワード: close / closes / closed / fix / fixes / fixed / resolve / resolves / resolved / ref / refs（大小文字区別なし）
-          body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+          body=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq '.body')
 
           # 「キーワード #数字」と「キーワード URL/issues/数字」の両方をマッチ
           # ref / refs 両対応（/vibecorp:pr の --ref オプション運用と整合）
@@ -67,7 +67,7 @@ jobs:
           unique_intents=$(echo -n "$inherited" | sort -u)
           if [[ -z "$unique_intents" ]]; then
             if [[ -n "$missing_intent_issues" ]]; then
-              gh pr comment "$PR_NUMBER" \
+              gh pr comment "$PR_NUMBER" --repo "$REPO" \
                 --body "⚠️ 対応 Issue（${missing_intent_issues}）に intent/* ラベルが付与されていません。Issue 側で intent ラベルを 1 つ付与してから PR を再 push してください。詳細は \`.claude/rules/intent-labels.md\` を参照。"
             fi
             echo "Issue 側に intent ラベルがないため継承不可。"
@@ -82,6 +82,6 @@ jobs:
               echo "PR に既に '${intent}' あり、スキップ"
               continue
             fi
-            gh issue edit "$PR_NUMBER" --add-label "$intent"
+            gh issue edit "$PR_NUMBER" --repo "$REPO" --add-label "$intent"
             echo "PR に '${intent}' を継承付与"
           done <<<"$unique_intents"
