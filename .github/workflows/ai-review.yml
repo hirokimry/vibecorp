@@ -125,8 +125,13 @@ jobs:
         # - 修正済み判定したコメントだけ dismiss（push 時の一括 dismiss はしない）
         # - 前回レビュー以降の差分のみインクリメンタルレビュー（コスト節約）
         # - 失敗時のリトライなし（1 回失敗でワークフロー失敗、利用者は再 push or 手動再実行）
+        # Issue #521: REVIEW.md の Step 5-7（コメント投稿 / approve 発行）に必要なツールを
+        # --allowedTools で明示的に許可する。許可がないと Claude が tool 呼び出しできず
+        # 「num_turns: 1, No buffered inline comments」でサイレント終了する。
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.review_prompt.outputs.prompt }}
-          # approve / request_changes 発行は #467 で実装
+          # 許可ツール: REVIEW.md の各 Step 実行に必要なものに限定（CISO #464 最小権限原則）
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(gh pr review:*),Bash(gh api:*),Read,Glob,Grep"
