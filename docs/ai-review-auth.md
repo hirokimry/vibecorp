@@ -43,15 +43,6 @@ claude setup-token
 
 `claude setup-token` は **1 年間有効な OAuth トークン**を発行する。発行されたトークンを次の手順でリポジトリ secrets に登録する。
 
-> **注: `claude` エイリアス使用時の罠**
->
-> シェルで `alias claude='claude --add-dir ..'` のような alias が定義されていると、`claude setup-token` が `claude --add-dir .. setup-token` として展開され、サブコマンド解釈が壊れて対話 Claude Code セッションが起動してしまう（`setup-token` が実行されない）。回避方法のいずれかを使うこと:
->
-> ```bash
-> command claude setup-token   # command ビルトインで alias 展開を抑制（推奨）
-> \claude setup-token          # バックスラッシュで alias 展開を回避
-> ```
-
 ### secrets 登録
 
 ```bash
