@@ -1,0 +1,182 @@
+#!/bin/bash
+# test_ai_review_directive_prompt.sh
+# ─────────────────────────────────────────────
+# Issue #521: claude-code-action がレビューコメントを出さずにサイレント終了する問題の解消検証。
+#
+# 真因: REVIEW.md が「ルールブック」として書かれており、Claude が「実行すべき仕事がある」と
+# 判定しないため 1 ターンで終了していた（PR #520 ログ: num_turns: 1, No buffered inline comments）。
+#
+# 修正:
+#   1. REVIEW.md / templates/REVIEW.md.tpl を「指示書型」に書き換え
+#      → 「あなたの仕事」「実行手順」「Step 1〜9」を明示
+#   2. ai-review.yml の Claude Code Action 実行ステップに claude_args.--allowedTools を追加
+#      → mcp__github_inline_comment__create_inline_comment, gh pr review/comment/diff/view を許可
+#
+# 本テストは上記 2 点が両方適用されていることを yaml/markdown 静的検証する。
+
+set -euo pipefail
+
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SELF_REVIEW="${SCRIPT_DIR}/REVIEW.md"
+TEMPLATE_REVIEW="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
+SELF_AI_REVIEW="${SCRIPT_DIR}/.github/workflows/ai-review.yml"
+TEMPLATE_AI_REVIEW="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
+
+assert_file_exists "vibecorp 自リポ REVIEW.md" "$SELF_REVIEW"
+assert_file_exists "templates 配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+assert_file_exists "vibecorp 自リポ ai-review.yml" "$SELF_AI_REVIEW"
+assert_file_exists "templates 配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
+
+# ============================================
+# Case 1: REVIEW.md / REVIEW.md.tpl が指示書型に書き換わっている
+# ============================================
+echo ""
+echo "--- Case 1: REVIEW.md が指示書型である（命令文を含む） ---"
+
+check_directive_form() {
+  local label="$1"
+  local file="$2"
+  # 指示書型の必須キーワード
+  local must_have=(
+    "あなたの仕事"
+    "サイレント終了は禁止"
+    "実行手順"
+    "必ず順番に実行"
+    "Step 1: PR 差分を取得する"
+    "Step 7: approve / request_changes を発行する"
+  )
+  for kw in "${must_have[@]}"; do
+    if grep -q -F -- "$kw" "$file"; then
+      pass "${label}: 「${kw}」を含む"
+    else
+      fail "${label}: 「${kw}」が無い（指示書型として不十分）"
+    fi
+  done
+}
+
+check_directive_form "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_directive_form "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 2: REVIEW.md が必須ツール呼び出しを明示
+# ============================================
+echo ""
+echo "--- Case 2: REVIEW.md が必須ツール呼び出しを明示している ---"
+
+check_tool_mentions() {
+  local label="$1"
+  local file="$2"
+  # ツール呼び出しの明示
+  local tools=(
+    "mcp__github_inline_comment__create_inline_comment"
+    "gh pr diff"
+    "gh pr review"
+    "gh pr comment"
+    "gh pr view"
+  )
+  for tool in "${tools[@]}"; do
+    if grep -q -F -- "$tool" "$file"; then
+      pass "${label}: 「${tool}」呼び出しを明示"
+    else
+      fail "${label}: 「${tool}」呼び出しが明示されていない"
+    fi
+  done
+}
+
+check_tool_mentions "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_tool_mentions "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 3: REVIEW.md が「修正対象 0 件でも approve 必須」を明示
+# ============================================
+echo ""
+echo "--- Case 3: 修正対象 0 件でも approve を発行することを明示 ---"
+
+check_zero_approve() {
+  local label="$1"
+  local file="$2"
+  if grep -q -F -- "0 件でも必ず" "$file"; then
+    pass "${label}: 「0 件でも必ず approve」明示"
+  else
+    fail "${label}: 「0 件でも必ず approve」が明示されていない"
+  fi
+}
+
+check_zero_approve "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_zero_approve "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 4: ai-review.yml に claude_args.--allowedTools が含まれる
+# ============================================
+echo ""
+echo "--- Case 4: ai-review.yml に claude_args が指定されている ---"
+
+check_claude_args() {
+  local label="$1"
+  local file="$2"
+  if grep -q -F -- "claude_args:" "$file"; then
+    pass "${label}: claude_args 指定あり"
+  else
+    fail "${label}: claude_args が無い（Claude のツール呼び出し不可）"
+  fi
+
+  # 必須ツールが --allowedTools に含まれている
+  local required_tools=(
+    "mcp__github_inline_comment__create_inline_comment"
+    "Bash(gh pr review:*)"
+    "Bash(gh pr comment:*)"
+    "Bash(gh pr diff:*)"
+    "Bash(gh pr view:*)"
+  )
+  for tool in "${required_tools[@]}"; do
+    if grep -q -F -- "$tool" "$file"; then
+      pass "${label}: --allowedTools に「${tool}」を含む"
+    else
+      fail "${label}: --allowedTools に「${tool}」が無い"
+    fi
+  done
+}
+
+check_claude_args "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+check_claude_args "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
+
+# ============================================
+# Case 5: 自リポ版と配布版 ai-review.yml が完全一致（drift 検知）
+# ============================================
+echo ""
+echo "--- Case 5: 自リポ版と配布版 ai-review.yml が完全一致 ---"
+
+if diff -q "$SELF_AI_REVIEW" "$TEMPLATE_AI_REVIEW" >/dev/null; then
+  pass "自リポ版と配布版 ai-review.yml が完全一致"
+else
+  fail "自リポ版と配布版 ai-review.yml が乖離している"
+fi
+
+# ============================================
+# Case 6: REVIEW.md が「ルールブック」型でなくなったことの確認
+# ============================================
+echo ""
+echo "--- Case 6: 旧「ルールブック」型のフレーズが残存していない ---"
+
+check_no_rulebook_phrase() {
+  local label="$1"
+  local file="$2"
+  # 旧形式の特徴的な表現は冒頭から削除されているはず
+  # （注: 補足セクションには残しても良いため、冒頭セクションのみ確認）
+  local first_50_lines
+  first_50_lines="$(head -50 "$file")"
+  if echo "$first_50_lines" | grep -q -F "REVIEW.md 自体には実体ルールを書きません"; then
+    fail "${label}: 旧「実体ルールを書きません」フレーズが冒頭付近に残存（指示書型と不整合）"
+  else
+    pass "${label}: 旧フレーズが冒頭から撤去されている"
+  fi
+}
+
+check_no_rulebook_phrase "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_no_rulebook_phrase "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+print_test_summary
