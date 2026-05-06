@@ -193,11 +193,11 @@ else
   fail "worktree モードでの push 手順がない"
 fi
 
-# 7-3: worktree モードでの PR 作成
-if grep -q 'cd <path> && gh pr create' "$SKILL_FILE"; then
-  pass "worktree モードでの PR 作成手順がある"
+# 7-3: worktree モードでの PR 作成（Issue #519: /vibecorp:pr へ委譲）
+if grep -qE '/vibecorp:pr.*--worktree <path>' "$SKILL_FILE"; then
+  pass "worktree モードでの PR 作成手順がある（/vibecorp:pr に委譲）"
 else
-  fail "worktree モードでの PR 作成手順がない"
+  fail "worktree モードでの PR 作成手順がない（/vibecorp:pr 委譲が記述されていない）"
 fi
 
 echo ""
@@ -289,11 +289,13 @@ else
   fail "sub-issue でない場合の default branch フォールバック記載がない"
 fi
 
-# 10-5: PR 作成時の --base 指定
-if grep -q -e '--base <ステップ1で決定したベースブランチ>' "$SKILL_FILE"; then
-  pass "PR 作成時の --base にステップ1のベースブランチ指定がある"
+# 10-5: PR 作成は /vibecorp:pr に委譲する（Issue #519、責務分離）
+# ship 自身は gh pr create --base を直接呼ばない。base 判定は ステップ 1 で行い、
+# /vibecorp:pr は内部で merge-base 推定により親 feature ブランチを base に選ぶ。
+if grep -qE '/vibecorp:pr --close' "$SKILL_FILE"; then
+  pass "PR 作成は /vibecorp:pr --close 呼び出しに委譲されている"
 else
-  fail "PR 作成時の --base にステップ1のベースブランチ指定がない"
+  fail "PR 作成が /vibecorp:pr --close 呼び出しに委譲されていない"
 fi
 
 # 10-6: git ls-remote による親ブランチ探索
