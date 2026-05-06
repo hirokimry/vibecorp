@@ -93,7 +93,7 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 
 **新規作成:**
 
-PR 作成前に対応 Issue から `intent/*` ラベルを取得して `gh pr create --label` で継承する（Issue #487 確定: スキル経由なら確実）。CI ワークフロー（`pr-intent-inherit.yml`）も保険として動作するが、利用者が `gh pr create` 直叩きしないケースをスキル側で確実に拾う。
+PR 作成前に対応 Issue から `intent/*` ラベルを取得して `gh pr create --label` で継承する（Issue #487 / #519 確定: ラベル付与は **PR 作成スキルの責務**、CI 側に肩代わりさせない）。
 
 ```bash
 # 対応 Issue の intent/* ラベルを取得（許可 7 種のみ）
@@ -112,7 +112,7 @@ done <<<"$ISSUE_INTENTS"
 git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH" $LABEL_ARGS
 ```
 
-Issue に intent ラベルがない場合は `LABEL_ARGS` が空となり、`pr-intent-inherit.yml` も発火後に Issue 側へ警告コメントを残す。利用者は Issue にラベルを付与してから PR を再 push する。
+Issue に intent ラベルがない場合は `LABEL_ARGS` が空となり、無ラベル PR が作成される。CI 側の `intent ラベル数チェック` が fail で検知するので、利用者は Issue にラベルを付与してから PR を再 push する。
 
 **auto-merge の有効化（新規作成時のみ）:**
 

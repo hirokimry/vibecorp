@@ -1,7 +1,16 @@
 #!/bin/bash
 # test_pr_intent_inherit.sh
 # ─────────────────────────────────────────────
-# Issue #487: PR が Issue から intent ラベルを継承する機構の検証
+# Issue #487 / #519: PR 作成スキルが Issue から intent ラベルを継承する責務を果たしていることを検証する。
+#
+# 設計の経緯:
+#   - 当初は CI workflow (pr-intent-inherit.yml) で後追い継承していた
+#   - PR 作成スキルが --label を渡さない責務放棄により CI race を引き起こしていた（Issue #517）
+#   - Issue #519 で根本対応: ラベル付与は PR 作成スキル（/vibecorp:ship, /vibecorp:pr）の責務に集中
+#   - CI workflow (pr-intent-inherit.yml) は削除、CI は ai-review.yml の数チェックのみで検査
+#
+# 本テストは「PR 作成スキルが --label でラベル継承する」ロジックが SKILL.md に記述されていることを
+# 静的検証する。
 
 set -euo pipefail
 
@@ -13,7 +22,7 @@ assert_file_contains_fixed() {
   local desc="$1"
   local path="$2"
   local pattern="$3"
-  if grep -q -F -- "$pattern" "$path" 2>/dev/null; then
+  if grep -q -F -- "$pattern" "$path"; then
     pass "$desc"
   else
     fail "$desc (パターン '${pattern}' がファイルに含まれない: ${path})"
@@ -21,101 +30,99 @@ assert_file_contains_fixed() {
 }
 
 echo ""
-echo "=== Issue #487 PR intent ラベル継承機構の検証 ==="
+echo "=== Issue #519 PR 作成スキルが intent ラベルを継承する責務を果たしているか検証 ==="
 
-WF="${SCRIPT_DIR}/templates/.github/workflows/pr-intent-inherit.yml"
-SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
+SHIP_SKILL="${SCRIPT_DIR}/skills/ship/SKILL.md"
+PR_SKILL="${SCRIPT_DIR}/skills/pr/SKILL.md"
 
 # ============================================
-# 1. ワークフローファイル
+# 1. /vibecorp:ship スキルが PR 作成時にラベル継承する（Issue #519）
 # ============================================
 echo ""
-echo "--- 1. pr-intent-inherit.yml ワークフロー ---"
-assert_file_exists "templates 側にワークフロー" "$WF"
-assert_file_contains "PR opened/edited/synchronize/reopened/ready_for_review トリガー" "$WF" "opened, edited, synchronize, reopened, ready_for_review"
-assert_file_contains "Fork PR 除外"              "$WF" "head.repo.full_name == github.repository"
-assert_file_contains "draft 除外"                "$WF" "!github.event.pull_request.draft"
-assert_file_contains "permissions: pull-requests: write" "$WF" "pull-requests: write"
-assert_file_contains "permissions: issues: write"  "$WF" "issues: write"
-# gh コマンドの --repo "$REPO" 明示は引数順序に依存しない形で検査（formatting 変更耐性）
-# 該当 gh コマンドを含む **全ての行** に --repo "$REPO" が含まれることを確認
-# （複数行マッチ時に 1 行でも --repo が欠けていれば fail、偽陽性回避）
-assert_line_has_repo_flag() {
-  local desc="$1"
-  local cmd_pattern="$2"
-  local matched_lines without_repo total
-  matched_lines="$(grep -E -- "$cmd_pattern" "$WF" 2>/dev/null || true)"
-  if [ -z "$matched_lines" ]; then
-    fail "$desc (パターン '${cmd_pattern}' に一致する行が見つからない: ${WF})"
-    return
-  fi
-  total=$(printf '%s\n' "$matched_lines" | wc -l | tr -d ' ')
-  # grep -v が no-match (rc=1) で set -e トラップに引っかかるのを `|| true` で抑制
-  without_repo=$( { printf '%s\n' "$matched_lines" | grep -v -F -- '--repo "$REPO"' || true; } | wc -l | tr -d ' ')
-  if [ "$without_repo" -eq 0 ]; then
-    pass "$desc (全 ${total} 行で --repo \"\$REPO\" 確認)"
-  else
-    fail "$desc (${total} 行中 ${without_repo} 行で --repo \"\$REPO\" が欠けている: ${WF})"
-  fi
-}
-assert_line_has_repo_flag "gh pr view に --repo 明示"    'gh pr view "\$PR_NUMBER"'
-assert_line_has_repo_flag "gh pr comment に --repo 明示" 'gh pr comment "\$PR_NUMBER"'
-assert_line_has_repo_flag "gh pr edit に --repo 明示"    'gh pr edit "\$PR_NUMBER"'
-# 「gh issue edit を PR に使わない」semantic 改善（PR 操作には gh pr edit を使う）
-assert_file_not_contains   "gh issue edit を PR に使わない" "$WF" "gh issue edit"
+echo "--- 1. /vibecorp:ship スキルのラベル継承 ---"
+assert_file_exists "ship スキル定義" "$SHIP_SKILL"
+assert_file_contains_fixed "Issue から intent ラベル取得"     "$SHIP_SKILL" "Issue から intent ラベルを継承"
+assert_file_contains       "ホワイトリスト 7 種参照"          "$SHIP_SKILL" "intent/feature"
+assert_file_contains       "LABEL_ARGS で --label 構築"      "$SHIP_SKILL" "LABEL_ARGS"
+assert_file_contains       "gh pr create に \$LABEL_ARGS"    "$SHIP_SKILL" "gh pr create --title"
 
 # ============================================
-# 2. Issue 番号抽出のキーワード対応
+# 2. /vibecorp:pr スキルがラベル継承する（既存実装、Issue #487）
 # ============================================
 echo ""
-echo "--- 2. Issue 番号抽出のキーワード対応 ---"
-assert_file_contains_fixed "close キーワード"     "$WF" "close"
-assert_file_contains_fixed "fix キーワード"       "$WF" "fix"
-assert_file_contains_fixed "resolve キーワード"   "$WF" "resolve"
-assert_file_contains_fixed "refs キーワード"      "$WF" "refs"
-assert_file_contains_fixed "Issue URL マッチ"     "$WF" "issues/[0-9]+"
-assert_file_contains_fixed "#番号 マッチ"          "$WF" "#[0-9]+"
+echo "--- 2. /vibecorp:pr スキルのラベル継承 ---"
+assert_file_exists "pr スキル定義" "$PR_SKILL"
+assert_file_contains_fixed "Issue から intent 取得 (スキル側)"  "$PR_SKILL" "intent/* ラベルを取得"
+assert_file_contains       "gh pr create に --label で渡す"   "$PR_SKILL" "LABEL_ARGS"
+assert_file_contains       "ホワイトリスト 7 種参照"          "$PR_SKILL" "intent/feature"
 
 # ============================================
-# 3. intent ホワイトリスト 7 種
+# 3. intent ホワイトリスト 7 種が両スキルで一致
 # ============================================
 echo ""
-echo "--- 3. intent ホワイトリスト 7 種 ---"
+echo "--- 3. intent ホワイトリスト 7 種が両スキルで一致 ---"
 for intent in intent/feature intent/bugfix intent/performance intent/security intent/refactor intent/infra intent/docs; do
-  if grep -q -F -- "\"$intent\"" "$WF"; then
-    pass "ホワイトリストに '$intent' 含む"
+  if grep -q -F -- "\"$intent\"" "$SHIP_SKILL"; then
+    pass "ship スキルにホワイトリスト '$intent' 含む"
   else
-    fail "ホワイトリストに '$intent' 含まない"
+    fail "ship スキルにホワイトリスト '$intent' 含まない"
+  fi
+  if grep -q -F -- "\"$intent\"" "$PR_SKILL"; then
+    pass "pr スキルにホワイトリスト '$intent' 含む"
+  else
+    fail "pr スキルにホワイトリスト '$intent' 含まない"
   fi
 done
 
 # ============================================
-# 4. ラベル継承ロジック
+# 4. 旧 CI 継承機構（pr-intent-inherit.yml）が削除されている
 # ============================================
 echo ""
-echo "--- 4. ラベル継承ロジック ---"
-assert_file_contains       "重複付与防止"               "$WF" "既に PR に同じ intent ラベル"
-assert_file_contains_fixed "Issue 側 intent 不在時の警告" "$WF" "intent/* ラベルが付与されていません"
+echo "--- 4. 旧 CI 継承機構が削除されている ---"
+if [ -e "${SCRIPT_DIR}/.github/workflows/pr-intent-inherit.yml" ]; then
+  fail "自リポ版 pr-intent-inherit.yml が残存（Issue #519 で削除済みのはず）"
+else
+  pass "自リポ版 pr-intent-inherit.yml が削除されている"
+fi
+
+if [ -e "${SCRIPT_DIR}/templates/.github/workflows/pr-intent-inherit.yml" ]; then
+  fail "配布版 pr-intent-inherit.yml が残存（Issue #519 で削除済みのはず）"
+else
+  pass "配布版 pr-intent-inherit.yml が削除されている"
+fi
 
 # ============================================
-# 5. /vibecorp:pr スキル側の継承
+# 5. install で配布されない（旧 workflow 削除確認）
 # ============================================
 echo ""
-echo "--- 5. /vibecorp:pr スキル側の継承 ---"
-assert_file_contains_fixed "Issue から intent 取得 (スキル側)"  "$SKILL" "intent/* ラベルを取得"
-assert_file_contains       "gh pr create に --label で渡す"   "$SKILL" "LABEL_ARGS"
-assert_file_contains       "ホワイトリスト 7 種参照"          "$SKILL" "intent/feature"
-
-# ============================================
-# 6. install で配布される
-# ============================================
-echo ""
-echo "--- 6. install 配布版でも反映 ---"
+echo "--- 5. install 後にも pr-intent-inherit.yml が配布されない ---"
 create_test_repo
-bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+bash "$INSTALL_SH" --name test-proj --preset minimal
 R="$TMPDIR_ROOT"
 
-assert_file_exists "配布: pr-intent-inherit.yml" "$R/.github/workflows/pr-intent-inherit.yml"
+if [ -e "$R/.github/workflows/pr-intent-inherit.yml" ]; then
+  fail "install 後に pr-intent-inherit.yml が配布されている（Issue #519 で削除済みのはず）"
+else
+  pass "install 後 pr-intent-inherit.yml が配布されない"
+fi
 cleanup
+
+# ============================================
+# 6. ai-review.yml は数チェックのみ（継承責務を持たない）
+# ============================================
+echo ""
+echo "--- 6. ai-review.yml の intent-label-check が継承責務を持たない ---"
+AI_REVIEW="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
+assert_file_exists "ai-review.yml" "$AI_REVIEW"
+
+# 「Issue から intent ラベルを継承」ステップは存在しないこと
+if grep -q -F -- "対応 Issue から intent ラベルを継承" "$AI_REVIEW"; then
+  fail "ai-review.yml に継承ステップが含まれている（Issue #519 で撤去のはず、責務は ship/pr スキル側）"
+else
+  pass "ai-review.yml に継承ステップは含まれない（CI は検査専任）"
+fi
+
+# 数チェックロジック自体は維持されていること
+assert_file_contains "1 PR 1 intent 厳守チェックステップ" "$AI_REVIEW" "1 PR 1 intent 厳守チェック"
 
 print_test_summary

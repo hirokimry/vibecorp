@@ -177,18 +177,41 @@ gh issue edit <番号> --body "<更新後の本文>"
 
 PR の `--base` には **ステップ 1 で決定したベースブランチ** を渡す。sub-issue の場合は親 feature ブランチ、通常 Issue の場合は default branch となる。
 
+**9-0. Issue から intent ラベルを継承（CI race 防止、Issue #519）:**
+
+PR は **最初から intent ラベル付き** で作成する。CI 側で後追い継承する責務逆転を避けるため、ship スキルが PR 作成スキルとしてラベル付与を担う。
+
+```bash
+# intent ラベル 7 種ホワイトリスト（.claude/rules/intent-labels.md と同期）
+ALLOWED='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
+
+# 入力 Issue から intent ラベルを取得（owner/repo は ステップ 1-1 で確定済み、番号は Issue URL から）
+INTENT_LABELS=$(gh api "repos/<owner>/<repo>/issues/<番号>/labels" \
+  | jq --argjson a "$ALLOWED" -r '[.[] | .name | select(IN($a[]))][]')
+
+# --label 引数を組み立てる（ラベル無しなら空文字でスキップ）
+LABEL_ARGS=""
+for label in $INTENT_LABELS; do
+  LABEL_ARGS="${LABEL_ARGS} --label ${label}"
+done
+```
+
+Issue 側に intent ラベルが無い場合は `LABEL_ARGS` が空となり、`gh pr create` は無ラベルで PR を作成する（CI 側で fail 検知され、CEO が Issue にラベル付与してから再 push する運用）。
+
+**9-1. PR を作成する:**
+
 **worktree モード:**
 
 ```bash
 cd <path> && git push origin HEAD
-cd <path> && gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ>
+cd <path> && gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ> $LABEL_ARGS
 ```
 
 **通常モード:**
 
 ```bash
 git push origin HEAD
-gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ>
+gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ> $LABEL_ARGS
 ```
 
 **auto-merge の有効化:**
@@ -200,6 +223,7 @@ gh pr merge --squash --auto
 - PR タイトルは Issue タイトルをそのまま使用
 - PR 本文に `close <Issue URL>` を含める
 - PR テンプレートがあればそれに従う
+- intent ラベルは PR 作成時に `--label` で付与（CI 側に責務を転嫁しない）
 
 ### 10. レビュー修正ループ
 
