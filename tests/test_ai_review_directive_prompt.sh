@@ -145,6 +145,54 @@ check_claude_args "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
 check_claude_args "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
 
 # ============================================
+# Case 4b: Claude Code Action 実行ステップに env: PR_NUMBER, GITHUB_REPOSITORY が指定されている (Issue #523)
+# ============================================
+echo ""
+echo "--- Case 4b: Claude Code Action 実行ステップの env: 必須変数（Issue #523） ---"
+
+check_env_vars() {
+  local label="$1"
+  local file="$2"
+  # Claude Code Action 実行ステップ範囲を抽出（次の `- name:` または ファイル末まで）
+  local step_block
+  step_block="$(awk '
+    /^      - name: Claude Code Action 実行/ { in_step = 1; print; next }
+    in_step && /^      - name:/ { exit }
+    in_step { print }
+  ' "$file")"
+
+  if [ -z "$step_block" ]; then
+    fail "${label}: Claude Code Action 実行ステップが見つからない"
+    return
+  fi
+
+  if printf '%s' "$step_block" | grep -q -E "^[[:space:]]*env:[[:space:]]*$"; then
+    pass "${label}: Claude Code Action 実行ステップに env: が指定されている"
+  else
+    fail "${label}: Claude Code Action 実行ステップに env: が無い（PR_NUMBER 等が Claude プロセスに渡らずサイレント終了する）"
+  fi
+
+  # PR_NUMBER が github.event.pull_request.number にマップされている
+  if printf '%s' "$step_block" | grep -q -F -- "PR_NUMBER:" \
+    && printf '%s' "$step_block" | grep -q -F -- "github.event.pull_request.number"; then
+    pass "${label}: env で PR_NUMBER が github.event.pull_request.number にマップされている"
+  else
+    fail "${label}: env の PR_NUMBER 設定が不適切（github.event.pull_request.number にマップされるべき）"
+  fi
+
+  # GITHUB_REPOSITORY が github.repository にマップされている
+  if printf '%s' "$step_block" | grep -q -F -- "GITHUB_REPOSITORY:" \
+    && printf '%s' "$step_block" | grep -q -F -- "github.repository"; then
+    pass "${label}: env で GITHUB_REPOSITORY が github.repository にマップされている"
+  else
+    fail "${label}: env の GITHUB_REPOSITORY 設定が不適切（github.repository にマップされるべき）"
+  fi
+}
+
+check_env_vars "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+check_env_vars "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
+
+# ============================================
 # Case 5: 自リポ版と配布版 ai-review.yml が完全一致（drift 検知）
 # ============================================
 echo ""

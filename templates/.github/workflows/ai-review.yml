@@ -128,6 +128,13 @@ jobs:
         # Issue #521: REVIEW.md の Step 5-7（コメント投稿 / approve 発行）に必要なツールを
         # --allowedTools で明示的に許可する。許可がないと Claude が tool 呼び出しできず
         # 「num_turns: 1, No buffered inline comments」でサイレント終了する。
+        # Issue #523: REVIEW.md の Step 1-7 で gh pr diff / view / review 等を実行するため、
+        # PR_NUMBER と GITHUB_REPOSITORY を env で Claude プロセスに引き継ぐ。
+        # 渡さないと Claude が `gh pr diff "$PR_NUMBER"` を実行する時に変数が空となり、
+        # 「num_turns: 1, No buffered inline comments」でサイレント終了する。
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
