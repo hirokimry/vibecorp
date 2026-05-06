@@ -258,7 +258,7 @@ full の sandbox opt-in は維持する。sandbox なしで並列実行した場
 
 ### コマンドログ型
 
-- **command-log.sh**: 全 Bash コマンドをログファイル（`~/.cache/vibecorp/state/<repo-id>/command-log`）に記録する。判定は返さない（ログ記録のみ）。`/vibecorp:approve-audit` スキルと組み合わせて `settings.local.json` の allow リスト最適化に使用する。`.claude/` 配下ではなく XDG cache に書き込むのは、Claude Code の書込確認プロンプトを回避するため（#334）
+- **command-log.sh**: 全 Bash コマンドをログファイル（`~/.cache/vibecorp/state/<repo-id>/command-log`）に記録する。判定は返さない（ログ記録のみ）。`/vibecorp:approve-audit` スキルと組み合わせて `settings.local.json` の allow リスト最適化に使用する。`.claude/` 配下ではなく XDG cache に書き込むのは、Claude Code の書込確認プロンプトを回避するため（#334）。**機密情報マスキング**: API キー / トークン / パスワード（`sk-ant-*`, `ghp_*`, `--token`, `*_SECRET=`, `*_PASSWORD=` 等）は `mask_secrets()` で `***MASKED***` に置換してから記録され、平文で残らない。マスクパターンは `SECRET_PATTERNS` 配列に集約されており拡張容易（#513）
 
 ## スキル設計原則
 
