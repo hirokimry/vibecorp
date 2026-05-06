@@ -79,16 +79,17 @@ assert_file_contains "intent ラベル 2 件以上 fail 検知"        "$yml" 'a
 assert_file_contains "未知 intent/* ラベル混入 fail 検知"     "$yml" 'unknown_intent.*-gt 0'
 assert_file_contains "fail 時の exit 1"                      "$yml" "exit 1"
 # intent-label-check と preflight ガードはともに checkout を行わないため gh pr comment が repo を解決できる必要がある
-# (#504 / CR Major 指摘で発覚、#509 で preflight 追加)
-# 失敗分岐は 4 つ:
-#   intent-label-check: unknown_intent > 0 / allowed_intent == 0 / allowed_intent > 1（3 件）
-#   preflight:          OAUTH_TOKEN 空（1 件）
+# (#504 / CR Major 指摘で発覚、#509 で preflight 追加、#517 で継承ステップ統合追加)
+# 失敗分岐は 5 つ:
+#   intent-label-check 内の継承ステップ:    Issue 側 intent 不在警告（1 件、#517 で追加）
+#   intent-label-check 内の数チェックステップ: unknown_intent > 0 / allowed_intent == 0 / allowed_intent > 1（3 件）
+#   preflight:                              OAUTH_TOKEN 空（1 件）
 # 全てで --repo を必須化する
 repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
-if [[ "$repo_flag_count" -eq 4 ]]; then
-  pass "gh pr comment の全失敗分岐（4 件: intent x3 + preflight x1）で --repo \"\$REPO\" 明示"
+if [[ "$repo_flag_count" -eq 5 ]]; then
+  pass "gh pr comment の全失敗分岐（5 件: 継承 x1 + intent x3 + preflight x1）で --repo \"\$REPO\" 明示"
 else
-  fail "gh pr comment の --repo \"\$REPO\" が 4 件存在すべきところ ${repo_flag_count} 件: ${yml}"
+  fail "gh pr comment の --repo \"\$REPO\" が 5 件存在すべきところ ${repo_flag_count} 件: ${yml}"
 fi
 
 # ============================================
