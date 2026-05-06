@@ -110,7 +110,7 @@ fi
 echo ""
 echo "--- 2. REVIEW.md.tpl に auto-resolve 指示 ---"
 TPL="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
-assert_file_contains "auto-resolve 動作セクション" "$TPL" "auto-resolve 動作"
+assert_file_contains "auto-resolve 動作セクション" "$TPL" "auto-resolve（インクリメンタルレビュー"
 assert_file_contains "claude-action 自身のコメントのみ dismiss" "$TPL" "claude-action 自身が過去に出したインラインコメントのみ"
 assert_file_contains "CodeRabbit / 人間コメントは触らない（越権禁止）" "$TPL" "越権行為禁止"
 assert_file_contains "修正済み判定したコメントのみ dismiss" "$TPL" "修正されたと判定したコメントだけを dismiss"
@@ -144,7 +144,7 @@ bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_contains "配布: ai-review.yml に timeout-minutes: 10" "$R/.github/workflows/ai-review.yml" "timeout-minutes: 10"
-assert_file_contains "配布: REVIEW.md に auto-resolve 動作" "$R/REVIEW.md" "auto-resolve 動作"
+assert_file_contains "配布: REVIEW.md に auto-resolve 動作" "$R/REVIEW.md" "auto-resolve（インクリメンタルレビュー"
 cleanup
 
 print_test_summary

@@ -35,7 +35,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_exists "REVIEW.md が生成される" "$R/REVIEW.md"
 assert_file_contains "claude-code-action 言及"     "$R/REVIEW.md" "anthropics/claude-code-action"
-assert_file_contains "Source of Truth セクション" "$R/REVIEW.md" "Source of Truth"
+assert_file_contains "severity 定義参照（指示書型では補足セクションに移動、Issue #521）" "$R/REVIEW.md" "severity 定義"
 assert_file_contains "review-handling.md 参照"    "$R/REVIEW.md" "review-handling.md"
 assert_file_contains "review-observations.md 参照" "$R/REVIEW.md" "review-observations.md"
 assert_file_contains "severity/claude-action.md 参照" "$R/REVIEW.md" "severity/claude-action.md"
