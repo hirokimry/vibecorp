@@ -172,17 +172,17 @@ check_env_vars() {
     fail "${label}: Claude Code Action 実行ステップに env: が無い（PR_NUMBER 等が Claude プロセスに渡らずサイレント終了する）"
   fi
 
-  # PR_NUMBER が github.event.pull_request.number にマップされている
-  if printf '%s' "$step_block" | grep -q -F -- "PR_NUMBER:" \
-    && printf '%s' "$step_block" | grep -q -F -- "github.event.pull_request.number"; then
+  # PR_NUMBER が github.event.pull_request.number にマップされている（同一行で厳密チェック、CodeRabbit #524 指摘対応）
+  # キーと値を別 grep で見ると将来マッピングが入れ替わっても通る誤検知が発生するため、
+  # 1 行内で `KEY: ${{ EXPR }}` 形式を正規表現一発で照合する。
+  if printf '%s\n' "$step_block" | grep -q -E '^[[:space:]]*PR_NUMBER:[[:space:]]*\$\{\{[[:space:]]*github\.event\.pull_request\.number[[:space:]]*\}\}[[:space:]]*$'; then
     pass "${label}: env で PR_NUMBER が github.event.pull_request.number にマップされている"
   else
     fail "${label}: env の PR_NUMBER 設定が不適切（github.event.pull_request.number にマップされるべき）"
   fi
 
-  # GITHUB_REPOSITORY が github.repository にマップされている
-  if printf '%s' "$step_block" | grep -q -F -- "GITHUB_REPOSITORY:" \
-    && printf '%s' "$step_block" | grep -q -F -- "github.repository"; then
+  # GITHUB_REPOSITORY が github.repository にマップされている（同一行で厳密チェック、CodeRabbit #524 指摘対応）
+  if printf '%s\n' "$step_block" | grep -q -E '^[[:space:]]*GITHUB_REPOSITORY:[[:space:]]*\$\{\{[[:space:]]*github\.repository[[:space:]]*\}\}[[:space:]]*$'; then
     pass "${label}: env で GITHUB_REPOSITORY が github.repository にマップされている"
   else
     fail "${label}: env の GITHUB_REPOSITORY 設定が不適切（github.repository にマップされるべき）"
