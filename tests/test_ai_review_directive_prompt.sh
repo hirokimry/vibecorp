@@ -42,10 +42,9 @@ check_directive_form() {
   local file="$2"
   # 指示書型の必須キーワード
   local must_have=(
-    "あなたの仕事"
-    "サイレント終了は禁止"
-    "実行手順"
-    "必ず順番に実行"
+    "コードレビューを実施してください"
+    "0 件でも必ず"
+    "順番に実行"
     "Step 1: PR 差分を取得する"
     "Step 7: approve / request_changes を発行する"
   )
@@ -226,5 +225,66 @@ check_no_rulebook_phrase() {
 
 check_no_rulebook_phrase "自リポ版 REVIEW.md" "$SELF_REVIEW"
 check_no_rulebook_phrase "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 7: REVIEW.md が冒頭から命令文で開始する（Issue #525）
+# ============================================
+echo ""
+echo "--- Case 7: REVIEW.md 冒頭が命令文（メタ説明禁止、Issue #525） ---"
+
+check_imperative_opening() {
+  local label="$1"
+  local file="$2"
+  # 最初の本文行（# タイトル行と空行を除く）を取得
+  local first_body_line
+  first_body_line="$(awk '/^[^#[:space:]]/ { print; exit }' "$file")"
+
+  # メタ説明禁止語: 冒頭にこれらが含まれると Claude が「これは仕様書」と読み流す
+  local meta_phrases=(
+    "がレビュー実行時に読む"
+    "ルールブックではなく実行手順書"
+    "実行時に参照する"
+  )
+  local found_meta=0
+  for phrase in "${meta_phrases[@]}"; do
+    if echo "$first_body_line" | grep -q -F -- "$phrase"; then
+      fail "${label}: 冒頭本文にメタ説明「${phrase}」が残存（命令文で始まっていない）"
+      found_meta=1
+    fi
+  done
+  if [ "$found_meta" -eq 0 ]; then
+    pass "${label}: 冒頭本文にメタ説明が含まれていない"
+  fi
+
+  # 最初の本文行が命令文（「〜してください」または英語の動詞原形 = action verb）か
+  if echo "$first_body_line" | grep -qE 'してください|してね|を実施|review of this PR|Perform|Review|Check|Run'; then
+    pass "${label}: 冒頭本文が命令文で開始している（action item として認識される）"
+  else
+    fail "${label}: 冒頭本文が命令文で開始していない（冒頭本文: ${first_body_line}）"
+  fi
+}
+
+check_imperative_opening "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_imperative_opening "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 8: ai-review.yml が PR 差分で変更されていない
+# ============================================
+echo ""
+echo "--- Case 8: ai-review.yml が PR 差分で変更されていない（PR 動作確認のため） ---"
+
+# PR の真の差分は merge-base...HEAD の範囲。
+# `git diff origin/main` で作業ツリーと main の単純比較をすると、main が PR より進んでいる場合に
+# PR の変更ではない main 側の commit も拾って誤検知する。merge-base 起点で PR 差分のみを検査する。
+if git rev-parse --verify --quiet origin/main >/dev/null; then
+  base=$(git merge-base HEAD origin/main)
+  if git diff --quiet "${base}"...HEAD -- .github/workflows/ai-review.yml templates/.github/workflows/ai-review.yml; then
+    pass "ai-review.yml が PR 差分で変更されていない（claude-code-action workflow validation を通過）"
+  else
+    fail "ai-review.yml が PR 差分で変更されている（PR 自身で claude-code-action が動作しない原因）"
+  fi
+else
+  echo "  SKIP: origin/main が利用不可（local 開発環境）"
+fi
 
 print_test_summary
