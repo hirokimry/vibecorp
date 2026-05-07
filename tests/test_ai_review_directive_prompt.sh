@@ -40,11 +40,11 @@ echo "--- Case 1: REVIEW.md が指示書型である（命令文を含む） ---
 check_directive_form() {
   local label="$1"
   local file="$2"
-  # 指示書型の必須キーワード（Issue #525: 公式 example スタイルに移行、命令文ベース）
+  # 指示書型の必須キーワード
   local must_have=(
     "コードレビューを実施してください"
     "0 件でも必ず"
-    "順番で従って"
+    "順番に実行"
     "Step 1: PR 差分を取得する"
     "Step 7: approve / request_changes を発行する"
   )
@@ -235,9 +235,9 @@ echo "--- Case 7: REVIEW.md 冒頭が命令文（メタ説明禁止、Issue #525
 check_imperative_opening() {
   local label="$1"
   local file="$2"
-  # 1 行目（最初の本文行）にメタ説明（「指示書」「実行手順書」等）が含まれていない
-  local first_line
-  first_line="$(head -1 "$file")"
+  # 最初の本文行（# タイトル行と空行を除く）を取得
+  local first_body_line
+  first_body_line="$(awk '/^[^#[:space:]]/ { print; exit }' "$file")"
 
   # メタ説明禁止語: 冒頭にこれらが含まれると Claude が「これは仕様書」と読み流す
   local meta_phrases=(
@@ -247,20 +247,20 @@ check_imperative_opening() {
   )
   local found_meta=0
   for phrase in "${meta_phrases[@]}"; do
-    if echo "$first_line" | grep -q -F -- "$phrase"; then
-      fail "${label}: 冒頭にメタ説明「${phrase}」が残存（命令文で始まっていない）"
+    if echo "$first_body_line" | grep -q -F -- "$phrase"; then
+      fail "${label}: 冒頭本文にメタ説明「${phrase}」が残存（命令文で始まっていない）"
       found_meta=1
     fi
   done
   if [ "$found_meta" -eq 0 ]; then
-    pass "${label}: 冒頭にメタ説明が含まれていない"
+    pass "${label}: 冒頭本文にメタ説明が含まれていない"
   fi
 
-  # 1 行目が命令文（「〜してください」または英語の動詞原形 = action verb）で終わるか
-  if echo "$first_line" | grep -qE 'してください|してね|を実施|review of this PR|Perform|Review|Check|Run'; then
-    pass "${label}: 冒頭が命令文で開始している（action item として認識される）"
+  # 最初の本文行が命令文（「〜してください」または英語の動詞原形 = action verb）か
+  if echo "$first_body_line" | grep -qE 'してください|してね|を実施|review of this PR|Perform|Review|Check|Run'; then
+    pass "${label}: 冒頭本文が命令文で開始している（action item として認識される）"
   else
-    fail "${label}: 冒頭が命令文で開始していない（冒頭1行目: ${first_line}）"
+    fail "${label}: 冒頭本文が命令文で開始していない（冒頭本文: ${first_body_line}）"
   fi
 }
 
