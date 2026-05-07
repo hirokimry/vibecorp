@@ -299,10 +299,11 @@ else
   fail "PR 作成が /vibecorp:pr --close 呼び出しに委譲されていない"
 fi
 
-# 10-5b: ship 自身が gh pr create を直接呼んでいない（CodeRabbit #520 Major 指摘、退行防止）
+# 10-5b: ship 自身が gh pr create を直接呼んでいない（責務分離の退行防止）
 # /vibecorp:pr --close と gh pr create が同居していると責務分離違反。負検証で防止する。
-# 注: 説明文中のインラインコード（`gh pr create`）は対象外。**コード行（行頭スペース + コマンド）のみ**を負検証する。
-if grep -qE '^[[:space:]]*gh pr create' "$SKILL_FILE"; then
+# 注: 説明文中のインラインコード（`gh pr create`）は対象外。**コード行**（行頭スペース、または cd <path> && を経由したコマンド呼び出し）のみを負検証する。
+# CodeRabbit 指摘: 行頭マッチだけだと `cd <path> && gh pr create ...` 形式を見逃すため、cd-and-chain も検出対象に含める。
+if grep -qE '^[[:space:]]*(cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh pr create([[:space:]]|$)' "$SKILL_FILE"; then
   fail "ship スキルに gh pr create の直接呼び出しが残存（責務違反、/vibecorp:pr に完全委譲すべき）"
 else
   pass "ship スキルにコード行レベルの gh pr create 直接呼び出しが無い（/vibecorp:pr に完全委譲）"
