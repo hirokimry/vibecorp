@@ -268,17 +268,20 @@ check_imperative_opening "自リポ版 REVIEW.md" "$SELF_REVIEW"
 check_imperative_opening "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
-# Case 8: ai-review.yml は変更されていない（main と同じ、Issue #525）
+# Case 8: ai-review.yml が PR 差分で変更されていない
 # ============================================
 echo ""
-echo "--- Case 8: ai-review.yml が main と一致（PR 動作確認のため変更禁止） ---"
+echo "--- Case 8: ai-review.yml が PR 差分で変更されていない（PR 動作確認のため） ---"
 
-# main ブランチが取得できる環境でのみ実行（CI 環境など）
+# PR の真の差分は merge-base...HEAD の範囲。
+# `git diff origin/main` で作業ツリーと main の単純比較をすると、main が PR より進んでいる場合に
+# PR の変更ではない main 側の commit も拾って誤検知する。merge-base 起点で PR 差分のみを検査する。
 if git rev-parse --verify --quiet origin/main >/dev/null; then
-  if git diff --quiet origin/main -- .github/workflows/ai-review.yml templates/.github/workflows/ai-review.yml; then
-    pass "ai-review.yml が main と完全一致（claude-code-action workflow validation を通過）"
+  base=$(git merge-base HEAD origin/main)
+  if git diff --quiet "${base}"...HEAD -- .github/workflows/ai-review.yml templates/.github/workflows/ai-review.yml; then
+    pass "ai-review.yml が PR 差分で変更されていない（claude-code-action workflow validation を通過）"
   else
-    fail "ai-review.yml が main と乖離している（PR 自身で claude-code-action が動作しない原因）"
+    fail "ai-review.yml が PR 差分で変更されている（PR 自身で claude-code-action が動作しない原因）"
   fi
 else
   echo "  SKIP: origin/main が利用不可（local 開発環境）"
