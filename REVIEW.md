@@ -102,7 +102,7 @@ gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --request-changes --body "
 
 これらのパスへの変更については Step 5 / Step 6 でコメントを投稿しないでください。
 
-## auto-resolve（インクリメンタルレビュー、#466 確定）
+## auto-resolve（インクリメンタルレビュー）
 
 push 毎の再レビューでは:
 
@@ -111,6 +111,12 @@ push 毎の再レビューでは:
 - **インクリメンタルレビュー**: 前回レビュー以降の差分だけを対象とする。PR 全体の再レビューはコスト節約のため行わない
 
 ---
+
+## このファイルの責務
+
+このファイルは `anthropics/claude-code-action` が PR レビュー実行時に読み込むプロンプトです。`.github/workflows/ai-review.yml` の `prompt:` 入力としてそのまま渡されます。冒頭から命令文で開始することで、Claude が action item として認識して tool 呼び出しに進む構造になっています。
+
+実体ルール（severity 定義、捌き基準、レビュー観点）は `.claude/rules/` 配下が Source of Truth であり、このファイルからは参照のみ行います。
 
 ## 関連設定
 
