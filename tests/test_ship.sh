@@ -193,11 +193,12 @@ else
   fail "worktree モードでの push 手順がない"
 fi
 
-# 7-3: worktree モードでの PR 作成（Issue #519: /vibecorp:pr へ委譲）
-if grep -qE '/vibecorp:pr.*--worktree <path>' "$SKILL_FILE"; then
-  pass "worktree モードでの PR 作成手順がある（/vibecorp:pr に委譲）"
+# 7-3: worktree モードでの PR 作成（Issue #519: /vibecorp:pr へ委譲、--close 必須）
+# CodeRabbit #520 Minor 指摘: --close と --worktree の **両方** が必須（順序不問）
+if grep -qE '/vibecorp:pr.*--close.*--worktree <path>|/vibecorp:pr.*--worktree <path>.*--close' "$SKILL_FILE"; then
+  pass "worktree モードでの PR 作成手順がある（/vibecorp:pr --close --worktree <path>）"
 else
-  fail "worktree モードでの PR 作成手順がない（/vibecorp:pr 委譲が記述されていない）"
+  fail "worktree モードでの PR 作成手順が不完全（--close と --worktree <path> の両方が必須）"
 fi
 
 echo ""
@@ -296,6 +297,15 @@ if grep -qE '/vibecorp:pr --close' "$SKILL_FILE"; then
   pass "PR 作成は /vibecorp:pr --close 呼び出しに委譲されている"
 else
   fail "PR 作成が /vibecorp:pr --close 呼び出しに委譲されていない"
+fi
+
+# 10-5b: ship 自身が gh pr create を直接呼んでいない（CodeRabbit #520 Major 指摘、退行防止）
+# /vibecorp:pr --close と gh pr create が同居していると責務分離違反。負検証で防止する。
+# 注: 説明文中のインラインコード（`gh pr create`）は対象外。**コード行（行頭スペース + コマンド）のみ**を負検証する。
+if grep -qE '^[[:space:]]*gh pr create' "$SKILL_FILE"; then
+  fail "ship スキルに gh pr create の直接呼び出しが残存（責務違反、/vibecorp:pr に完全委譲すべき）"
+else
+  pass "ship スキルにコード行レベルの gh pr create 直接呼び出しが無い（/vibecorp:pr に完全委譲）"
 fi
 
 # 10-6: git ls-remote による親ブランチ探索
