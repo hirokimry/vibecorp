@@ -34,7 +34,7 @@ bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_exists "REVIEW.md が生成される" "$R/REVIEW.md"
-assert_file_contains "claude-code-action 言及"     "$R/REVIEW.md" "anthropics/claude-code-action"
+assert_file_contains "ai-review.yml 言及（命令文プロンプト化により Issue #525 で参照を関連設定セクションに移動）"     "$R/REVIEW.md" ".github/workflows/ai-review.yml"
 assert_file_contains "severity 定義参照（指示書型では補足セクションに移動、Issue #521）" "$R/REVIEW.md" "severity 定義"
 assert_file_contains "review-handling.md 参照"    "$R/REVIEW.md" "review-handling.md"
 assert_file_contains "review-observations.md 参照" "$R/REVIEW.md" "review-observations.md"

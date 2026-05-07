@@ -40,12 +40,11 @@ echo "--- Case 1: REVIEW.md が指示書型である（命令文を含む） ---
 check_directive_form() {
   local label="$1"
   local file="$2"
-  # 指示書型の必須キーワード
+  # 指示書型の必須キーワード（Issue #525: 公式 example スタイルに移行、命令文ベース）
   local must_have=(
-    "あなたの仕事"
-    "サイレント終了は禁止"
-    "実行手順"
-    "必ず順番に実行"
+    "コードレビューを実施してください"
+    "0 件でも必ず"
+    "順番で従って"
     "Step 1: PR 差分を取得する"
     "Step 7: approve / request_changes を発行する"
   )
@@ -226,5 +225,63 @@ check_no_rulebook_phrase() {
 
 check_no_rulebook_phrase "自リポ版 REVIEW.md" "$SELF_REVIEW"
 check_no_rulebook_phrase "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 7: REVIEW.md が冒頭から命令文で開始する（Issue #525）
+# ============================================
+echo ""
+echo "--- Case 7: REVIEW.md 冒頭が命令文（メタ説明禁止、Issue #525） ---"
+
+check_imperative_opening() {
+  local label="$1"
+  local file="$2"
+  # 1 行目（最初の本文行）にメタ説明（「指示書」「実行手順書」等）が含まれていない
+  local first_line
+  first_line="$(head -1 "$file")"
+
+  # メタ説明禁止語: 冒頭にこれらが含まれると Claude が「これは仕様書」と読み流す
+  local meta_phrases=(
+    "がレビュー実行時に読む"
+    "ルールブックではなく実行手順書"
+    "実行時に参照する"
+  )
+  local found_meta=0
+  for phrase in "${meta_phrases[@]}"; do
+    if echo "$first_line" | grep -q -F -- "$phrase"; then
+      fail "${label}: 冒頭にメタ説明「${phrase}」が残存（命令文で始まっていない）"
+      found_meta=1
+    fi
+  done
+  if [ "$found_meta" -eq 0 ]; then
+    pass "${label}: 冒頭にメタ説明が含まれていない"
+  fi
+
+  # 1 行目が命令文（「〜してください」または英語の動詞原形 = action verb）で終わるか
+  if echo "$first_line" | grep -qE 'してください|してね|を実施|review of this PR|Perform|Review|Check|Run'; then
+    pass "${label}: 冒頭が命令文で開始している（action item として認識される）"
+  else
+    fail "${label}: 冒頭が命令文で開始していない（冒頭1行目: ${first_line}）"
+  fi
+}
+
+check_imperative_opening "自リポ版 REVIEW.md" "$SELF_REVIEW"
+check_imperative_opening "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
+
+# ============================================
+# Case 8: ai-review.yml は変更されていない（main と同じ、Issue #525）
+# ============================================
+echo ""
+echo "--- Case 8: ai-review.yml が main と一致（PR 動作確認のため変更禁止） ---"
+
+# main ブランチが取得できる環境でのみ実行（CI 環境など）
+if git rev-parse --verify --quiet origin/main >/dev/null; then
+  if git diff --quiet origin/main -- .github/workflows/ai-review.yml templates/.github/workflows/ai-review.yml; then
+    pass "ai-review.yml が main と完全一致（claude-code-action workflow validation を通過）"
+  else
+    fail "ai-review.yml が main と乖離している（PR 自身で claude-code-action が動作しない原因）"
+  fi
+else
+  echo "  SKIP: origin/main が利用不可（local 開発環境）"
+fi
 
 print_test_summary
