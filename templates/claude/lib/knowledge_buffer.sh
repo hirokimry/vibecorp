@@ -7,8 +7,21 @@
 #
 # common.sh の vibecorp_repo_id / vibecorp_cache_root を再利用する。
 
+# zsh / bash 両対応のソースパス解決
+# - bash:  ${BASH_SOURCE[0]}
+# - zsh:   ${(%):-%x}（zsh のプロンプト展開フラグ %x = 現在 sourced 中のファイル名）
+# - その他: $0（POSIX フォールバック）
+# bash の if-false ブランチでは ${(%):-%x} は parse error にならず実害なし
+if [ -n "${BASH_VERSION:-}" ]; then
+  _knowledge_buffer_lib_src="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+  # shellcheck disable=SC2296  # zsh 専用展開（bash 解析では偽陽性）
+  _knowledge_buffer_lib_src="${(%):-%x}"
+else
+  _knowledge_buffer_lib_src="$0"
+fi
 # shellcheck source=./common.sh
-_knowledge_buffer_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_knowledge_buffer_lib_dir="$(cd "$(dirname "$_knowledge_buffer_lib_src")" && pwd)"
 # shellcheck disable=SC1091
 source "${_knowledge_buffer_lib_dir}/common.sh"
 
