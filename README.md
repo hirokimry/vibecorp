@@ -177,8 +177,9 @@ your-project/
 │   │   ├── feature_request.md
 │   │   └── config.yml
 │   └── workflows/
-│       ├── test.yml       # CI ワークフロー
-│       └── ai-review.yml  # AI レビューワークフロー（claude_action.enabled: true 時のみ）
+│       ├── test.yml                   # CI ワークフロー
+│       ├── ai-review.yml              # AI レビューワークフロー（claude_action.enabled: true 時のみ）
+│       └── ai-review-golden-test.yml  # AI レビュー golden test（claude_action.enabled: true 時のみ）
 ├── REVIEW.md              # AI レビュープロンプト（claude_action.enabled: true 時のみ）
 ├── .coderabbit.yaml       # CodeRabbit 設定
 └── MVV.md                 # Mission / Vision / Values
