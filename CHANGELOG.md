@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### 修正
+
+- `knowledge_buffer.sh` の repo-id namespace 構造（PR #344）に旧構造で作られた buffer worktree が migration されない問題を修正 (#543)。`knowledge_buffer_ensure` 内で旧構造を自動検知し、未 push commit を保全しつつ新構造へ移行するようになった。利用者は次回 `/sync-edit` / `/review-harvest` / `/knowledge-pr` 実行時に自動回復する
+- `install.sh --update` 実行で `.claude-plugin/plugin.json` の `version` がダウングレードする問題を修正 (#540, PR #542)。`templates/claude-plugin/plugin.json` を廃止し、リポジトリ直下の `.claude-plugin/plugin.json` を唯一の Source-of-Truth として直接コピーするようになった
+
 ## [0.3.0] - 2026-04-25
 
 ### ⚠️ 破壊的変更
