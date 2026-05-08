@@ -23,16 +23,19 @@ AI組織構成は `docs/ai-organization.md` を参照すること。
 
 ### docs/ 書き込み権限（role-gate.sh で制御）
 
+`docs/ai-organization.md` を Source of Truth として、各エージェントの docs/ 編集権限は次の通り。
+
 | ロール | 書き込み可能な docs/ パス |
 |--------|------------------------|
-| CTO | docs/specification.md（技術スタック部分） |
-| CPO | docs/specification.md（プロダクト仕様部分） |
+| CTO | docs/specification.md（技術スタック部分）, docs/design-philosophy.md |
+| CPO | docs/specification.md（プロダクト仕様部分）, docs/screen-flow.md |
 | SM | docs/ai-organization.md |
-| 分析員 legal | docs/POLICY.md |
-| 分析員 accounting | docs/cost-analysis.md |
-| 分析員 security | docs/SECURITY.md |
+| accounting-analyst | docs/cost-analysis.md（直接編集） |
+| security-analyst | docs/SECURITY.md（直接編集） |
 
-統括職（CFO, CLO, CISO）は role-gate.sh に個別ケースを持たず、docs/ への直接書き込み権限がない。統括職は分析員チームのメタレビューを行う立場であり、docs/ の更新は分析員が実行する。
+統括職（CFO, CLO, CISO）は role-gate.sh に個別ケースを持たず、docs/ への直接書き込み権限がない。統括職は分析員チームのメタレビューを行う立場であり、docs/ の更新は原則として分析員が実行する。
+
+`docs/POLICY.md` は CLO 経由で編集する（`legal-analyst` は frontmatter で `Write` / `Edit` ツールを保有しないため、自身では POLICY.md を直接編集できない）。CLO 自身も role-gate.sh の docs/ 直接書き込み許可リストには含まれないため、POLICY.md の更新は CLO の判断のもと、組織運用フロー（COO による代行 / CEO 承認）を経て実施される。
 
 SM は組織運営ドキュメント `docs/ai-organization.md` のみ書き込み可能。他の docs/ ファイルには権限を持たない。
 
