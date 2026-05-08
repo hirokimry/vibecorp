@@ -1,6 +1,6 @@
 # Issue サイクル実測レポート雛形
 
-`/cycle-metrics` による実測データの記録雛形。実施ごとに `cycle-metrics-YYYY-MM-DD.md` としてコピーして使用する。
+`/vibecorp:cycle-metrics` による実測データの記録雛形。実施ごとに `cycle-metrics-YYYY-MM-DD.md` としてコピーして使用する。
 
 判断（Critical/Major、Issue 起票要否）は CFO の `/audit-cost` 側で行う。本レポートは **データ生成専用**。
 
