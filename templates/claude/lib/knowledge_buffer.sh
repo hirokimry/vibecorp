@@ -95,9 +95,13 @@ knowledge_buffer_lock_release() {
 knowledge_buffer_is_legacy_layout() {
   local repo_root="$1"
   local legacy_dir="$2"
+  # awk: "worktree " (9 文字) 以降を path として抽出。$2 だとスペース含むパスで切れる
   git -C "$repo_root" worktree list --porcelain 2>/dev/null \
     | awk -v target="$legacy_dir" '
-        /^worktree / { if ($2 == target) { print "yes"; exit } }
+        /^worktree / {
+          path = substr($0, 10)
+          if (path == target) { print "yes"; exit }
+        }
       '
 }
 
