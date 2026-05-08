@@ -484,6 +484,8 @@ check_isolation_deps() {
       if ! command -v bwrap >/dev/null 2>&1; then
         log_error "bwrap (bubblewrap) が見つかりません。隔離レイヤには bwrap が必要です。"
         local os_release_path distro_id distro_id_like
+        # VIBECORP_OS_RELEASE_PATH はテスト時に /etc/os-release を差し替えるための環境変数。
+        # awk フィルタが ID / ID_LIKE 行のみを抽出し、結果は case パターンマッチでメッセージ選択にしか使われないため、任意パス指定による情報漏洩経路は成立しない
         os_release_path="${VIBECORP_OS_RELEASE_PATH:-/etc/os-release}"
         distro_id=""
         distro_id_like=""
