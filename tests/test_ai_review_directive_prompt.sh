@@ -26,10 +26,35 @@ TEMPLATE_REVIEW="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
 SELF_AI_REVIEW="${SCRIPT_DIR}/.github/workflows/ai-review.yml"
 TEMPLATE_AI_REVIEW="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
 
-assert_file_exists "vibecorp 自リポ REVIEW.md" "$SELF_REVIEW"
+# Issue #532: vibecorp.yml の claude_action.enabled が false の場合は自リポ版が削除されている
+# ため、配布版（templates/ 配下）のみを検証対象とする。enabled: true / 未定義時は自リポ版も検証する。
+SELF_REPO_ENABLED="true"
+VIBECORP_YML="${SCRIPT_DIR}/.claude/vibecorp.yml"
+if [[ -f "$VIBECORP_YML" ]]; then
+  ca_enabled=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$VIBECORP_YML")
+  if [[ "$ca_enabled" == "false" ]]; then
+    SELF_REPO_ENABLED="false"
+  fi
+fi
+
 assert_file_exists "templates 配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
-assert_file_exists "vibecorp 自リポ ai-review.yml" "$SELF_AI_REVIEW"
 assert_file_exists "templates 配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
+
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  assert_file_exists "vibecorp 自リポ REVIEW.md" "$SELF_REVIEW"
+  assert_file_exists "vibecorp 自リポ ai-review.yml" "$SELF_AI_REVIEW"
+else
+  echo "  SKIP: vibecorp 自リポ REVIEW.md / ai-review.yml の検証（claude_action.enabled: false のため）"
+fi
 
 # ============================================
 # Case 1: REVIEW.md / REVIEW.md.tpl が指示書型に書き換わっている
@@ -57,7 +82,9 @@ check_directive_form() {
   done
 }
 
-check_directive_form "自リポ版 REVIEW.md" "$SELF_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_directive_form "自リポ版 REVIEW.md" "$SELF_REVIEW"
+fi
 check_directive_form "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
@@ -86,7 +113,9 @@ check_tool_mentions() {
   done
 }
 
-check_tool_mentions "自リポ版 REVIEW.md" "$SELF_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_tool_mentions "自リポ版 REVIEW.md" "$SELF_REVIEW"
+fi
 check_tool_mentions "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
@@ -105,7 +134,9 @@ check_zero_approve() {
   fi
 }
 
-check_zero_approve "自リポ版 REVIEW.md" "$SELF_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_zero_approve "自リポ版 REVIEW.md" "$SELF_REVIEW"
+fi
 check_zero_approve "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
@@ -140,7 +171,9 @@ check_claude_args() {
   done
 }
 
-check_claude_args "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_claude_args "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+fi
 check_claude_args "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
 
 # ============================================
@@ -188,7 +221,9 @@ check_env_vars() {
   fi
 }
 
-check_env_vars "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_env_vars "自リポ版 ai-review.yml" "$SELF_AI_REVIEW"
+fi
 check_env_vars "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
 
 # ============================================
@@ -197,10 +232,14 @@ check_env_vars "配布版 ai-review.yml" "$TEMPLATE_AI_REVIEW"
 echo ""
 echo "--- Case 5: 自リポ版と配布版 ai-review.yml が完全一致 ---"
 
-if diff -q "$SELF_AI_REVIEW" "$TEMPLATE_AI_REVIEW" >/dev/null; then
-  pass "自リポ版と配布版 ai-review.yml が完全一致"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  if diff -q "$SELF_AI_REVIEW" "$TEMPLATE_AI_REVIEW" >/dev/null; then
+    pass "自リポ版と配布版 ai-review.yml が完全一致"
+  else
+    fail "自リポ版と配布版 ai-review.yml が乖離している"
+  fi
 else
-  fail "自リポ版と配布版 ai-review.yml が乖離している"
+  echo "  SKIP: 自リポ版と配布版の drift 検証（claude_action.enabled: false のため）"
 fi
 
 # ============================================
@@ -223,7 +262,9 @@ check_no_rulebook_phrase() {
   fi
 }
 
-check_no_rulebook_phrase "自リポ版 REVIEW.md" "$SELF_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_no_rulebook_phrase "自リポ版 REVIEW.md" "$SELF_REVIEW"
+fi
 check_no_rulebook_phrase "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
@@ -264,7 +305,9 @@ check_imperative_opening() {
   fi
 }
 
-check_imperative_opening "自リポ版 REVIEW.md" "$SELF_REVIEW"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  check_imperative_opening "自リポ版 REVIEW.md" "$SELF_REVIEW"
+fi
 check_imperative_opening "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 
 # ============================================
@@ -273,10 +316,15 @@ check_imperative_opening "配布版 REVIEW.md.tpl" "$TEMPLATE_REVIEW"
 echo ""
 echo "--- Case 8: ai-review.yml が PR 差分で変更されていない（PR 動作確認のため） ---"
 
-# PR の真の差分は merge-base...HEAD の範囲。
-# `git diff origin/main` で作業ツリーと main の単純比較をすると、main が PR より進んでいる場合に
-# PR の変更ではない main 側の commit も拾って誤検知する。merge-base 起点で PR 差分のみを検査する。
-if git rev-parse --verify --quiet origin/main >/dev/null; then
+# Issue #532: claude_action.enabled: false の状態では vibecorp 自身で claude-code-action が
+# 動作しないため、ai-review.yml の PR 差分チェックは目的を喪失する（むしろ削除する PR が落ちる）。
+# enabled: true 時のみ実施する。
+if [[ "$SELF_REPO_ENABLED" != "true" ]]; then
+  echo "  SKIP: ai-review.yml PR 差分検査（claude_action.enabled: false のため、PR 動作確認が不要）"
+elif git rev-parse --verify --quiet origin/main >/dev/null; then
+  # PR の真の差分は merge-base...HEAD の範囲。
+  # `git diff origin/main` で作業ツリーと main の単純比較をすると、main が PR より進んでいる場合に
+  # PR の変更ではない main 側の commit も拾って誤検知する。merge-base 起点で PR 差分のみを検査する。
   base=$(git merge-base HEAD origin/main)
   if git diff --quiet "${base}"...HEAD -- .github/workflows/ai-review.yml templates/.github/workflows/ai-review.yml; then
     pass "ai-review.yml が PR 差分で変更されていない（claude-code-action workflow validation を通過）"

@@ -239,11 +239,14 @@ fi
 # 9. run_install() から generate_ai_review_golden_test_workflow が呼ばれる
 # ============================================
 echo ""
-echo "--- 9. run_install() から新関数が呼ばれる ---"
-if grep -q -e 'generate_ai_review_golden_test_workflow' "$INSTALL_SH"; then
-  pass "install.sh で generate_ai_review_golden_test_workflow が呼ばれている"
+echo "--- 9. main() から新関数が呼ばれる ---"
+# CodeRabbit 指摘: ファイル全体検索だと関数定義でもパスしてしまうため、
+# main() ブロック内（インストール起動エントリポイント）に限定して呼出を確認する
+main_block=$(awk '/^main\(\) \{/,/^\}$/' "$INSTALL_SH")
+if echo "$main_block" | grep -q -e 'generate_ai_review_golden_test_workflow'; then
+  pass "main() 内で generate_ai_review_golden_test_workflow が呼ばれている"
 else
-  fail "install.sh で generate_ai_review_golden_test_workflow が呼ばれていない"
+  fail "main() 内で generate_ai_review_golden_test_workflow が呼ばれていない"
 fi
 
 # 関数定義自体の存在確認
