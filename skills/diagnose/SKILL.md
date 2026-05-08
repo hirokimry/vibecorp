@@ -74,7 +74,7 @@ touch "${stamp_dir}/diagnose-active"
 
 ### 4. 改善点の発見
 
-以下の3つを並行して実行する:
+以下の4つを並行して実行する:
 
 #### 4a. /vibecorp:harvest-all --dry-run の実行
 
@@ -122,6 +122,41 @@ CPO エージェントに以下を依頼する:
 ```
 
 `--scope` が指定されている場合はそのディレクトリに限定して分析する。
+
+#### 4d. Claude Code 仕様準拠分析
+
+`claude-code-guide` エージェントに以下を依頼する:
+
+```text
+以下のファイル一覧と公式 Claude Code 仕様（docs.claude.com）を突合し、
+仕様ドリフトを検出してください:
+
+- .claude/hooks/*.sh（PreToolUse / PostToolUse 等のイベント名・引数スキーマ）
+- .claude/skills/*/SKILL.md（front matter スキーマ、name / description）
+- .claude/agents/*.md（front matter スキーマ、tools フィールド）
+- .claude/settings.json（permissions / hooks / MCP スキーマ）
+- *.mcp.json（MCP サーバー定義）
+
+検出例:
+- 廃止イベント名（古い PreToolUse 引数構造等）
+- 非推奨設定キー
+- 新規必須フィールドの未指定
+- MCP server 定義の旧形式
+```
+
+`--scope` が指定されている場合はそのディレクトリに限定して分析する。
+
+**スコープは仕様ドリフトの検出に限定する**。以下は 4d の対象外:
+- MVV / プロダクト方針との整合（→ 4c CPO 分析の責務）
+- 技術的負債一般（→ 4b CTO 分析の責務）
+- セキュリティ脆弱性（→ ステップ 5 CISO フィルタの責務）
+
+**フォールバック動作**: `claude-code-guide` が利用不可（外部依存の障害等）の場合は 4d をスキップし、4a / 4b / 4c の結果のみで続行する。スキップした事実はステップ 8 の候補一覧レポートに「4d: スキップ（claude-code-guide 利用不可）」として明記する。
+
+**データ取得方式**:
+- 取得頻度は `claude-code-guide` 側に委譲する（`/vibecorp:diagnose` 自身はキャッシュを持たない）
+- GitMCP（`gitmcp.io`）には依存しない。`claude-code-guide` が WebFetch + WebSearch で `docs.claude.com` を直接参照する設計とする
+- API 課金影響は full プリセットの想定コスト枠内に収める（詳細は `docs/cost-analysis.md` を参照）
 
 ### 5. CISO フィルタリング（自己制約緩和チェック）
 
