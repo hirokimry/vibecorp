@@ -145,6 +145,18 @@ which claude
 | **standard** | 上記 + /vibecorp:review-harvest, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all, /vibecorp:context7 | 上記 + sync-gate, review-gate | CTO, CPO | なし | Claude Max 定額内 | チーム開発 |
 | **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:plan-epic, /vibecorp:release-epic, /vibecorp:cycle-metrics | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | macOS: sandbox-exec / Linux: bwrap 検出（実隔離は Phase 2） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
+### プラン毎の auto 体験射程と sandbox
+
+「どこまで auto で進める体験を提供するか」「ユーザーが確認プロンプトに何回答えるか」のプラン別の射程を整理する。Source of Truth は [`docs/specification.md`](docs/specification.md#プリセット)。SKIP 不可 hook のマトリクスは [`docs/specification.md#skip-性マトリクス`](docs/specification.md#skip-性マトリクス) を参照。
+
+| プリセット | auto 体験射程（公式サポート） | auto 体験射程（ユーザー裁量） | sandbox |
+|---|---|---|---|
+| **minimal** | 単発 `/vibecorp:ship` → PR → auto-merge | `/loop` による cron 化 | 対象外 |
+| **standard** | minimal + ゲート強制（auto-merge 維持） | `/loop` による cron 化 | 対象外 |
+| **full** | 並列 `/vibecorp:ship-parallel` + 単発 `/vibecorp:autopilot` + `/vibecorp:diagnose` | `/loop /vibecorp:autopilot 24h` 等 | macOS のみ推奨・opt-in（強制ではない） |
+
+vibecorp は sandbox を強く推奨するだけで、強制はしない。`full` + sandbox OFF で並列実行する場合は「承認ダイアログ多発」または「ユーザーが `.claude/settings.local.json` の allow リストを自己調整」のいずれかとなり、自己責任の運用となる（[`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入) 参照）。
+
 ## インストールされるもの
 
 `install.sh` を実行すると、導入先リポジトリに以下の構造が生成される。
