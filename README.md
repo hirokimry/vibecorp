@@ -157,6 +157,8 @@ which claude
 
 vibecorp は sandbox を強く推奨するだけで、強制はしない。`full` + sandbox OFF で並列実行する場合は「承認ダイアログ多発」または「ユーザーが `.claude/settings.local.json` の allow リストを自己調整」のいずれかとなり、自己責任の運用となる（[`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入) 参照）。
 
+> **Note**: 一部の必須 hook（保護系・ゲート系・API バイパス防止系・ログ系）は `vibecorp.yml` の `hooks: false` でも無効化できません。詳細は [`docs/specification.md#skip-性マトリクス`](docs/specification.md#skip-性マトリクス) を参照。
+
 ## インストールされるもの
 
 `install.sh` を実行すると、導入先リポジトリに以下の構造が生成される。
