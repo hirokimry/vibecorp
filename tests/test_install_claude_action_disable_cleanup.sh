@@ -126,4 +126,84 @@ assert_file_exists "templates/ai-review-golden-test.yml は削除されない"  
 
 cleanup
 
+# ============================================
+# Step C: 0.33.6 互換シナリオ — copy_workflows() 経由配置 (lock 未登録) からの遡及クリーンアップ
+# ============================================
+# Issue #532 で発見: 旧版 (〜0.33.6) は copy_workflows() で ai-review-golden-test.yml を
+# 無条件配置していた。base_hash 未登録のため本版の generate_ai_review_golden_test_workflow()
+# の was_managed 判定 (base_hash 存在) では「管理外残置」となり削除されない。
+# テンプレート完全一致なら管理下とみなす遡及ロジックがこのケースを救う。
+echo ""
+echo "--- Step C: 0.33.6 互換 — lock 未登録ファイルがテンプレート一致で削除される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude" "$R/.github/workflows"
+
+# 0.33.6 の copy_workflows() を再現: テンプレートを cp で直配置 (base_hash 未登録)
+cp "${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"             "$R/.github/workflows/ai-review.yml"
+cp "${SCRIPT_DIR}/templates/.github/workflows/ai-review-golden-test.yml" "$R/.github/workflows/ai-review-golden-test.yml"
+
+# vibecorp.yml を enabled: false で配置
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+coderabbit:
+  enabled: true
+claude_action:
+  enabled: false
+EOF
+
+# vibecorp.lock は不在（0.33.6 でも lock は生成されるが、ai-review*.yml の base_hash は未登録）
+[[ ! -f "$R/.claude/vibecorp.lock" ]] && pass "前提: vibecorp.lock 未配置（0.33.6 互換シナリオ）"
+
+# --update でテンプレート一致ファイルが削除されるか
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_not_exists "lock 未登録 ai-review.yml がテンプレート一致判定で削除される"             "$R/.github/workflows/ai-review.yml"
+assert_file_not_exists "lock 未登録 ai-review-golden-test.yml がテンプレート一致判定で削除される" "$R/.github/workflows/ai-review-golden-test.yml"
+
+cleanup
+
+# ============================================
+# Step D: 0.33.6 互換シナリオ — ユーザー編集済み (テンプレート不一致) は残置される
+# ============================================
+echo ""
+echo "--- Step D: 0.33.6 互換 — ユーザー編集済みファイル (テンプレート不一致) は残置される ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude" "$R/.github/workflows"
+
+# ユーザーが編集した状態を再現: テンプレートにコメントを追加してハッシュを変える
+cp "${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml" "$R/.github/workflows/ai-review.yml"
+echo "" >> "$R/.github/workflows/ai-review.yml"
+echo "# ユーザー追記行（テンプレートと不一致）" >> "$R/.github/workflows/ai-review.yml"
+
+cp "${SCRIPT_DIR}/templates/.github/workflows/ai-review-golden-test.yml" "$R/.github/workflows/ai-review-golden-test.yml"
+echo "" >> "$R/.github/workflows/ai-review-golden-test.yml"
+echo "# ユーザー追記行（テンプレートと不一致）" >> "$R/.github/workflows/ai-review-golden-test.yml"
+
+cat > "$R/.claude/vibecorp.yml" <<'EOF'
+name: test-proj
+preset: minimal
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+claude_action:
+  enabled: false
+EOF
+
+bash "$INSTALL_SH" --update 2>/dev/null
+
+assert_file_exists "ユーザー編集済み ai-review.yml は管理外として残置される"             "$R/.github/workflows/ai-review.yml"
+assert_file_exists "ユーザー編集済み ai-review-golden-test.yml は管理外として残置される" "$R/.github/workflows/ai-review-golden-test.yml"
+assert_file_contains "ai-review.yml のユーザー追記行が保持される"             "$R/.github/workflows/ai-review.yml"             "ユーザー追記行"
+assert_file_contains "ai-review-golden-test.yml のユーザー追記行が保持される" "$R/.github/workflows/ai-review-golden-test.yml" "ユーザー追記行"
+
+cleanup
+
 print_test_summary

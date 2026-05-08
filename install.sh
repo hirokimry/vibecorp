@@ -1339,6 +1339,18 @@ generate_ai_review_workflow() {
       was_managed="true"
     fi
 
+    # Issue #532: 旧版（〜0.33.6）で copy_workflows() 経由で配置された ai-review.yml は
+    # base_hash が未登録だが、テンプレートと完全一致するため vibecorp 管理下とみなす。
+    # ユーザーが内容を編集していればハッシュ不一致となり管理外残置となる（誤削除防止）。
+    if [[ "$was_managed" == "false" ]] && [[ -f "$target" ]] && [[ -f "$template" ]]; then
+      local target_hash template_hash
+      target_hash=$(compute_hash "$target")
+      template_hash=$(compute_hash "$template")
+      if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
+        was_managed="true"
+      fi
+    fi
+
     # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
     local base_snapshot
     base_snapshot=$(get_base_snapshot "$rel_path")
@@ -1409,6 +1421,20 @@ generate_ai_review_golden_test_workflow() {
     local was_managed="false"
     if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
       was_managed="true"
+    fi
+
+    # Issue #532: 旧版（〜0.33.6）で copy_workflows() 経由で配置された
+    # ai-review-golden-test.yml は base_hash が未登録だが、テンプレートと完全一致するため
+    # vibecorp 管理下とみなす。ユーザーが内容を編集していればハッシュ不一致となり管理外残置
+    # となる（誤削除防止）。これにより 0.33.6 から本版に更新したユーザーのリポジトリでも
+    # claude_action.enabled: false 切替で golden test ワークフローが綺麗に削除される。
+    if [[ "$was_managed" == "false" ]] && [[ -f "$target" ]] && [[ -f "$template" ]]; then
+      local target_hash template_hash
+      target_hash=$(compute_hash "$target")
+      template_hash=$(compute_hash "$template")
+      if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
+        was_managed="true"
+      fi
     fi
 
     # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
