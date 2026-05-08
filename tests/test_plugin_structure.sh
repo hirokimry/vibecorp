@@ -102,8 +102,12 @@ done
 echo ""
 echo "--- D. テンプレート整合性 ---"
 
-# D1. templates/claude-plugin/plugin.json が存在する
-assert_file_exists "templates/claude-plugin/plugin.json" "${SCRIPT_DIR}/templates/claude-plugin/plugin.json"
+# D1. templates/claude-plugin/ が廃止されている（Issue #540: SoT 一元化により .claude-plugin/ 直接コピーへ移行）
+if [[ -d "${SCRIPT_DIR}/templates/claude-plugin" ]]; then
+  fail "templates/claude-plugin/ が残存している（廃止済み: Issue #540）"
+else
+  pass "templates/claude-plugin/ が廃止されている"
+fi
 
 # D2. templates/claude/skills/ が廃止されている
 if [[ -d "${SCRIPT_DIR}/templates/claude/skills" ]]; then
