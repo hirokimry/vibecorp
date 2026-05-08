@@ -454,17 +454,20 @@ check_unsupported_os() {
   case "$OS" in
     windows)
       log_error "Windows ネイティブは非対応です。WSL2 を使用してください。"
+      log_error "詳細: docs/design-philosophy.md#os-support"
       exit 2
       ;;
     unknown)
       log_error "サポート外の OS です（$(uname -s)）。macOS または Linux を使用してください。"
+      log_error "詳細: docs/design-philosophy.md#os-support"
       exit 2
       ;;
   esac
 }
 
 # 隔離レイヤの依存を確認する（full プリセット時のみ呼ばれる）
-# Darwin は sandbox-exec の存在を検証、Linux は現在未対応のためスキップ
+# Darwin は sandbox-exec、Linux は bwrap の存在を検証する
+# 不在時は distro に応じたインストール手順を表示して exit 1 する
 check_isolation_deps() {
   # 隔離レイヤは full プリセット専用。minimal / standard では依存チェック不要
   if [[ "$PRESET" != "full" ]]; then
@@ -478,7 +481,36 @@ check_isolation_deps() {
       fi
       ;;
     linux)
-      log_skip "Linux 隔離レイヤは現在未対応のためスキップします"
+      if ! command -v bwrap >/dev/null 2>&1; then
+        log_error "bwrap (bubblewrap) が見つかりません。隔離レイヤには bwrap が必要です。"
+        local os_release_path distro_id distro_id_like
+        # VIBECORP_OS_RELEASE_PATH はテスト時に /etc/os-release を差し替えるための環境変数。
+        # awk フィルタが ID / ID_LIKE 行のみを抽出し、結果は case パターンマッチでメッセージ選択にしか使われないため、任意パス指定による情報漏洩経路は成立しない
+        os_release_path="${VIBECORP_OS_RELEASE_PATH:-/etc/os-release}"
+        distro_id=""
+        distro_id_like=""
+        if [[ -r "$os_release_path" ]]; then
+          distro_id=$(awk -F= '$1=="ID"{gsub(/"/,"",$2); print $2}' "$os_release_path")
+          distro_id_like=$(awk -F= '$1=="ID_LIKE"{gsub(/"/,"",$2); print $2}' "$os_release_path")
+        fi
+        case " ${distro_id} ${distro_id_like} " in
+          *" ubuntu "*|*" debian "*)
+            log_error "  Debian/Ubuntu: sudo apt-get install bubblewrap"
+            ;;
+          *" fedora "*|*" rhel "*|*" centos "*)
+            log_error "  Fedora/RHEL: sudo dnf install bubblewrap"
+            ;;
+          *" alpine "*)
+            log_error "  Alpine: sudo apk add bubblewrap"
+            ;;
+          *)
+            log_error "  Debian/Ubuntu: sudo apt-get install bubblewrap"
+            log_error "  Fedora/RHEL:   sudo dnf install bubblewrap"
+            log_error "  Alpine:        sudo apk add bubblewrap"
+            ;;
+        esac
+        exit 1
+      fi
       ;;
   esac
 }

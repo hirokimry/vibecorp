@@ -37,6 +37,22 @@ vibecorp の AI レビュー（claude-code-action）における OAuth 認証経
 
 （セキュリティインシデント発生時の対応手順を記載）
 
+## 脅威モデル
+
+vibecorp が想定する 3 段階の脅威と各層の防御を以下の通り定義する。隔離レイヤ（後述）は中段・下段の脅威に対する防御層として機能する。
+
+| # | 脅威 | 例 | 一次防御 | 二次防御 |
+|---|---|---|---|---|
+| 1 | **誤操作** | 開発者が誤って `rm -rf ~` 等の破壊コマンドを実行 | OS 標準のユーザー権限 | `protect-files.sh` / `protect-branch.sh` フックで設定ファイル・main 直書きを deny |
+| 2 | **プロンプトインジェクション経由の破壊** | 外部ドキュメント・Issue 本文・MCP レスポンスに仕込まれた指示で AI が `rm -rf ~` 等を実行 | ワークフロー一次防御（`protect-files.sh` / `protect-branch.sh` 等の保護系フック + 承認フロー）で破壊操作の実行経路を抑制。`block-api-bypass.sh` は `gh api` による直マージ等のワークフロー迂回経路を遮断 | full プリセットの隔離レイヤ。**macOS (Phase 1 実装済み)**: `sandbox-exec` で WORKTREE 外への書込・`~/.ssh` 等の機密ディレクトリを deny。Phase 1 既知制約として `~/.claude` は全 RW 許可（後述「Phase 1 の位置づけと既知の制約」参照）。**Linux (Phase 2 実装予定 #310)**: 現状は `install.sh` で `bwrap` 存在を検出して利用者を誘導するのみで実隔離は未稼働。Phase 2 で `bwrap` による実隔離を投入する |
+| 3 | **認証情報窃取** | プロンプトインジェクションで `~/.config/gh/hosts.yml` / `ANTHROPIC_API_KEY` / `~/.ssh/` を読み出し外部送信 | `command-log.sh` フックで実行コマンドを監査ログに記録 | full プリセットの隔離レイヤで認証情報配置先 (`~/.config/gh/`、`~/.ssh/`、環境変数経由 token を保持するファイル) を deny。**macOS (Phase 1 実装済み)** で稼働、**Linux (Phase 2 実装予定 #310)** は実隔離未稼働 |
+
+各脅威への具体的対応は以下のセクションで詳述する:
+- 脅威 #1, #2 の一次防御: [knowledge ガードレール（多層防御）](#knowledge-ガードレール多層防御) も参照
+- 脅威 #2, #3 の二次防御: [エージェント隔離レイヤ（sandbox-exec）](#エージェント隔離レイヤsandbox-exec) を参照
+
+OS サポート方針（macOS / Linux / WSL2 first-class、Windows ネイティブ非対応）の根拠は [`docs/design-philosophy.md#os-support`](design-philosophy.md#os-support) を参照。
+
 ## エージェント隔離レイヤ（sandbox-exec）
 
 ### 概要

@@ -29,6 +29,9 @@ jobs:
       - name: jq の確認
         run: jq --version
 
+      - name: bubblewrap の install
+        run: sudo apt-get update -q && sudo apt-get install -y bubblewrap
+
       - name: シャード別テスト実行
         env:
           SHARD: ${{ matrix.shard }}
