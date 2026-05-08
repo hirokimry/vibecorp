@@ -728,10 +728,11 @@ copy_managed_files() {
     done
   fi
 
-  # .claude-plugin/plugin.json: プラグインメタデータ（常に最新で上書き）
-  if [[ -f "${SCRIPT_DIR}/templates/claude-plugin/plugin.json" ]]; then
+  # .claude-plugin/plugin.json: vibecorp 自身の .claude-plugin/plugin.json が
+  # 唯一の Source-of-Truth。templates/ 経由の二重管理は drift の原因になるため廃止 (Issue #540)
+  if [[ -f "${SCRIPT_DIR}/.claude-plugin/plugin.json" ]]; then
     mkdir -p "${REPO_ROOT}/.claude-plugin"
-    cp "${SCRIPT_DIR}/templates/claude-plugin/plugin.json" "${REPO_ROOT}/.claude-plugin/plugin.json"
+    cp "${SCRIPT_DIR}/.claude-plugin/plugin.json" "${REPO_ROOT}/.claude-plugin/plugin.json"
   fi
 
   # プレースホルダー置換
