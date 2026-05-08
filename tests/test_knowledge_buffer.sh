@@ -245,6 +245,119 @@ assert_eq "push 失敗時 exit 3" "3" "$PUSH_EXIT"
 
 # ============================================
 echo ""
+echo "=== ensure: 蓄積保持シナリオ (Issue #541) ==="
+# ============================================
+
+# 復旧用 origin を作り直す（push 失敗テストで origin が破壊されているため）
+git init --bare "$ORIGIN_REPO" >/dev/null 2>&1
+git -C "$ORIGIN_REPO" symbolic-ref HEAD refs/heads/main
+git -C "$WORK_REPO" push origin main >/dev/null 2>&1
+
+# まず buffer worktree を初期化し、harvest 1 件目を push して origin/knowledge/buffer を作る
+rm -rf "$WORKTREE_DIR"
+git -C "$WORK_REPO" worktree prune >/dev/null 2>&1 || true
+git -C "$WORK_REPO" branch -D knowledge/buffer 2>/dev/null || true
+knowledge_buffer_ensure >/dev/null 2>&1
+echo "harvest #1" > "$(knowledge_buffer_path 'harvest-1.txt')"
+knowledge_buffer_commit "test: harvest 1" >/dev/null 2>&1
+knowledge_buffer_push >/dev/null 2>&1
+
+# シナリオ A（別マシン初回）: worktree dir を削除した状態から ensure() →
+# origin/knowledge/buffer をベースに作り直すことで harvest 蓄積を引き継ぐ
+rm -rf "$WORKTREE_DIR"
+git -C "$WORK_REPO" worktree prune >/dev/null 2>&1 || true
+git -C "$WORK_REPO" branch -D knowledge/buffer 2>/dev/null || true
+if knowledge_buffer_ensure >/dev/null 2>&1; then
+  pass "ensure: cache クリア後に origin/knowledge/buffer から復元する"
+else
+  fail "ensure: cache クリア後の復元に失敗"
+fi
+if [ -f "$(knowledge_buffer_path 'harvest-1.txt')" ]; then
+  pass "ensure: 復元後に過去 harvest が working tree に存在する"
+else
+  fail "ensure: 復元後に過去 harvest が消失している（origin/main から派生してしまった）"
+fi
+
+# シナリオ B（ff 失敗時の reset 先）: 別 worktree からリモートに同一ファイルへの変更を
+# push し、ローカル側でも同じファイルを汚す。pull --ff-only が dirty tree コンフリクトで
+# 失敗する経路を作り、ensure() が origin/main ではなく origin/knowledge/buffer に
+# reset することを検証する。
+TMP_WT="${TMPDIR_ROOT}/tmp-buffer-wt"
+git -C "$WORK_REPO" worktree add -B tmp-buffer "$TMP_WT" origin/knowledge/buffer >/dev/null 2>&1
+echo "remote modification" >> "${TMP_WT}/harvest-1.txt"
+git -C "$TMP_WT" add -A >/dev/null 2>&1
+git -C "$TMP_WT" commit -m "remote: harvest-1 を変更" >/dev/null 2>&1
+git -C "$TMP_WT" push origin tmp-buffer:knowledge/buffer >/dev/null 2>&1
+git -C "$WORK_REPO" worktree remove --force "$TMP_WT" >/dev/null 2>&1
+git -C "$WORK_REPO" branch -D tmp-buffer >/dev/null 2>&1
+
+# ローカル dirty: 同じファイルを汚すと pull --ff-only がコンフリクトで失敗する
+echo "local dirty change" >> "$(knowledge_buffer_path 'harvest-1.txt')"
+
+ENSURE_OUT=$(knowledge_buffer_ensure 2>&1) || true
+HEAD_AFTER=$(git -C "$WORKTREE_DIR" rev-parse HEAD)
+ORIGIN_BUFFER_AFTER=$(git -C "$WORKTREE_DIR" rev-parse origin/knowledge/buffer)
+assert_eq "ensure: ff 失敗時に origin/knowledge/buffer にリセットする" \
+  "$ORIGIN_BUFFER_AFTER" "$HEAD_AFTER"
+assert_contains "ensure: リセット先メッセージが origin/knowledge/buffer を示す" \
+  "origin/knowledge/buffer" "$ENSURE_OUT"
+
+# Issue #541 リグレッション防止: ソースコードに `reset --hard origin/main` が残っていないこと
+if grep -qF -- 'reset --hard origin/main' "$LIB"; then
+  fail "regression: knowledge_buffer.sh が依然として origin/main へリセットしている (Issue #541)"
+else
+  pass "knowledge_buffer.sh は origin/main へリセットしない (Issue #541 修正済)"
+fi
+
+# ============================================
+echo ""
+echo "=== commit: lock dir 除外 (Issue #541) ==="
+# ============================================
+
+# lock 取得中に commit が呼ばれても .buffer.lock.d/ が commit に含まれないこと
+knowledge_buffer_lock_acquire >/dev/null 2>&1
+LOCK_PID_FILE="${WORKTREE_DIR}/.buffer.lock.d/pid"
+if [ -f "$LOCK_PID_FILE" ]; then
+  pass "lock_acquire: lock pid file が working tree に作成される"
+else
+  fail "lock_acquire: lock pid file が作成されていない"
+fi
+echo "note while locked" > "$(knowledge_buffer_path 'locked-note.txt')"
+knowledge_buffer_commit "test: lock 取得中のコミット" >/dev/null 2>&1
+TRACKED=$(git -C "$WORKTREE_DIR" ls-tree -r HEAD --name-only)
+if echo "$TRACKED" | grep -q '^\.buffer\.lock\.d/'; then
+  fail "commit: lock dir が commit に含まれてしまった"
+else
+  pass "commit: lock dir が commit に含まれない"
+fi
+knowledge_buffer_lock_release
+
+# orphan な .buffer.lock.d/ が HEAD にある状態 → 次の commit で削除される（自動掃除）
+mkdir -p "${WORKTREE_DIR}/.buffer.lock.d"
+echo 99999 > "${WORKTREE_DIR}/.buffer.lock.d/pid"
+git -C "$WORKTREE_DIR" add -f .buffer.lock.d/pid >/dev/null 2>&1
+git -C "$WORKTREE_DIR" commit -m "test: simulate orphan lock" >/dev/null 2>&1
+TRACKED_BEFORE=$(git -C "$WORKTREE_DIR" ls-tree -r HEAD --name-only)
+if echo "$TRACKED_BEFORE" | grep -q '^\.buffer\.lock\.d/pid$'; then
+  pass "前提: orphan lock dir が HEAD に含まれている状態を再現できた"
+else
+  fail "前提: orphan lock dir 再現に失敗"
+fi
+echo "next harvest" > "$(knowledge_buffer_path 'next-harvest.txt')"
+knowledge_buffer_commit "test: orphan 自動掃除" >/dev/null 2>&1
+TRACKED_AFTER=$(git -C "$WORKTREE_DIR" ls-tree -r HEAD --name-only)
+if echo "$TRACKED_AFTER" | grep -q '^\.buffer\.lock\.d/'; then
+  fail "commit: orphan な lock dir が次の commit でも残存している"
+else
+  pass "commit: orphan な lock dir が次の commit で削除される（自動掃除）"
+fi
+
+# 後続の lock テスト用に working tree の .buffer.lock.d/ を片付ける
+# （rm --cached は index からのみ除去し、working tree のディレクトリは残るため）
+rm -rf "${WORKTREE_DIR}/.buffer.lock.d"
+
+# ============================================
+echo ""
 echo "=== knowledge_buffer_lock ==="
 # ============================================
 
