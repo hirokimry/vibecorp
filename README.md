@@ -56,7 +56,7 @@ path/to/vibecorp/install.sh --update
 
 `--update` 実行時にバージョン差分がある場合、自動的に表示される。
 
-> **Note**: vibecorp 0.3.0 リリース直後（2026-04-XX 〜 #540 修正前）に `--update` を流した利用者は、`.claude-plugin/plugin.json` の `version` が 0.3.0 → 0.2.0 にダウングレードされている可能性があります。修正版の vibecorp を `git pull` 後に再度 `./install.sh --update` を実行すれば自動的に最新 version へ復旧します。明示的なマイグレーションは不要です。
+> **Note**: vibecorp 0.3.0 リリース（2026-05-03）から #540 修正前までに `--update` を流した利用者は、`.claude-plugin/plugin.json` の `version` が 0.3.0 → 0.2.0 にダウングレードされている可能性があります。修正版の vibecorp を `git pull` 後に再度 `./install.sh --update` を実行すれば自動的に最新 version へ復旧します。明示的なマイグレーションは不要です。
 
 ### オプション
 
