@@ -163,6 +163,43 @@ else
 fi
 
 echo ""
+
+# --- テスト6: ship-parallel が Agent 起動 mode に bypassPermissions を採用している ---
+#
+# Issue #312（Phase 4 隔離レイヤ #293）:
+#   ship-parallel/autopilot は full プリセット専用配布。full は隔離レイヤ
+#   （macOS sandbox-exec / Linux bwrap）が FS/net を縛る前提で動くため、
+#   Agent 起動 mode を `bypassPermissions` に切替えて承認介入を完全抑制する。
+#   minimal/standard は install.sh が ship-parallel/autopilot を物理削除するため
+#   （テスト3b で検証済み）、本検証は full 配布時の SKILL.md 内容のみを対象とする。
+
+echo "--- テスト6: ship-parallel が mode: \"bypassPermissions\" を採用 ---"
+
+if grep -qE 'mode:[[:space:]]*"bypassPermissions"' "$SHIP_PARALLEL_SKILL"; then
+  pass "ship-parallel SKILL.md が mode: \"bypassPermissions\" を採用している"
+else
+  fail "ship-parallel SKILL.md に mode: \"bypassPermissions\" がない"
+fi
+
+if grep -qE 'mode:[[:space:]]*"dontAsk"' "$SHIP_PARALLEL_SKILL"; then
+  fail "ship-parallel SKILL.md に旧 mode: \"dontAsk\" が残存している"
+else
+  pass "ship-parallel SKILL.md から旧 mode: \"dontAsk\" が除去されている"
+fi
+
+if grep -qE "隔離レイヤ" "$SHIP_PARALLEL_SKILL"; then
+  pass "ship-parallel SKILL.md が隔離レイヤ前提を明記している"
+else
+  fail "ship-parallel SKILL.md に隔離レイヤ前提の記述がない"
+fi
+
+if grep -qE "隔離レイヤ" "$AUTOPILOT_SKILL"; then
+  pass "autopilot SKILL.md が隔離レイヤ前提を明記している"
+else
+  fail "autopilot SKILL.md に隔離レイヤ前提の記述がない"
+fi
+
+echo ""
 echo "==========================="
 echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
 echo "==========================="
