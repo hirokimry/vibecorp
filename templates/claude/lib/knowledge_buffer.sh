@@ -15,6 +15,7 @@
 if [ -n "${BASH_VERSION:-}" ]; then
   _knowledge_buffer_lib_src="${BASH_SOURCE[0]}"
 elif [ -n "${ZSH_VERSION:-}" ]; then
+  # shellcheck disable=SC2296  # zsh 専用展開（bash 解析では偽陽性）
   _knowledge_buffer_lib_src="${(%):-%x}"
 else
   _knowledge_buffer_lib_src="$0"
