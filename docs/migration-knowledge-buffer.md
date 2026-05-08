@@ -146,6 +146,52 @@ rm -rf "$BUFFER_DIR/.buffer.lock.d"
 - `/vibecorp:sync-edit`（sync-check で検出された不整合の修正）
 - `/vibecorp:audit-cost` / `/vibecorp:audit-security`（CFO / CISO 監査）
 
+## buffer worktree 旧構造からの自動 migration（Issue #543）
+
+PR #344 (2026-04-18) で `knowledge_buffer.sh` が以下の構造変更を行った:
+
+- 旧: `~/.cache/vibecorp/buffer-worktree/`（直下に worktree）
+- 新: `~/.cache/vibecorp/buffer-worktree/<repo-id>/`（repo-id namespace）
+
+それ以前に作成された buffer worktree は新コードが期待する場所と整合せず、`/sync-edit` / `/review-harvest` / `/knowledge-pr` が無音失敗していた。Issue #543 で `knowledge_buffer_ensure` に **自動 migration ロジック** を追加し、旧構造を検出したら自動的に新構造へ移行する。
+
+### 自動 migration の動作
+
+利用者が `/vibecorp:sync-edit` などのスキルを実行すると `knowledge_buffer_ensure` が呼ばれ、以下が自動で行われる:
+
+1. `git worktree list --porcelain` で旧構造（buffer-worktree/ 直下が worktree）を検出
+2. 旧 worktree に **未 push commit がない** 場合のみ migrate を続行
+3. `git worktree remove --force` で旧 worktree を解除
+4. 旧 path 自体を削除
+5. 新構造（buffer-worktree/<repo-id>/）で worktree を再作成
+
+利用者は何もしなくても次回 skill 実行時に自動回復する。
+
+### 未 push commit がある場合（手動復旧）
+
+旧 worktree に未 push の harvest commit が残っている場合、データ保全のため migration は **強制中断** され、stderr に以下のメッセージが出る:
+
+```text
+[knowledge-buffer] 旧構造 worktree に N 件の未 push commit があります: ~/.cache/vibecorp/buffer-worktree
+[knowledge-buffer] データ保全のため migration を停止します
+[knowledge-buffer] 復旧手順:
+[knowledge-buffer]   1. cd ~/.cache/vibecorp/buffer-worktree
+[knowledge-buffer]   2. git push origin knowledge/buffer
+[knowledge-buffer]   3. 元のスキルを再実行
+```
+
+このメッセージに従って未 push commit を push してから skill を再実行すれば、自動 migration が走って新構造に移行する。
+
+### 確認方法
+
+migration が成功したかは `git worktree list` で確認できる:
+
+```bash
+git worktree list
+```
+
+新構造（`<repo-id>` を含むパス）に worktree が登録されており、旧構造（`<repo-id>` を含まないパス）が登録されていなければ migration 完了。
+
 ## audit-log 構造移行（Issue #442）
 
 旧構造 `accounting/audit-YYYY-MM-DD.md` フラット直置き → 新構造 `accounting/audit-log/YYYY-QN.md` 四半期集約。
