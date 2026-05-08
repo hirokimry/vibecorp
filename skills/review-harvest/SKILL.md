@@ -93,7 +93,10 @@ START_TIME="$(date +%s)"
 TIMEOUT="${VIBECORP_HARVEST_API_TIMEOUT:-600}"
 PROCESSED=()
 SKIPPED=()
-COMMENTS_ALL=""
+# COMMENTS_ALL は JSON 配列。各 PR の `filtered`（JSON 配列）を `jq -s 'add'` で連結する。
+# 文字列改行連結 `printf '%s\n%s'` は `[a,b]\n[c,d]` のように壊れた JSON を生成し、
+# 後続ステップ 6 の `jq "[.[] | select(...)]"` がパースエラーで落ちる。
+COMMENTS_ALL="[]"
 
 for pr_num in $(echo "$TARGET_PRS" | jq -r '.[].number'); do
   # 時間上限チェック
@@ -104,11 +107,13 @@ for pr_num in $(echo "$TARGET_PRS" | jq -r '.[].number'); do
   fi
 
   # 指数バックオフ 3 回リトライ
+  # `2>/dev/null` は docs/design-philosophy.md のフォールバック禁止ルール違反のため使わない。
+  # gh の stderr（rate limit / 認証失敗等）はそのまま Claude に届けて分岐判断を可能にする。
   attempt=0
   delay=2
   comments=""
   while [ "$attempt" -lt 3 ]; do
-    if comments="$(gh api "repos/{owner}/{repo}/pulls/${pr_num}/comments" --paginate 2>/dev/null)"; then
+    if comments="$(gh api "repos/{owner}/{repo}/pulls/${pr_num}/comments" --paginate)"; then
       break
     fi
     attempt=$((attempt + 1))
@@ -127,7 +132,8 @@ for pr_num in $(echo "$TARGET_PRS" | jq -r '.[].number'); do
     .user.login = (if (.user.login | test("coderabbit"; "i")) then "CodeRabbit" else "<reviewer>" end) |
     {pr: '"$pr_num"', id, body, user: .user.login, path}]')"
 
-  COMMENTS_ALL="$(printf '%s\n%s' "$COMMENTS_ALL" "$filtered")"
+  # 既存配列と新規配列を `jq -s 'add'` で 1 つの JSON 配列に結合する。
+  COMMENTS_ALL="$(jq -s 'add' <(printf '%s' "$COMMENTS_ALL") <(printf '%s' "$filtered"))"
   PROCESSED+=("$pr_num")
 done
 ```

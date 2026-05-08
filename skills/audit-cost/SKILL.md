@@ -143,9 +143,20 @@ if [ ! -f "$audit_file" ]; then
 fi
 
 # index がなければ templates から初期化
+# 既存導入先（.claude/）を優先し、無ければ配布元（templates/）から複製する。
+# `2>/dev/null || cp ...` のフォールバックは docs/design-philosophy.md のフォールバック
+# 禁止ルール違反のため、明示的な存在チェックで分岐する。
 if [ ! -f "$index_file" ]; then
-  cp .claude/knowledge/accounting/audit-log/audit-log-index.md "$index_file" 2>/dev/null \
-    || cp templates/claude/knowledge/accounting/audit-log/audit-log-index.md "$index_file"
+  installed_index=".claude/knowledge/accounting/audit-log/audit-log-index.md"
+  template_index="templates/claude/knowledge/accounting/audit-log/audit-log-index.md"
+  if [ -f "$installed_index" ]; then
+    cp "$installed_index" "$index_file"
+  elif [ -f "$template_index" ]; then
+    cp "$template_index" "$index_file"
+  else
+    echo "[audit-cost] audit-log-index.md テンプレートが見つかりません。導入先と配布元の両方を確認してください: ${installed_index} / ${template_index}" >&2
+    exit 4
+  fi
 fi
 ```
 

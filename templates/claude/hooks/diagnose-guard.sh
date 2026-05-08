@@ -69,7 +69,9 @@ while IFS= read -r pattern; do
   # ワイルドカードパターン（例: hooks/*.sh）
   if echo "$pattern" | grep -q '\*'; then
     # glob パターンを正規表現に変換
-    REGEX_PATTERN=$(printf '%s' "$pattern" | sed 's/\./\\./g' | sed 's/\*/[^\/]*/g')
+    # 末尾アンカー `$` を必ず付与する（付与しないと `hooks/*.sh` が `hooks/foo.sh.bak`
+    # にも誤マッチして deny してしまう）。
+    REGEX_PATTERN=$(printf '%s' "$pattern" | sed 's/\./\\./g' | sed 's/\*/[^\/]*/g')'$'
     if echo "$FILE_PATH" | grep -qE "$REGEX_PATTERN"; then
       jq -n --arg pattern "$pattern" '{
         "hookSpecificOutput": {

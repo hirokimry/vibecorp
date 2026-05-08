@@ -139,6 +139,24 @@ assert_allowed "diagnose 実行中でも docs/ 配下は → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{}}' | bash "$HOOK")
 assert_allowed "file_path が空 → allow" "$OUTPUT"
 
+# --- glob → regex 変換の末尾アンカー回帰テスト（Issue #514） ---
+
+echo "--- glob → regex 末尾アンカー回帰テスト ---"
+
+# 12a. hooks/foo.sh.bak は hooks/*.sh の glob にマッチしない（.bak は .sh で終わらない）
+# 末尾アンカーがないと regex `hooks/[^/]*\.sh` が `hooks/foo.sh.bak` にもマッチして
+# 誤って deny してしまう。本テストは末尾 `$` の回帰を防ぐ。
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh.bak"}}' | bash "$HOOK")
+assert_allowed "hooks/*.sh パターンは hooks/foo.sh.bak をマッチしない（末尾 \$ アンカー） → allow" "$OUTPUT"
+
+# 12b. hooks/foo.sh.tmp も同様にマッチしない
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.sh.tmp"}}' | bash "$HOOK")
+assert_allowed "hooks/*.sh パターンは hooks/foo.sh.tmp をマッチしない（末尾 \$ アンカー） → allow" "$OUTPUT"
+
+# 12c. hooks/foo.sh はちゃんと deny される（既存挙動の維持確認）
+OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/foo.sh"}}' | bash "$HOOK")
+assert_blocked "hooks/*.sh パターンは hooks/foo.sh をマッチする（既存挙動維持） → deny" "$OUTPUT"
+
 # --- 別プロジェクトの state ディレクトリ分離テスト ---
 
 echo "--- worktree 分離テスト ---"
