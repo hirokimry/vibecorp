@@ -175,31 +175,41 @@ gh issue edit <番号> --body "<更新後の本文>"
 
 ### 9. PR 作成
 
-PR の `--base` には **ステップ 1 で決定したベースブランチ** を渡す。sub-issue の場合は親 feature ブランチ、通常 Issue の場合は default branch となる。
+PR 作成は **`/vibecorp:pr` スキルに委譲する**。ship は包括オーケストレーション、`/vibecorp:pr` は PR 作成の単一責務、という責務分離（Issue #519）。
+
+ship 自身は `gh pr create` を直接呼ばない。**Issue から intent ラベルを取得して `--label` で付与する責務、PR タイトル / 本文の生成、base 判定の最終整合などは全て `/vibecorp:pr` の中で行われる**（pr スキル側に既存実装あり）。
+
+**9-1. push して `/vibecorp:pr` を呼ぶ:**
 
 **worktree モード:**
 
 ```bash
 cd <path> && git push origin HEAD
-cd <path> && gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ>
+/vibecorp:pr --close --worktree <path>
 ```
 
 **通常モード:**
 
 ```bash
 git push origin HEAD
-gh pr create --title "<Issueタイトル>" --body "<PR本文>" --base <ステップ1で決定したベースブランチ>
+/vibecorp:pr --close
 ```
 
-**auto-merge の有効化:**
+`--close` を渡すことで PR 本文の Issue リンクが `close <Issue URL>` 形式となり、PR マージ時に Issue が自動 close される。
 
-```bash
-gh pr merge --squash --auto
-```
+**9-2. base ブランチが ship 側で確定している場合の挙動:**
 
-- PR タイトルは Issue タイトルをそのまま使用
-- PR 本文に `close <Issue URL>` を含める
-- PR テンプレートがあればそれに従う
+ステップ 1 で **sub-issue 判定により親 feature ブランチを base に設定** している場合、`/vibecorp:pr` の自動 base 判定（merge-base 推定）と乖離する可能性がある。
+
+`/vibecorp:pr` は最初に `gh pr view --json baseRefName` で既存 PR の baseRefName を取るが、新規 PR の場合は merge-base 推定 → DEFAULT_BRANCH の順で base を決める。sub-issue で親 feature ブランチを base にしたい場合、push 後の HEAD と親 feature ブランチの merge-base が直近となる構造のため、通常は merge-base 推定が正しく親 feature ブランチを選ぶ。
+
+選ばれない場合は介入ポイント（CEO に報告）。
+
+**9-3. auto-merge の有効化:**
+
+`/vibecorp:pr` は内部で auto-merge を有効化する（呼び出し時に `gh pr merge --squash --auto` が実行される）。リポジトリ設定で auto-merge が無効、または CEO 指示で auto-merge を設定しない場合、`/vibecorp:pr` の挙動に従う。
+
+ship 自身は `gh pr merge` を呼ばない（責務分離）。
 
 ### 10. レビュー修正ループ
 
