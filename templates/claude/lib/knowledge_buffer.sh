@@ -87,10 +87,77 @@ knowledge_buffer_lock_release() {
   fi
 }
 
+# knowledge_buffer_is_legacy_layout — 旧構造（PR #344 以前）の worktree が残存しているか
+# 旧構造: ${cache_root}/vibecorp/buffer-worktree/ 自体が worktree として登録されている
+# 新構造: ${cache_root}/vibecorp/buffer-worktree/<repo-id>/ が worktree（こちらは正常）
+# 引数: $1 = repo_root (CLAUDE_PROJECT_DIR の git toplevel), $2 = legacy_dir (= dirname new_dir)
+# 出力: 該当時のみ "yes" を stdout に出す（grep -q yes で判定）
+knowledge_buffer_is_legacy_layout() {
+  local repo_root="$1"
+  local legacy_dir="$2"
+  # awk: "worktree " (9 文字) 以降を path として抽出。$2 だとスペース含むパスで切れる
+  git -C "$repo_root" worktree list --porcelain 2>/dev/null \
+    | awk -v target="$legacy_dir" '
+        /^worktree / {
+          path = substr($0, 10)
+          if (path == target) { print "yes"; exit }
+        }
+      '
+}
+
+# knowledge_buffer_migrate_legacy — 旧構造の worktree を新構造へ移行する
+# 1. 未 push commit があれば停止（データ保全）
+# 2. 旧 worktree を git worktree remove --force で解除
+# 3. 旧 path 自体を rm -rf でクリーンアップ
+# 引数: $1 = repo_root, $2 = legacy_dir, $3 = new_dir
+# 戻り値: 0 = 移行成功 / 1 = 未 push 等で中断
+knowledge_buffer_migrate_legacy() {
+  local repo_root="$1"
+  local legacy_dir="$2"
+  local new_dir="$3"
+
+  # データ保全: 未 push commit があれば停止
+  local unpushed
+  if git -C "$legacy_dir" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+    unpushed="$(git -C "$legacy_dir" rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)"
+  else
+    # upstream 未設定の場合: HEAD に到達可能な commit があるかで判定
+    unpushed="$(git -C "$legacy_dir" rev-list --count HEAD 2>/dev/null || echo 0)"
+  fi
+  if [ "${unpushed:-0}" -gt 0 ]; then
+    {
+      echo "[knowledge-buffer] 旧構造 worktree に ${unpushed} 件の未 push commit があります: ${legacy_dir}"
+      echo "[knowledge-buffer] データ保全のため migration を停止します"
+      echo "[knowledge-buffer] 復旧手順:"
+      echo "[knowledge-buffer]   1. cd ${legacy_dir}"
+      echo "[knowledge-buffer]   2. git push origin knowledge/buffer"
+      echo "[knowledge-buffer]   3. 元のスキルを再実行"
+    } >&2
+    return 1
+  fi
+
+  echo "[knowledge-buffer] 旧構造 worktree を新構造に migrate します: ${legacy_dir} -> ${new_dir}" >&2
+
+  # 旧 worktree を解除（worktree 内に未 commit 変更があっても remove --force で除去）
+  if ! git -C "$repo_root" worktree remove --force "$legacy_dir" >/dev/null 2>&1; then
+    echo "[knowledge-buffer] 旧 worktree の remove に失敗しました: ${legacy_dir}" >&2
+    return 1
+  fi
+
+  # 残骸ディレクトリのクリーンアップ（git worktree remove はディレクトリも削除するが念のため）
+  rm -rf "$legacy_dir" 2>/dev/null || true
+
+  # 新構造の親ディレクトリを再作成（呼出元が後段で mkdir -p しているが明示的に）
+  mkdir -p "$(dirname "$new_dir")"
+
+  return 0
+}
+
 # knowledge_buffer_ensure — worktree を最新化する（未作成なら新規作成）
 # - 未作成: git worktree add -B knowledge/buffer <dir> origin/main
 # - 既存: git fetch origin → git pull --ff-only（失敗時は未push commit有無を検査して reset または中断）
 # - worktree prune 必要なら自動復旧
+# - 旧構造（PR #344 以前）の worktree を検出したら新構造へ自動 migrate（Issue #543）
 # 呼出元は CLAUDE_PROJECT_DIR（git toplevel）で実行する想定
 knowledge_buffer_ensure() {
   local dir
@@ -103,6 +170,13 @@ knowledge_buffer_ensure() {
   if ! repo_root="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
     echo "[knowledge-buffer] git toplevel が取得できません" >&2
     return 1
+  fi
+
+  # 旧構造（buffer-worktree/ 直下が worktree）を検出したら自動 migrate
+  if knowledge_buffer_is_legacy_layout "$repo_root" "$parent" | grep -q yes; then
+    if ! knowledge_buffer_migrate_legacy "$repo_root" "$parent" "$dir"; then
+      return 1
+    fi
   fi
 
   # worktree が未作成、またはディレクトリが削除済み
