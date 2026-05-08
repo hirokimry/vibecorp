@@ -150,9 +150,15 @@ if [ ! -f "$index_file" ]; then
   installed_index=".claude/knowledge/accounting/audit-log/audit-log-index.md"
   template_index="templates/claude/knowledge/accounting/audit-log/audit-log-index.md"
   if [ -f "$installed_index" ]; then
-    cp "$installed_index" "$index_file"
+    if ! cp "$installed_index" "$index_file"; then
+      echo "[audit-cost] index 初期化失敗: ${installed_index} → ${index_file}（権限・容量等を確認）" >&2
+      exit 4
+    fi
   elif [ -f "$template_index" ]; then
-    cp "$template_index" "$index_file"
+    if ! cp "$template_index" "$index_file"; then
+      echo "[audit-cost] index 初期化失敗: ${template_index} → ${index_file}（権限・容量等を確認）" >&2
+      exit 4
+    fi
   else
     echo "[audit-cost] audit-log-index.md テンプレートが見つかりません。導入先と配布元の両方を確認してください: ${installed_index} / ${template_index}" >&2
     exit 4

@@ -109,11 +109,18 @@ for pr_num in $(echo "$TARGET_PRS" | jq -r '.[].number'); do
   # 指数バックオフ 3 回リトライ
   # `2>/dev/null` は docs/design-philosophy.md のフォールバック禁止ルール違反のため使わない。
   # gh の stderr（rate limit / 認証失敗等）はそのまま Claude に届けて分岐判断を可能にする。
+  #
+  # `gh api --paginate` はページごとに独立した JSON 配列をストリーム出力する仕様
+  # （単一配列に自動統合しない。https://cli.github.com/manual/gh_api 参照）。
+  # そのまま後続の `jq '[.[] | ...]'` に渡すと複数ドキュメント扱いとなって
+  # `filtered` が壊れるため、gh 成功後に `jq -s 'add'` で 1 つの JSON 配列に正規化する。
+  # gh の失敗とパイプ後段の jq の挙動を切り離すため、取得と正規化を 2 段階に分ける。
   attempt=0
   delay=2
   comments=""
   while [ "$attempt" -lt 3 ]; do
-    if comments="$(gh api "repos/{owner}/{repo}/pulls/${pr_num}/comments" --paginate)"; then
+    if raw_pages="$(gh api "repos/{owner}/{repo}/pulls/${pr_num}/comments" --paginate)"; then
+      comments="$(printf '%s' "$raw_pages" | jq -s 'add')"
       break
     fi
     attempt=$((attempt + 1))

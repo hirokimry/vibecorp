@@ -212,9 +212,23 @@ fail-fast 時、エラーメッセージで以下の対処を案内する:
 - MUST: `ANTHROPIC_API_KEY` を設定して `/vibecorp:autopilot` を定期実行する場合、Anthropic Console の使用量アラート（月額 80% / 100% 到達時通知）を必ず有効化すること
 - NOTE: `Claude Max 20` 定額プラン（$200/月）で運用する場合、上記 API 換算は無効（プラン定額に集約）。代わりにレート制限（5 時間あたりのトークン上限）への接触余裕が制約軸となるため、**24 時間ごと運用での月間 token 消費 約 90M を目安**とする
 
+### `/vibecorp:pr-fix-loop` の予算ガード
+
+PR レビュー修正ループも自律改善の一種として時間軸の予算ガードを持つ。`docs/specification.md` の `/vibecorp:pr-fix-loop` 仕様、および `skills/pr-fix-loop/SKILL.md` の「予算ガード」節と整合する。
+
+| 設定キー | デフォルト値 | 意味 | 超過時の挙動 |
+|---------|------------|------|-------------|
+| `max iterations` | 20 | 1 回の `/vibecorp:pr-fix-loop` あたりの `/vibecorp:pr-fix` 同期呼び出し上限 | 上限到達で escalate（CEO に通知して停止） |
+| `timeout` | 60 分 | 1 回の `/vibecorp:pr-fix-loop` の総経過時間上限 | 上限到達で escalate |
+
+- 上記値を変更する場合、`skills/pr-fix-loop/SKILL.md` のループ制御テーブル・予算ガード節と本セクションを **同時に更新** し、値の整合を保つこと（diagnose 系と同じ「片側のみ更新禁止」原則）
+- `pr-fix-loop` は `/vibecorp:diagnose` のような起票数ベースのガードではなく、API 呼出回数 / 時間ベースのガードを採用する。1 ループの上限コスト概算は `/vibecorp:pr-fix` 1 回 ≦ Sonnet 4.6 約 $0.30 として最大 $6 程度（× 20 反復）
+- `/vibecorp:pr-fix-loop` の値変更も自律改善ループからは禁止する（`.claude/rules/autonomous-restrictions.md` の「課金構造」領域）
+
 ### 変更時のルール
 
 - MUST: `max_issues_per_run` / `max_issues_per_day` / `max_files_per_issue` の値を変更する場合、`.claude/vibecorp.yml` と本ドキュメントを同時に更新し、値の整合を保つこと
+- MUST: `/vibecorp:pr-fix-loop` の `max iterations` / `timeout` を変更する場合、`skills/pr-fix-loop/SKILL.md` と本ドキュメントを同時に更新すること
 - MUST NOT: 自律改善ループ（`/vibecorp:diagnose` → `/vibecorp:autopilot`）がこれらの値を変更してはならない。`.claude/rules/autonomous-restrictions.md` の「課金構造」領域として自律変更禁止
 - SHOULD: 値を変更する場合、CFO によるコスト影響評価（`/vibecorp:audit-cost`）を事前に実施すること
 
