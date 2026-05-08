@@ -22,6 +22,7 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 
 - **full プリセット専用**（`/vibecorp:diagnose` と `/vibecorp:ship-parallel` が必要）
 - main ブランチにいること
+- **隔離レイヤ前提**: full プリセットは macOS `sandbox-exec` / Linux `bwrap` による隔離レイヤ（#293）を提供する。本スキルが委譲する `/vibecorp:ship-parallel` は Agent 起動時に `mode: "bypassPermissions"` を指定して承認ダイアログを抑制するが、隔離レイヤが FS / network 境界を OS レベルで強制するため安全に動作する
 - **対象 Issue: open な全 Issue（ラベル問わず）**。不可領域フィルタ（認証 / 暗号 / 課金構造 / ガードレール / MVV）は起票側（`/vibecorp:diagnose` と `/vibecorp:issue`）の3者承認ゲートで実施済みであり、ship 側は起票済み Issue を信頼して実行する
 - `diagnose` ラベル自体は **起票経路の識別用途** として残る（`/vibecorp:diagnose` が付与）。ship 可否の判定には使わない
 - **knowledge/buffer フロー**: ship 後に `/vibecorp:review-harvest` → `/vibecorp:knowledge-pr` を実行するが、main への反映は必ず auto-merge 経由（`/vibecorp:knowledge-pr` が PR を起こして CodeRabbit + CI を通す）。main への直接 push は一切発生しない

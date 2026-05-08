@@ -2062,9 +2062,11 @@ create_labels() {
     if echo "$existing_labels" | grep -qxF "$label_name"; then
       log_skip "ラベル '${label_name}' は既存のためスキップ"
     else
-      gh label create "$label_name" --color "$label_color" --description "$label_desc" 2>/dev/null \
-        && log_info "ラベル '${label_name}' を作成" \
-        || log_skip "ラベル '${label_name}' の作成に失敗（スキップ）"
+      if gh label create "$label_name" --color "$label_color" --description "$label_desc" 2>/dev/null; then
+        log_info "ラベル '${label_name}' を作成"
+      else
+        log_skip "ラベル '${label_name}' の作成に失敗（スキップ）"
+      fi
     fi
   done
 }
@@ -2078,7 +2080,7 @@ copy_rules() {
   # find -maxdepth 2 でサブディレクトリ 1 階層まで対応（深いネストは想定外）
   while IFS= read -r rule; do
     [[ -f "$rule" ]] || continue
-    local rel_path="${rule#${src}/}"  # 例: severity/coderabbit.md
+    local rel_path="${rule#"${src}"/}"  # 例: severity/coderabbit.md
     local rel_dir
     rel_dir=$(dirname "$rel_path")
     if [[ "$rel_dir" != "." ]]; then

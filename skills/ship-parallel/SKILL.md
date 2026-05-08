@@ -191,7 +191,9 @@ git worktree list
 並列グループ内の各 Issue に対して、Agent ツールを起動する。
 **同一グループの全 Agent は1つのメッセージで同時に起動する**（並列実行を最大化）。
 
-Agent 起動時は `mode: "dontAsk"` を指定する。デフォルト mode では teammate のツール呼び出しが親セッションに承認要求を送り、並列実行時に承認ダイアログが多発するため。`dontAsk` により teammate 側の承認要求を抑制できる。`--dangerously-skip-permissions` と組み合わせることで並列実行時の承認負荷を下げる（参照: `docs/design-philosophy.md` の「承認フローへの非介入」、#260）。
+Agent 起動時は `mode: "bypassPermissions"` を指定する。`/vibecorp:ship-parallel` は full プリセット専用配布であり、full プリセットは隔離レイヤ（#293: macOS `sandbox-exec` / Linux `bwrap`）が FS / network を縛る。隔離レイヤが最後の砦として機能している前提で、Agent 起動の承認ダイアログを `bypassPermissions` で完全に抑制する（隔離外への到達は OS 側で deny されるため安全）。これにより `--dangerously-skip-permissions` で起動した子 Claude と組み合わせて、並列実行時の承認介入を発生させない（参照: `docs/design-philosophy.md` の「承認フローへの非介入」、隔離レイヤ #293、#260）。
+
+minimal / standard プリセットでは `install.sh` が `/vibecorp:ship-parallel` 自体を物理削除するため、`bypassPermissions` は配布されない（隔離レイヤ非提供環境で `bypassPermissions` を渡さないことを install.sh の skill 削除で担保している）。
 
 各 Agent に渡すプロンプト:
 
