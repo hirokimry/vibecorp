@@ -253,11 +253,14 @@ else
   fail "Agent プロンプトに path resolution bypass の禁止理由が明示されていない"
 fi
 
-# 8-6: Agent 起動に mode: "dontAsk" の指定がある（#260）
-if grep -q 'dontAsk' "$SKILL_FILE"; then
-  pass "Agent 起動に dontAsk mode の指定がある"
+# 8-6: Agent 起動に mode: "bypassPermissions" の指定がある（#312, #260）
+#   Phase 4（隔離レイヤ #293）で `dontAsk` から `bypassPermissions` に切替済み。
+#   ship-parallel は full プリセット専用配布で隔離レイヤが FS/net を縛るため、
+#   `bypassPermissions` で承認介入を完全抑制しても安全。
+if grep -q 'bypassPermissions' "$SKILL_FILE"; then
+  pass "Agent 起動に bypassPermissions mode の指定がある"
 else
-  fail "Agent 起動に dontAsk mode の指定がない"
+  fail "Agent 起動に bypassPermissions mode の指定がない"
 fi
 
 echo ""
