@@ -22,15 +22,42 @@ source "${SCRIPT_DIR}/tests/lib/test_helpers.sh"
 YML_TARGET="${SCRIPT_DIR}/.github/workflows/ai-review.yml"
 YML_TEMPLATE="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
 
-assert_file_exists "vibecorp 自リポ ai-review.yml が存在する" "$YML_TARGET"
+# Issue #532: vibecorp.yml の claude_action.enabled が false の場合は自リポ版が削除されている
+# ため、配布版（templates/ 配下）から preflight ロジックを抽出して検証する。
+SELF_REPO_ENABLED="true"
+VIBECORP_YML="${SCRIPT_DIR}/.claude/vibecorp.yml"
+if [[ -f "$VIBECORP_YML" ]]; then
+  ca_enabled=$(awk '
+    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    in_block && /^[^[:space:]#]/ { exit }
+    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+      sub(/[[:space:]]*$/, "", $0)
+      print
+      exit
+    }
+  ' "$VIBECORP_YML")
+  if [[ "$ca_enabled" == "false" ]]; then
+    SELF_REPO_ENABLED="false"
+  fi
+fi
+
 assert_file_exists "templates 配布版 ai-review.yml が存在する" "$YML_TEMPLATE"
 
-# 自リポ版と配布版が一致することを確認（preflight 内容も同期されている保証）
-if diff -q "$YML_TARGET" "$YML_TEMPLATE" >/dev/null; then
-  pass "自リポ版と templates 配布版の ai-review.yml が完全一致"
+if [[ "$SELF_REPO_ENABLED" == "true" ]]; then
+  assert_file_exists "vibecorp 自リポ ai-review.yml が存在する" "$YML_TARGET"
+  # 自リポ版と配布版が一致することを確認（preflight 内容も同期されている保証）
+  if diff -q "$YML_TARGET" "$YML_TEMPLATE" >/dev/null; then
+    pass "自リポ版と templates 配布版の ai-review.yml が完全一致"
+  else
+    fail "自リポ版と templates 配布版の ai-review.yml が乖離している"
+    exit 1
+  fi
+  PREFLIGHT_SOURCE="$YML_TARGET"
 else
-  fail "自リポ版と templates 配布版の ai-review.yml が乖離している"
-  exit 1
+  echo "  SKIP: vibecorp 自リポ ai-review.yml の検証（claude_action.enabled: false のため）"
+  # 配布版テンプレートから preflight ロジックを抽出して検証する
+  PREFLIGHT_SOURCE="$YML_TEMPLATE"
 fi
 
 # preflight ステップの run: ブロックを抽出する
@@ -46,7 +73,7 @@ extract_preflight_bash() {
   ' "$yml"
 }
 
-PREFLIGHT_BASH="$(extract_preflight_bash "$YML_TARGET")"
+PREFLIGHT_BASH="$(extract_preflight_bash "$PREFLIGHT_SOURCE")"
 if [[ -z "$PREFLIGHT_BASH" ]]; then
   fail "preflight ステップの run: ブロックが抽出できない"
   exit 1

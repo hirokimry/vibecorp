@@ -2,6 +2,8 @@
 
 > このドキュメントは vibecorp の AI レビュー（claude-code-action）における OAuth 認証経路の Source of Truth です。
 > Issue #462 の CEO 議論結果（2026-05-04 確定）に基づく。
+>
+> **状態 (Issue #532)**: vibecorp 本体は現在 `claude_action.enabled: false` で運用中（CodeRabbit Bot 単独運用、vibehawk 完成までの暫定措置）。本ドキュメントは claude-code-action 再有効化時 / 利用者が `enabled: true` で運用する場合の認証経路の Source of Truth として保持する。
 
 ## 1. Bot 認証方式 — GitHub App
 

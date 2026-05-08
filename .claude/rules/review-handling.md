@@ -28,7 +28,7 @@
 | 🔵 Trivial | 重視軸該当なら対応、外なら管轄外 |
 | ⚪ Info | 重視軸該当なら対応、外なら管轄外 |
 
-severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。
+severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。なお Issue #532 以降 vibecorp 本体は `claude_action.enabled: false` で運用中（CodeRabbit Bot 単独）。`severity/claude-action.md` は claude-code-action 再有効化時 / 利用者が `enabled: true` で運用する場合の Source of Truth として保持する。
 
 ### Info の扱い（severity 定義は同じ、判定で拡張）
 

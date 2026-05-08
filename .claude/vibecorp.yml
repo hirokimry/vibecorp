@@ -8,7 +8,7 @@ protected_files:
 coderabbit:
   enabled: true
 claude_action:
-  enabled: true
+  enabled: false
   skip_paths:
     - "*.lock"
     - ".git/**"
