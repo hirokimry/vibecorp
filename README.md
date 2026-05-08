@@ -93,8 +93,8 @@ which claude
 ```
 
 - fish 等の他シェルは未対応（bash / zsh のみ）
-- Windows ネイティブは非対応（WSL2 を使用）
-- Linux（bwrap 対応）は Phase 2 で対応予定
+- Windows ネイティブは非対応（WSL2 を使用、詳細は `docs/design-philosophy.md#os-support`）
+- Linux: `install.sh` が `bwrap` (bubblewrap) を検出する。不在時は distro 別インストール手順を表示して中断する。実際の隔離レイヤ起動は Phase 2 で対応予定
 
 ### Agent Teams 動作環境（公式 docs 記述）
 
@@ -137,11 +137,11 @@ which claude
 
 組織規模に応じた3つのプリセットを用意している。
 
-| プリセット | スキル | フック | エージェント | 課金モデル | ユースケース |
-|---|---|---|---|---|---|
-| **minimal** | /vibecorp:review, /vibecorp:review-loop, /vibecorp:pr-fix, /vibecorp:pr-fix-loop, /vibecorp:pr, /vibecorp:commit, /vibecorp:issue, /vibecorp:ship, /vibecorp:plan, /vibecorp:branch, /vibecorp:plan-review-loop, /vibecorp:worktree, /vibecorp:approve-audit | protect-files, protect-branch, block-api-bypass, command-log | なし | Claude Max 定額内 | 個人〜小規模 |
-| **standard** | 上記 + /vibecorp:review-harvest, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all, /vibecorp:context7 | 上記 + sync-gate, review-gate | CTO, CPO | Claude Max 定額内 | チーム開発 |
-| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:plan-epic, /vibecorp:release-epic, /vibecorp:cycle-metrics | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
+| プリセット | スキル | フック | エージェント | 隔離 | 課金モデル | ユースケース |
+|---|---|---|---|---|---|---|
+| **minimal** | /vibecorp:review, /vibecorp:review-loop, /vibecorp:pr-fix, /vibecorp:pr-fix-loop, /vibecorp:pr, /vibecorp:commit, /vibecorp:issue, /vibecorp:ship, /vibecorp:plan, /vibecorp:branch, /vibecorp:plan-review-loop, /vibecorp:worktree, /vibecorp:approve-audit | protect-files, protect-branch, block-api-bypass, command-log | なし | なし | Claude Max 定額内 | 個人〜小規模 |
+| **standard** | 上記 + /vibecorp:review-harvest, /vibecorp:sync-check, /vibecorp:sync-edit, /vibecorp:session-harvest, /vibecorp:harvest-all, /vibecorp:context7 | 上記 + sync-gate, review-gate | CTO, CPO | なし | Claude Max 定額内 | チーム開発 |
+| **full** | 上記 + /vibecorp:diagnose, /vibecorp:ship-parallel, /vibecorp:autopilot, /vibecorp:plan-epic, /vibecorp:release-epic, /vibecorp:cycle-metrics | 上記 + role-gate, diagnose-guard | C-suite全員 + SM + 分析員（14ロール） | macOS: sandbox-exec / Linux: bwrap 検出（実隔離は Phase 2） | **ANTHROPIC_API_KEY 従量課金に到達しうる**（[詳細](docs/cost-analysis.md#実行モード別の課金モデル)） | AI企業・コンプライアンス重視 |
 
 ## インストールされるもの
 

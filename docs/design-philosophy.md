@@ -445,6 +445,43 @@ Claude Code のスキル実行アーキテクチャでは、コマンドの**終
 - 想定されるエラー（ファイルが存在しない等）は事前チェックで回避する
 - 回復不能なエラーはスキルを中断してユーザーに報告する
 
+<a id="os-support"></a>
+
+## OS サポート
+
+vibecorp は **macOS / Linux / WSL2 を first-class** としてサポートし、**Windows ネイティブは非対応** とする。`install.sh` 実行時に `uname -s` で OS を判定し、非対応 OS では exit 2 で中断する。
+
+### サポート対象
+
+| OS | サポート状況 | 備考 |
+|---|---|---|
+| **macOS** (12 Monterey 以降) | ✅ first-class | `sandbox-exec` による隔離レイヤを full プリセットで提供 |
+| **Linux** (Ubuntu 22.04+, Fedora 38+, Alpine 3.18+ 等) | ✅ first-class | `bwrap` (bubblewrap) を full プリセットで検出。実隔離は Phase 2 (#310) で対応 |
+| **WSL2** (Ubuntu 22.04+ on Windows) | ✅ first-class | Linux 同等の扱い |
+| **Windows ネイティブ** | ❌ 非対応 | `install.sh` が `uname -s` で `MINGW*` / `MSYS*` / `CYGWIN*` を検出して exit 2。WSL2 への誘導メッセージを表示 |
+| その他 (FreeBSD, OpenBSD 等) | ❌ 非対応 | `install.sh` が exit 2 |
+
+### Windows ネイティブ非対応の根拠
+
+vibecorp は以下の Unix 系ツール・規約に強く依存する設計のため、Windows ネイティブ環境では動作保証できない:
+
+- **POSIX shell スクリプト**: hooks / `install.sh` / templates 配下のスクリプトは `bash` 3.2+ を前提（macOS のデフォルト bash バージョン）。Windows の cmd / PowerShell では動作しない
+- **Unix 標準コマンド**: `uname` / `awk` / `sed` / `grep` / `mktemp` / `find` / `sandbox-exec` / `bwrap` / `git` / `jq` 等を前提
+- **隔離レイヤの実装基盤**: macOS `sandbox-exec` は macOS 専用 syscall、Linux `bwrap` は Linux user namespace に依存。Windows ネイティブには同等の軽量サンドボックスが存在しない（Hyper-V / Windows Sandbox は重量級で `install.sh` のフロー外）
+- **ファイルシステムのケース感度・パス区切り**: vibecorp の hooks / settings.json は Unix 系の case-sensitive ファイルシステム・`/` 区切りを前提
+
+WSL2 (Ubuntu 22.04+) を使用すれば Windows 上でも完全な Linux 環境で vibecorp を動作させられる。これが Windows ユーザーへの公式な推奨経路である。
+
+### サポート対象 OS の判定ロジック
+
+`install.sh` の `detect_os()` / `check_unsupported_os()` が以下の判定を行う:
+
+1. `uname -s` の出力を `Darwin` / `Linux` / `MINGW*|MSYS*|CYGWIN*` / その他 に分類
+2. Windows ネイティブ・その他 OS で exit 2 + WSL2 誘導メッセージ
+3. macOS / Linux で `check_isolation_deps()` が full プリセット時に `sandbox-exec` / `bwrap` 存在を検証
+
+将来的に他 OS をサポート対象に追加する場合は、`detect_os()` に分岐を追加し、対応する隔離レイヤ実装（または非対応の明示）を `check_isolation_deps()` に追加する。
+
 ## プロセス隔離（Phase 1 PoC）
 
 ### PATH シム方式
