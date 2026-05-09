@@ -113,15 +113,25 @@ git checkout -b dev/{番号}_{要約} origin/<ステップ1で決定したベー
 
 ### 3. 実装計画の策定
 
-Issue の本文・完了条件を読み込み、コードベースを調査して実装計画を作成する。
+実装計画の作成は **`/vibecorp:plan` スキルに完全委譲する**。ship は包括オーケストレーション、`/vibecorp:plan` は計画策定の単一責務、という責務分離。
 
-計画は以下に出力する（`/vibecorp:plan` スキルが `vibecorp_plans_dir` 経由で配置する）:
+ship 自身は計画策定に必要な情報取得（Issue 本文・完了条件・**全コメント**・コードベース調査）を直接行わない。これらは全て `/vibecorp:plan` の中で行われる:
+
+- Issue 本文・完了条件の取得
+- **Issue 全コメントの取得**（`gh api ... --paginate` で 30 件超の Issue でも全件取り込み、bot 投稿は jq フィルタで除外）
+- コードベースの調査
+- プロンプトインジェクション対策（コメントは外部入力として扱う）
+- エラーハンドリング・空コメント・context window 圧迫対策
+
+詳細は `skills/plan/SKILL.md` ステップ 1 を参照。
+
+計画は以下に出力される（`/vibecorp:plan` スキルが `vibecorp_plans_dir` 経由で配置する）:
 
 ```text
 ~/.cache/vibecorp/plans/<repo-id>/{branch_name}.md
 ```
 
-計画には以下を含める:
+計画には以下が含まれる:
 - 概要（Issue の要約）
 - 影響範囲（変更が必要なファイル・モジュール）
 - Phase 分けされたタスク一覧（各タスクにテスト項目を含む）
