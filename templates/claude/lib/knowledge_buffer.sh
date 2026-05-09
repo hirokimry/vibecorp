@@ -196,14 +196,23 @@ knowledge_buffer_ensure() {
   if [ ! -d "$dir/.git" ] && [ ! -f "$dir/.git" ]; then
     # 古い worktree 参照が残っていれば prune
     git -C "$repo_root" worktree prune >/dev/null 2>&1 || true
-    # origin/main を最新化
-    if ! git -C "$repo_root" fetch origin main >/dev/null 2>&1; then
-      echo "[knowledge-buffer] git fetch origin main 失敗" >&2
+    # origin を最新化（knowledge/buffer も含めて全 ref を取得）
+    if ! git -C "$repo_root" fetch origin >/dev/null 2>&1; then
+      echo "[knowledge-buffer] git fetch origin 失敗" >&2
       return 1
     fi
+    # ベース選択: リモートに既存の knowledge/buffer 蓄積があればそれを引き継ぐ
+    # （別マシン初回 / cache クリア後の再作成で蓄積を破壊しないため）
+    # 無ければ origin/main から新規派生する（リポジトリ史上初の harvest）
+    local base_ref
+    if git -C "$repo_root" rev-parse --verify origin/knowledge/buffer >/dev/null 2>&1; then
+      base_ref="origin/knowledge/buffer"
+    else
+      base_ref="origin/main"
+    fi
     # worktree 作成（knowledge/buffer ブランチが未存在でも -B で作る）
-    if ! git -C "$repo_root" worktree add -B knowledge/buffer "$dir" origin/main >/dev/null 2>&1; then
-      echo "[knowledge-buffer] git worktree add 失敗: ${dir}" >&2
+    if ! git -C "$repo_root" worktree add -B knowledge/buffer "$dir" "$base_ref" >/dev/null 2>&1; then
+      echo "[knowledge-buffer] git worktree add 失敗: ${dir} (base=${base_ref})" >&2
       return 1
     fi
     return 0
@@ -230,9 +239,12 @@ knowledge_buffer_ensure() {
     return 1
   fi
 
-  echo "[knowledge-buffer] ff 失敗のため origin/main にリセットします" >&2
-  if ! git -C "$dir" reset --hard origin/main >/dev/null 2>&1; then
-    echo "[knowledge-buffer] reset --hard origin/main 失敗" >&2
+  # ff 失敗時は origin/knowledge/buffer にリセットする（origin/main にリセットすると
+  # まだ knowledge-pr で main に反映していない harvest 蓄積を破壊するため）。
+  # unpushed 検査で abort 済みなので、未 push の harvest commit ロストは発生しない。
+  echo "[knowledge-buffer] ff 失敗のため origin/knowledge/buffer にリセットします（蓄積保持）" >&2
+  if ! git -C "$dir" reset --hard origin/knowledge/buffer >/dev/null 2>&1; then
+    echo "[knowledge-buffer] reset --hard origin/knowledge/buffer 失敗" >&2
     return 1
   fi
   return 0
@@ -280,6 +292,11 @@ knowledge_buffer_commit() {
   local dir
   dir="$(knowledge_buffer_worktree_dir)"
   git -C "$dir" add -A
+  # .buffer.lock.d/ は worktree 排他ロック用 pid 格納で commit に含めない
+  # - 通常: lock 取得中の pid file が staged された状態で commit に混入するのを防ぐ
+  # - 異常時: 過去 orphan で committed された .buffer.lock.d/ も同時に index から除去される
+  #   （次回 commit で履歴上から消え、孤児ロック→ lock acquire timeout の再発を防ぐ）
+  git -C "$dir" rm --cached -r -f -- .buffer.lock.d 2>/dev/null || true
 
   # 差分なしならスキップ
   if git -C "$dir" diff --cached --quiet; then
