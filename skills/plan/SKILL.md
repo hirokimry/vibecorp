@@ -67,10 +67,13 @@ bot 投稿（CodeRabbit、GitHub Actions 通知、Codecov、Dependabot 等）は
 
 ```bash
 gh api "/repos/${owner_repo}/issues/<番号>/comments" --paginate \
-  --jq '.[]
-        | select(.user.login | test("\\[bot\\]$|^(coderabbitai|github-actions|codecov|dependabot)$") | not)
-        | {user: .user.login, created_at: .created_at, body: .body}'
+  --jq 'map(
+          select(.user.login | test("\\[bot\\]$|^(coderabbitai|github-actions|codecov|dependabot)$") | not)
+          | {user: .user.login, created_at: .created_at, body: .body}
+        )'
 ```
+
+`map(...)` 形式を使うことで、コメント 0 件 / bot 除外後 0 件のケースでも出力が空配列 `[]` のままとなり、ステップ 1-7 の「空配列 `[]` で正常続行」要件と整合する。`.[]` ストリーム形式だと 0 件時は無出力になるため使わない。
 
 bot 除外パターンの内訳:
 

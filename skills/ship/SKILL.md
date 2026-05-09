@@ -125,7 +125,7 @@ ship 自身は計画策定に必要な情報取得（Issue 本文・完了条件
 
 詳細は `skills/plan/SKILL.md` ステップ 1 を参照。
 
-計画は以下に出力される（`/vibecorp:plan` スキルが `vibecorp_plans_dir` 経由で配置する）:
+計画は以下に出力される（`/vibecorp:plan` スキルが `vibecorp_plans_mkdir` 経由で配置する）:
 
 ```text
 ~/.cache/vibecorp/plans/<repo-id>/{branch_name}.md

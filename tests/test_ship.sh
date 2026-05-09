@@ -446,19 +446,20 @@ else
   pass "plan/SKILL.md にコード行レベルの --json comments 使用が無い（30 件制限を回避）"
 fi
 
-# 13-5: bot 除外フィルタの jq テストパターンが存在する（コードブロック検証）
-# 既知の bot ユーザー名 4 種のうち 2 種以上がコード行に存在することを検証する。
-# （特定 1 種のスペル変更で偽失敗にならないよう冗長性を持たせる）
+# 13-5: bot 除外フィルタの jq テストパターンが select(...test(...)) コード行に存在する（コードブロック検証）
+# 既知の bot ユーザー名 4 種のうち 2 種以上が jq の select(.user.login | test(...)) 行に存在することを検証する。
+# CodeRabbit #565 Major 指摘を反映: 説明文の箇条書きでも一致してしまう緩いパターンを廃し、
+# select(...test(...)) を含むコード行に限定して、jq の実フィルタが消えても通過する偽陽性を防ぐ。
 BOT_HIT_COUNT=0
 for bot in coderabbitai github-actions codecov dependabot; do
-  if grep -qE "^[[:space:]]*\|*[[:space:]]*[\.{}]*.*${bot}" "$PLAN_FILE"; then
+  if grep -qE "select\(.+test\(.+${bot}" "$PLAN_FILE"; then
     BOT_HIT_COUNT=$((BOT_HIT_COUNT + 1))
   fi
 done
 if [ "$BOT_HIT_COUNT" -ge 2 ]; then
-  pass "plan/SKILL.md に bot 除外フィルタの既知 bot 名が ${BOT_HIT_COUNT} 件存在する（2 件以上必須）"
+  pass "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件存在する（2 件以上必須）"
 else
-  fail "plan/SKILL.md の bot 除外フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件しか存在しない（2 件以上必須）"
+  fail "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件しか存在しない（2 件以上必須）"
 fi
 
 # 13-6: owner/repo 動的解決のコマンドがコード行に存在する（コードブロック検証）
