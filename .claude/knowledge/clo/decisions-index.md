@@ -1,4 +1,3 @@
-- 2026-04-29 — Issue #442 — knowledge/ 構造統一 refactor — 法的リスクなし（依存追加・ライセンス変更・個人データ取扱いなし）
 - 2026-05-08 — Issue #532 claude-code-action 一時無効化・CodeRabbit 単独運用切替 — 法的リスクなし（依存変更なし・内部構成変更のみ・POLICY.md 抵触条項なし）
 - 2026-05-07 — CEO 構想 CodeRabbit 仕様完全網羅 OSS — 条件付きアリ（ToS確認・表現廃棄・GPL設計合意が前提、エスカレーション要）
 - 2026-04-29 — Issue #442 — knowledge/ 構造統一 refactor — 法的リスクなし（依存追加・ライセンス変更・個人データ取扱いなし）
