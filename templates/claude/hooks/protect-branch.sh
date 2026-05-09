@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+# 共通ライブラリ読み込み（vibecorp_cache_root で XDG 準拠の cache ルートを取得するため）
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../lib/common.sh
+source "${HOOK_DIR}/../lib/common.sh"
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 
@@ -40,6 +45,21 @@ resolve_realpath() {
 # 親ディレクトリの兄弟に配置される想定）
 ALLOWED_ROOT=$(resolve_realpath "${PROJECT_DIR}/..")
 
+# 知見バッファ worktree のルート。/vibecorp:review-harvest / /vibecorp:sync-edit が C*O
+# エージェント経由で <cache>/vibecorp/buffer-worktree/<repo-id>/.claude/knowledge/ に書き込む
+# ため、ここを ALLOWED_ROOT と同等に扱わないと fallback で main ブランチ誤検知され deny される。
+# vibecorp_cache_root が XDG_CACHE_HOME / HOME をフックの外で吸収する（XDG 準拠）。
+# resolve_realpath 失敗時は実在しない sentinel に置換し、case 文の glob で任意パスへ
+# 誤マッチさせない（Issue #553）。
+BUFFER_WORKTREE_ROOT=""
+CACHE_ROOT="$(vibecorp_cache_root 2>/dev/null || true)"
+if [ -n "$CACHE_ROOT" ]; then
+  BUFFER_WORKTREE_ROOT=$(resolve_realpath "${CACHE_ROOT}/vibecorp/buffer-worktree")
+fi
+if [ -z "$BUFFER_WORKTREE_ROOT" ] || [ "$BUFFER_WORKTREE_ROOT" = "/" ]; then
+  BUFFER_WORKTREE_ROOT="/__vibecorp_buffer_unresolvable__"
+fi
+
 # Edit/Write の場合、対象ファイルパスから worktree を判定する。
 # Bash や ALLOWED_ROOT が空/"/"のときは安全側で cwd 基準（CHECK_DIR=".")
 CHECK_DIR="."
@@ -61,11 +81,12 @@ if [ -n "$ALLOWED_ROOT" ] && [ "$ALLOWED_ROOT" != "/" ]; then
       done
 
       if [ -d "$PARENT_DIR" ]; then
-        # realpath で正規化し、ALLOWED_ROOT 配下にあることを検証
+        # realpath で正規化し、ALLOWED_ROOT または BUFFER_WORKTREE_ROOT 配下にあることを検証
         RESOLVED=$(resolve_realpath "$PARENT_DIR")
         if [ -n "$RESOLVED" ]; then
           case "$RESOLVED/" in
             "$ALLOWED_ROOT"/*) CHECK_DIR="$RESOLVED" ;;
+            "$BUFFER_WORKTREE_ROOT"/*) CHECK_DIR="$RESOLVED" ;;
             *) CHECK_DIR="." ;;  # repo 外 → 安全側 deny
           esac
         fi
