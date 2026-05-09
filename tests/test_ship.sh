@@ -381,8 +381,9 @@ else
 fi
 
 # 12-3: ship 自身が gh api でコメント取得を直接呼ばない（負検証、既存テスト 10-5b と同じスタイル）
-# ステップ 3 のスコープ内で `^[[:space:]]*gh api.*issues/.*comments` がコード行として現れないことを確認する。
-if printf '%s\n' "$SHIP_STEP3" | grep -qE '^[[:space:]]*gh api.*issues/.*comments'; then
+# ステップ 3 のスコープ内で `gh api ...issues/.../comments` がコード行として現れないことを確認する。
+# CodeRabbit #565 Major 指摘を反映: `cd <path> && gh api ...` チェイン形式も検出対象に含める。
+if printf '%s\n' "$SHIP_STEP3" | grep -qE '^[[:space:]]*(cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh api.*issues/.*comments'; then
   fail "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が残存（plan に委譲すべき）"
 else
   pass "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が無い（plan に委譲）"
@@ -412,13 +413,19 @@ else
   fail "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在しない"
 fi
 
-# 13-2: 9 つのサブセクション（#### 1-1 〜 #### 1-9）がすべて存在する（構造検証）
+# 13-2: 9 つのサブセクション（#### 1-1 〜 #### 1-9）がそれぞれ欠番なく存在する（構造検証）
 # 各サブセクションは独立した責務を表す。ヘッダーの欠落 = 機能の欠落として検出する。
-SUBSECTION_COUNT=$(grep -cE '^#### 1-[1-9]\. ' "$PLAN_FILE")
-if [ "$SUBSECTION_COUNT" -ge 9 ]; then
-  pass "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が 9 件以上存在する（${SUBSECTION_COUNT} 件）"
+# CodeRabbit #565 Major 指摘を反映: 件数判定では重複見出しで欠番を見逃すため、各番号の存在を個別検証する。
+MISSING_SUBSECTIONS=""
+for i in 1 2 3 4 5 6 7 8 9; do
+  if ! grep -qE "^#### 1-${i}\. " "$PLAN_FILE"; then
+    MISSING_SUBSECTIONS="${MISSING_SUBSECTIONS} 1-${i}"
+  fi
+done
+if [ -z "${MISSING_SUBSECTIONS# }" ]; then
+  pass "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が欠番なく存在する"
 else
-  fail "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が ${SUBSECTION_COUNT} 件しか存在しない（9 件必須）"
+  fail "plan/SKILL.md に欠けているサブセクションがある:${MISSING_SUBSECTIONS}"
 fi
 
 # 13-3: コード行で gh api ... /comments --paginate が存在する（コードブロック検証）
@@ -431,7 +438,9 @@ fi
 
 # 13-4: --json comments をコード行で使わない（負検証）
 # 既存テスト 10-5b と同じ負検証スタイル。説明文中のインラインコード（`...` 内）は対象外。
-if grep -qE '^[[:space:]]*gh[[:space:]].*\-\-json[[:space:]]+comments' "$PLAN_FILE"; then
+# CodeRabbit #565 Major 指摘を反映: 行頭 `gh` 限定だと `VAR=$(gh ...)` 代入形式や
+# `cd <path> && gh ...` チェイン形式を取りこぼすため、それらも検出対象に含める。
+if grep -qE '^[[:space:]]*([a-zA-Z_][a-zA-Z0-9_]*=.*)?([[:space:]]*cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh[[:space:]].*\-\-json[[:space:]]+comments([[:space:]]|$)' "$PLAN_FILE"; then
   fail "plan/SKILL.md にコード行レベルの --json comments 使用が残存（30 件制限の混入経路）"
 else
   pass "plan/SKILL.md にコード行レベルの --json comments 使用が無い（30 件制限を回避）"
