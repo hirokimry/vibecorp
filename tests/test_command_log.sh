@@ -206,9 +206,9 @@ echo "--- B3. GitHub PAT (ghp_*) がマスクされる ---"
 cleanup
 setup_project_dir
 
-echo '{"tool_name":"Bash","tool_input":{"command":"echo ghp_abcdef123456789012345678901234567890 | gh auth login --with-token"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1
+echo '{"tool_name":"Bash","tool_input":{"command":"echo ghp_FAKEPAT_TEST | gh auth login --with-token"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1
 
-if grep -q "ghp_abcdef123456789012345678901234567890" "$LOG_FILE"; then
+if grep -q "ghp_FAKEPAT_TEST" "$LOG_FILE"; then
   fail "B3: GitHub PAT が平文で記録されている"
 else
   pass "B3: GitHub PAT (ghp_*) がマスクされている"
@@ -257,9 +257,9 @@ echo "--- B6. 複数の機密情報が同一コマンドで全てマスクされ
 cleanup
 setup_project_dir
 
-echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ANTHROPIC_API_KEY=sk-ant-api03-yyyy script.sh --password=secret"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1
+echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=ghp_FAKEPAT_MULTI ANTHROPIC_API_KEY=sk-ant-api03-yyyy script.sh --password=secret"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1
 
-if grep -q "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "$LOG_FILE"; then
+if grep -q "ghp_FAKEPAT_MULTI" "$LOG_FILE"; then
   fail "B6: GH_TOKEN の値が残っている"
 else
   pass "B6: GH_TOKEN の値がマスクされている"
@@ -288,6 +288,13 @@ if grep -q "topsecretkey123" "$LOG_FILE"; then
   fail "B7: *_KEY= の値が平文で記録されている"
 else
   pass "B7: *_KEY= の値がマスクされている"
+fi
+
+# 正方向アサーション: ログ未作成時の誤 PASS を防ぐためマスク済み出力の存在も確認する
+if grep -q "MY_API_KEY=\*\*\*MASKED\*\*\*" "$LOG_FILE"; then
+  pass "B7: *_KEY= が期待どおりマスク表現 (MY_API_KEY=***MASKED***) で記録されている"
+else
+  fail "B7: *_KEY= のマスク表現が記録されていない（ログ未作成または置換失敗）"
 fi
 
 # ============================================
