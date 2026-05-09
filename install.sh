@@ -2501,10 +2501,15 @@ WARN_API_KEY
   # のいずれかに該当すれば警告する（両方そろっていない限り推奨設定が完成していないため）。
   if [[ "$OS" == "darwin" ]]; then
     local rc_has_activate=false
-    if [[ -f "${HOME}/.zshrc" ]] && grep -q -e 'activate\.sh' "${HOME}/.zshrc" 2>/dev/null; then
+    # 「activate.sh」を実際に source / . している行のみを検出する。
+    # 単なる文字列一致だと、コメント行や文字列定数に "activate.sh" が含まれるだけで
+    # 偽陽性（rc_has_activate=true）になり警告 B が誤って抑止されてしまう。
+    # 正規表現: 行頭のオプショナルな空白 + (source|.) + 空白 + 任意 + activate.sh + 行末/空白
+    local activate_source_re='^[[:space:]]*(source|\.)[[:space:]]+.*activate\.sh([[:space:]]|$)'
+    if [[ -f "${HOME}/.zshrc" ]] && grep -Eq -- "$activate_source_re" "${HOME}/.zshrc" 2>/dev/null; then
       rc_has_activate=true
     fi
-    if [[ -f "${HOME}/.bashrc" ]] && grep -q -e 'activate\.sh' "${HOME}/.bashrc" 2>/dev/null; then
+    if [[ -f "${HOME}/.bashrc" ]] && grep -Eq -- "$activate_source_re" "${HOME}/.bashrc" 2>/dev/null; then
       rc_has_activate=true
     fi
 
