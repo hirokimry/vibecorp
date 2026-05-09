@@ -193,9 +193,10 @@ your-project/
 │   │   ├── feature_request.md
 │   │   └── config.yml
 │   └── workflows/
-│       ├── test.yml                   # CI ワークフロー
-│       ├── ai-review.yml              # AI レビューワークフロー（claude_action.enabled: true 時のみ）
-│       └── ai-review-golden-test.yml  # AI レビュー golden test（claude_action.enabled: true 時のみ）
+│       ├── test.yml                       # CI ワークフロー
+│       ├── ai-review.yml                  # AI レビューワークフロー（claude_action.enabled: true 時のみ）
+│       ├── ai-review-golden-test.yml      # AI レビュー golden test（claude_action.enabled: true 時のみ）
+│       └── close-on-feature-merge.yml     # feature/epic-* マージ時の Issue 自動 close（full プリセット限定 / opt-in）
 ├── REVIEW.md              # AI レビュープロンプト（claude_action.enabled: true 時のみ）
 ├── .coderabbit.yaml       # CodeRabbit 設定
 └── MVV.md                 # Mission / Vision / Values
@@ -747,6 +748,10 @@ gh secret list
 ## 設計思想
 
 詳細は [docs/design-philosophy.md](docs/design-philosophy.md) を参照。
+
+主要な配布判断:
+
+- [統合問題は配布先のデフォルト CI で担保する](docs/design-philosophy.md#統合問題は配布先のデフォルト-ci-で担保する) — vibecorp が CI / レビュー設定を追加配布しない理由と、例外として配布する `close-on-feature-merge.yml`（GitHub の default branch 自動 close 仕様の制約回避）の判断基準
 
 ## ライセンス
 

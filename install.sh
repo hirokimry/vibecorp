@@ -2006,6 +2006,11 @@ copy_workflows() {
     if [[ "$name" == "ai-review.yml" ]] || [[ "$name" == "ai-review-golden-test.yml" ]]; then
       continue
     fi
+    # close-on-feature-merge.yml は full プリセット限定の opt-in 配布のため、
+    # copy_close_on_feature_merge_workflow() が担う (Issue #347)
+    if [[ "$name" == "close-on-feature-merge.yml" ]]; then
+      continue
+    fi
     if [[ -f "${dest}/${name}" ]]; then
       log_skip "workflows/${name} は既存のためスキップ"
     else
@@ -2014,6 +2019,37 @@ copy_workflows() {
   done
 
   log_info "ワークフローをコピー"
+}
+
+# feature/epic-* ブランチへのマージ時に PR 本文の Closes/Fixes/Resolves から
+# Issue 番号を抽出して自動 close するワークフローを配布する (Issue #347)。
+#
+# 設計:
+#   - full プリセット限定 (エピック運用は full でのみ整備されているため)
+#   - 既存ファイルは上書きしない (opt-in、ユーザーカスタマイズ尊重)
+#   - LLM 呼び出し一切なし (決定論的 / 課金ゼロ)
+#
+# 配布判断の根拠: docs/design-philosophy.md「統合問題は配布先のデフォルト CI で担保する」
+# (vibecorp が GHA を配布する例外ケース: GitHub の default branch 自動 close 仕様の制約回避)
+copy_close_on_feature_merge_workflow() {
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+
+  local src="${SCRIPT_DIR}/templates/.github/workflows/close-on-feature-merge.yml"
+  local dest_dir="${REPO_ROOT}/.github/workflows"
+  local dest="${dest_dir}/close-on-feature-merge.yml"
+
+  [[ -f "$src" ]] || return 0
+  mkdir -p "$dest_dir"
+
+  if [[ -f "$dest" ]]; then
+    log_skip "workflows/close-on-feature-merge.yml は既存のためスキップ"
+    return 0
+  fi
+
+  cp "$src" "$dest"
+  log_info ".github/workflows/close-on-feature-merge.yml を配置 (full プリセット)"
 }
 
 create_labels() {
@@ -2733,6 +2769,7 @@ main() {
   copy_issue_templates
   copy_pr_template
   copy_workflows
+  copy_close_on_feature_merge_workflow
   migrate_tracked_artifacts
   copy_claude_gitignore
   generate_claude_md
