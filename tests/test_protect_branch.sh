@@ -349,11 +349,13 @@ assert_allowed "BUF-1: buffer worktree (knowledge/buffer) 内 Edit → allow" "$
 OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$BUFFER_WT_PATH/.claude/knowledge/cpo/new/dir/bar.md\"}}" | run_hook)
 assert_allowed "BUF-2: buffer worktree 内の新規パス（親遡及）→ allow" "$OUTPUT"
 
-# BUF-3: HOME 未設定 → buffer 経路の sentinel が glob 誤マッチを防ぐ（任意 / 始まりパスは安全側 deny）
+# BUF-3: HOME が存在しないパス → buffer worktree root が解決不能 → sentinel が誤マッチを防ぐ
+# 任意 / 始まりパスは ALLOWED_ROOT 外かつ sentinel もマッチしないため安全側 deny
 git -C "$TMPDIR_ROOT" worktree remove --force "$BUFFER_WT_PATH" >/dev/null 2>&1
-unset HOME
+NONEXIST_HOME="/nonexistent_vibecorp_test_$$"
+export HOME="$NONEXIST_HOME"
 OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/var/some/random/file.md\"}}" | run_hook)
-assert_blocked "BUF-3: HOME 未設定 + repo 外パス → 安全側 deny（sentinel が誤マッチしない）" "$OUTPUT"
+assert_blocked "BUF-3: 解決不能 HOME + repo 外パス → sentinel が誤マッチせず安全側 deny" "$OUTPUT"
 
 # テスト用 HOME を片付け、元の HOME を復元
 rm -rf "$TEST_HOME"
