@@ -2484,6 +2484,107 @@ update_user_managed_file() {
   fi
 }
 
+# full プリセット用の事前警告（Issue #339）
+# 警告 A: ANTHROPIC_API_KEY 検出時の従量課金警告（CFO 条件）
+# 警告 B: macOS で sandbox 未有効時の推奨警告
+# - minimal / standard では何も警告しない（API キー設定も無害）
+# - 対話モード（[[ -t 0 ]] が true）: y/N プロンプトを出し、N または非 y なら exit 1
+# - 非対話環境（CI 等）: 警告のみ stderr に出力して継続（インストールを止めない）
+check_full_preset_warnings() {
+  if [[ "$PRESET" != "full" ]]; then
+    return 0
+  fi
+
+  # 警告 A: ANTHROPIC_API_KEY 検出時の従量課金警告
+  # full プリセットのヘッドレス並列スキル（/ship-parallel, /autopilot, /spike-loop, /diagnose）は
+  # API キー経由で起動されると Anthropic API の従量課金に到達するため、Claude Max 定額の利用を促す。
+  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    cat >&2 <<'WARN_API_KEY'
+
+⚠️  ANTHROPIC_API_KEY が設定されています（従量課金リスク）
+
+  full プリセットのヘッドレス並列スキル（/ship-parallel, /autopilot,
+  /spike-loop, /diagnose）は、ANTHROPIC_API_KEY 経由で起動されると
+  Anthropic API の従量課金に到達します。
+
+  推奨:
+  - Claude Max 定額プラン経由で起動する（環境変数を unset するか、
+    Claude Code を Max ログインで使用する）
+  - Anthropic Console (https://console.anthropic.com/) で
+    使用量アラート（予算上限通知）を有効化する
+
+  詳細は docs/cost-analysis.md の「実行モード別の課金モデル」を参照してください。
+
+WARN_API_KEY
+    if [[ -t 0 ]]; then
+      printf '続行しますか? [y/N]: ' >&2
+      local reply=""
+      read -r reply
+      case "$reply" in
+        [yY]|[yY][eE][sS]) ;;
+        *)
+          log_error "ユーザーがインストール続行を拒否しました（ANTHROPIC_API_KEY 警告）"
+          exit 1
+          ;;
+      esac
+    fi
+  fi
+
+  # 警告 B: macOS で sandbox 未有効時の推奨警告
+  # full プリセットの並列実行は sandbox + --dangerously-skip-permissions が前提で設計されている。
+  # sandbox なしでも動作するが、並列実行時に承認ダイアログが多数発生する。
+  # 「VIBECORP_ISOLATION 未設定」または「~/.zshrc / ~/.bashrc に activate.sh の source 記述なし」
+  # のいずれかに該当すれば警告する（両方そろっていない限り推奨設定が完成していないため）。
+  if [[ "$OS" == "darwin" ]]; then
+    local rc_has_activate=false
+    # 「activate.sh」を実際に source / . している行のみを検出する。
+    # 単なる文字列一致だと、コメント行や文字列定数に "activate.sh" が含まれるだけで
+    # 偽陽性（rc_has_activate=true）になり警告 B が誤って抑止されてしまう。
+    # 正規表現: 行頭のオプショナルな空白 + (source|.) + 空白 + 任意 + activate.sh + 行末/空白
+    local activate_source_re='^[[:space:]]*(source|\.)[[:space:]]+.*activate\.sh([[:space:]]|$)'
+    if [[ -f "${HOME}/.zshrc" ]] && grep -Eq -- "$activate_source_re" "${HOME}/.zshrc" 2>/dev/null; then
+      rc_has_activate=true
+    fi
+    if [[ -f "${HOME}/.bashrc" ]] && grep -Eq -- "$activate_source_re" "${HOME}/.bashrc" 2>/dev/null; then
+      rc_has_activate=true
+    fi
+
+    if [[ -z "${VIBECORP_ISOLATION:-}" || "$rc_has_activate" == "false" ]]; then
+      cat >&2 <<'WARN_SANDBOX'
+
+⚠️  sandbox 隔離レイヤが未有効です（並列実行時の推奨設定）
+
+  full プリセットの並列実行（/ship-parallel, /autopilot 等）は
+  sandbox + --dangerously-skip-permissions の組み合わせが前提で設計されています。
+  sandbox なしでも動作しますが、並列実行時に承認ダイアログが多数発生します。
+
+  推奨設定（macOS）:
+  1. インストール完了後に配置される .claude/bin/activate.sh を
+     ~/.zshrc または ~/.bashrc から source する:
+       echo 'source <repo>/.claude/bin/activate.sh' >> ~/.zshrc
+  2. 現在のシェルで sandbox を有効化する:
+       export VIBECORP_ISOLATION=1
+  3. シェルを再起動する（または rc を再 source する）
+
+  詳細は templates/claude/bin/activate.sh のヘッダコメントを参照してください。
+
+WARN_SANDBOX
+      if [[ -t 0 ]]; then
+        printf '続行しますか? [y/N]: ' >&2
+        local reply=""
+        read -r reply
+        case "$reply" in
+          [yY]|[yY][eE][sS]) ;;
+          *)
+            log_error "ユーザーがインストール続行を拒否しました（sandbox 推奨警告）"
+            exit 1
+            ;;
+        esac
+      fi
+    fi
+  fi
+}
+
 print_completion() {
   local action="インストール"
   [[ "$UPDATE_MODE" == true ]] && action="更新"
@@ -2632,6 +2733,10 @@ main() {
   validate_name
   validate_preset
   validate_language
+
+  # full プリセット用の事前警告（Issue #339）
+  # ANTHROPIC_API_KEY 検出と sandbox 未有効を、隔離依存チェックの前にユーザーに告知する
+  check_full_preset_warnings
 
   # full プリセット時は隔離レイヤの依存を確認（sandbox-exec 等）
   check_isolation_deps
