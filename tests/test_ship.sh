@@ -358,6 +358,119 @@ fi
 
 echo ""
 
+# --- テスト12: ステップ 3 plan 委譲 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# （セクションヘッダー・コードブロック存在・負検証で検証する）
+
+echo "--- テスト12: ステップ 3 plan 委譲 ---"
+
+SHIP_STEP3=$(awk '/^### 3\. 実装計画の策定/{flag=1; next} /^### 4\./{flag=0} flag' "$SKILL_FILE")
+
+# 12-1: ステップ 3 のセクションヘッダーが存在する（構造検証）
+if grep -q '^### 3\. 実装計画の策定' "$SKILL_FILE"; then
+  pass "ship/SKILL.md にステップ 3 のセクションヘッダーが存在する"
+else
+  fail "ship/SKILL.md にステップ 3 のセクションヘッダーが存在しない"
+fi
+
+# 12-2: ステップ 3 が /vibecorp:plan への委譲を明記している（コマンド名検証）
+if printf '%s\n' "$SHIP_STEP3" | grep -q '/vibecorp:plan'; then
+  pass "ステップ 3 で /vibecorp:plan への委譲が記載されている"
+else
+  fail "ステップ 3 で /vibecorp:plan への委譲が記載されていない"
+fi
+
+# 12-3: ship 自身が gh api でコメント取得を直接呼ばない（負検証、既存テスト 10-5b と同じスタイル）
+# ステップ 3 のスコープ内で `gh api ...issues/.../comments` がコード行として現れないことを確認する。
+# CodeRabbit #565 Major 指摘を反映: `cd <path> && gh api ...` チェイン形式も検出対象に含める。
+if printf '%s\n' "$SHIP_STEP3" | grep -qE '^[[:space:]]*(cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh api.*issues/.*comments'; then
+  fail "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が残存（plan に委譲すべき）"
+else
+  pass "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が無い（plan に委譲）"
+fi
+
+echo ""
+
+# --- テスト13: plan/SKILL.md 全コメント取得 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# - サブセクションヘッダー（#### 1-X. ...）の存在
+# - コードブロック内のコマンド存在
+# - 負検証（禁止パターン不在）
+
+echo "--- テスト13: plan/SKILL.md 全コメント取得 ---"
+
+PLAN_FILE="$PROJECT_DIR/skills/plan/SKILL.md"
+
+if [ ! -f "$PLAN_FILE" ]; then
+  fail "plan/SKILL.md が存在しない: $PLAN_FILE"
+  exit 1
+fi
+
+# 13-1: 親セクション「### 1. Issue 情報の取得」が存在する（構造検証）
+if grep -q '^### 1\. Issue 情報の取得' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在する"
+else
+  fail "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在しない"
+fi
+
+# 13-2: 9 つのサブセクション（#### 1-1 〜 #### 1-9）がそれぞれ欠番なく存在する（構造検証）
+# 各サブセクションは独立した責務を表す。ヘッダーの欠落 = 機能の欠落として検出する。
+# CodeRabbit #565 Major 指摘を反映: 件数判定では重複見出しで欠番を見逃すため、各番号の存在を個別検証する。
+MISSING_SUBSECTIONS=""
+for i in 1 2 3 4 5 6 7 8 9; do
+  if ! grep -qE "^#### 1-${i}\. " "$PLAN_FILE"; then
+    MISSING_SUBSECTIONS="${MISSING_SUBSECTIONS} 1-${i}"
+  fi
+done
+if [ -z "${MISSING_SUBSECTIONS# }" ]; then
+  pass "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が欠番なく存在する"
+else
+  fail "plan/SKILL.md に欠けているサブセクションがある:${MISSING_SUBSECTIONS}"
+fi
+
+# 13-3: コード行で gh api ... /comments --paginate が存在する（コードブロック検証）
+# 行頭スペース許容。インラインコード（バッククォート内の言及）は対象外。
+if grep -qE '^[[:space:]]*gh api.*issues.*/comments.*--paginate' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在する"
+else
+  fail "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在しない"
+fi
+
+# 13-4: --json comments をコード行で使わない（負検証）
+# 既存テスト 10-5b と同じ負検証スタイル。説明文中のインラインコード（`...` 内）は対象外。
+# CodeRabbit #565 Major 指摘を反映: 行頭 `gh` 限定だと `VAR=$(gh ...)` 代入形式や
+# `cd <path> && gh ...` チェイン形式を取りこぼすため、それらも検出対象に含める。
+if grep -qE '^[[:space:]]*([a-zA-Z_][a-zA-Z0-9_]*=.*)?([[:space:]]*cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh[[:space:]].*\-\-json[[:space:]]+comments([[:space:]]|$)' "$PLAN_FILE"; then
+  fail "plan/SKILL.md にコード行レベルの --json comments 使用が残存（30 件制限の混入経路）"
+else
+  pass "plan/SKILL.md にコード行レベルの --json comments 使用が無い（30 件制限を回避）"
+fi
+
+# 13-5: bot 除外フィルタの jq テストパターンが select(...test(...)) コード行に存在する（コードブロック検証）
+# 既知の bot ユーザー名 4 種のうち 2 種以上が jq の select(.user.login | test(...)) 行に存在することを検証する。
+# CodeRabbit #565 Major 指摘を反映: 説明文の箇条書きでも一致してしまう緩いパターンを廃し、
+# select(...test(...)) を含むコード行に限定して、jq の実フィルタが消えても通過する偽陽性を防ぐ。
+BOT_HIT_COUNT=0
+for bot in coderabbitai github-actions codecov dependabot; do
+  if grep -qE "select\(.+test\(.+${bot}" "$PLAN_FILE"; then
+    BOT_HIT_COUNT=$((BOT_HIT_COUNT + 1))
+  fi
+done
+if [ "$BOT_HIT_COUNT" -ge 2 ]; then
+  pass "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件存在する（2 件以上必須）"
+else
+  fail "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件しか存在しない（2 件以上必須）"
+fi
+
+# 13-6: owner/repo 動的解決のコマンドがコード行に存在する（コードブロック検証）
+if grep -qE '^[[:space:]]*[a-zA-Z_]+=.*gh repo view.*nameWithOwner' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在する"
+else
+  fail "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在しない"
+fi
+
+echo ""
+
 # --- 結果 ---
 
 echo "==========================="
