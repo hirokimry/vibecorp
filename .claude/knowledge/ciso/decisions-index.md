@@ -4,6 +4,7 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-10 — 不可領域チェック: ship が Issue チェックボックスをマージ後に自動検証し未完了項目を再帰実装するようになる（skills/ship/SKILL.md 拡張）— 条件付き OK（6分類非該当。再帰深度上限・安全弁・ヘッドレス呼び出し追加禁止の実装時条件 3 点を付記）
 - 2026-05-08 — Issue #532 sync-check #2 再チェック（注釈追加後 + 0.33.6 互換遡及ロジック）— 承認: 全ドキュメント整合・autonomous-restrictions #6 抵触なし・SHA256 遡及ロジック妥当性確認済み
 - 2026-05-08 — Issue #532 claude-code-action 無効化 PR セキュリティ合議メタレビュー — 承認: セキュリティリスクなし。rm -f + 固定パス/内部関数戻り値に外部制御経路なし。PR ブロック不要、別 Issue 起票推奨
 - 2026-05-08 — Issue #311 Phase 3: install.sh Linux bwrap 統合 + Win 弾き + ドキュメント整備 — 承認（条件付き）: Analyst3 Major M-01 は偽陽性（log_error 表示選択のみ、実害なし）。Minor 2点（脅威#2記述ズレ・VIBECORP_OS_RELEASE_PATH コメント欠如）対応推奨
