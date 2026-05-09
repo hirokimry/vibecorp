@@ -748,6 +748,10 @@ gh secret list
 
 詳細は [docs/design-philosophy.md](docs/design-philosophy.md) を参照。
 
+主要な配布判断:
+
+- [統合問題は配布先のデフォルト CI で担保する](docs/design-philosophy.md#統合問題は配布先のデフォルト-ci-で担保する) — vibecorp が CI / レビュー設定を追加配布しない理由と、例外として配布する `close-on-feature-merge.yml`（GitHub の default branch 自動 close 仕様の制約回避）の判断基準
+
 ## ライセンス
 
 MIT
