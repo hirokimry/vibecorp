@@ -1660,5 +1660,99 @@ else
 fi
 cleanup
 
+# ============================================
+echo ""
+echo "=== WARN. full プリセット事前警告（Issue #339） ==="
+# ============================================
+# install.sh --preset full 実行時に check_full_preset_warnings() が
+# ANTHROPIC_API_KEY 検出（警告 A）と sandbox 未有効（警告 B）を stderr に出すことを検証する。
+# テストは非対話モード（標準入力が tty でない）で実行されるため、
+# install は y/N プロンプトを出さずに警告のみ出力して継続する。
+
+# 警告 A 固有マッチ文字列: "ANTHROPIC_API_KEY が設定されています（従量課金リスク）"
+# 既存の post-install「💰 課金モデルに関する注意」ブロック（"ANTHROPIC_API_KEY が設定されている場合"）
+# とは語尾が異なるため grep が衝突しない。
+WARN_A_MARKER='ANTHROPIC_API_KEY が設定されています（従量課金リスク）'
+WARN_B_MARKER='sandbox 隔離レイヤが未有効です'
+
+# WARN1. full + ANTHROPIC_API_KEY 設定 → 警告 A が表示される
+create_test_repo
+STDERR_OUT=$(ANTHROPIC_API_KEY=test-dummy-key bash "$INSTALL_SH" --name test-proj --preset full 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q -e "$WARN_A_MARKER"; then
+  pass "WARN1: full + ANTHROPIC_API_KEY → 警告 A が表示される"
+else
+  fail "WARN1: full + ANTHROPIC_API_KEY → 警告 A が表示される"
+fi
+cleanup
+
+# WARN2. full + ANTHROPIC_API_KEY 未設定 → 警告 A は表示されない
+create_test_repo
+STDERR_OUT=$(env -u ANTHROPIC_API_KEY bash "$INSTALL_SH" --name test-proj --preset full 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q -e "$WARN_A_MARKER"; then
+  fail "WARN2: full + ANTHROPIC_API_KEY 未設定 → 警告 A は出ない"
+else
+  pass "WARN2: full + ANTHROPIC_API_KEY 未設定 → 警告 A は出ない"
+fi
+cleanup
+
+# WARN3. minimal + ANTHROPIC_API_KEY 設定 → 警告 A は表示されない（preset ゲート）
+create_test_repo
+STDERR_OUT=$(ANTHROPIC_API_KEY=test-dummy-key bash "$INSTALL_SH" --name test-proj --preset minimal 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q -e "$WARN_A_MARKER"; then
+  fail "WARN3: minimal + ANTHROPIC_API_KEY → 警告 A は出ない"
+else
+  pass "WARN3: minimal + ANTHROPIC_API_KEY → 警告 A は出ない"
+fi
+cleanup
+
+# WARN4. standard + ANTHROPIC_API_KEY 設定 → 警告 A は表示されない（preset ゲート）
+create_test_repo
+STDERR_OUT=$(ANTHROPIC_API_KEY=test-dummy-key bash "$INSTALL_SH" --name test-proj --preset standard 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q -e "$WARN_A_MARKER"; then
+  fail "WARN4: standard + ANTHROPIC_API_KEY → 警告 A は出ない"
+else
+  pass "WARN4: standard + ANTHROPIC_API_KEY → 警告 A は出ない"
+fi
+cleanup
+
+# WARN5. full + Darwin + sandbox 未有効 → 警告 B が表示される
+# HOME を空 dir に差し替え、~/.zshrc / ~/.bashrc に activate.sh の source 記述がない状態を再現する。
+# XDG_CACHE_HOME も同時に差し替えて install.sh の cache 作成が tmp に閉じるようにする。
+create_test_repo
+if require_darwin "WARN5: full + Darwin + sandbox 未有効 → 警告 B が表示される"; then
+  FAKE_HOME=$(mktemp -d)
+  STDERR_OUT=$(env -u VIBECORP_ISOLATION HOME="$FAKE_HOME" XDG_CACHE_HOME="$FAKE_HOME/.cache" \
+    bash "$INSTALL_SH" --name test-proj --preset full 2>&1 1>/dev/null)
+  if echo "$STDERR_OUT" | grep -q -e "$WARN_B_MARKER"; then
+    pass "WARN5b: full + Darwin + sandbox 未有効 → 警告 B が表示される"
+  else
+    fail "WARN5b: full + Darwin + sandbox 未有効 → 警告 B が表示される"
+  fi
+  rm -rf "$FAKE_HOME" || true
+fi
+cleanup
+
+# WARN6. minimal → 警告 B は表示されない（preset ゲート）
+create_test_repo
+STDERR_OUT=$(env -u VIBECORP_ISOLATION bash "$INSTALL_SH" --name test-proj --preset minimal 2>&1 1>/dev/null)
+if echo "$STDERR_OUT" | grep -q -e "$WARN_B_MARKER"; then
+  fail "WARN6: minimal → 警告 B は出ない"
+else
+  pass "WARN6: minimal → 警告 B は出ない"
+fi
+cleanup
+
+# WARN7. 非対話環境で full + ANTHROPIC_API_KEY 設定 → install が exit 0 で完了する
+# （プロンプトで止まらず警告のみ出して続行する）
+create_test_repo
+EXIT_CODE=0
+ANTHROPIC_API_KEY=test-dummy-key bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EXIT_CODE=$?
+if [ "$EXIT_CODE" -eq 0 ]; then
+  pass "WARN7: 非対話環境で full + ANTHROPIC_API_KEY → install が継続して exit 0"
+else
+  fail "WARN7: 非対話環境で full + ANTHROPIC_API_KEY → install が継続して exit 0 (exit=$EXIT_CODE)"
+fi
+cleanup
+
 
 print_test_summary
