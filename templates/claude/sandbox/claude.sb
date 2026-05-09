@@ -14,21 +14,34 @@
 ;;   ioctl   : /dev 配下（TTY raw mode 切替に必須）
 ;;   拒否    : ~/.ssh, ~/.aws, ~/.gnupg, ~/Library/Keychains（deny default で自動）
 ;;   ネット  : 全許可（host allowlist は将来検討）
-;;   プロセス : fork / exec は許可
+;;   プロセス : fork は許可、exec はホワイトリスト制限（Issue #513）
 ;;
 ;; パラメータ（-D KEY=VALUE で注入）:
 ;;   WORKTREE       — ホスト上の作業ツリールート
 ;;   HOME           — ユーザーホーム
 ;;   DARWIN_TMPDIR  — macOS の $TMPDIR（通常 /var/folders/.../T/）
 ;;
-;; 参照: #293 / #309
+;; 参照: #293 / #309 / #513
 
 (version 1)
 (deny default)
 
 ;; ----- subprocess -----
 (allow process-fork)
-(allow process-exec)
+
+;; process-exec はホワイトリスト方式で制限（Issue #513）。
+;; WORKTREE 内に書き込まれた任意バイナリの実行を防ぐ。
+;; システムバイナリと claude 本体のみ実行可能。
+(allow process-exec
+  (subpath "/usr")
+  (subpath "/bin")
+  (subpath "/sbin")
+  (subpath "/System")
+  (subpath "/Library")
+  (subpath "/opt/homebrew")
+  (subpath "/usr/local")
+  (subpath "/Applications")
+  (subpath (string-append (param "HOME") "/.local/share/claude")))
 
 ;; ----- network -----
 (allow network*)
