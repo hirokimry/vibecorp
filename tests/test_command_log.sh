@@ -277,6 +277,19 @@ else
   pass "B6: --password の値がマスクされている"
 fi
 
+# --- B7. 汎用 *_KEY= 形式がマスクされる（Issue #513 完了条件の回帰検知） ---
+echo "--- B7. 汎用 *_KEY= がマスクされる ---"
+cleanup
+setup_project_dir
+
+echo '{"tool_name":"Bash","tool_input":{"command":"MY_API_KEY=topsecretkey123 ./run.sh"}}' | bash "${TMPDIR_ROOT}/.claude/hooks/command-log.sh" 2>&1
+
+if grep -q "topsecretkey123" "$LOG_FILE"; then
+  fail "B7: *_KEY= の値が平文で記録されている"
+else
+  pass "B7: *_KEY= の値がマスクされている"
+fi
+
 # ============================================
 echo ""
 echo "==========================="

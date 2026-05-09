@@ -79,7 +79,11 @@ REQUIRED_PATHS=(
   '/usr'
   '/bin'
   '/sbin'
+  '/System'
+  '/Library'
   '/opt/homebrew'
+  '/usr/local'
+  '/Applications'
 )
 
 extract_process_exec_block() {
@@ -106,6 +110,13 @@ check_required_path() {
       fail "${label}: ${path} が process-exec で許可されていない"
     fi
   done
+
+  # claude バイナリ実体が置かれる HOME 配下も process-exec で許可されている必要がある
+  if printf '%s' "$block" | grep -qF '(subpath (string-append (param "HOME") "/.local/share/claude"))'; then
+    pass "${label}: HOME/.local/share/claude が process-exec で許可されている"
+  else
+    fail "${label}: HOME/.local/share/claude が process-exec で許可されていない"
+  fi
 }
 
 check_required_path "自リポ版" "$SELF_SB"

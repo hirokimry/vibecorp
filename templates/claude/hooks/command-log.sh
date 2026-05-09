@@ -22,6 +22,7 @@ SECRET_PATTERNS=(
   's/(GH_TOKEN=)[^[:space:]]+/\1***MASKED***/g'
   's/(GITHUB_TOKEN=)[^[:space:]]+/\1***MASKED***/g'
   's/(OPENAI_API_KEY=)[^[:space:]]+/\1***MASKED***/g'
+  's/([A-Z][A-Z0-9_]*_KEY=)[^[:space:]]+/\1***MASKED***/g'
   's/[A-Z][A-Z0-9_]*_SECRET=[^[:space:]]+/***MASKED***/g'
   's/[A-Z][A-Z0-9_]*_PASSWORD=[^[:space:]]+/***MASKED***/g'
   's/sk-ant-[A-Za-z0-9_-]+/***MASKED***/g'
