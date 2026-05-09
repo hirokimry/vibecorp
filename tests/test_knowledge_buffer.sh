@@ -370,11 +370,21 @@ fi
 knowledge_buffer_lock_release
 
 # 2 プロセス同時実行: 先行プロセスが保持 → 後続が timeout
-(
+# 注: bash の subshell `(...)` は親プロセスの $$ を共有するため、
+# subshell で knowledge_buffer_lock_acquire を呼ぶと pid ファイルに親 PID が
+# 書かれ、後続が「自分自身 PID = 自家中毒」と誤判定して stale 削除してしまう。
+# 本番では Claude Code が別 Bash プロセスとして fork するため $$ が分離される。
+# テストでも `bash -c` で別 bash プロセスを起動して本番と同条件にする。
+bash -c "
+  set -e
+  export CLAUDE_PROJECT_DIR='${WORK_REPO}'
+  export XDG_CACHE_HOME='${CACHE_ROOT}'
+  export VIBECORP_LOCK_TIMEOUT=2
+  source '${LIB}'
   knowledge_buffer_lock_acquire
   sleep 5  # タイムアウト(2s) より長く保持
   knowledge_buffer_lock_release
-) &
+" &
 BG_PID=$!
 # 先行が lock 取るのを少し待つ
 sleep 0.5
@@ -386,6 +396,158 @@ set -e
 assert_eq "後続プロセスは timeout で exit 2" "2" "$LOCK_EXIT"
 
 wait "$BG_PID" || true
+
+# 後続テスト用に lock dir を確実に解放しておく
+rm -rf "${WORKTREE_DIR}/.buffer.lock.d"
+
+# ============================================
+echo ""
+echo "=== knowledge_buffer_commit: ネスト検知 (Issue #559) ==="
+# ============================================
+
+# repo-id 同名のサブディレクトリが存在すると commit は exit 4 で中止される
+NESTED_PATH="${WORKTREE_DIR}/$(basename "${WORKTREE_DIR}")"
+mkdir -p "${NESTED_PATH}/.claude/knowledge/cto"
+echo "fake nested file" > "${NESTED_PATH}/.claude/knowledge/cto/fake.md"
+
+# 通常の差分も用意（ネスト検知が「差分なしスキップ」より先に効くことを確認）
+echo "real note" > "$(knowledge_buffer_path 'real-note.txt')"
+
+set +e
+knowledge_buffer_commit "test: ネスト検知" >/dev/null 2>&1
+NEST_EXIT=$?
+set -e
+assert_eq "ネスト存在時 commit が exit 4 で中止" "4" "$NEST_EXIT"
+
+# ネスト除去後は通常通り commit できる
+rm -rf "$NESTED_PATH"
+if knowledge_buffer_commit "test: ネスト除去後" >/dev/null 2>&1; then
+  pass "ネスト除去後 commit が成功する"
+else
+  fail "ネスト除去後 commit が失敗した"
+fi
+
+# 後始末: real-note を削除（次テストの混乱回避）
+rm -f "$(knowledge_buffer_path 'real-note.txt')"
+knowledge_buffer_commit "test: cleanup real-note" >/dev/null 2>&1 || true
+
+# ============================================
+echo ""
+echo "=== knowledge_buffer_lock_acquire: stale 検出 (Issue #559) ==="
+# ============================================
+
+# stale 1: 死んだプロセスの pid → 自動削除して取得
+# /proc 等を見ない代替として、明らかに存在しない PID を使う。
+# kill -0 は権限エラーでも 1 を返すが、生存プロセスなら 0 を返すため、
+# 99999 が偶然生きていた場合のみテストが false positive になる。
+# 安全策として「事前に kill -0 で非存在を確認」してから使う。
+DEAD_PID=99999
+if kill -0 "$DEAD_PID" 2>/dev/null; then
+  echo "[test] PID ${DEAD_PID} が偶然生きているため stale (dead pid) テストをスキップ" >&2
+else
+  mkdir -p "${WORKTREE_DIR}/.buffer.lock.d"
+  echo "$DEAD_PID" > "${WORKTREE_DIR}/.buffer.lock.d/pid"
+  if knowledge_buffer_lock_acquire >/dev/null 2>&1; then
+    pass "stale lock (dead pid) を自動削除して取得できる"
+  else
+    fail "stale lock (dead pid) を取得できない"
+  fi
+  knowledge_buffer_lock_release
+fi
+
+# stale 2: 自分自身の PID が記録済み → 自家中毒検出して取得
+# Claude Code sandbox 環境で $$ が常に同じ値になる現象への対応。
+# 前回実行で残ったロックを「自分のロック」と再認識する自家中毒を解消する。
+mkdir -p "${WORKTREE_DIR}/.buffer.lock.d"
+echo "$$" > "${WORKTREE_DIR}/.buffer.lock.d/pid"
+if knowledge_buffer_lock_acquire >/dev/null 2>&1; then
+  pass "stale lock (自分自身の PID = 自家中毒) を自動削除して取得できる"
+else
+  fail "stale lock (自分自身の PID) を取得できない"
+fi
+knowledge_buffer_lock_release
+
+# ============================================
+echo ""
+echo "=== knowledge_buffer_ensure: .gitignore 配置 (Issue #559) ==="
+# ============================================
+
+# 既存 .gitignore をクリアして ensure → .gitignore に .buffer.lock.d/ が追記される
+# `knowledge_buffer_ensure` を直接呼ぶ代わりに、内部関数 `knowledge_buffer_ensure_gitignore`
+# を直接呼ぶ。ensure 経由だと git fetch / pull 等の副作用があり、テスト不安定要因になる。
+# .gitignore 配置ロジックの単体検証としては内部関数の直接呼出しの方が適切。
+rm -f "${WORKTREE_DIR}/.gitignore"
+knowledge_buffer_ensure_gitignore "${WORKTREE_DIR}"
+if [ -f "${WORKTREE_DIR}/.gitignore" ] && grep -qxF '.buffer.lock.d/' "${WORKTREE_DIR}/.gitignore"; then
+  pass ".gitignore に .buffer.lock.d/ が追記される"
+else
+  fail ".gitignore に .buffer.lock.d/ が追記されていない"
+fi
+
+# 二重実行で重複しない (idempotent)
+knowledge_buffer_ensure_gitignore "${WORKTREE_DIR}"
+COUNT=$(grep -cxF '.buffer.lock.d/' "${WORKTREE_DIR}/.gitignore")
+assert_eq ".gitignore の .buffer.lock.d/ 行が重複しない (idempotent)" "1" "$COUNT"
+
+# 既存 .gitignore に別行があっても .buffer.lock.d/ 行が追加される
+rm -f "${WORKTREE_DIR}/.gitignore"
+printf '%s\n' '*.tmp' > "${WORKTREE_DIR}/.gitignore"
+knowledge_buffer_ensure_gitignore "${WORKTREE_DIR}"
+if grep -qxF '.buffer.lock.d/' "${WORKTREE_DIR}/.gitignore" && grep -qxF '*.tmp' "${WORKTREE_DIR}/.gitignore"; then
+  pass "既存 .gitignore に他規則がある場合でも .buffer.lock.d/ が追加される"
+else
+  fail "既存 .gitignore に他規則がある場合の .buffer.lock.d/ 追加が壊れた"
+fi
+
+# ensure() 経由でも .gitignore が配置されることを確認（統合テスト）
+# worktree を一度削除してから ensure を呼び、新規作成パスで .gitignore が配置されることを検証する。
+# （直前テストの dirty 状態を持ち越さずクリーンに統合動作を確認するため）
+rm -rf "${WORKTREE_DIR}"
+git -C "$WORK_REPO" worktree prune >/dev/null 2>&1 || true
+git -C "$WORK_REPO" branch -D knowledge/buffer 2>/dev/null || true
+if knowledge_buffer_ensure >/dev/null 2>&1; then
+  if [ -f "${WORKTREE_DIR}/.gitignore" ] && grep -qxF '.buffer.lock.d/' "${WORKTREE_DIR}/.gitignore"; then
+    pass "knowledge_buffer_ensure 経由でも .gitignore が配置される（新規作成パス）"
+  else
+    fail "knowledge_buffer_ensure 経由で .gitignore が配置されない"
+  fi
+else
+  fail "knowledge_buffer_ensure が失敗した（.gitignore 統合テスト）"
+fi
+
+# ============================================
+echo ""
+echo "=== harvest スキル SKILL.md パス指定ルール検証 (Issue #559) ==="
+# ============================================
+
+SESSION_HARVEST_SKILL="${SCRIPT_DIR}/skills/session-harvest/SKILL.md"
+REVIEW_HARVEST_SKILL="${SCRIPT_DIR}/skills/review-harvest/SKILL.md"
+
+# session-harvest: 必須キーワードが含まれること
+if [ -f "$SESSION_HARVEST_SKILL" ]; then
+  if grep -qF '絶対パス' "$SESSION_HARVEST_SKILL" \
+    && grep -qF '相対パス' "$SESSION_HARVEST_SKILL" \
+    && grep -qF 'BUFFER_DIR' "$SESSION_HARVEST_SKILL"; then
+    pass "session-harvest SKILL.md にパス指定ルール必須キーワードが含まれる"
+  else
+    fail "session-harvest SKILL.md にパス指定ルール必須キーワードが欠落"
+  fi
+else
+  fail "session-harvest SKILL.md が見つからない: ${SESSION_HARVEST_SKILL}"
+fi
+
+# review-harvest: 必須キーワードが含まれること
+if [ -f "$REVIEW_HARVEST_SKILL" ]; then
+  if grep -qF '絶対パス' "$REVIEW_HARVEST_SKILL" \
+    && grep -qF '相対パス' "$REVIEW_HARVEST_SKILL" \
+    && grep -qF 'BUFFER_WORKTREE' "$REVIEW_HARVEST_SKILL"; then
+    pass "review-harvest SKILL.md にパス指定ルール必須キーワードが含まれる"
+  else
+    fail "review-harvest SKILL.md にパス指定ルール必須キーワードが欠落"
+  fi
+else
+  fail "review-harvest SKILL.md が見つからない: ${REVIEW_HARVEST_SKILL}"
+fi
 
 # ============================================
 echo ""

@@ -78,6 +78,43 @@ knowledge_buffer_lock_acquire() {
   local waited=0
   # 1 秒刻みでリトライ（waited を秒単位で加算し timeout と直接比較）
   while ! mkdir "$lock_dir" 2>/dev/null; do
+    # stale lock 自動検出 (Issue #559)
+    # 既存ロックが「死んだプロセスの遺物」「Claude Code sandbox の固定 PID 自家中毒」
+    # の場合、timeout を待たず即削除して取得する。
+    #
+    # 判定順:
+    #   1. PID が自分自身（$$）と一致 → 無条件 stale
+    #      （Claude Code sandbox 環境で $$ が常に同じ値になり、
+    #        前回実行で残ったロックを「自分のロック」と再認識する自家中毒対応。
+    #        mtime チェックではなく PID 一致で判定するのは、並行制御の正常パスを
+    #        破壊しないため。「自分自身が既にロックを保持している場合は再取得不要」
+    #        の意味も併せ持つ）
+    #   2. PID が記録済みで kill -0 で生存確認失敗 → stale（死んだ実プロセス）
+    #
+    # mtime ベースの「timeout 経過＝ stale」判定は採用しない。これは正常に
+    # ロックを保持して長時間処理しているプロセスを誤検出し、並行制御を
+    # 破綻させるため。Claude Code sandbox 固定 PID 問題は (1) で十分対応可能。
+    if [ -d "$lock_dir" ] && [ -f "${lock_dir}/pid" ]; then
+      local pid
+      pid=$(tr -d '[:space:]' < "${lock_dir}/pid" 2>/dev/null)
+      local stale=0
+      if [[ "$pid" =~ ^[0-9]+$ ]]; then
+        if [ "$pid" = "$$" ]; then
+          # 自家中毒: 自分自身の PID が既に書かれている
+          stale=1
+        elif ! kill -0 "$pid" 2>/dev/null; then
+          # 死んだプロセスの遺物（kill -0 はシグナル送信せず生存確認のみ）
+          stale=1
+        fi
+      fi
+      if [ "$stale" -eq 1 ]; then
+        echo "[knowledge-buffer] stale lock を検出して削除します: ${lock_dir} (pid=${pid})" >&2
+        rm -rf "$lock_dir"
+        # ループの次回 mkdir で取得を試みる（waited は加算しない、無駄に待たせない）
+        continue
+      fi
+    fi
+
     if [ "$waited" -ge "$timeout" ]; then
       echo "[knowledge-buffer] lock acquire timeout (${timeout}s): ${lock_dir}" >&2
       return 2
@@ -215,6 +252,7 @@ knowledge_buffer_ensure() {
       echo "[knowledge-buffer] git worktree add 失敗: ${dir} (base=${base_ref})" >&2
       return 1
     fi
+    knowledge_buffer_ensure_gitignore "$dir"
     return 0
   fi
 
@@ -223,10 +261,12 @@ knowledge_buffer_ensure() {
 
   # origin/knowledge/buffer がまだ無い場合（初 push 前）は pull せず終了
   if ! git -C "$dir" rev-parse --verify origin/knowledge/buffer >/dev/null 2>&1; then
+    knowledge_buffer_ensure_gitignore "$dir"
     return 0
   fi
 
   if git -C "$dir" pull --ff-only origin knowledge/buffer >/dev/null 2>&1; then
+    knowledge_buffer_ensure_gitignore "$dir"
     return 0
   fi
 
@@ -247,7 +287,30 @@ knowledge_buffer_ensure() {
     echo "[knowledge-buffer] reset --hard origin/knowledge/buffer 失敗" >&2
     return 1
   fi
+  knowledge_buffer_ensure_gitignore "$dir"
   return 0
+}
+
+# knowledge_buffer_ensure_gitignore — worktree ルートに .gitignore を配置し
+# .buffer.lock.d/ 行を idempotent に追記する (Issue #559)
+#
+# .buffer.lock.d/ は worktree 排他ロックの pid 格納用ディレクトリ。
+# git add -A で取り込まれて commit に混入する事故を防ぐ。
+# `knowledge_buffer_commit` の `git rm --cached -r -f .buffer.lock.d`
+# フォールバックと多重防御として併用する。
+#
+# セマンティクス:
+# - worktree が新規作成 / 既存に関わらず毎回チェック
+# - .gitignore が存在しない場合は新規作成
+# - 既存 .gitignore に .buffer.lock.d/ 行が無ければ追記（grep -qxF で完全一致判定）
+# - 既に行があれば何もしない（idempotent）
+# 引数: $1 = worktree dir
+knowledge_buffer_ensure_gitignore() {
+  local dir="$1"
+  local gitignore="${dir}/.gitignore"
+  if [ ! -f "$gitignore" ] || ! grep -qxF '.buffer.lock.d/' "$gitignore"; then
+    printf '%s\n' '.buffer.lock.d/' >> "$gitignore"
+  fi
 }
 
 # knowledge_buffer_read_last_pr — .harvest-state/last-pr.txt を読む
@@ -291,6 +354,25 @@ knowledge_buffer_commit() {
   local message="$1"
   local dir
   dir="$(knowledge_buffer_worktree_dir)"
+
+  # ネストディレクトリ検知 (Issue #559)
+  # エージェントが相対パスで $(basename "$dir") 同名のサブディレクトリに
+  # 誤書込した痕跡を検出し、commit を中止する。
+  # 例: ${dir}/vibecorp-XXXXXXXX/.claude/knowledge/cto/...
+  # 検出時は手動修復を促すエラーメッセージを出して return 4。
+  local nested="${dir}/$(basename "$dir")"
+  if [ -e "$nested" ]; then
+    {
+      echo "[knowledge-buffer] nested directory detected: ${nested}"
+      echo "[knowledge-buffer] これはエージェントが相対パスで誤書込した痕跡です。"
+      echo "[knowledge-buffer] commit を中止します。手順:"
+      echo "[knowledge-buffer]   1. ${nested} の中身を確認"
+      echo "[knowledge-buffer]   2. 誤書込なら rm -rf ${nested}"
+      echo "[knowledge-buffer]   3. 再度 harvest スキルを実行"
+    } >&2
+    return 4
+  fi
+
   git -C "$dir" add -A
   # .buffer.lock.d/ は worktree 排他ロック用 pid 格納で commit に含めない
   # - 通常: lock 取得中の pid file が staged された状態で commit に混入するのを防ぐ
