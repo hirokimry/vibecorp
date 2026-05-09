@@ -21,7 +21,7 @@ if [ ! -f "$ROLE_FILE" ]; then
   exit 0
 fi
 
-ROLE=$(cat "$ROLE_FILE" | tr -d '[:space:]')
+ROLE=$(tr -d '[:space:]' < "$ROLE_FILE")
 if [ -z "$ROLE" ]; then
   exit 0
 fi

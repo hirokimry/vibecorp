@@ -116,39 +116,65 @@ gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
 
 ### 5. 未解決スレッドの取得
 
-GraphQL API で未解決の CodeRabbit レビュースレッドを取得する:
+GraphQL API で未解決の CodeRabbit レビュースレッドを取得する。
+レビュースレッドが 100 件を超える PR では 1 ページだけ取ると見落とすため、`pageInfo.hasNextPage` で全ページを巡回する。
 
 ```bash
-gh api graphql -f query='
-  query {
-    repository(owner: "{owner}", name: "{repo}") {
-      pullRequest(number: {pr_number}) {
-        reviewThreads(first: 100) {
-          nodes {
-            isResolved
-            id
-            comments(first: 10) {
+threads_all="[]"
+cursor=""
+while :; do
+  if [ -n "$cursor" ]; then
+    after_arg="-f after=$cursor"
+  else
+    after_arg=""
+  fi
+  page="$(gh api graphql \
+    -f owner="{owner}" \
+    -f repo="{repo}" \
+    -F number={pr_number} \
+    $after_arg \
+    -f query='
+      query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $number) {
+            reviewThreads(first: 100, after: $after) {
+              pageInfo { hasNextPage endCursor }
               nodes {
+                isResolved
                 id
-                databaseId
-                author { login }
-                body
-                path
-                line
+                comments(first: 10) {
+                  nodes {
+                    id
+                    databaseId
+                    author { login }
+                    body
+                    path
+                    line
+                  }
+                }
               }
             }
           }
         }
-      }
-    }
-  }' \
-  --jq '.data.repository.pullRequest.reviewThreads.nodes
-    | [.[] | select(.isResolved == false)
-    | select(.comments.nodes[0].author.login | test("coderabbit"; "i"))]'
+      }')"
+  page_nodes="$(printf '%s' "$page" | jq '.data.repository.pullRequest.reviewThreads.nodes')"
+  threads_all="$(jq -s 'add' <(printf '%s' "$threads_all") <(printf '%s' "$page_nodes"))"
+  has_next="$(printf '%s' "$page" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')"
+  if [ "$has_next" != "true" ]; then
+    break
+  fi
+  cursor="$(printf '%s' "$page" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')"
+done
+
+# 未解決 + 先頭コメントが CodeRabbit のスレッドのみ抽出
+unresolved="$(printf '%s' "$threads_all" \
+  | jq '[.[] | select(.isResolved == false)
+    | select(.comments.nodes[0].author.login | test("coderabbit"; "i"))]')"
 ```
 
 - `isResolved == false` かつ先頭コメントが CodeRabbit のスレッドのみ抽出
 - 各スレッドの `id`（thread node ID）は却下時の resolve mutation で使用する
+- ページネーションにより 100 件を超えるレビュースレッドも漏れなく取得する
 
 **未解決 0 件 かつ CI 失敗 0 件（PENDING 残存は許容）→ 「対応不要」と報告して正常終了。**
 **未解決あり または CI 失敗あり → ステップ6へ。**
