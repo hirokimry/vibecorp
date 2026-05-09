@@ -359,36 +359,42 @@ fi
 echo ""
 
 # --- テスト12: ステップ 3 plan 委譲 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# （セクションヘッダー・コードブロック存在・負検証で検証する）
 
 echo "--- テスト12: ステップ 3 plan 委譲 ---"
 
-# 12-1: ステップ 3 が /vibecorp:plan への委譲を明記している
-if awk '/^### 3\. 実装計画の策定/{flag=1; next} /^### 4\./{flag=0} flag' "$SKILL_FILE" | grep -q '/vibecorp:plan'; then
+SHIP_STEP3=$(awk '/^### 3\. 実装計画の策定/{flag=1; next} /^### 4\./{flag=0} flag' "$SKILL_FILE")
+
+# 12-1: ステップ 3 のセクションヘッダーが存在する（構造検証）
+if grep -q '^### 3\. 実装計画の策定' "$SKILL_FILE"; then
+  pass "ship/SKILL.md にステップ 3 のセクションヘッダーが存在する"
+else
+  fail "ship/SKILL.md にステップ 3 のセクションヘッダーが存在しない"
+fi
+
+# 12-2: ステップ 3 が /vibecorp:plan への委譲を明記している（コマンド名検証）
+if printf '%s\n' "$SHIP_STEP3" | grep -q '/vibecorp:plan'; then
   pass "ステップ 3 で /vibecorp:plan への委譲が記載されている"
 else
   fail "ステップ 3 で /vibecorp:plan への委譲が記載されていない"
 fi
 
-# 12-2: ship 自身が gh api でコメント取得を直接呼ばない（負検証、既存テスト 10-5b と同じスタイル）
+# 12-3: ship 自身が gh api でコメント取得を直接呼ばない（負検証、既存テスト 10-5b と同じスタイル）
 # ステップ 3 のスコープ内で `^[[:space:]]*gh api.*issues/.*comments` がコード行として現れないことを確認する。
-# 説明文中のインラインコード（`gh api ...` を文中で言及する形）は本テストの対象外。
-SHIP_STEP3=$(awk '/^### 3\. 実装計画の策定/{flag=1; next} /^### 4\./{flag=0} flag' "$SKILL_FILE")
 if printf '%s\n' "$SHIP_STEP3" | grep -qE '^[[:space:]]*gh api.*issues/.*comments'; then
   fail "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が残存（plan に委譲すべき）"
 else
   pass "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が無い（plan に委譲）"
 fi
 
-# 12-3: ステップ 3 の本文で「全コメント」読み込みの存在に言及している
-if printf '%s\n' "$SHIP_STEP3" | grep -qE '全コメント|全てのコメント'; then
-  pass "ステップ 3 で全コメント取り込みに言及している"
-else
-  fail "ステップ 3 で全コメント取り込みに言及していない"
-fi
-
 echo ""
 
 # --- テスト13: plan/SKILL.md 全コメント取得 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# - サブセクションヘッダー（#### 1-X. ...）の存在
+# - コードブロック内のコマンド存在
+# - 負検証（禁止パターン不在）
 
 echo "--- テスト13: plan/SKILL.md 全コメント取得 ---"
 
@@ -399,76 +405,58 @@ if [ ! -f "$PLAN_FILE" ]; then
   exit 1
 fi
 
-# 13-1: gh api ... /comments --paginate の記載がある
-if grep -qE 'gh api.*issues/.*comments.*--paginate' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に gh api ... /comments --paginate の記載がある"
+# 13-1: 親セクション「### 1. Issue 情報の取得」が存在する（構造検証）
+if grep -q '^### 1\. Issue 情報の取得' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在する"
 else
-  fail "plan/SKILL.md に gh api ... /comments --paginate の記載がない"
+  fail "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在しない"
 fi
 
-# 13-2: --json comments を使わない（負検証、コード行レベル）
-# 既存テスト 10-5b と同じスタイル。説明文中のインラインコード（`...` 内の言及）は対象外。
-# `^[[:space:]]*gh ... --json comments` のようにコード行として書かれていないことを確認する。
+# 13-2: 9 つのサブセクション（#### 1-1 〜 #### 1-9）がすべて存在する（構造検証）
+# 各サブセクションは独立した責務を表す。ヘッダーの欠落 = 機能の欠落として検出する。
+SUBSECTION_COUNT=$(grep -cE '^#### 1-[1-9]\. ' "$PLAN_FILE")
+if [ "$SUBSECTION_COUNT" -ge 9 ]; then
+  pass "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が 9 件以上存在する（${SUBSECTION_COUNT} 件）"
+else
+  fail "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が ${SUBSECTION_COUNT} 件しか存在しない（9 件必須）"
+fi
+
+# 13-3: コード行で gh api ... /comments --paginate が存在する（コードブロック検証）
+# 行頭スペース許容。インラインコード（バッククォート内の言及）は対象外。
+if grep -qE '^[[:space:]]*gh api.*issues.*/comments.*--paginate' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在する"
+else
+  fail "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在しない"
+fi
+
+# 13-4: --json comments をコード行で使わない（負検証）
+# 既存テスト 10-5b と同じ負検証スタイル。説明文中のインラインコード（`...` 内）は対象外。
 if grep -qE '^[[:space:]]*gh[[:space:]].*\-\-json[[:space:]]+comments' "$PLAN_FILE"; then
   fail "plan/SKILL.md にコード行レベルの --json comments 使用が残存（30 件制限の混入経路）"
 else
   pass "plan/SKILL.md にコード行レベルの --json comments 使用が無い（30 件制限を回避）"
 fi
 
-# 13-3: bot 除外フィルタの記載がある（既知の bot ユーザー名）
-if grep -qE 'coderabbitai|github-actions' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に bot 除外フィルタの記載がある"
+# 13-5: bot 除外フィルタの jq テストパターンが存在する（コードブロック検証）
+# 既知の bot ユーザー名 4 種のうち 2 種以上がコード行に存在することを検証する。
+# （特定 1 種のスペル変更で偽失敗にならないよう冗長性を持たせる）
+BOT_HIT_COUNT=0
+for bot in coderabbitai github-actions codecov dependabot; do
+  if grep -qE "^[[:space:]]*\|*[[:space:]]*[\.{}]*.*${bot}" "$PLAN_FILE"; then
+    BOT_HIT_COUNT=$((BOT_HIT_COUNT + 1))
+  fi
+done
+if [ "$BOT_HIT_COUNT" -ge 2 ]; then
+  pass "plan/SKILL.md に bot 除外フィルタの既知 bot 名が ${BOT_HIT_COUNT} 件存在する（2 件以上必須）"
 else
-  fail "plan/SKILL.md に bot 除外フィルタの記載がない"
+  fail "plan/SKILL.md の bot 除外フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件しか存在しない（2 件以上必須）"
 fi
 
-# 13-4: プロンプトインジェクション対策の記載がある
-if grep -qE '外部入力|コメント中の命令' "$PLAN_FILE"; then
-  pass "plan/SKILL.md にプロンプトインジェクション対策の記載がある"
+# 13-6: owner/repo 動的解決のコマンドがコード行に存在する（コードブロック検証）
+if grep -qE '^[[:space:]]*[a-zA-Z_]+=.*gh repo view.*nameWithOwner' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在する"
 else
-  fail "plan/SKILL.md にプロンプトインジェクション対策の記載がない"
-fi
-
-# 13-5: エラー時フォールバック（rate limit / 404 / 失敗）の記載がある
-if grep -qE 'rate limit|404|失敗' "$PLAN_FILE"; then
-  pass "plan/SKILL.md にエラー時フォールバックの記載がある"
-else
-  fail "plan/SKILL.md にエラー時フォールバックの記載がない"
-fi
-
-# 13-6: 空コメント時の挙動の記載がある
-if grep -qE '空配列|コメントなし' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に空コメント時の挙動の記載がある"
-else
-  fail "plan/SKILL.md に空コメント時の挙動の記載がない"
-fi
-
-# 13-7: 取得結果ログ出力の記載がある
-if grep -qE 'コメント.*件.*取り込' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に取得結果ログ出力の記載がある"
-else
-  fail "plan/SKILL.md に取得結果ログ出力の記載がない"
-fi
-
-# 13-8: context window 対策の記載がある
-if grep -qE 'context window|コンテキスト' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に context window 対策の記載がある"
-else
-  fail "plan/SKILL.md に context window 対策の記載がない"
-fi
-
-# 13-9: owner/repo 動的解決の記載がある
-if grep -q 'gh repo view' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に owner/repo 動的解決の記載がある"
-else
-  fail "plan/SKILL.md に owner/repo 動的解決の記載がない"
-fi
-
-# 13-10: 機密情報運用ガイダンスの記載がある
-if grep -qE 'API キー|認証情報|シークレット' "$PLAN_FILE"; then
-  pass "plan/SKILL.md に機密情報運用ガイダンスの記載がある"
-else
-  fail "plan/SKILL.md に機密情報運用ガイダンスの記載がない"
+  fail "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在しない"
 fi
 
 echo ""
