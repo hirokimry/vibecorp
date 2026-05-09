@@ -1744,6 +1744,23 @@ else
 fi
 cleanup
 
+# WARN6b. standard + Darwin + sandbox 未有効 → 警告 B は表示されない（preset ゲート）
+# Issue #339 の受け入れ条件「minimal / standard では警告が出ない」を full カバレッジで担保するため、
+# standard プリセットでも sandbox 未有効環境を再現して警告 B が出ないことを検証する。
+create_test_repo
+if require_darwin "WARN6b: standard + Darwin + sandbox 未有効 → 警告 B は表示されない"; then
+  FAKE_HOME=$(mktemp -d)
+  STDERR_OUT=$(env -u VIBECORP_ISOLATION HOME="$FAKE_HOME" XDG_CACHE_HOME="$FAKE_HOME/.cache" \
+    bash "$INSTALL_SH" --name test-proj --preset standard </dev/null 2>&1 1>/dev/null)
+  if echo "$STDERR_OUT" | grep -q -e "$WARN_B_MARKER"; then
+    fail "WARN6b: standard + Darwin + sandbox 未有効 → 警告 B は出ない"
+  else
+    pass "WARN6b: standard + Darwin + sandbox 未有効 → 警告 B は出ない"
+  fi
+  rm -rf "$FAKE_HOME" || true
+fi
+cleanup
+
 # WARN7. 非対話環境で full + ANTHROPIC_API_KEY 設定 → install が exit 0 で完了する
 # （プロンプトで止まらず警告のみ出して続行する）
 create_test_repo
