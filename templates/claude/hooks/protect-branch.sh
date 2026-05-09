@@ -40,6 +40,19 @@ resolve_realpath() {
 # 親ディレクトリの兄弟に配置される想定）
 ALLOWED_ROOT=$(resolve_realpath "${PROJECT_DIR}/..")
 
+# 知見バッファ worktree のルート。/vibecorp:review-harvest / /vibecorp:sync-edit が C*O
+# エージェント経由で ~/.cache/vibecorp/buffer-worktree/<repo-id>/.claude/knowledge/ に書き込む
+# ため、ここを ALLOWED_ROOT と同等に扱わないと fallback で main ブランチ誤検知され deny される。
+# HOME 未設定や resolve_realpath 失敗時は実在しない sentinel に置換し、case 文の glob で
+# 任意パスへ誤マッチさせない（Issue #553）。
+BUFFER_WORKTREE_ROOT=""
+if [ -n "${HOME:-}" ]; then
+  BUFFER_WORKTREE_ROOT=$(resolve_realpath "${HOME}/.cache/vibecorp/buffer-worktree")
+fi
+if [ -z "$BUFFER_WORKTREE_ROOT" ] || [ "$BUFFER_WORKTREE_ROOT" = "/" ]; then
+  BUFFER_WORKTREE_ROOT="/__vibecorp_buffer_unresolvable__"
+fi
+
 # Edit/Write の場合、対象ファイルパスから worktree を判定する。
 # Bash や ALLOWED_ROOT が空/"/"のときは安全側で cwd 基準（CHECK_DIR=".")
 CHECK_DIR="."
@@ -61,11 +74,12 @@ if [ -n "$ALLOWED_ROOT" ] && [ "$ALLOWED_ROOT" != "/" ]; then
       done
 
       if [ -d "$PARENT_DIR" ]; then
-        # realpath で正規化し、ALLOWED_ROOT 配下にあることを検証
+        # realpath で正規化し、ALLOWED_ROOT または BUFFER_WORKTREE_ROOT 配下にあることを検証
         RESOLVED=$(resolve_realpath "$PARENT_DIR")
         if [ -n "$RESOLVED" ]; then
           case "$RESOLVED/" in
             "$ALLOWED_ROOT"/*) CHECK_DIR="$RESOLVED" ;;
+            "$BUFFER_WORKTREE_ROOT"/*) CHECK_DIR="$RESOLVED" ;;
             *) CHECK_DIR="." ;;  # repo 外 → 安全側 deny
           esac
         fi

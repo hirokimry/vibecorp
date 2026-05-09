@@ -318,6 +318,49 @@ OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMPDIR_R
 assert_blocked "WT-11: ALLOWED_ROOT=/ のエッジケース → 安全側 deny" "$OUTPUT"
 export CLAUDE_PROJECT_DIR="$SAVED_CLAUDE_DIR"
 
+# ============================================
+# 知見バッファ worktree シナリオ（BUF-1〜BUF-3, Issue #553）
+# ============================================
+# /vibecorp:review-harvest / /vibecorp:sync-edit が C*O エージェント経由で
+# ~/.cache/vibecorp/buffer-worktree/<id>/.claude/knowledge/ に書き込むため、
+# このパスが ALLOWED_ROOT 拡張で許可されていることを検証する。
+
+# main repo を main ブランチに戻す
+write_vibecorp_yml
+switch_to_branch main
+
+# テスト用 HOME を mktemp で作成し、buffer worktree をその配下に作る
+SAVED_HOME="${HOME:-}"
+TEST_HOME=$(mktemp -d)
+export HOME="$TEST_HOME"
+BUFFER_WT_PARENT="${TEST_HOME}/.cache/vibecorp/buffer-worktree"
+BUFFER_WT_PATH="${BUFFER_WT_PARENT}/test-repo-id"
+mkdir -p "$BUFFER_WT_PARENT"
+
+# TMPDIR_ROOT のリポジトリから buffer worktree を切り出す（branch=knowledge/buffer）
+git -C "$TMPDIR_ROOT" worktree add -B knowledge/buffer "$BUFFER_WT_PATH" >/dev/null 2>&1
+mkdir -p "$BUFFER_WT_PATH/.claude/knowledge/cto"
+
+# BUF-1: buffer worktree（knowledge/buffer ブランチ）内 Edit → allow
+OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$BUFFER_WT_PATH/.claude/knowledge/cto/foo.md\"}}" | run_hook)
+assert_allowed "BUF-1: buffer worktree (knowledge/buffer) 内 Edit → allow" "$OUTPUT"
+
+# BUF-2: buffer worktree 内の新規パス（親ディレクトリ未存在）→ allow
+OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$BUFFER_WT_PATH/.claude/knowledge/cpo/new/dir/bar.md\"}}" | run_hook)
+assert_allowed "BUF-2: buffer worktree 内の新規パス（親遡及）→ allow" "$OUTPUT"
+
+# BUF-3: HOME 未設定 → buffer 経路の sentinel が glob 誤マッチを防ぐ（任意 / 始まりパスは安全側 deny）
+git -C "$TMPDIR_ROOT" worktree remove --force "$BUFFER_WT_PATH" >/dev/null 2>&1
+unset HOME
+OUTPUT=$(echo "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/var/some/random/file.md\"}}" | run_hook)
+assert_blocked "BUF-3: HOME 未設定 + repo 外パス → 安全側 deny（sentinel が誤マッチしない）" "$OUTPUT"
+
+# テスト用 HOME を片付け、元の HOME を復元
+rm -rf "$TEST_HOME"
+if [ -n "$SAVED_HOME" ]; then
+  export HOME="$SAVED_HOME"
+fi
+
 # DIFF-1: .claude/hooks/ と templates/claude/hooks/ が同期されていること
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if diff -q "$REPO_ROOT/.claude/hooks/protect-branch.sh" "$REPO_ROOT/templates/claude/hooks/protect-branch.sh" >/dev/null 2>&1; then
