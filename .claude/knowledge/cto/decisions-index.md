@@ -4,6 +4,10 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-09 — PR #534 — workflow 削除 PR 自身を実機検証として採用。GitHub Actions ランタイムアサーション（API 検証）は heavy lift かつ静的保証で十分として却下 (from CodeRabbit review on PR #534)
+- 2026-05-08 — PR #520 — race condition 修正での PR 分割却下。責務委譲と CI 削除は分離不可能な構成要素であり一括対応が正しい設計
+- 2026-05-07 — PR #507 — CI ワークフローの graceful skip 却下。シークレット未登録時は fail-fast が正しい設計（緑なのに動いていない状態を防ぐ）(from CodeRabbit review on PR #507)
+- 2026-04-29 — PR #453 — grep -qxF（行全体一致）vs -qF（部分一致）の使い分け。SoT ファイルの記述スタイル（単独行 vs 文中引用）に応じて選択 (from CodeRabbit review on PR #453)
 - 2026-05-08 — Issue #532 — design-philosophy.md に ai-review-golden-test.yml 配布記述・遡及削除ロジックを追記。ai-review-auth.md / ai-review-dependency.md は role-gate により CTO 管轄外でブロック（管轄未定義の技術的負債を記録）
 - 2026-05-08 — Issue #311 Phase 3 — 環境変数パス上書き・uname 偽装の 2 テスト容易性パターンを shell.md に標準化。テストファイル書き分け基準を testing.md に追記
 - 2026-05-06 — Epic #455 — claude-action CHANGES_REQUESTED 残存問題。真因はGitHub review state の永続性とサーバーサイド状態管理欠如。REVIEW.md に「全スレッド resolved なら approve 発行」指示追加（案A採用）で構造的解決

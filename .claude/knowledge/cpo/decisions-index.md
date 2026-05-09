@@ -4,6 +4,7 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-10 — ship ステップ 11（マージ後 LLM 検証 + 未完了項目再帰実装）追加提案 — OK（透明性・規律の自動化バリュー合致。プリセットスコープと specification.md 反映は plan mode での確認事項）
 - 2026-05-08 — Issue #311 Phase 3 隔離レイヤ仕様確定と OS サポート方針明文化 — OK（全 4 変更が specification.md・README.md に既反映済みと確認。OS サポート方針明文化は透明性バリュー、bwrap 不在 exit 1 は段階的成長バリュー、プリセット表「隔離」列は導入手軽さバリューに合致）
 - 2026-05-06 — 配布物の Source-of-Truth ドキュメント完成と規約衝突解消（#360 子 Issue）— OK（POLICY.md・cost-analysis.md プレースホルダ埋め・organization.md と ai-organization.md の規約衝突解消を承認。透明性・規律の自動化バリュー適合）
 - 2026-05-04 — Issue #468 sync-check 再確認（claude_action セクション追加）— OK（前回指摘のYAMLサンプル不在・説明段落なしが解消、specification.md・MVV整合）
