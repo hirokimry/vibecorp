@@ -57,5 +57,5 @@ YYYY-MM-DD（月次: 毎月1日）
 ## 関連
 
 - `docs/SECURITY.md`
-- `rules/autonomous-restrictions.md`
+- `.claude/rules/autonomous-restrictions.md`
 - Phase 6 #291

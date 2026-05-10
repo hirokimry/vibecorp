@@ -250,12 +250,25 @@ hooks・install.sh 等のシェルスクリプトの自動テスト。
 
 導入先リポジトリでは `templates/` ディレクトリが存在しない。hooks/skills/agents を含む全ファイルが `.claude/` 内の唯一のコピーであるため、**全て追跡するのが正しい**。
 
-`install.sh` が `.claude/.gitignore` を自動生成する。実装計画は XDG パス（`~/.cache/vibecorp/plans/<repo-id>/`）に保存されるため、`.claude/plans/` は作成されない。
+`install.sh` が `.claude/.gitignore` を自動生成する（`templates/claude/.gitignore.tpl` をテンプレートとして配布）。実装計画は XDG パス（`~/.cache/vibecorp/plans/<repo-id>/`）に保存されるため、`.claude/plans/` は作成されない。
+
+導入先で実際に生成される `.gitignore` は machine-specific artifact（マシン毎に異なるためコミットしない）も含む。代表例:
 
 ```text
-# .claude/.gitignore（自動生成）
-# ※ plans/ は ~/.cache/vibecorp/plans/<repo-id>/ に保存されるため除外不要
+# .claude/.gitignore（templates/claude/.gitignore.tpl から自動生成）
+# ※ plans/ は ~/.cache/vibecorp/plans/<repo-id>/ に保存されるため除外不要だが、
+#   旧バージョンで残っている `.claude/plans/` 残骸の追跡を防ぐ目的でテンプレートには残置している
+plans/
+state/
+scheduled_tasks.json
+scheduled_tasks.lock
+settings.local.json
+
+# ---- machine-specific artifacts（マシン依存のため untrack 対象） ----
+bin/claude-real
 ```
+
+正確なエントリは `templates/claude/.gitignore.tpl` を参照（テンプレート更新で自動追従）。
 
 ### テンプレートソースリポジトリの構成
 
