@@ -54,6 +54,41 @@ C-Level エージェントの下に専門分析員を配置し、詳細な分析
 
 分析員は C-Level エージェントから呼び出され、結果を報告する。`accounting-analyst` / `security-analyst` は各管轄の docs/ ファイルを直接編集する権限を持つ（role-gate フックで制御）。`legal-analyst` は Write 権限を持たないため（前述「エージェント tools セット」表参照）、`docs/POLICY.md` の編集は CLO に委任する。
 
+### エージェント一覧（full プリセット）
+
+`README.md` から本ドキュメントへ移譲した詳細一覧。standard プリセットでは CTO と CPO のみ配置される。
+
+#### C-suite（単独判断）
+
+| エージェント | ロール | 管轄 |
+|---|---|---|
+| `cto.md` | CTO（技術責任者） | コード品質・アーキテクチャ・技術的負債。`.claude/rules/`, `knowledge/cto/` を管理 |
+| `cpo.md` | CPO（プロダクト責任者） | プロダクト方針・仕様の一貫性。`knowledge/cpo/`, `docs/` を管理 |
+| `sm.md` | SM（Scrum Master） | プロセス管理・進捗把握・エージェント間調整・次タスク提案・並列実行判定。`knowledge/sm/` を管理 |
+| `cfo.md` | CFO（最高財務責任者） | コスト分析・API 利用量管理。経理チームの合議結果をメタレビュー。`knowledge/accounting/` を管理 |
+| `clo.md` | CLO（最高法務責任者） | ライセンス・規約・コンプライアンス。法務チームの合議結果をメタレビュー。`knowledge/legal/` を管理 |
+| `ciso.md` | CISO（最高情報セキュリティ責任者） | セキュリティ。セキュリティチームの合議結果をメタレビュー。`knowledge/security/` を管理 |
+
+#### 分析員（合議制: 3 回独立実行 → C-suite がメタレビュー）
+
+| エージェント | ロール | レビュー先 |
+|---|---|---|
+| `accounting-analyst.md` | 経理分析員 | コスト管理ポリシー遵守チェック・課金ロジック評価 → CFO |
+| `legal-analyst.md` | 法務分析員 | ライセンス・規約チェック・著作権保護 → CLO |
+| `security-analyst.md` | セキュリティ分析員 | 脆弱性スキャン・依存パッケージ監査・OWASP Top 10 → CISO |
+
+#### 計画レビュー専門家（plan-review-loop から起動）
+
+| エージェント | ロール |
+|---|---|
+| `plan-architect.md` | 構造設計・責務分離・拡張性のレビュー |
+| `plan-security.md` | 脆弱性・認証・認可・入力検証のレビュー |
+| `plan-testing.md` | テストカバレッジ・境界値・E2E 設計のレビュー |
+| `plan-performance.md` | ボトルネック・スケーラビリティのレビュー |
+| `plan-dx.md` | 開発者体験（DX）・エラーハンドリング・可観測性のレビュー |
+| `plan-cost.md` | API 呼び出し頻度・モデル選択・トークン消費見込み・実行モード変更（full プリセット限定） |
+| `plan-legal.md` | 依存追加の LICENSE 適合・第三者リポジトリ参照・プライバシー・規約影響（full プリセット限定） |
+
 ## ワークフロー × C*O ゲート マトリクス
 
 `/vibecorp:ship` 等の自動化ワークフローでは、**そのフェーズで判断に必要な情報が揃う最初のタイミングで、判断を管轄する C*O（または平社員合議）を入れる**ことを原則とする。C*O は常時起動せず、**管轄領域に触れた差分を検知した時のみ起動**する。
