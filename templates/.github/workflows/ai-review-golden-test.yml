@@ -59,4 +59,11 @@ jobs:
             echo "golden データが未配置です（_example.json のみ）。実機検証期間 (#475) で配置されるまでスキップします。"
             exit 0
           fi
+          # scripts/run-golden-test.sh は vibecorp 本体専用スクリプトで install.sh では配置先へ
+          # コピーされない。配置先リポジトリでは workflow が起動してもスクリプト不在で fail す
+          # るため、不在時はスキップする（Issue #533 Critical #1）。
+          if [[ ! -f scripts/run-golden-test.sh ]]; then
+            echo "scripts/run-golden-test.sh が見つかりません（vibecorp 本体専用スクリプト）。配置先リポジトリではスキップします。"
+            exit 0
+          fi
           bash scripts/run-golden-test.sh

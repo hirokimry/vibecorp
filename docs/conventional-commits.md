@@ -180,7 +180,9 @@ PR / Issue / commit のタイトルは以下のいずれか:
 
 - 1 つの Issue / PR には intent ラベルを **1 つだけ** 付与する
 - 複数 intent にまたがる変更は Issue を分割する
-- `templates/.github/workflows/ai-review.yml` の `intent-label-check` ジョブが機械的に強制（**0 件または 2 件以上で fail コメント**）
+- 機械的強制は配布 workflow が二系統で行う（**0 件または 2 件以上で fail コメント**）:
+  - Issue 側: `templates/.github/workflows/intent-label-issue-check.yml`
+  - PR 側: `templates/.github/workflows/ai-review.yml` 内の `intent-label-check` ジョブ
 
 ## 関連
 
