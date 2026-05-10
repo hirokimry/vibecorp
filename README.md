@@ -45,16 +45,30 @@ path/to/vibecorp/install.sh --name your-project --version v1.0.0
 
 ### アップデート
 
+vibecorp の更新は **以下の 3 ステップを順番に実行する** のが正しい手順。`install.sh --update` は hooks / agents / rules / docs / settings.json / `.claude-plugin/plugin.json`（version マニフェスト）等は更新するが、**スキル本体（`/vibecorp:*`）はプラグインキャッシュから配信される別経路** のため、Claude Code の `/plugin update` を別途実行しないとスキルが古いまま放置される。
+
 ```bash
-# vibecorp リポジトリを最新化
+# 1. vibecorp リポジトリを最新化
 cd path/to/vibecorp && git pull
 
-# 導入先リポジトリに移動してアップデート実行
+# 2. 導入先リポジトリに移動してインストーラを再実行
 cd your-project
 path/to/vibecorp/install.sh --update
 ```
 
-`--update` 実行時にバージョン差分がある場合、自動的に表示される。
+```bash
+# 3. Claude Code を起動して、スキル本体を最新版に更新する
+/plugin update vibecorp --scope project
+```
+
+`--update` 実行時にバージョン差分がある場合、自動的に表示される。`/plugin update` は既に最新の場合「already at the latest version」と返すだけなので毎回実行しても安全。
+
+#### `install.sh --update` で更新されるもの／されないもの
+
+| 配信経路 | 更新方法 |
+|---------|---------|
+| hooks / agents / rules / docs / knowledge / lib / settings.json / vibecorp.yml / `.claude-plugin/plugin.json`（version マニフェスト）/ CI workflow | `install.sh --update` |
+| **skills（`/vibecorp:*`）** | **`/plugin update vibecorp --scope project`**（プラグインキャッシュ `~/.claude/plugins/cache/` 経由で配信されるため別経路） |
 
 > **Note**: vibecorp 0.3.0 リリース（2026-05-03）から #540 修正前までに `--update` を流した利用者は、`.claude-plugin/plugin.json` の `version` が 0.3.0 → 0.2.0 にダウングレードされている可能性があります。修正版の vibecorp を `git pull` 後に再度 `path/to/vibecorp/install.sh --update` を実行すれば自動的に最新 version へ復旧します。明示的なマイグレーションは不要です。
 
