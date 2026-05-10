@@ -256,7 +256,8 @@ hooks・install.sh 等のシェルスクリプトの自動テスト。
 
 ```text
 # .claude/.gitignore（templates/claude/.gitignore.tpl から自動生成）
-# ※ plans/ は ~/.cache/vibecorp/plans/<repo-id>/ に保存されるため除外不要
+# ※ plans/ は ~/.cache/vibecorp/plans/<repo-id>/ に保存されるため除外不要だが、
+#   旧バージョンで残っている `.claude/plans/` 残骸の追跡を防ぐ目的でテンプレートには残置している
 plans/
 state/
 scheduled_tasks.json

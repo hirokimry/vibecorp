@@ -50,9 +50,14 @@ assert_file_contains \
   "$GOLDEN_YML" \
   'if \[\[ ! -f scripts/run-golden-test.sh \]\]; then'
 assert_file_contains \
-  "ai-review-golden-test.yml にスキップ exit 0 がある" \
+  "ai-review-golden-test.yml に vibecorp 本体専用スクリプトの注記がある" \
   "$GOLDEN_YML" \
   'vibecorp 本体専用スクリプト'
+# スクリプト不在チェック直下に exit 0 行が存在することを直接検証する（文字列一致だけでは exit 0 が消えても通ってしまうため）
+assert_file_contains \
+  "ai-review-golden-test.yml にスキップ exit 0 行が存在する" \
+  "$GOLDEN_YML" \
+  '^[[:space:]]*exit 0$'
 
 # ============================================
 echo "=== Minor #11: intent-label-issue-check.yml が unlabeled を除外 ==="
@@ -202,6 +207,11 @@ assert_file_contains \
   "conventional-commits.md が PR 側 workflow を明記" \
   "$CC_MD" \
   'ai-review\.yml'
+# 要件コア: PR 側で intent-label-check ジョブが機械強制であることを明記
+assert_file_contains \
+  "conventional-commits.md が PR 側で intent-label-check ジョブを明記" \
+  "$CC_MD" \
+  'intent-label-check'
 
 # ============================================
 echo "=== Minor #14: file-placement.md の .gitignore 例が bin/claude-real を含む ==="
@@ -217,5 +227,18 @@ assert_file_contains \
   "file-placement.md の .gitignore 例に machine-specific 注記が含まれる" \
   "$FP_MD" \
   'machine-specific'
+# 要件コア: XDG plans パス・.claude/plans/ 非生成の整合が docs に明記されているか
+assert_file_contains \
+  "file-placement.md が XDG plans パスを明記" \
+  "$FP_MD" \
+  '~/\.cache/vibecorp/plans/<repo-id>/'
+assert_file_contains \
+  "file-placement.md が .claude/plans/ 非生成を明記" \
+  "$FP_MD" \
+  'claude/plans/.*は作成されない'
+assert_file_contains \
+  "file-placement.md が install.sh による .gitignore 自動生成を明記" \
+  "$FP_MD" \
+  '\.claude/\.gitignore.*自動生成'
 
 print_test_summary

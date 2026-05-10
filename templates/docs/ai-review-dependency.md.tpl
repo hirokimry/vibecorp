@@ -92,6 +92,28 @@ CodeRabbit 側の `.coderabbit.yaml` の主要設定値:
 
 claude-code-action 側の挙動は `REVIEW.md`（vibecorp 配布のプロンプト）と `templates/.github/workflows/ai-review.yml`（ジョブ定義）で記述する。
 
+## 導入先スモークテストの assert 方針
+
+`claude_action.enabled` の値は配置先で切り替えられるため、スモークテストで `REVIEW.md` / `.github/workflows/ai-review.yml` の **存在 / 不在を絶対値で assert しない**こと。`enabled: false` 前提で「不在」を assert すると、後で `enabled: true` に切り替えた瞬間にテストが落ちる。逆も同様。
+
+**推奨パターン**: `vibecorp.yml` の `claude_action.enabled` を読んで分岐する。
+
+```bash
+# 例: smoke test テンプレート（bash）
+enabled=$(awk '/^claude_action:/{f=1; next} f && /^[^ ]/{f=0} f && /^[[:space:]]+enabled:/{sub(/^[[:space:]]+enabled:[[:space:]]*/, ""); print; exit}' .claude/vibecorp.yml)
+
+if [ "$enabled" = "true" ]; then
+  # enabled: true 運用 → 必須ファイル群が配布されていること
+  test -f REVIEW.md || { echo "REVIEW.md missing"; exit 1; }
+  test -f .github/workflows/ai-review.yml || { echo "ai-review.yml missing"; exit 1; }
+else
+  # enabled: false 運用 → ファイル不在を assert しない（過去の残骸が残っていても無視）
+  echo "claude_action.enabled=${enabled:-false}: smoke skip"
+fi
+```
+
+または、配布対象ファイル一覧を直接 assert せずに **「現設定との整合」**（`.coderabbit.yaml` 内のキーが正しい / `vibecorp.yml` がパース可能 等）にとどめる。絶対値 assert は `enabled` 切替で必ず壊れることを前提に書かない。
+
 ## 関連
 
 - 認証経路: `docs/ai-review-auth.md`
