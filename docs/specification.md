@@ -168,6 +168,31 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 
 防御層の構成・Bash 層の検出パターン・harvest-all-active スタンプ仕様・fail-secure 原則の詳細は [`docs/SECURITY.md` の「knowledge ガードレール（多層防御）」](SECURITY.md#knowledge-ガードレール多層防御) を参照。救済手順は [`docs/migration-knowledge-buffer.md`](migration-knowledge-buffer.md) を参照。
 
+### ship のマージ後検証
+
+`/vibecorp:ship` はステップ 10（`/vibecorp:pr-fix-loop`）が MERGED で正常終了した直後に、ステップ 11「マージ後の網羅検証」を実行する。Issue 本文と CEO 投稿コメント内のチェックボックスを LLM で main の最終コードと突き合わせて 2 値判定し、完了のみ ✅ に更新する。未完了があれば Issue を Reopen し、未完了項目（出所表記付き）と各判定の根拠（main の該当ファイル + 行番号 or 不在理由）をコメント追記する。CEO は同じ Issue URL で `/vibecorp:ship` を再実行することで残作業を実装できる。
+
+**検証スコープ**:
+
+| 出所 | 検証対象 | 更新可否 | 備考 |
+|---|---|---|---|
+| Issue 本文 | ✅ | 可（`gh issue edit`） | 主要対象 |
+| CEO（リポジトリオーナー）投稿コメント | ✅ | 可（`gh api PATCH`） | 個人リポジトリのみ。組織リポジトリでは無効化 |
+| 共同作業者コメント | ❌ | — | 現状スコープ外（将来拡張余地） |
+| bot コメント（CodeRabbit / GHA / Codecov / Dependabot 等） | ❌ | — | レビュー指摘の checklist 等は別軸で扱う |
+
+**プリセット対応**:
+
+全プリセット（minimal / standard / full）対応。ステップ 11 は既存 Claude Code セッション内の LLM 呼び出しのみで完結し、新規ヘッドレス LLM 呼び出し（`claude -p` / `npx` / `bunx` 等）は追加しない（`autonomous-restrictions.md` §3 抵触回避）。
+
+**再 ship 時の挙動**:
+
+Reopen された Issue を CEO が再 ship した時、`/vibecorp:plan` は本文 + CEO コメントの **⬜ 項目のみ** を計画ファイルに含める（過去の ✅ 項目は信用してスキップ）。これにより同じ項目を二重実装しない。過去 ✅ 判定が誤りだった場合は、CEO が手動で ⬜ に戻して再 ship する。
+
+**組織リポジトリでの制約**:
+
+`owner.type == "Organization"` のリポジトリでは、CEO（個人ユーザー）と repo owner（組織アカウント）が一致しないため、CEO コメント検証スコープを無効化する fallback を採用する。本文のチェックボックスのみを検証対象とし、warning ログを出力する。将来 `--ceo-login <user>` オプションで明示指定する余地は残す。
+
 ### エピック運用
 
 大規模な機能開発は「エピック」として運用する。エピック運用は full プリセット専用。
