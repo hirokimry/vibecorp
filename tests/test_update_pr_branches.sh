@@ -111,21 +111,25 @@ test_workflow_has_conflict_pr_list
 test_workflow_uses_pagination
 test_workflow_uses_exit_code_pattern
 
-# --- README PAT セクションテスト ---
+# --- docs/ai-review-auth.md PAT セクションテスト ---
+#
+# Issue #569 で README から docs/ai-review-auth.md に移譲したため、参照先を更新。
+# 移譲後の見出しは「## 9. PAT セットアップ（update-pr-branches ワークフロー用）」
+# 注意事項見出しは「### 9-4. 注意事項」
 
 echo ""
-echo "=== README PAT セクションテスト ==="
+echo "=== docs/ai-review-auth.md PAT セクションテスト ==="
 
-README_FILE="$(cd "$(dirname "$0")/.." && pwd)/README.md"
+PAT_DOC_FILE="$(cd "$(dirname "$0")/.." && pwd)/docs/ai-review-auth.md"
 
-test_readme_has_pat_section() {
-  assert_file_contains "PAT セットアップセクションがある" "$README_FILE" '## PAT セットアップ'
-  assert_file_contains "Fine-grained PAT の作成手順がある" "$README_FILE" 'Fine-grained PAT'
-  assert_file_contains "gh secret set コマンドがある" "$README_FILE" 'gh secret set PAT'
-  assert_file_contains "注意事項セクションがある" "$README_FILE" '### 注意事項'
+test_pat_section_present() {
+  assert_file_contains "PAT セットアップセクションがある" "$PAT_DOC_FILE" 'PAT セットアップ'
+  assert_file_contains "Fine-grained PAT の作成手順がある" "$PAT_DOC_FILE" 'Fine-grained PAT'
+  assert_file_contains "gh secret set コマンドがある" "$PAT_DOC_FILE" 'gh secret set PAT'
+  assert_file_contains "注意事項セクションがある" "$PAT_DOC_FILE" '注意事項'
 }
 
-test_readme_has_pat_section
+test_pat_section_present
 
 # --- 結果 ---
 

@@ -248,6 +248,45 @@ CodeRabbit / 人間レビュアーのインラインコメントは claude-actio
 
 yaml 静的検証だけでは「ステップは存在するが空判定が壊れている」「重複防止が誤検知する」等の bash 実行時バグを検出できないため、動的単体テストも必須として追加している。
 
+## 9. PAT セットアップ（update-pr-branches ワークフロー用）
+
+`update-pr-branches` ワークフローは `GITHUB_TOKEN` では `update-branch` API を実行できないため、リポジトリシークレットに PAT（Personal Access Token）を登録する必要がある。`README.md` から本ドキュメントへ移譲した手順。
+
+### 9-1. Fine-grained PAT の作成
+
+1. GitHub → 右上プロフィールアイコン → **Settings**
+2. 左サイドバー最下部 → **Developer settings**
+3. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
+4. 以下を設定:
+   - **Token name**: `vibecorp-update-pr-branches`
+   - **Expiration**: 任意（デフォルト 30 days）
+   - **Repository access**: **Only select repositories** → 対象リポジトリを選択
+   - **Permissions**:
+     - **Contents**: Read and write
+     - **Pull requests**: Read and write
+5. **Generate token** をクリックし、表示されたトークンをコピー
+
+### 9-2. リポジトリシークレットへの登録
+
+```bash
+# 対話入力で設定（履歴に残らない）
+gh secret set PAT
+```
+
+### 9-3. 確認
+
+```bash
+gh secret list
+# PAT が表示されれば OK
+```
+
+### 9-4. 注意事項
+
+- 対話入力を使うこと（コマンド引数にトークンを渡すとシェル履歴に残る）
+- トークンが漏洩した場合は即座に revoke して再作成する
+- トークンの有効期限が切れたら再作成・再登録が必要
+- PAT 未設定の場合、ワークフローは警告を出してスキップする（エラーにはならない）
+
 ## 関連
 
 - 親エピック: [#455](https://github.com/hirokimry/vibecorp/issues/455)
