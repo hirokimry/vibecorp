@@ -45,7 +45,7 @@ path/to/vibecorp/install.sh --name your-project --version v1.0.0
 
 ### アップデート
 
-vibecorp の更新は **以下の 3 ステップを順番に実行する** のが正しい手順。`install.sh --update` は hooks / agents / rules / docs / settings.json / `.claude-plugin/plugin.json`（version マニフェスト）等は更新するが、**スキル本体（`/vibecorp:*`）はプラグインキャッシュから配信される別経路** のため、Claude Code の `/plugin update` を別途実行しないとスキルが古いまま放置される。
+vibecorp の更新は **以下の 3 ステップを順番に実行する** のが正しい手順。`install.sh --update` は hooks / agents / rules / docs（新規・未管理分の反映）/ settings.json / `.claude-plugin/plugin.json`（version マニフェスト）等を更新するが、**スキル本体（`/vibecorp:*`）はプラグインキャッシュから配信される別経路** のため、Claude Code の `/plugin update` を別途実行しないとスキルが古いまま放置される。
 
 ```bash
 # 1. vibecorp リポジトリを最新化
