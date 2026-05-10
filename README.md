@@ -203,3 +203,4 @@ export VIBECORP_ISOLATION=1
 ## 📜 ライセンス
 
 MIT
+
