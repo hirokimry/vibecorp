@@ -97,15 +97,16 @@ CONFIG_MD="${REPO_ROOT}/docs/configuration.md"
 assert_file_exists "docs/configuration.md が存在する" "$CONFIG_MD"
 
 # docs/configuration.md の YAML 例示は `  max_issues_per_run: <値>    # コメント` 形式
-ACTUAL=$(awk '/^  max_issues_per_run:/ { print $2; exit }' "$CONFIG_MD")
+# Markdown 整形ツール（prettier 等）で先頭空白が変わっても拾えるよう、空白幅は可変で抽出する
+ACTUAL=$(awk '/^[[:space:]]*max_issues_per_run:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
 assert_eq "docs/configuration.md の max_issues_per_run が vibecorp.yml と一致" \
   "$EXPECTED_PER_RUN" "$ACTUAL"
 
-ACTUAL=$(awk '/^  max_issues_per_day:/ { print $2; exit }' "$CONFIG_MD")
+ACTUAL=$(awk '/^[[:space:]]*max_issues_per_day:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
 assert_eq "docs/configuration.md の max_issues_per_day が vibecorp.yml と一致" \
   "$EXPECTED_PER_DAY" "$ACTUAL"
 
-ACTUAL=$(awk '/^  max_files_per_issue:/ { print $2; exit }' "$CONFIG_MD")
+ACTUAL=$(awk '/^[[:space:]]*max_files_per_issue:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
 assert_eq "docs/configuration.md の max_files_per_issue が vibecorp.yml と一致" \
   "$EXPECTED_FILES_PER_ISSUE" "$ACTUAL"
 
