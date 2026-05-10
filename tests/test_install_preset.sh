@@ -85,8 +85,8 @@ assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
 # E14. .coderabbit.yaml に request_changes_workflow: true
 assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
 
-# E15. .coderabbit.yaml に auto_resolve
-assert_file_contains ".coderabbit.yaml に auto_resolve" "$R/.coderabbit.yaml" "auto_resolve"
+# E15. .coderabbit.yaml に auto_resolve が含まれない（Issue #533: 公式スキーマ非存在のため削除）
+assert_file_not_contains ".coderabbit.yaml に auto_resolve が含まれない" "$R/.coderabbit.yaml" "auto_resolve"
 
 # E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
 assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
