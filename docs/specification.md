@@ -170,7 +170,7 @@ auto-merge により main に反映される。これにより CodeRabbit レビ
 
 ### ship のマージ後検証
 
-`/vibecorp:ship` はステップ 10（`/vibecorp:pr-fix-loop`）が MERGED で正常終了した直後に、ステップ 11「マージ後の網羅検証」を実行する。Issue 本文と CEO 投稿コメント内のチェックボックスを LLM で main の最終コードと突き合わせて 2 値判定し、完了のみ ✅ に更新する。未完了があれば Issue を Reopen し、未完了項目（出所表記付き）と各判定の根拠（main の該当ファイル + 行番号 or 不在理由）をコメント追記する。CEO は同じ Issue URL で `/vibecorp:ship` を再実行することで残作業を実装できる。
+`/vibecorp:ship` はステップ 10（`/vibecorp:pr-fix-loop`）が MERGED で正常終了した直後に、ステップ 11「マージ後の網羅検証」を実行する。Issue 本文と CEO 投稿コメント内のチェックボックスを LLM で main の最終コードと突き合わせて 2 値判定し、完了のみ ✅ に更新する。判定不能は未完了として扱う（保守的）。未完了があれば Issue を Reopen し、未完了項目（出所表記付き）と各判定の根拠（main の該当ファイル + 行番号 or 不在理由）をコメント追記する。CEO は同じ Issue URL で `/vibecorp:ship` を再実行することで残作業を実装できる。
 
 **検証スコープ**:
 
