@@ -32,6 +32,18 @@ jobs:
       - name: bubblewrap の install
         run: sudo apt-get update -q && sudo apt-get install -y bubblewrap
 
+      - name: bwrap 動作確認（user namespace 可用性 + 試し実行）
+        # CI ランナーや一部 distro で kernel.unprivileged_userns_clone=0 が設定されている場合、
+        # bubblewrap が install できても bwrap 経由のサンドボックスが起動できない。
+        # ここで早期に検出することで test_isolation_linux.sh が misleading に skip される事態を防ぐ。
+        run: |
+          bwrap --version
+          if ! bwrap --unshare-pid --proc /proc --dev /dev --tmpfs /tmp /bin/true; then
+            echo "ERROR: bwrap が user namespace 隔離を実行できません。" >&2
+            echo "  kernel.unprivileged_userns_clone=0 または AppArmor プロファイル拒否の可能性があります。" >&2
+            exit 1
+          fi
+
       - name: シャード別テスト実行
         env:
           SHARD: ${{ matrix.shard }}

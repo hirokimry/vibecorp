@@ -183,7 +183,7 @@ Issue #320 で TUI ハング問題（`file-ioctl` 欠落）を修正し、実用
 - ユーザーが導入先リポジトリで `source .claude/bin/activate.sh && export VIBECORP_ISOLATION=1` を実行したときのみ sandbox 経由で claude が起動する（opt-in）
 - `VIBECORP_ISOLATION` 未設定時は通常の claude 実行と同等
 
-Phase 2（#310）で Linux bwrap を統合予定。Windows ネイティブは非対応（WSL2 を使用）。
+Phase 2（#310）で Linux bwrap を統合済み。`templates/claude/sandbox/bwrap-args.sh` が bwrap 引数を生成し、`vibecorp-sandbox` の Linux 分岐が source して起動する。設計は本ファイルの macOS sandbox-exec と対称（境界検証 / canonicalize / WORKTREE ⊇ HOME 拒否 / fail-closed）。Linux 固有制約（`.claude.json.tmp.<pid>.<ms>` の bind 不可、`kernel.unprivileged_userns_clone=0` 環境での起動失敗）は `docs/SECURITY.md` を参照。Windows ネイティブは非対応（WSL2 を使用）。
 
 Docker（bind mount）方式との関係は decisions.md（2026-04-11）の記録通り「補完的用途」の位置づけを維持する。Docker が使えない macOS ホスト上で Phase 3a 連携により軽量な隔離が提供される形となる。
 
