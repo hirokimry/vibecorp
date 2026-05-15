@@ -148,11 +148,19 @@ fi
 # PR 作成後: closingIssuesReferences → PR 本文 → ブランチ名
 # PR 未作成（push 前）: ブランチ名から直接
 
-if gh pr view --json number >/dev/null 2>&1; then
-  ISSUE_NUM=$(gh pr view --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
+# PR 番号取得（無ければ空、stderr ノイズは無害）
+PR_NUM=$(gh pr view --json number --jq '.number // empty')
+ISSUE_NUM=""
+
+if [ -n "$PR_NUM" ]; then
+  ISSUE_NUM=$(gh pr view "$PR_NUM" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
   if [ -z "$ISSUE_NUM" ]; then
-    PR_BODY=$(gh pr view --json body --jq '.body')
-    ISSUE_NUM=$(printf '%s' "$PR_BODY" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#([0-9]+)' | head -1 | grep -oE '[0-9]+$')
+    PR_BODY=$(gh pr view "$PR_NUM" --json body --jq '.body')
+    # #N 形式 + GitHub URL 形式の両対応（pr-issue-link-check.yml と互換）
+    ISSUE_NUM=$(printf '%s' "$PR_BODY" \
+      | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+(#[0-9]+|https?://[^[:space:]]+/issues/[0-9]+)' \
+      | head -1 \
+      | grep -oE '[0-9]+$')
   fi
 fi
 
@@ -161,8 +169,14 @@ if [ -z "$ISSUE_NUM" ]; then
   ISSUE_NUM=$(printf '%s' "$BRANCH" | grep -oE '^dev/([0-9]+)_' | grep -oE '[0-9]+')
 fi
 
+# 数値検証を経た上でのみ gh に渡す
+PR_INTENT=""
 if [ -n "$ISSUE_NUM" ]; then
-  PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+  if [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+    PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+  else
+    echo "[WARN] ISSUE_NUM が数値以外（'$ISSUE_NUM'）。intent 取得をスキップして severity-only fallback に切替" >&2
+  fi
 fi
 ```
 

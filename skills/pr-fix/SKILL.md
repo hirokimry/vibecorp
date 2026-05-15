@@ -198,10 +198,13 @@ unresolved="$(printf '%s' "$threads_all" \
 # Step 1: closingIssuesReferences（実機検証済み: フラット配列、nodes ラッパー無し）
 ISSUE_NUM=$(gh pr view {pr_number} --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
 
-# Step 2: PR 本文 grep
+# Step 2: PR 本文 grep（#N 形式 + GitHub URL 形式の両対応、pr-issue-link-check.yml と互換）
 if [ -z "$ISSUE_NUM" ]; then
   PR_BODY=$(gh pr view {pr_number} --json body --jq '.body')
-  ISSUE_NUM=$(printf '%s' "$PR_BODY" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#([0-9]+)' | head -1 | grep -oE '[0-9]+$')
+  ISSUE_NUM=$(printf '%s' "$PR_BODY" \
+    | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+(#[0-9]+|https?://[^[:space:]]+/issues/[0-9]+)' \
+    | head -1 \
+    | grep -oE '[0-9]+$')
 fi
 
 # Step 3: ブランチ名
@@ -210,9 +213,14 @@ if [ -z "$ISSUE_NUM" ]; then
   ISSUE_NUM=$(printf '%s' "$HEAD_REF" | grep -oE '^dev/([0-9]+)_' | grep -oE '[0-9]+')
 fi
 
-# Step 4: intent ラベル取得
+# Step 4: intent ラベル取得（ISSUE_NUM の数値検証を実施した上で gh に渡す）
+PR_INTENT=""
 if [ -n "$ISSUE_NUM" ]; then
-  PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+  if [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+    PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+  else
+    echo "[WARN] ISSUE_NUM が数値以外（'$ISSUE_NUM'）。intent 取得をスキップして severity-only fallback に切替" >&2
+  fi
 fi
 ```
 

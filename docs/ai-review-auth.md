@@ -101,7 +101,7 @@ jobs:
 | ジョブ `if:` 条件 | `head.repo.full_name == github.repository && !github.event.pull_request.draft` | Fork PR と draft PR を多層防御で除外 |
 | `permissions.contents` | `read` | コード読取のみ、書込不要（CISO 最小権限） |
 | `permissions.pull-requests` | `write` | レビューコメント書込が必要 |
-| `permissions.issues` | `write` | claude-code-action のレビューコメント投稿で利用 |
+| `permissions.issues` | `write` | preflight ガードの `gh pr comment`（PR コメントは GitHub Issues API エンドポイント経由のため）と claude-code-action 内部の Issues 書込経路で必要 |
 | `permissions.id-token` | `write` | claude-code-action@v1 が GitHub App identity 証明用の OIDC token を発行するために必須（#505 で CISO 例外承認、Fork PR では発行されないため攻撃経路にならない）|
 | `concurrency.group` | `ai-review-${{ pr.number }}` | 同一 PR への push 連打を直列化してコスト抑制 |
 | `concurrency.cancel-in-progress` | `true` | 古い実行は中断して最新コミットのみレビュー |
