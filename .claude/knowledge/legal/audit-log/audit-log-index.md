@@ -9,7 +9,7 @@
 
 ## 索引
 
-（エントリはまだありません）
+- 2026-05-15 — bubblewrap 隔離レイヤ計画レビュー — bwrap LGPL/Anthropic TOS いずれも問題なし。LICENSE ファイル不在は別 Issue 対応を勧告
 
 ## 運用ルール
 
