@@ -815,7 +815,10 @@ copy_managed_files() {
       rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      # macOS / Linux 両 OS の sandbox ファイルを削除（インストール時の OS と
+      # ダウングレード時の OS が異なる可能性に備える）
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rm -f "${REPO_ROOT}/.claude/sandbox/bwrap-args.sh"
       rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
       rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
@@ -839,7 +842,10 @@ copy_managed_files() {
       rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      # macOS / Linux 両 OS の sandbox ファイルを削除（インストール時の OS と
+      # ダウングレード時の OS が異なる可能性に備える）
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rm -f "${REPO_ROOT}/.claude/sandbox/bwrap-args.sh"
       rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
       rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
@@ -848,20 +854,26 @@ copy_managed_files() {
   log_info "テンプレートをコピー (preset: ${PRESET})"
 }
 
-# 隔離レイヤ（bin/sandbox）を配置する。full + Darwin のみ動作。
-# Linux は Phase 2 (#310) で bwrap 対応を追加予定のため、現時点ではスキップ。
+# 隔離レイヤ（bin/sandbox）を配置する。full プリセット専用。
+# OS 別の sandbox 実装を明示的にコピーする:
+#   - Darwin: claude.sb (sandbox-exec プロファイル)
+#   - Linux:  bwrap-args.sh (bwrap 引数生成スクリプト)
+# 逆クロス配置（macOS に bwrap-args.sh / Linux に claude.sb）を防ぐため、
+# templates/claude/sandbox/ 配下を glob ではなく OS 別ファイル名で明示的にコピーする。
 copy_isolation_templates() {
   if [[ "$PRESET" != "full" ]]; then
     return 0
   fi
-  if [[ "$OS" != "darwin" ]]; then
-    return 0
-  fi
+  case "$OS" in
+    darwin|linux) ;;
+    *) return 0 ;;  # 未対応 OS は隔離レイヤを配置しない
+  esac
 
   local bin_dir="${REPO_ROOT}/.claude/bin"
   local sandbox_dir="${REPO_ROOT}/.claude/sandbox"
   mkdir -p "$bin_dir" "$sandbox_dir"
 
+  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）
   local src
   for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
     # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
@@ -875,15 +887,22 @@ copy_isolation_templates() {
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
-  for src in "${SCRIPT_DIR}/templates/claude/sandbox/"*; do
-    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
-    [[ -f "$src" && ! -L "$src" ]] || continue
-    local name
-    name=$(basename "$src")
-    cp "$src" "${sandbox_dir}/${name}"
-    save_base_snapshot "$src" "sandbox/${name}"
-    log_info "隔離レイヤを配置: .claude/sandbox/${name}"
-  done
+  # sandbox/ 配下は OS 別ファイル名で明示コピー
+  local sandbox_file=""
+  case "$OS" in
+    darwin) sandbox_file="claude.sb" ;;
+    linux)  sandbox_file="bwrap-args.sh" ;;
+  esac
+
+  local sandbox_src="${SCRIPT_DIR}/templates/claude/sandbox/${sandbox_file}"
+  if [[ -f "$sandbox_src" && ! -L "$sandbox_src" ]]; then
+    cp "$sandbox_src" "${sandbox_dir}/${sandbox_file}"
+    save_base_snapshot "$sandbox_src" "sandbox/${sandbox_file}"
+    log_info "隔離レイヤを配置: .claude/sandbox/${sandbox_file}"
+  else
+    log_error "sandbox ファイルが見つかりません: ${sandbox_src}"
+    exit 1
+  fi
 }
 
 # ゲートスタンプ・state・plans の保存先 ~/.cache/vibecorp/ を事前作成する (#326, #334)。
@@ -912,7 +931,8 @@ setup_xdg_cache_dirs() {
   log_info "plans 保存先を確保: ${plans_dir}"
 }
 
-# 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full + Darwin のみ動作。
+# 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full プリセット専用。
+# Darwin / Linux 両 OS で動作する。
 # templates/claude/bin/claude は `exec claude-real "$@"` する設計のため、
 # ラッパー自身を除外して PATH 上の本物 claude を検出し、`.claude/bin/claude-real` に symlink する。
 # 検出失敗時は警告のみ出してインストールを続行する（passthrough は引き続き利用可能）。
@@ -920,9 +940,10 @@ setup_claude_real_symlink() {
   if [[ "$PRESET" != "full" ]]; then
     return 0
   fi
-  if [[ "$OS" != "darwin" ]]; then
-    return 0
-  fi
+  case "$OS" in
+    darwin|linux) ;;
+    *) return 0 ;;  # 未対応 OS は隔離レイヤ自体が配置されないため symlink も不要
+  esac
 
   local bin_dir="${REPO_ROOT}/.claude/bin"
   local target="${bin_dir}/claude-real"

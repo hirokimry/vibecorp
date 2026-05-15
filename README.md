@@ -117,7 +117,7 @@ source .claude/bin/activate.sh
 export VIBECORP_ISOLATION=1
 ```
 
-永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。Linux では `install.sh` が `bwrap` (bubblewrap) を検出する（実隔離は Phase 2 対応予定）。Windows ネイティブは非対応（WSL2 を使用）。詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
+永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。Linux では `bwrap` (bubblewrap) による実隔離が稼働中（Phase 2 #310 実装済み）。SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる。Windows ネイティブは非対応（WSL2 を使用）。詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
 
 ---
 
