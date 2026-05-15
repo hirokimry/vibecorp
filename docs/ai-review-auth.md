@@ -101,12 +101,12 @@ jobs:
 | ジョブ `if:` 条件 | `head.repo.full_name == github.repository && !github.event.pull_request.draft` | Fork PR と draft PR を多層防御で除外 |
 | `permissions.contents` | `read` | コード読取のみ、書込不要（CISO 最小権限） |
 | `permissions.pull-requests` | `write` | レビューコメント書込が必要 |
-| `permissions.issues` | `write` | intent-label-check のコメント投稿が必要 |
+| `permissions.issues` | `write` | claude-code-action のレビューコメント投稿で利用 |
 | `permissions.id-token` | `write` | claude-code-action@v1 が GitHub App identity 証明用の OIDC token を発行するために必須（#505 で CISO 例外承認、Fork PR では発行されないため攻撃経路にならない）|
 | `concurrency.group` | `ai-review-${{ pr.number }}` | 同一 PR への push 連打を直列化してコスト抑制 |
 | `concurrency.cancel-in-progress` | `true` | 古い実行は中断して最新コミットのみレビュー |
 | `claude-review.timeout-minutes` | `10` | 中規模 PR 完走に十分。超過時はワークフロー失敗（リトライしない、#466 確定 4-5）|
-| `intent-label-check` ジョブ | `intent/*` ラベル数が 0 または 2 以上で fail コメント | 1 PR 1 intent ルール (#469) の機械的強制（不在も誤付与も両方検知） |
+| `intent-label-check` ジョブ | Issue #575 確定で PR 側ジョブは廃止。Issue 側 `intent-label-issue-check.yml` ジョブ（別 workflow）が `intent/*` ラベル数を 0 / 2 以上で fail コメント | 1 Issue 1 intent ルールの機械的強制（不在も誤付与も両方検知） |
 | `claude-review` の `REVIEW.md をプロンプトに読み込む` step | `cat REVIEW.md` をランダム delimiter（`EOF_REVIEW_MD_$(date +%s)_${RANDOM}`）の heredoc で `$GITHUB_OUTPUT` の `prompt` に流す | リポジトリ直下の `REVIEW.md` を AI レビュープロンプトとして claude-code-action に引き渡す。delimiter をランダム化して REVIEW.md 本文に同名行が含まれた場合の事故を防ぐ |
 | `claude-review` ジョブ | `anthropics/claude-code-action@v1` 呼び出し（`prompt: ${{ steps.review_prompt.outputs.prompt }}`）| OAuth Token 認証で起動、REVIEW.md の内容をプロンプトとして使用 |
 

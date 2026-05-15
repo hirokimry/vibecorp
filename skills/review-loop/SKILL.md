@@ -131,12 +131,57 @@ else
 fi
 ```
 
+### 1c. intent ラベルの取得（Issue 側から直接参照）
+
+レビュー判定（intent × severity）の SoT は **Issue ラベル**。PR には intent ラベルを付与しないため（Issue #575）、Issue 番号を解決して `gh issue view --json labels` で intent を取得する。
+
+**4 段フォールバック**:
+
+| 優先 | 取得経路 | コマンド例 |
+|---|---|---|
+| 1 | `closingIssuesReferences`（PR 作成後のみ） | `gh pr view --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty'` |
+| 2 | PR 本文 grep（PR 作成後のみ） | `pr-issue-link-check.yml` 互換正規表現 `(close[sd]?\|fix(es\|ed)?\|resolve[sd]?\|refs?)[[:space:]]+#([0-9]+)` で PR 本文を解析。最初のマッチを採用 |
+| 3 | ブランチ名（PR 未作成時はここから開始） | `git branch --show-current` から `dev/<num>_*` パターンの `<num>` 抽出 |
+| 4 | 空（severity-only fallback） | warning ログ + severity-only 判定モードに切替 |
+
+```bash
+# PR 作成後: closingIssuesReferences → PR 本文 → ブランチ名
+# PR 未作成（push 前）: ブランチ名から直接
+
+if gh pr view --json number >/dev/null 2>&1; then
+  ISSUE_NUM=$(gh pr view --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
+  if [ -z "$ISSUE_NUM" ]; then
+    PR_BODY=$(gh pr view --json body --jq '.body')
+    ISSUE_NUM=$(printf '%s' "$PR_BODY" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#([0-9]+)' | head -1 | grep -oE '[0-9]+$')
+  fi
+fi
+
+if [ -z "$ISSUE_NUM" ]; then
+  BRANCH=$(git branch --show-current)
+  ISSUE_NUM=$(printf '%s' "$BRANCH" | grep -oE '^dev/([0-9]+)_' | grep -oE '[0-9]+')
+fi
+
+if [ -n "$ISSUE_NUM" ]; then
+  PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+fi
+```
+
+**severity-only fallback の挙動**:
+
+Issue 番号 / intent ラベルが解決できない場合、`PR_INTENT` が空となる。この場合は intent 重視軸判定が不可能となるため、`.claude/rules/review-handling.md` の判定基準を **severity のみで** 適用する:
+
+- **Critical / Major**: 通常通り修正対象（intent 問わず必ず対応）
+- **Minor / Trivial / Info**: 全スキップ（intent 重視軸該当判定が不能のため保守的に倒す）
+
+warning ログ `[WARN] Issue 番号 / intent ラベルが解決できませんでした。severity-only fallback で Critical / Major のみ修正対象とします` を出力する。
+
 ### 2. 妥当性検証
 
-`.claude/rules/review-handling.md`（intent × severity の捌き基準）と `.claude/rules/severity/claude-action.md` / `.claude/rules/severity/coderabbit.md`（severity 定義）に従い、`/vibecorp:review` と合議制（full プリセット時）の両方の指摘を統合して分類する。
+`.claude/rules/review-handling.md`（intent × severity の捌き基準）と `.claude/rules/severity/claude-action.md` / `.claude/rules/severity/coderabbit.md`（severity 定義）に従い、`/vibecorp:review` と合議制（full プリセット時）の両方の指摘を統合して分類する。判定の入力としては **1c で取得した `PR_INTENT`** を使う（PR ラベルではなく Issue ラベル直接参照）。
 
 - 同一観点の重複は 1 件にまとめる（出典は両方を残す）
 - Critical / Major は intent 問わず必ず対応、Minor / Trivial / Info は intent の重視軸該当時のみ対応
+- `PR_INTENT` が空（severity-only fallback）の場合は Minor 以下を全スキップ
 
 #### 出力形式
 

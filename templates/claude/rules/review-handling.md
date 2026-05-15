@@ -28,7 +28,7 @@
 | 🔵 Trivial | 重視軸該当なら対応、外なら管轄外 |
 | ⚪ Info | 重視軸該当なら対応、外なら管轄外 |
 
-severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。
+severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照。なお Issue #532 以降 vibecorp 本体は `claude_action.enabled: false` で運用中（CodeRabbit Bot 単独）。`severity/claude-action.md` は claude-code-action 再有効化時 / 利用者が `enabled: true` で運用する場合の Source of Truth として保持する。
 
 ### Info の扱い（severity 定義は同じ、判定で拡張）
 
@@ -49,7 +49,7 @@ severity の **定義** は CodeRabbit と完全一致させる（`severity/code
 
 ## 設計の根拠
 
-- **1 PR 1 intent 厳守**（`.claude/rules/intent-labels.md`）と整合。PR のスコープを狭く保つ
+- **1 Issue 1 intent 厳守**（`.claude/rules/intent-labels.md`、Issue #575 確定で intent SoT は Issue ラベル）と整合。PR のスコープを狭く保つ
 - **Critical / Major は実害がある**ので intent 問わず対応
 - **Minor / Trivial / Info は「致命的影響なし」**なので intent の重視軸該当のみ対応
 - **重視軸外で重要なら severity を Major 以上に上げてもらう運用**（Minor 以下で出した時点で「Major ではない」を認めている）

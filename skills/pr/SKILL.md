@@ -93,26 +93,14 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 
 **新規作成:**
 
-PR 作成前に対応 Issue から `intent/*` ラベルを取得して `gh pr create --label` で継承する（Issue #487 / #519 確定: ラベル付与は **PR 作成スキルの責務**、CI 側に肩代わりさせない）。
+PR には intent ラベルを付与しない（Issue #575 確定: intent の SoT は Issue ラベル、PR は CC prefix が機械可読保険となる）。レビュー判定（intent × severity）は `/vibecorp:pr-fix` / `/vibecorp:review-loop` が PR 本文から Issue 番号を解決して `gh issue view --json labels` で intent を直接取得する設計に切り替わった。
 
 ```bash
-# 対応 Issue の intent/* ラベルを取得（許可 7 種のみ）
-allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
-ISSUE_INTENTS=$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/issues/${ISSUE_NUMBER}/labels" \
-  | jq --argjson allowed "$allowed" -r '[.[] | .name | select(IN($allowed[]))][]')
-
-# --label オプションを構築（intent/* + 必要に応じて他のラベル）
-LABEL_ARGS=""
-while IFS= read -r intent; do
-  [[ -z "$intent" ]] && continue
-  LABEL_ARGS+=" --label $intent"
-done <<<"$ISSUE_INTENTS"
-
-# PR 作成（intent ラベル継承付き）
-git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH" $LABEL_ARGS
+# PR 作成（intent ラベル付与なし）
+git push origin HEAD && gh pr create --title "$ISSUE_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH"
 ```
 
-Issue に intent ラベルがない場合は `LABEL_ARGS` が空となり、無ラベル PR が作成される。CI 側の `intent ラベル数チェック` が fail で検知するので、利用者は Issue にラベルを付与してから PR を再 push する。
+intent ラベルは Issue 側で SoT 管理される。Issue 側の `intent-label-issue-check.yml` ジョブが 1 Issue 1 intent を機械強制する。
 
 **auto-merge の有効化（新規作成時のみ）:**
 
