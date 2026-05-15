@@ -157,8 +157,15 @@ case "$OS" in
     ;;
   Linux)
     BWRAP_ARGS_FILE="${SCRIPT_DIR}/../sandbox/bwrap-args.sh"
-    if [[ ! -f "$BWRAP_ARGS_FILE" ]]; then
-      echo "vibecorp-sandbox: bwrap-args.sh が見つかりません: $BWRAP_ARGS_FILE" >&2
+    # symlink チェック（Link Following 脆弱性対策）:
+    # source 実行前に BWRAP_ARGS_FILE が symlink でないことを確認する。
+    # install.sh の copy_isolation_templates は配置時に symlink を排除する
+    # ガードを持つが、配置後に攻撃者制御の symlink へ差し替えられると、
+    # source "$BWRAP_ARGS_FILE" 時に任意シェルコードが実行される経路となる。
+    # 既知制約「bwrap-args.sh の TOCTOU」とは別の Link Following 攻撃面のため
+    # 本スクリプトでも独立に拒否する（CISO メタレビュー 2026-05-16、Issue #310）。
+    if [[ ! -f "$BWRAP_ARGS_FILE" || -L "$BWRAP_ARGS_FILE" ]]; then
+      echo "vibecorp-sandbox: bwrap-args.sh が見つからないか symlink です: $BWRAP_ARGS_FILE" >&2
       exit 1
     fi
 
@@ -201,8 +208,9 @@ case "$OS" in
       exit 1
     fi
 
-    # 5) WORKTREE が HOME を包含する設定は、(bind WORKTREE) により
-    #    ~/.ssh / ~/.aws / ~/.gnupg まで RW になるため拒否する（macOS と同じロジック）
+    # 5) WORKTREE が HOME を包含する（WORKTREE ⊇ HOME。例: WORKTREE=/home、HOME=/home/user）設定は、
+    #    (bind WORKTREE) により ~/.ssh / ~/.aws / ~/.gnupg まで RW になるため拒否する（macOS と同じロジック）。
+    #    判定式: ${HOME_VALUE}/ が ${WORKTREE_VALUE}/* で始まる場合に HOME が WORKTREE の配下にあると判定される
     case "${HOME_VALUE}/" in
       "${WORKTREE_VALUE}/"*)
         echo "vibecorp-sandbox: WORKTREE が HOME を包含しています: WORKTREE=$WORKTREE_VALUE, HOME=$HOME_VALUE" >&2
