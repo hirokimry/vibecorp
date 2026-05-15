@@ -393,7 +393,7 @@ full プリセットでは、OS ごとに隔離レイヤの提供状況が異な
 | **minimal** | なし | OS 標準のユーザー権限のみ。`protect-files.sh` フックで設定ファイル誤編集を防ぐ |
 | **standard** | なし | minimal と同じ |
 | **full / macOS** | `sandbox-exec` ベース | `.claude/bin/claude` shim 経由で `.claude/sandbox/claude.sb` プロファイルを適用。`~/Library/Application Support/Claude` / `~/.claude` 等を read-only 化 |
-| **full / Linux** | `bwrap` (bubblewrap) 検出のみ | `install.sh` で `bwrap` 不在時に distro 別インストール手順 (`apt-get install bubblewrap` / `dnf install bubblewrap` / `apk add bubblewrap`) を表示し中断。実際の `bwrap` 起動による隔離は Phase 2 (#310) で対応 |
+| **full / Linux** | `bwrap` (bubblewrap) 実隔離（Phase 2 #310 実装済み） | `install.sh` で `bwrap` 不在時に distro 別インストール手順 (`apt-get install bubblewrap` / `dnf install bubblewrap` / `apk add bubblewrap`) を表示し中断。`bwrap` 存在時は `.claude/bin/claude` shim 経由で実際に名前空間隔離が稼働する。SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる（デフォルト: `false`） |
 | **full / Windows ネイティブ** | 非対応 | `install.sh` が exit 2 で中断。WSL2 (Ubuntu 22.04+) 経由で Linux 環境を使用する |
 
 #### 制約
