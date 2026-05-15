@@ -194,7 +194,7 @@ assert_file_contains \
   '存在 / 不在を絶対値で assert しない'
 
 # ============================================
-echo "=== Minor #13: conventional-commits.md が Issue/PR 二系統を分離記述 ==="
+echo "=== Minor #13: conventional-commits.md が Issue 側 workflow のみを記述（Issue #575 で PR 側削除） ==="
 # ============================================
 
 CC_MD="${ROOT}/docs/conventional-commits.md"
@@ -203,15 +203,12 @@ assert_file_contains \
   "conventional-commits.md が Issue 側 workflow を明記" \
   "$CC_MD" \
   'intent-label-issue-check\.yml'
-assert_file_contains \
-  "conventional-commits.md が PR 側 workflow を明記" \
-  "$CC_MD" \
-  'ai-review\.yml'
-# 要件コア: PR 側で intent-label-check ジョブが機械強制であることを明記
-assert_file_contains \
-  "conventional-commits.md が PR 側で intent-label-check ジョブを明記" \
-  "$CC_MD" \
-  'intent-label-check'
+# 要件コア: Issue #575 確定で PR 側 intent-label-check ジョブを撤廃、Issue 側のみ機械強制
+if grep -q -E 'PR 側.*intent-label-check ジョブ|ai-review\.yml.*intent-label-check' "$CC_MD"; then
+  fail "conventional-commits.md に PR 側 intent-label-check ジョブの言及が残存（Issue #575 で削除済みのはず）"
+else
+  pass "conventional-commits.md に PR 側 intent-label-check ジョブの言及が無い（Issue 側 SoT 集約）"
+fi
 
 # ============================================
 echo "=== Minor #14: file-placement.md の .gitignore 例が bin/claude-real を含む ==="

@@ -187,7 +187,9 @@ gh issue edit <番号> --body "<更新後の本文>"
 
 PR 作成は **`/vibecorp:pr` スキルに委譲する**。ship は包括オーケストレーション、`/vibecorp:pr` は PR 作成の単一責務、という責務分離（Issue #519）。
 
-ship 自身は `gh pr create` を直接呼ばない。**Issue から intent ラベルを取得して `--label` で付与する責務、PR タイトル / 本文の生成、base 判定の最終整合などは全て `/vibecorp:pr` の中で行われる**（pr スキル側に既存実装あり）。
+ship 自身は `gh pr create` を直接呼ばない。**PR タイトル / 本文の生成、base 判定の最終整合などは全て `/vibecorp:pr` の中で行われる**（pr スキル側に既存実装あり）。
+
+**intent ラベルは PR には付与しない**（Issue #575 確定: intent の SoT は Issue ラベル）。レビュー判定（intent × severity）は `/vibecorp:pr-fix` / `/vibecorp:review-loop` が PR 本文から Issue 番号を解決して `gh issue view --json labels` で intent を直接取得する。
 
 **9-1. push して `/vibecorp:pr` を呼ぶ:**
 
