@@ -79,11 +79,11 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
 
 ```yaml
 jobs:
-  intent-label-check:
-    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
   claude-review:
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
 ```
+
+（Issue #575 確定で PR 側 `intent-label-check` ジョブは廃止。Issue 側 `intent-label-issue-check.yml` に SoT 集約された）
 
 理由:
 - Fork PR では「secrets がないので落ちる」という暗黙の挙動に依存せず、明示的なゲートで早期 skip させる方がレビュー追跡上わかりやすい（`if:` 条件不一致時はジョブ失敗ではなく skip 扱い）

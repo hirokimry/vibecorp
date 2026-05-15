@@ -1,4 +1,9 @@
-vibecorp の **Issue** には `intent/*` ラベルを **必ず 1 つだけ** 付与すること。**PR には intent ラベルを付与しない**（Issue #575 確定: intent の SoT は Issue ラベル、PR は CC prefix が機械可読保険）。レビュー判定（intent × severity）は `pr-fix` / `review-loop` が PR 本文から Issue 番号を解決して `gh issue view --json labels` で intent を直接取得する。
+vibecorp の **Issue** には `intent/*` ラベルを **必ず 1 つだけ** 付与すること。**PR には intent ラベルを付与しない**（Issue #575 確定: intent の SoT は Issue ラベル、PR は CC prefix が機械可読保険）。レビュー判定（intent × severity）は `pr-fix` / `review-loop` が以下の **4 段フォールバック** で Issue 番号を解決し、`gh issue view --json labels` で intent を直接取得する:
+
+1. `closingIssuesReferences`（GitHub 自動 close キーワード由来）
+2. PR 本文 grep（`#N` 形式 + GitHub URL 形式、`pr-issue-link-check.yml` 互換）
+3. ブランチ名（`dev/<num>_*` パターン）
+4. 空（**severity-only fallback**: Critical / Major のみ修正対象、Minor 以下スキップ）
 
 **revert PR の扱い**: `revert` は CC prefix としては独立しているが、intent ラベルとしては **Issue 側に `intent/bugfix` を付与する**（差し戻しの本質は「直前の commit が引き起こした問題を取り消す」= バグ修正の一形態）。Issue 側 `intent-label-issue-check.yml` ジョブは Issue 単位でラベル不在を fail させる。revert PR で Issue が紐づかない hotfix 的 revert は、レビュー判定が **severity-only fallback**（Critical / Major のみ修正対象、Minor 以下はスキップ）に切り替わる。
 

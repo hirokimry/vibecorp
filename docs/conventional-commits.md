@@ -181,7 +181,7 @@ PR / Issue / commit のタイトルは以下のいずれか:
 - 1 つの Issue には intent ラベルを **1 つだけ** 付与する（PR には付与しない、CC prefix で機械可読を担保）
 - 複数 intent にまたがる変更は Issue を分割する
 - 機械的強制は Issue 側配布 workflow が行う（**0 件または 2 件以上で fail コメント**）: `templates/.github/workflows/intent-label-issue-check.yml`
-- Issue #575 確定: intent の SoT は Issue ラベルに一元化。PR は CC prefix（タイトル）が機械可読保険となる。レビュー判定（intent × severity）は `pr-fix` / `review-loop` が PR 本文から Issue 番号を解決して `gh issue view --json labels` で intent を直接取得する
+- Issue #575 確定: intent の SoT は Issue ラベルに一元化。PR は CC prefix（タイトル）が機械可読保険となる。レビュー判定（intent × severity）は `pr-fix` / `review-loop` が以下の **4 段フォールバック** で Issue 番号を解決し、`gh issue view --json labels` で intent を直接取得する: ⑴ `closingIssuesReferences`（GitHub 自動 close キーワード由来）→ ⑵ PR 本文 grep（`#N` 形式 + GitHub URL 形式、`pr-issue-link-check.yml` 互換）→ ⑶ ブランチ名（`dev/<num>_*` パターン）→ ⑷ 空（severity-only fallback: Critical / Major のみ修正対象、Minor 以下スキップ）
 
 ## 関連
 
