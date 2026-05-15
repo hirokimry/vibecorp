@@ -33,7 +33,8 @@ case "${1:-}" in
     cat "$HOME/.ssh/probe-read.txt" > /dev/null || exit 1
     ;;
   write-worktree)
-    if [[ -z "${2:-}" ]]; then
+    # コメント仕様どおり「絶対パスが必要」を厳密に検証（相対パス・空文字を拒否）
+    if [[ -z "${2:-}" || "${2}" != /* ]]; then
       echo "isolation-probe: write-worktree には絶対パスが必要" >&2
       exit 64
     fi

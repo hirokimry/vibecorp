@@ -298,6 +298,21 @@ fi
 
 # ============================================
 echo ""
+echo "=== [8b] WORKTREE == HOME 同一設定は vibecorp-sandbox が拒否する ==="
+# ============================================
+# Issue #310 受け入れ条件「WORKTREE=HOME 拒否」を直接カバーする。
+# cd "$FAKE_HOME" で起動すると PWD == FAKE_HOME となり、vibecorp-sandbox の
+# 「WORKTREE を HOME と同一にはできません」分岐に引っかかる。
+status=0
+(cd "$FAKE_HOME" && run_shim VIBECORP_ISOLATION=1 -- show-sandboxed) || status=$?
+if [[ "$status" -ne 0 && "$(cat "$STDERR_LOG")" == *"WORKTREE を HOME と同一にはできません"* ]]; then
+  pass "WORKTREE == HOME 同一設定で vibecorp-sandbox が拒否 (status=${status})"
+else
+  fail "WORKTREE == HOME 同一設定でも起動してしまった (status=${status}, stderr=$(cat "$STDERR_LOG"))"
+fi
+
+# ============================================
+echo ""
 echo "=== [9] allow_ssh: true で ~/.ssh 読取成功 + 書込は EROFS で拒否 ==="
 # ============================================
 # vibecorp.yml を FAKE_WORKTREE に配置して isolation.allow_ssh: true を opt-in
