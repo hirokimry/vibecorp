@@ -21,7 +21,7 @@ paths:
 # プロンプト作成基準
 
 > [!IMPORTANT]
-> 新規プロンプト作成・既存プロンプト改修（`skills/**/SKILL.md`, `.claude/agents/*.md`, `.claude/rules/*.md`）の前に、**必ず `claude-code-guide` サブエージェントで Claude Code 公式仕様 (`docs.claude.com`) を確認すること**。確認対象トピックは下記「[claude-code-guide 参照（MUST）](#claude-code-guide-参照must)」を参照。仕様確認なしの新規作成・改修は禁止パターン①に該当する。
+> 新規プロンプト作成・既存プロンプト改修（スキル / エージェント / ルール / プロジェクト共通指示 等）の前に、**必ず `claude-code-guide` サブエージェントで Claude Code 公式仕様 (`docs.claude.com`) を確認すること**。確認対象トピックは下記「[claude-code-guide 参照（MUST）](#claude-code-guide-参照must)」を参照。仕様確認なしの新規作成・改修は禁止パターン①に該当する。
 
 ## 対象範囲
 
