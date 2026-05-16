@@ -1,0 +1,95 @@
+#!/bin/bash
+# test_document_writing_rule.sh — ドキュメント作成基準（Issue #591）の整合性テスト
+# 使い方: bash tests/test_document_writing_rule.sh
+# CI: GitHub Actions で自動実行
+
+set -euo pipefail
+
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/test_helpers.sh"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DOC_WRITING="${SCRIPT_DIR}/.claude/rules/document-writing.md"
+DOCUMENTATION="${SCRIPT_DIR}/.claude/rules/documentation.md"
+COMMUNICATION="${SCRIPT_DIR}/.claude/rules/communication.md"
+
+# ============================================
+echo "=== .claude/rules/document-writing.md が存在する ==="
+# ============================================
+
+assert_file_exists ".claude/rules/document-writing.md が存在する" "$DOC_WRITING"
+
+if [[ ! -f "$DOC_WRITING" ]]; then
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了（testing.md 規約）
+  echo ""
+  echo "=== 結果: ${PASSED}/${TOTAL} passed, ${FAILED} failed ==="
+  echo "document-writing.md が存在しないため後続テストを中止します"
+  exit 1
+fi
+
+# ============================================
+echo "=== 中核 5 セクションが揃っている ==="
+# ============================================
+
+assert_file_contains "「読者像と動作主語」セクション" "$DOC_WRITING" "^## 読者像と動作主語"
+assert_file_contains "「30 秒スキャン原則」セクション" "$DOC_WRITING" "^## 30 秒スキャン原則"
+assert_file_contains "「指針（MUST）」セクション" "$DOC_WRITING" "^## 指針（MUST）"
+assert_file_contains "「禁止パターン」セクション" "$DOC_WRITING" "^## 禁止パターン"
+assert_file_contains "「ドキュメント種別ごとの差し分け」セクション" "$DOC_WRITING" "^## ドキュメント種別ごとの差し分け"
+
+# ============================================
+echo "=== 冒頭コールアウトが含まれる ==="
+# ============================================
+
+assert_file_contains "冒頭 IMPORTANT コールアウト" "$DOC_WRITING" '> \[!IMPORTANT\]'
+assert_file_contains "可読性最優先の明示" "$DOC_WRITING" "可読性が最優先"
+
+# ============================================
+echo "=== 指針 MUST の 5 項目が含まれる ==="
+# ============================================
+
+assert_file_contains "指針1: 読者像を冒頭で固定する" "$DOC_WRITING" "読者像を冒頭で固定"
+assert_file_contains "指針2: スキャンで要点が掴める構造" "$DOC_WRITING" "スキャンで要点が掴める構造"
+assert_file_contains "指針3: マークダウン・絵文字活用" "$DOC_WRITING" "マークダウン・絵文字を最大限活用"
+assert_file_contains "指針4: 汎用語彙で書く" "$DOC_WRITING" "汎用語彙で書く"
+assert_file_contains "指針5: 設計判断は理由とセット" "$DOC_WRITING" "設計判断は理由とセットで残す"
+
+# ============================================
+echo "=== 禁止パターンの 5 項目が含まれる ==="
+# ============================================
+
+assert_file_contains "禁止1: 実装詳細の羅列" "$DOC_WRITING" "実装詳細の羅列"
+assert_file_contains "禁止2: 形容詞止まり" "$DOC_WRITING" "形容詞止まり"
+assert_file_contains "禁止3: 1 段落に複数論点" "$DOC_WRITING" "1 段落に複数論点"
+assert_file_contains "禁止4: 装飾だけの絵文字" "$DOC_WRITING" "装飾だけの絵文字"
+assert_file_contains "禁止5: 暗黙の前提を残す" "$DOC_WRITING" "暗黙の前提を残す"
+
+# ============================================
+echo "=== ドキュメント種別ごとの差し分けの主要項目が含まれる ==="
+# ============================================
+
+assert_file_contains "README.md / README.en.md の差し分け" "$DOC_WRITING" "README.md / README.en.md"
+assert_file_contains "docs/** 仕様書の差し分け" "$DOC_WRITING" "仕様書"
+assert_file_contains "docs/** 設計判断の差し分け" "$DOC_WRITING" "設計判断"
+assert_file_contains "セキュリティ説明の差し分け" "$DOC_WRITING" "セキュリティ説明"
+assert_file_contains "CHANGELOG.md の差し分け" "$DOC_WRITING" "CHANGELOG.md"
+assert_file_contains "MVV.md の差し分け" "$DOC_WRITING" "MVV.md"
+
+# ============================================
+echo "=== documentation.md との相互参照が貼られている ==="
+# ============================================
+
+assert_file_exists ".claude/rules/documentation.md が存在する" "$DOCUMENTATION"
+assert_file_contains "document-writing.md が documentation.md を参照" "$DOC_WRITING" "documentation.md"
+assert_file_contains "documentation.md が document-writing.md を参照" "$DOCUMENTATION" "document-writing.md"
+
+# ============================================
+echo "=== communication.md との関連参照が貼られている ==="
+# ============================================
+
+assert_file_exists ".claude/rules/communication.md が存在する" "$COMMUNICATION"
+assert_file_contains "document-writing.md が communication.md を参照" "$DOC_WRITING" "communication.md"
+
+# ============================================
+print_test_summary
