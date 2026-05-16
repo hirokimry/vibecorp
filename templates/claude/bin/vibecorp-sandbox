@@ -169,14 +169,56 @@ case "$OS" in
       exit 1
     fi
 
-    # bwrap バイナリ存在チェック（fail-closed）
+    # bwrap 起動失敗の区分別 preflight チェック（fail-closed）
+    # Issue #579: 4 区分（A/B/C/D）に分けて失敗原因を CEO に提示する。
+    #
+    #   A: バイナリ不在            → command -v bwrap で検出
+    #   B: バイナリ破損・権限      → bwrap --version で検出
+    #   C: user namespace 制限     → bwrap --unshare-pid ... -- /bin/sh -c : で検出
+    #   D: kernel/distro 固有問題  → 非 exec 化した bwrap の終了コードで検出
+    #
+    # メッセージはシングルクォートまたは printf でリテラル出力する（外部入力由来の
+    # コマンド出力が stderr に混入する経路を物理的に排除する）。
+    # 内部整数変数（${status} など）はダブルクォート内で展開してよい。
+
+    # 区分 A: バイナリ不在
     # 不在時は install.sh が distro 別の案内を出すが、本スクリプト単独実行経路の保険として
     # ここでも日本語メッセージで exit 1 する。passthrough は絶対にしない。
     if ! command -v bwrap >/dev/null 2>&1; then
-      echo "vibecorp-sandbox: bwrap (bubblewrap) が見つかりません。隔離レイヤには bwrap が必要です。" >&2
-      echo "  Debian/Ubuntu: sudo apt-get install bubblewrap" >&2
-      echo "  Fedora/RHEL:   sudo dnf install bubblewrap" >&2
-      echo "  Alpine:        sudo apk add bubblewrap" >&2
+      echo 'vibecorp-sandbox: bwrap (bubblewrap) が見つかりません。隔離レイヤには bwrap が必要です。' >&2
+      echo '  Debian/Ubuntu: sudo apt-get install bubblewrap' >&2
+      echo '  Fedora/RHEL:   sudo dnf install bubblewrap' >&2
+      echo '  Alpine:        sudo apk add bubblewrap' >&2
+      exit 1
+    fi
+
+    # 区分 B: バイナリ破損 / 実行権限の問題
+    # `bwrap --version` で起動可否のみを確認する。バイナリが存在しても権限不足や
+    # 共有ライブラリ欠落で起動できないケースをここで区別する。
+    if ! bwrap --version >/dev/null 2>&1; then
+      echo 'vibecorp-sandbox: bwrap バイナリは存在しますが `--version` で起動失敗しました。バイナリ破損または実行権限の問題です。' >&2
+      echo '  再インストール案内:' >&2
+      echo '    Debian/Ubuntu: sudo apt-get install --reinstall bubblewrap' >&2
+      echo '    Fedora/RHEL:   sudo dnf reinstall bubblewrap' >&2
+      echo '    Alpine:        sudo apk add --upgrade bubblewrap' >&2
+      echo '  実行権限の確認: ls -lah "$(command -v bwrap)"' >&2
+      exit 1
+    fi
+
+    # 区分 C: user namespace 制限
+    # `bwrap --unshare-pid --proc /proc --dev /dev --tmpfs /tmp -- /bin/sh -c :` で
+    # user namespace の動作確認のみを行う。/bin/true ではなく /bin/sh -c : を使うのは、
+    # NixOS 等の非標準 /bin レイアウト distro で /bin/true 不在による誤検知を避けるため
+    # （/bin/sh は POSIX 必須、`:` は組込みコマンド）。
+    if ! bwrap --unshare-pid --proc /proc --dev /dev --tmpfs /tmp -- /bin/sh -c : >/dev/null 2>&1; then
+      echo 'vibecorp-sandbox: user namespace で bwrap が動作しません。' >&2
+      echo '  切り分け手順:' >&2
+      echo '    sysctl kernel.unprivileged_userns_clone   # 0 なら unprivileged user namespace が無効' >&2
+      echo '    dmesg | grep -i bwrap                     # kernel 拒否ログ' >&2
+      echo '    aa-status; dmesg | grep -i apparmor       # AppArmor 制限の確認' >&2
+      echo '    getenforce                                 # SELinux モードの確認' >&2
+      echo '  GHA `ubuntu-latest` (Ubuntu 24.04) / Docker コンテナでは既知制約（AppArmor 4.0 の unprivileged_userns 制限）。' >&2
+      echo '  詳細は docs/SECURITY.md の「Linux (Phase 2) 固有制約」および「Linux 診断手段」を参照してください。' >&2
       exit 1
     fi
 
@@ -223,14 +265,28 @@ case "$OS" in
     # shellcheck source=../sandbox/bwrap-args.sh
     source "$BWRAP_ARGS_FILE"
 
-    # bwrap を exec で起動（fail-closed）
+    # bwrap を起動（fail-closed）
     # - "${BWRAP_ARGS[@]}" は bwrap-args.sh が組み立てた配列
     # - --setenv VIBECORP_SANDBOXED 1 は bwrap-args.sh 内で追加済み
     # - env VIBECORP_SANDBOXED=1 は二重に取りこぼし防止（信頼境界は claude シム側の
     #   is_inside_sandbox の PPID 検証と AND で評価）
-    # exec が失敗（user namespace 無効・kernel ENOSYS・AppArmor 拒否等）した場合、
-    # プロセスは非ゼロで終了する。passthrough（隔離なしで起動）は絶対にしない。
-    exec bwrap "${BWRAP_ARGS[@]}" -- env VIBECORP_SANDBOXED=1 "$@"
+    #
+    # Issue #579: 区分 D（preflight 通過後の kernel/distro 固有失敗）を catch するため、
+    # 従来の `exec bwrap ...` を非 exec 化する。shell が bwrap の終了を待ち、終了コードが
+    # 非 0 の場合に区分 D メッセージを stderr に出力して同じ終了コードで exit する。
+    # bwrap 自体の引数・隔離挙動は変わらない。fail-closed は維持（passthrough しない）。
+    # `set -e` 下で bwrap が非 0 で終わると、status=$? の取得前に shell が exit してしまう。
+    # `|| status=$?` で set -e を抑制し、終了コードを確実に取得する。
+    status=0
+    bwrap "${BWRAP_ARGS[@]}" -- env VIBECORP_SANDBOXED=1 "$@" || status=$?
+    if [[ "$status" -ne 0 ]]; then
+      # 区分 D: kernel/distro 固有問題（preflight 通過後の失敗）
+      # $status は内部生成の整数変数のためダブルクォート内で展開してよい。
+      echo "vibecorp-sandbox: bwrap の preflight は通過しましたが、本番起動で exit code ${status} で失敗しました。kernel / distro 固有の問題の可能性があります。" >&2
+      echo '  詳細は docs/SECURITY.md の「Linux 診断手段」の区分 D 診断手順を参照してください。' >&2
+      exit "$status"
+    fi
+    exit 0
     ;;
   *)
     # exit 69 (EX_UNAVAILABLE): 当該 OS 向け実装が未提供。引数エラー（64）とは別軸。

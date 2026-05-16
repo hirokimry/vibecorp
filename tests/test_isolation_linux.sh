@@ -8,7 +8,15 @@
 #
 # 非 Linux では skip (exit 0)。bwrap 不在環境でも skip。
 #
-# 参照: #293 / #310
+# Issue #579 (mock テスト [12]〜[15]) について:
+#   本ファイル末尾に mock bwrap を使った区分別エラーメッセージ検証テスト群を追加している。
+#   mock テスト群は実 bwrap を使わないが、テストファイル冒頭の SKIP ガード
+#   （uname / `command -v bwrap` / `bwrap --unshare-pid` 試し実行）を共有するため、
+#   GHA `ubuntu-latest` (Ubuntu 24.04) のような実 bwrap 不動環境では **全体が SKIP** される。
+#   mock テストを通すには CEO ローカル環境 or 自前ホストランナー（実 bwrap が動作する Linux）
+#   が必要。CI ログの SKIP 状態の解釈に注意。
+#
+# 参照: #293 / #310 / #579
 
 # 非 Linux では早期 skip（macOS CI が赤くならないように）
 if [[ "$(uname -s)" != "Linux" ]]; then
@@ -84,6 +92,12 @@ trap cleanup EXIT
 FAKE_HOME="${TMPDIR_TEST}/fake-home"
 FAKE_WORKTREE="${TMPDIR_TEST}/fake-worktree"
 FAKE_BIN="${TMPDIR_TEST}/fake-bin"
+# Issue #579: mock bwrap 配置先（FAKE_BIN とは別ディレクトリ）
+# mock テスト [12]〜[15] でのみ PATH に追加するため、既存テスト [1]〜[11] への副作用なし
+MOCK_BIN="${TMPDIR_TEST}/mock-bin"
+# Issue #579: 区分 A テスト用に「bwrap が PATH に存在しないが、uname / dirname 等の基本コマンドは
+# 使える」状態を作るためのディレクトリ。/usr/bin の symlink を入れるが bwrap は入れない。
+NOBWRAP_BIN="${TMPDIR_TEST}/nobwrap-bin"
 SANDBOX_TMPDIR="${TMPDIR_TEST}/sandbox-tmp"
 
 # FAKE_HOME を構築
@@ -101,7 +115,18 @@ GITCONFIG
 
 mkdir -p "$FAKE_WORKTREE"
 mkdir -p "$FAKE_BIN"
+mkdir -p "$MOCK_BIN"
+mkdir -p "$NOBWRAP_BIN"
 mkdir -p "$SANDBOX_TMPDIR"
+
+# Issue #579: NOBWRAP_BIN に vibecorp-sandbox が必要とする基本コマンドのみ symlink する
+# （uname / dirname / cd / pwd 等）。bwrap は意図的に含めない。
+# これにより区分 A テスト [12] で `command -v bwrap` を確実に失敗させる。
+for cmd in uname dirname; do
+  if real_path="$(command -v "$cmd" 2>/dev/null)"; then
+    ln -sf "$real_path" "${NOBWRAP_BIN}/${cmd}"
+  fi
+done
 
 # probe 経由で claude-real を fake する（shim → vibecorp-sandbox → bwrap 内で起動）
 # isolation-probe.sh を claude-real としてエイリアスし、vibecorp-sandbox の引数で probe を呼ぶ
@@ -382,6 +407,159 @@ if [[ "$status" -ne 0 && "$(cat "$STDERR_LOG")" == *"WORKTREE_VALUE / HOME_VALUE
 else
   fail "bwrap-args.sh が必須変数未設定でも source されてしまった (status=$status)"
 fi
+
+# ============================================
+# Issue #579: 区分別エラーメッセージ検証テスト [12]〜[15]
+#
+# mock bwrap を MOCK_BIN に配置して、bwrap 起動失敗の 4 区分（A/B/C/D）それぞれが
+# 期待される日本語メッセージと exit code = 1 を返すことを検証する。
+# MOCK_BIN は FAKE_BIN とは別ディレクトリで、テスト [12]〜[15] でのみ PATH 先頭に置く。
+# 既存テスト [1]〜[11] のヘルパー `run_sandbox` / `run_shim` は FAKE_BIN のみを PATH に
+# 含めているため、MOCK_BIN の存在は既存テストに影響しない。
+# ============================================
+
+# run_sandbox_with_mock_bwrap — mock bwrap を有効化して vibecorp-sandbox を実行する
+#
+# 第 1 引数: mock_bin_path
+#   - MOCK_BIN（実際のディレクトリパス）を渡すと PATH 先頭に追加 → mock bwrap が使われる
+#   - 空文字列を渡すと PATH を NOBWRAP_BIN のみに絞る → bwrap 不在状態（区分 A テスト用）
+# 第 2 引数以降: vibecorp-sandbox に渡す引数列（probe 等）
+#
+# 既存 `run_sandbox` と異なり PATH 制御を mock_bin_path で切り替える。
+run_sandbox_with_mock_bwrap() {
+  local mock_bin_path="$1"
+  shift
+
+  local path_value
+  if [[ -n "$mock_bin_path" ]]; then
+    # mock bwrap を MOCK_BIN から提供。FAKE_BIN と /usr/bin 等は補助コマンド用に維持
+    path_value="${mock_bin_path}:${FAKE_BIN}:/usr/bin:/bin:/usr/sbin:/sbin"
+  else
+    # 区分 A テスト用: bwrap が PATH に存在しない状態を作る
+    # NOBWRAP_BIN は uname / dirname のみを持ち、bwrap は意図的に含まれない
+    path_value="${NOBWRAP_BIN}"
+  fi
+
+  local status=0
+  env -i \
+    HOME="$FAKE_HOME" \
+    PATH="$path_value" \
+    TMPDIR="$SANDBOX_TMPDIR" \
+    bash "$DISPATCHER" "$@" \
+    > "$STDOUT_LOG" 2> "$STDERR_LOG" || status=$?
+  return "$status"
+}
+
+# write_mock_bwrap — MOCK_BIN に mock bwrap スクリプトを配置する
+#
+# 第 1 引数: mock 内容（heredoc で渡す bash スクリプト本文）
+write_mock_bwrap() {
+  local mock_content="$1"
+  cat > "${MOCK_BIN}/bwrap" <<MOCK_EOF
+#!/bin/bash
+${mock_content}
+MOCK_EOF
+  chmod +x "${MOCK_BIN}/bwrap"
+}
+
+# ============================================
+echo ""
+echo "=== [12] 区分 A: bwrap バイナリ不在で区分 A メッセージと exit 1 ==="
+# ============================================
+# MOCK_BIN を空にして bwrap 不在状態を作る（FAKE_BIN に bwrap は元々無い）
+rm -f "${MOCK_BIN}/bwrap"
+status=0
+(cd "$FAKE_WORKTREE" && run_sandbox_with_mock_bwrap "" probe) || status=$?
+stderr_content="$(cat "$STDERR_LOG")"
+if [[ "$status" -eq 1 \
+   && "$stderr_content" == *"bwrap (bubblewrap) が見つかりません"* \
+   && "$stderr_content" == *"Debian/Ubuntu"* \
+   && "$stderr_content" == *"Fedora/RHEL"* \
+   && "$stderr_content" == *"Alpine"* ]]; then
+  pass "区分 A: 不在メッセージ + exit 1 (status=$status)"
+else
+  fail "区分 A: 不在メッセージまたは exit 1 が出ない (status=$status, stderr=$stderr_content)"
+fi
+
+# ============================================
+echo ""
+echo "=== [13] 区分 B: bwrap --version 失敗で区分 B メッセージと exit 1 ==="
+# ============================================
+# mock bwrap: --version 引数のとき exit 1、それ以外（preflight C / 本番）は exit 0
+# 引数判定は全引数列に対する case " $* " in *' --version '*) パターンで位置非依存
+write_mock_bwrap '
+case " $* " in
+  *" --version "*) exit 1 ;;
+  *) exit 0 ;;
+esac
+'
+status=0
+(cd "$FAKE_WORKTREE" && run_sandbox_with_mock_bwrap "$MOCK_BIN" probe) || status=$?
+stderr_content="$(cat "$STDERR_LOG")"
+if [[ "$status" -eq 1 \
+   && "$stderr_content" == *"\`--version\` で起動失敗"* \
+   && "$stderr_content" == *"apt-get install --reinstall bubblewrap"* \
+   && "$stderr_content" == *"dnf reinstall bubblewrap"* \
+   && "$stderr_content" == *"apk add --upgrade bubblewrap"* ]]; then
+  pass "区分 B: バイナリ破損 / 権限メッセージ + exit 1 (status=$status)"
+else
+  fail "区分 B: 期待メッセージまたは exit 1 が出ない (status=$status, stderr=$stderr_content)"
+fi
+
+# ============================================
+echo ""
+echo "=== [14] 区分 C: user namespace 制限で区分 C メッセージと exit 1 ==="
+# ============================================
+# mock bwrap: --version は成功、引数列に --unshare-pid を含む場合は exit 1
+# preflight C と本番は両方とも --unshare-pid を含むが、本テストは preflight C で止まることを期待
+write_mock_bwrap '
+case " $* " in
+  *" --unshare-pid "*) exit 1 ;;
+  *" --version "*) exit 0 ;;
+  *) exit 0 ;;
+esac
+'
+status=0
+(cd "$FAKE_WORKTREE" && run_sandbox_with_mock_bwrap "$MOCK_BIN" probe) || status=$?
+stderr_content="$(cat "$STDERR_LOG")"
+if [[ "$status" -eq 1 \
+   && "$stderr_content" == *"user namespace で bwrap が動作しません"* \
+   && "$stderr_content" == *"kernel.unprivileged_userns_clone"* \
+   && "$stderr_content" == *"apparmor"* \
+   && "$stderr_content" == *"docs/SECURITY.md"* ]]; then
+  pass "区分 C: user namespace 制限メッセージ + exit 1 (status=$status)"
+else
+  fail "区分 C: 期待メッセージまたは exit 1 が出ない (status=$status, stderr=$stderr_content)"
+fi
+
+# ============================================
+echo ""
+echo "=== [15] 区分 D: preflight 通過後の本番 bwrap 失敗で区分 D メッセージと exit 1 ==="
+# ============================================
+# mock bwrap: --version 成功、preflight C パターン（-- /bin/sh -c :）も成功、
+# それ以外の --unshare-pid を含む本番引数列で exit 1（preflight 通過後の本番失敗を模擬）
+write_mock_bwrap '
+case " $* " in
+  *" -- /bin/sh -c : "*) exit 0 ;;
+  *" --version "*) exit 0 ;;
+  *" --unshare-pid "*) exit 1 ;;
+  *) exit 0 ;;
+esac
+'
+status=0
+(cd "$FAKE_WORKTREE" && run_sandbox_with_mock_bwrap "$MOCK_BIN" probe) || status=$?
+stderr_content="$(cat "$STDERR_LOG")"
+if [[ "$status" -eq 1 \
+   && "$stderr_content" == *"preflight は通過しましたが"* \
+   && "$stderr_content" == *"kernel / distro 固有"* \
+   && "$stderr_content" == *"docs/SECURITY.md"* ]]; then
+  pass "区分 D: kernel/distro 固有メッセージ + exit 1（bwrap 終了コード伝播） (status=$status)"
+else
+  fail "区分 D: 期待メッセージまたは exit 1 が出ない (status=$status, stderr=$stderr_content)"
+fi
+
+# mock bwrap を片付ける（既存テストに影響させないため）
+rm -f "${MOCK_BIN}/bwrap"
 
 # ============================================
 echo ""

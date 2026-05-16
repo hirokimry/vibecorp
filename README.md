@@ -202,4 +202,6 @@ export VIBECORP_ISOLATION=1
 
 ## 📜 ライセンス
 
-MIT
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+このプロジェクトは [MIT License](LICENSE) で配布されている。第三者ランタイム依存（bubblewrap 等の LGPL-2.0+ コンポーネント）との適合性は [`docs/POLICY.md`](docs/POLICY.md#ライセンスポリシー) を参照。
