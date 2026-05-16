@@ -95,11 +95,11 @@ CEO 向けの文面規約は `communication.md` で別途定義する。
 
 | トピック | 確認内容（公式正式キー名） | 逸脱時の帰結 |
 |----------|--------------------------|----------------|
-| Skill triggering | `name` / `description`（MUST）/ `when_to_use`（option）/ `disable-model-invocation` / `user-invocable`。`description` + `when_to_use` の合計 1,536 文字以内が自動呼び出し判定に使われる | スキルが triggering されず実質呼ばれない |
-| Hook event types | `PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `UserPromptSubmit` / `SessionStart` / `SessionEnd` / `Stop` / `StopFailure` / `FileChanged` / `ConfigChange` / `CwdChanged`。matcher は `"*"` または正規表現、MCP ツールは `mcp__<server>__<tool>` 形式 | フックが発火しない・誤動作 |
+| Skill triggering | 公式 frontmatter キー: `name` / `description`（MUST）/ `when_to_use` / `disable-model-invocation` / `user-invocable` / `argument-hint` / `arguments` / `allowed-tools` / `model` / `effort` / `context`（`fork` で SubAgent 実行）/ `agent` / `hooks` / `paths` / `shell`。`description` + `when_to_use` の合計 1,536 文字以内が自動呼び出し判定に使われる | スキルが triggering されず実質呼ばれない |
+| Hook event types | per tool call: `PreToolUse` / `PostToolUse` / `PostToolUseFailure`。per turn: `UserPromptSubmit` / `Stop` / `StopFailure`。per session: `SessionStart` / `SessionEnd`。matcher は `"*"`（全一致）/ 完全一致（`"Bash"`）/ `\|` 区切り（`"Edit\|Write"`）/ 正規表現 / MCP パターン（`mcp__<server>__<tool>`） | フックが発火しない・誤動作 |
 | SubAgent context | `description` / `tools` / `model` / `context: fork` / `agent`（Explore / Plan / general-purpose 等）。`CLAUDE.md` は常時読み込まれるが **会話履歴は継承されない** | SubAgent 実行時に権限・情報不足で失敗 |
-| MCP server 設定 | `.mcp.json` トップレベルキーは `mcpServers`（複数形）。サーバー定義は `type`（`http` / `sse` / `stdio`）/ `url`（リモート）/ `command` + `args`（stdio）/ `env`。`streamable-http` は `http` の公式 alias | MCP サーバーが起動しない |
-| settings.json 構造 | セクション: `permissions`（`allow` / `ask` / `deny`）/ `hooks` / `env` / `model` / `effortLevel`。優先順位（高→低）: Managed > Command-line > Local（`.claude/settings.local.json`）> Project（`.claude/settings.json`）> User（`~/.claude/settings.json`）。permission ルールは `Tool` または `Tool(specifier)` 形式 | 意図しない権限漏れ・遮断 |
+| MCP server 設定 | `.mcp.json` トップレベルキーは `mcpServers`（複数形）。サーバー定義は `type` / `url`（リモート）/ `command` + `args`（stdio）/ `env`。公式 `type` 値: `http`（`streamable-http` は同義 alias）/ `sse`（非推奨）/ `stdio` | MCP サーバーが起動しない |
+| settings.json 構造 | 主要セクション: `permissions`（`allow` / `ask` / `deny` / `defaultMode` / `additionalDirectories`）/ `hooks` / `env` / `model` / `effortLevel`。拡張セクション: `language` / `editorMode` / `tui` / `autoMemoryEnabled` / `availableModels` / `apiKeyHelper` / MCP 管理（`enabledMcpjsonServers` / `disabledMcpjsonServers` / `allowedMcpServers`）等。優先順位（高→低）: Managed > Command-line > Local（`.claude/settings.local.json`）> Project（`.claude/settings.json`）> User（`~/.claude/settings.json`）。permission ルールは `Tool` または `Tool(specifier)` 形式 | 意図しない権限漏れ・遮断 |
 
 出典: `docs.claude.com` 配下のドキュメント群。
 
@@ -170,16 +170,17 @@ model: sonnet
 
 ### ルール（`rules/*.md`）
 
-ルールは frontmatter を省略可能だが、適用範囲を限定する場合は以下のキーを使う:
+ルールは frontmatter を省略可能だが、適用範囲を限定する場合は `paths` キーを使う:
 
 ```markdown
 ---
-description: <1 行説明>
 paths: ["<glob1>", "<glob2>"]
 ---
 ```
 
 例: あるルールが `paths: ["skills/**"]` でスコープをスキル領域に絞る。
+
+`description` キーを併用する慣習もあるが、これは公式仕様外の独自メタデータ。利用先プロジェクトでの採用は任意。
 
 ## 🪝 description triggering 設計
 
