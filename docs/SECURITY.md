@@ -264,13 +264,43 @@ sudo journalctl -k --since "5 minutes ago" | grep -i 'deny\|denied\|apparmor\|se
 
 #### Linux 診断手段
 
-`bwrap` 起動が失敗する場合、以下のログで原因を切り分ける:
+`vibecorp-sandbox` の Linux ブランチは bwrap 起動失敗を 4 区分（A/B/C/D）に分けて日本語メッセージで通知する（Issue #579）。`vibecorp-sandbox` の stderr に出力された区分判定をまず確認し、該当する区分の対処手順を参照する。
+
+| 区分 | stderr 抜粋 | 原因 | 対処手順 |
+|------|------------|------|---------|
+| **A** | `bwrap (bubblewrap) が見つかりません` | バイナリ不在 | distro 別 install: `sudo apt-get install bubblewrap` / `sudo dnf install bubblewrap` / `sudo apk add bubblewrap` |
+| **B** | `bwrap バイナリは存在しますが --version で起動失敗しました` | バイナリ破損 / 権限不足 | distro 別 reinstall: `sudo apt-get install --reinstall bubblewrap` / `sudo dnf reinstall bubblewrap` / `sudo apk add --upgrade bubblewrap`<br>権限確認: `ls -lah "$(command -v bwrap)"` |
+| **C** | `user namespace で bwrap が動作しません` | unprivileged user namespace 制限（kernel / AppArmor / SELinux） | 下記「区分 C の切り分け」参照 |
+| **D** | `bwrap の preflight は通過しましたが、本番起動で exit code <N> で失敗しました` | preflight 通過後の kernel / distro 固有問題 | 下記「区分 D の切り分け」参照 |
+
+##### 区分 C の切り分け
 
 ```bash
-# bwrap の標準エラー出力（user namespace 不可・kernel ENOSYS 等）
+# unprivileged user namespace が有効か（0 なら無効）
+sysctl kernel.unprivileged_userns_clone
+
+# kernel が bwrap を拒否しているか
+dmesg | grep -i bwrap
+
+# AppArmor 制限（GHA ubuntu-latest / Ubuntu 24.04 の既知制約）
+aa-status
+dmesg | grep -i apparmor
+
+# SELinux モード（Enforcing なら policy で deny されている可能性）
+getenforce
+```
+
+GHA `ubuntu-latest` (Ubuntu 24.04) / Docker コンテナでは AppArmor 4.0 の `unprivileged_userns` 制限が既知制約（前述「Linux (Phase 2) 固有制約」表）。CI 上では既存 SKIP ガード（`test_isolation_linux.sh` / `test_isolation_parity.sh`）で自動 skip される。
+
+##### 区分 D の切り分け
+
+preflight（A/B/C）は通過しているため、bwrap バイナリ自体は動作可能。本番引数列（`--bind` / `--ro-bind` / `--tmpfs` 等）の組み合わせで失敗している。kernel / distro 固有の問題切り分けに以下を使う:
+
+```bash
+# bwrap の標準エラー出力（vibecorp-sandbox が出す区分 D メッセージの直前に bwrap 自身の stderr が流れる）
 vibecorp-sandbox echo test 2>&1 | tail -20
 
-# kernel 拒否ログ（AppArmor / SELinux）
+# kernel 拒否ログ（AppArmor / SELinux / kernel ENOSYS 等）
 dmesg | tail -50
 sudo journalctl -k --since "5 minutes ago" | grep -i 'deny\|denied\|apparmor\|selinux'
 
