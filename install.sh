@@ -582,6 +582,78 @@ update_vibecorp_yml() {
   fi
 }
 
+migrate_forbidden_targets_skills() {
+  # --update 時のセキュリティ移行: 既存 vibecorp.yml の diagnose.forbidden_targets に
+  # skills/** が無ければ自動追加する（Issue #460 / CodeRabbit 指摘）。
+  #
+  # 仕様根拠: Issue #460 — `.claude/skills/` を自律ループの保護対象に昇格。
+  # 既存ユーザーは vibecorp.yml に独自 forbidden_targets を持つため、hook デフォルト変更だけでは
+  # 防御が届かない。--update 実行時にここで一度だけ補完する（冪等）。
+  # bash 3.2 互換、`sed -i` 禁止（mktemp + mv で原子的置換）。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # diagnose.forbidden_targets セクションに skills/** が既にあるかチェック
+  local found
+  found=$(awk '
+    /^diagnose:/ { in_diagnose = 1; next }
+    in_diagnose && /^[^ #]/ { exit }
+    in_diagnose && /^  forbidden_targets:/ { in_targets = 1; next }
+    in_diagnose && in_targets && /^  [^ -]/ { exit }
+    in_diagnose && in_targets && /^    - / {
+      sub(/^    - /, "")
+      sub(/[[:space:]]*$/, "")
+      gsub(/"/, "")
+      gsub(/'\''/, "")
+      if ($0 == "skills/**") { print "yes"; exit }
+    }
+  ' "$yml")
+
+  if [[ "$found" == "yes" ]]; then
+    return 0
+  fi
+
+  # forbidden_targets セクション自体が存在するかチェック（diagnose セクション内）
+  local has_targets
+  has_targets=$(awk '
+    /^diagnose:/ { in_diagnose = 1; next }
+    in_diagnose && /^[^ #]/ { exit }
+    in_diagnose && /^  forbidden_targets:/ { print "yes"; exit }
+  ' "$yml")
+
+  if [[ "$has_targets" != "yes" ]]; then
+    # forbidden_targets セクション自体が無い場合は安全のため触らない（利用者が意図的に削除した可能性）
+    return 0
+  fi
+
+  # forbidden_targets: 行の直後に skills/** エントリを挿入
+  # inline 空配列形式（`forbidden_targets: []`）の場合は block 形式に正規化してから挿入する
+  # （挿入しただけだと `[]` の後に block エントリが続いて YAML が壊れる）。
+  local tmp
+  tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+  awk '
+    BEGIN { in_diagnose = 0; inserted = 0 }
+    {
+      # inline 空配列を検出したら block 形式に正規化して skills/** を 1 件目として挿入
+      if (!inserted && in_diagnose && /^  forbidden_targets:[[:space:]]*\[[[:space:]]*\][[:space:]]*$/) {
+        print "  forbidden_targets:"
+        print "    - \"skills/**\""
+        inserted = 1
+        next
+      }
+      print
+      if (!inserted && in_diagnose && /^  forbidden_targets:/) {
+        print "    - \"skills/**\""
+        inserted = 1
+      }
+      if (/^diagnose:/) in_diagnose = 1
+      else if (in_diagnose && /^[^ #]/) in_diagnose = 0
+    }
+  ' "$yml" > "$tmp" && mv "$tmp" "$yml"
+
+  log_info "vibecorp.yml の diagnose.forbidden_targets に skills/** を追加（Issue #460 セキュリティ移行）"
+}
+
 read_lock_list() {
   # lock ファイルから指定セクションのファイル一覧を取得
   # 使い方: read_lock_list <lock_file> <section_name>
@@ -1041,6 +1113,7 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
+    - "skills/**"
 $(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
@@ -2772,6 +2845,7 @@ main() {
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
+    migrate_forbidden_targets_skills
   fi
 
   generate_coderabbit_yaml
