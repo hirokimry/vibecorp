@@ -43,11 +43,11 @@ assert_file_contains "description キーが存在" "$DOC_WRITING" "^description:
 echo "=== 中核 5 セクションが揃っている ==="
 # ============================================
 
-assert_file_contains "「読者像と動作主語」セクション" "$DOC_WRITING" "^## 読者像と動作主語"
-assert_file_contains "「30 秒スキャン原則」セクション" "$DOC_WRITING" "^## 30 秒スキャン原則"
-assert_file_contains "「指針（MUST）」セクション" "$DOC_WRITING" "^## 指針（MUST）"
-assert_file_contains "「禁止パターン」セクション" "$DOC_WRITING" "^## 禁止パターン"
-assert_file_contains "「ドキュメント種別ごとの差し分け」セクション" "$DOC_WRITING" "^## ドキュメント種別ごとの差し分け"
+assert_file_contains "「読者像と動作主語」セクション" "$DOC_WRITING" "^## 👥 読者像と動作主語"
+assert_file_contains "「30 秒スキャン原則」セクション" "$DOC_WRITING" "^## ⏱️ 30 秒スキャン原則"
+assert_file_contains "「指針（MUST）」セクション" "$DOC_WRITING" "^## ✅ 指針（MUST）"
+assert_file_contains "「禁止パターン」セクション" "$DOC_WRITING" "^## ❌ 禁止パターン"
+assert_file_contains "「ドキュメント種別ごとの差し分け」セクション" "$DOC_WRITING" "^## 📚 ドキュメント種別ごとの差し分け"
 
 # ============================================
 echo "=== 冒頭コールアウトが含まれる ==="
@@ -62,11 +62,11 @@ echo "=== 指針 MUST の 7 項目が含まれる ==="
 
 assert_file_contains "指針1: 読者像を冒頭で固定する" "$DOC_WRITING" "読者像を冒頭で固定"
 assert_file_contains "指針2: スキャンで要点が掴める構造" "$DOC_WRITING" "スキャンで要点が掴める構造"
-assert_file_contains "指針3: マークダウン・絵文字活用" "$DOC_WRITING" "マークダウン・絵文字を最大限活用"
-assert_file_contains "指針4: 汎用語彙で書く" "$DOC_WRITING" "汎用語彙で書く"
-assert_file_contains "指針5: 設計判断は理由とセット" "$DOC_WRITING" "設計判断は理由とセットで残す"
-assert_file_contains "指針6: 1 文 50 文字以下" "$DOC_WRITING" "50 文字以下"
-assert_file_contains "指針7: 文末改行 / 箇条書きネスト" "$DOC_WRITING" "文末（句点）で必ず改行"
+assert_file_contains "指針3: 1 文 50 文字以下" "$DOC_WRITING" "50 文字以下"
+assert_file_contains "指針4: 文末改行 / 箇条書きネスト" "$DOC_WRITING" "文末（句点）で必ず改行"
+assert_file_contains "指針5: マークダウン・絵文字活用" "$DOC_WRITING" "マークダウン・絵文字を最大限活用"
+assert_file_contains "指針6: 設計判断は理由とセット" "$DOC_WRITING" "設計判断は理由とセットで残す"
+assert_file_contains "指針7: 汎用語彙で書く" "$DOC_WRITING" "汎用語彙で書く"
 
 # ============================================
 echo "=== 禁止パターンの 7 項目が含まれる ==="
