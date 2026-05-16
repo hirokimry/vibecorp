@@ -1,3 +1,8 @@
+---
+description: リポジトリ内の全 .md ファイルに適用するドキュメント作成基準（動作主語 + 30 秒スキャン + 指針 MUST + 禁止パターン）
+paths: ["**/*.md"]
+---
+
 > [!IMPORTANT]
 > **可読性が最優先**。
 > マークダウンと絵文字を最大限活用し、読者がスクロールするだけで「**誰のために・何が・どう動くか**」を掴める状態に仕上げる。
@@ -10,20 +15,19 @@
 
 配置・言語ルール（どこに置くか・日本語か英語か）は `.claude/rules/documentation.md` を参照する。本ルールは「書き方」（どう書くか）を扱う。
 
-## 対象文面
+## 対象範囲
 
-- `docs/**` 配下の全ドキュメント（仕様書・設計判断・セキュリティ説明・運用ガイド 等）
-- `README.md` / `README.en.md`
-- `CHANGELOG.md`
-- `MVV.md`
-- `.claude/rules/**` 以外でリポジトリ直下に置かれる読み物系 `*.md`
+本ルールは frontmatter の `paths: ["**/*.md"]` により、**リポジトリ内の全 `.md` ファイル**を Claude が読む / 編集する際に lazy-load される（公式仕様: https://code.claude.com/docs/en/memory#path-specific-rules ）。
 
-### 対象外（正確性優先で良い）
+その上で、種別ごとの語彙・主語・冒頭で示すべきものは下記「[ドキュメント種別ごとの差し分け](#ドキュメント種別ごとの差し分け)」で扱う。
 
-- `.claude/rules/**` のエージェント向けルール（本ファイル含む）
-- コード内コメント
-- プランファイル（`~/.cache/vibecorp/plans/**`）
-- LLM プロンプトファイル（`.coderabbit.yaml`・`REVIEW.md` 等）
+LLM 向けプロンプト（`skills/**/SKILL.md`・`.claude/agents/**/*.md`・`.claude/rules/**/*.md`・`.claude/CLAUDE.md`・`MVV.md`・配布版 `.claude/vibecorp-base/**`・配布元 `templates/claude/**` 等）にも本ルールが適用される。プロンプト特有の追加要件（claude-code-guide MUST 参照 / frontmatter / triggering）は `.claude/rules/prompt-writing.md` が **拡張** として上乗せされる（基底 + 拡張の 2 層）。
+
+### 対象外（paths がマッチしないため本ルールは読み込まれない）
+
+- コード内コメント（`.md` 拡張子ではない）
+- プランファイル（`~/.cache/vibecorp/plans/**` はリポジトリ外）
+- LLM プロンプトファイルのうち `.md` 以外（`.coderabbit.yaml` 等）
 
 ## 読者像と動作主語
 

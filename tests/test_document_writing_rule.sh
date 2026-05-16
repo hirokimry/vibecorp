@@ -29,6 +29,17 @@ if [[ ! -f "$DOC_WRITING" ]]; then
 fi
 
 # ============================================
+echo "=== frontmatter で paths が指定されている ==="
+# ============================================
+
+# 先頭が --- で始まる YAML frontmatter
+assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$DOC_WRITING" "^---$"
+# paths キーが配列形式で **/*.md を含む
+assert_file_contains "paths に **/*.md が含まれる" "$DOC_WRITING" 'paths: \["\*\*/\*\.md"\]'
+# description キーが存在（vibecorp 慣習）
+assert_file_contains "description キーが存在" "$DOC_WRITING" "^description:"
+
+# ============================================
 echo "=== 中核 5 セクションが揃っている ==="
 # ============================================
 
