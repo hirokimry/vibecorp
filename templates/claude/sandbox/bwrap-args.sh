@@ -25,8 +25,13 @@
 # 既知制約（Phase 2）:
 #   - .claude.json.tmp.<pid>.<ms> 動的サイドカーは bwrap で個別許可不可
 #     （bwrap には regex 許可が無いため、起動時点で存在しないファイルは bind 不可）
-#     Claude Code 側の rename 失敗時の挙動仮説 (A) ハング / (B) エラー続行 / (C) fallback to ~/ 直接 write:
-#     いずれの場合でも信頼境界は ~/.claude 全 RW と同等以下であり、本スクリプトの bind 設計に影響しない
+#     Claude Code 側の rename 失敗時の挙動仮説（docs/SECURITY.md Phase 2.1 と分類体系を統一）:
+#       (A) クラッシュ — 再ログイン不能なら Phase 2 ロールバック発火（唯一の発火条件）
+#       (B) ハング     — SIGINT で復旧可能、実用上は問題なし
+#       (C) エラー続行  — sandbox 利用継続可、エラーメッセージ品質改善は別検討
+#       (D) ~/.claude.json への直接 write fallback — 最良ケース、信頼境界変化なし
+#     (A) のみがロールバック発火条件。(B)(C)(D) いずれの場合でも信頼境界は
+#     ~/.claude 全 RW と同等以下であり、本スクリプトの bind 設計に影響しない
 #   - bind 対象 dir 内の攻撃者制御 symlink によるバインドエスケープリスク
 #   - 本スクリプト実行から bwrap 起動までの TOCTOU
 #
