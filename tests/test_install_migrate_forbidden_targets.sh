@@ -152,6 +152,45 @@ else
   fail "vibecorp.yml 不在時に予期しない出力: $result"
 fi
 
+# 6. inline 空配列形式（forbidden_targets: []）でも YAML が壊れず block 形式に正規化される
+#    CodeRabbit Minor 指摘（PR #586）への対応 — inline `[]` 後ろに block エントリを継ぎ足すと YAML が壊れる
+echo ""
+echo "--- 6. inline 空配列形式は block 形式に正規化される ---"
+result=$(run_migrate_with_yml "$(cat <<'EOF'
+name: test
+preset: full
+language: ja
+diagnose:
+  enabled: true
+  forbidden_targets: []
+coderabbit:
+  enabled: true
+EOF
+)")
+# 期待: forbidden_targets が block 形式になり、skills/** が 1 件目として入る
+if echo "$result" | grep -q -E '^  forbidden_targets:[[:space:]]*$'; then
+  pass "inline 空配列が block 形式（forbidden_targets:）に正規化される"
+else
+  fail "inline 空配列が block 形式に正規化されない"
+fi
+if echo "$result" | grep -q -F '    - "skills/**"'; then
+  pass "block 化した forbidden_targets に skills/** が 1 件目として挿入される"
+else
+  fail "skills/** が挿入されない"
+fi
+# 旧 inline 空配列リテラル `[]` が消えていること（残ると YAML が壊れる）
+if echo "$result" | grep -q -F 'forbidden_targets: []'; then
+  fail "inline 空配列リテラル '[]' が残っている（YAML 構造破壊）"
+else
+  pass "inline 空配列リテラル '[]' は消えている"
+fi
+# 後段の coderabbit セクションが保持されていること（YAML 構造保護回帰）
+if echo "$result" | grep -q '^coderabbit:'; then
+  pass "inline 空配列 → block 化後も後段 coderabbit セクションが保持される"
+else
+  fail "inline 空配列 → block 化で後段 coderabbit セクションが壊れた"
+fi
+
 # ============================================
 echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="

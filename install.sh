@@ -627,11 +627,20 @@ migrate_forbidden_targets_skills() {
   fi
 
   # forbidden_targets: 行の直後に skills/** エントリを挿入
+  # inline 空配列形式（`forbidden_targets: []`）の場合は block 形式に正規化してから挿入する
+  # （挿入しただけだと `[]` の後に block エントリが続いて YAML が壊れる）。
   local tmp
   tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
   awk '
     BEGIN { in_diagnose = 0; inserted = 0 }
     {
+      # inline 空配列を検出したら block 形式に正規化して skills/** を 1 件目として挿入
+      if (!inserted && in_diagnose && /^  forbidden_targets:[[:space:]]*\[[[:space:]]*\][[:space:]]*$/) {
+        print "  forbidden_targets:"
+        print "    - \"skills/**\""
+        inserted = 1
+        next
+      }
       print
       if (!inserted && in_diagnose && /^  forbidden_targets:/) {
         print "    - \"skills/**\""
