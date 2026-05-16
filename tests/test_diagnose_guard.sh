@@ -41,6 +41,8 @@ setup_project_dir() {
   TMPDIR_TEST=$(mktemp -d)
   mkdir -p "${TMPDIR_TEST}/.claude/lib"
   cp "${LIB_DIR}/common.sh" "${TMPDIR_TEST}/.claude/lib/common.sh"
+  # path_normalize.sh が必要（diagnose-guard.sh が symlink bypass 対策で source する）
+  cp "${LIB_DIR}/path_normalize.sh" "${TMPDIR_TEST}/.claude/lib/path_normalize.sh"
   ( cd "$TMPDIR_TEST" && git init -q . && git config user.email t@example.com && git config user.name t )
   cat > "${TMPDIR_TEST}/.claude/vibecorp.yml" <<'YAML'
 name: test-project
@@ -177,6 +179,29 @@ assert_blocked "skills/** パターンは .claude/skills/ship-parallel/lib/util.
 # 12g. skills/** は `.claude/skills.json` のように skills 直後に / がないパスはマッチしない（境界）
 OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/skills.json"}}' | bash "$HOOK")
 assert_allowed "skills/** パターンは .claude/skills.json をマッチしない（境界 / 必須） → allow" "$OUTPUT"
+
+# --- シンボリックリンク bypass 回帰テスト（Issue #460 security-analyst H1） ---
+
+echo "--- シンボリックリンク bypass 回帰テスト ---"
+
+# 12h. skillz -> skills シンボリックリンク経由の書き込みは realpath 正規化で実体パスに解決され deny される
+# 設計: 自律ループ内で攻撃者が .claude/skillz -> .claude/skills を作っても、
+# diagnose-guard.sh が CANONICAL_PATH を生成して `skills/**` パターンで deny する。
+SYMLINK_TEST_DIR="${TMPDIR_TEST}/symlink_test"
+mkdir -p "${SYMLINK_TEST_DIR}/.claude/skills/diagnose"
+ln -sf skills "${SYMLINK_TEST_DIR}/.claude/skillz"
+# symlink 経由のパスで Write を試みる（CANONICAL_PATH 解決後に skills/diagnose/SKILL.md となる）
+OUTPUT=$(echo '{"tool_input":{"file_path":"'"${SYMLINK_TEST_DIR}/.claude/skillz/diagnose/SKILL.md"'"}}' | bash "$HOOK")
+# realpath / python3 が使える環境では deny される（symlink を解決して .claude/skills/ にマッチ）
+# どちらも使えない環境では原文パスを使うため `skillz/` が `skills/.*$` にマッチせず allow される
+# このテストは realpath / python3 のいずれかが存在する前提（CI / 開発機の通常前提）
+if command -v realpath >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then
+  assert_blocked "シンボリックリンク .claude/skillz -> .claude/skills 経由の書込みは realpath 正規化で deny される（H1 回帰）" "$OUTPUT"
+else
+  echo "  SKIP: realpath / python3 が不在の環境では symlink bypass テストはスキップ"
+fi
+# クリーンアップ
+rm -rf "${SYMLINK_TEST_DIR}" || true
 
 # --- 別プロジェクトの state ディレクトリ分離テスト ---
 
