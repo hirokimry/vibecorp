@@ -122,13 +122,13 @@ else
   fail "同 basename・別パスで同じディレクトリが生成された (${DIR_SA})"
 fi
 
-# --- ケース 6: git 外（git toplevel 取得失敗）でフォールバック + stderr 警告 ---
+# --- ケース 6: git 外（git common-dir 取得失敗）でフォールバック + stderr 警告 ---
 
 echo "Test 6: git 外で stderr 警告が出る"
 NON_GIT_DIR="${TMPDIR_ROOT}/non-git"
 mkdir -p "$NON_GIT_DIR"
 STDERR_OUT=$( cd "$NON_GIT_DIR" && CLAUDE_PROJECT_DIR="$NON_GIT_DIR" vibecorp_stamp_dir 2>&1 >/dev/null )
-assert_contains "git 外で stderr 警告" "git toplevel 取得に失敗" "$STDERR_OUT"
+assert_contains "git 外で stderr 警告" "git common-dir 取得に失敗" "$STDERR_OUT"
 
 STDOUT_OUT=$( cd "$NON_GIT_DIR" && CLAUDE_PROJECT_DIR="$NON_GIT_DIR" vibecorp_stamp_dir 2>/dev/null )
 assert_starts_with "git 外でもパスは生成される" "${HOME}/.cache/vibecorp/state/non-git-" "$STDOUT_OUT"
@@ -297,9 +297,11 @@ CACHE_ROOT_NOHOME=$( cd "$REPO_DIR" && env -u HOME -u XDG_CACHE_HOME CLAUDE_PROJ
 # HOME 未設定時は "${HOME}/.cache" → "/.cache" になる（関数自体は失敗しない）
 assert_eq "HOME 未設定で vibecorp_cache_root が /.cache を返す" "/.cache" "$CACHE_ROOT_NOHOME"
 
-# --- ケース 14: worktree で repo-id が親と異なる ---
+# --- ケース 14: worktree と親 main で repo-id が同一（Issue #600 修正後の前提） ---
+# git-common-dir ベースで main の .git を常に指すため、main / worktree のどこから呼んでも
+# 同一 repo-id が生成され、guide-gate / sync-gate / review-gate のスタンプが共有される。
 
-echo "Test 14: git worktree で repo-id が親とは別（plans 自動分離の保証）"
+echo "Test 14: git worktree で repo-id が親と同一（スタンプ共有の保証）"
 WT_MAIN="${TMPDIR_ROOT}/wt-main"
 mkdir -p "$WT_MAIN"
 ( cd "$WT_MAIN" && git init -q -b main . && git config user.email t@example.com && git config user.name t && git commit -q --allow-empty -m init )
@@ -309,10 +311,10 @@ WT_CHILD="${TMPDIR_ROOT}/wt-child"
 ID_MAIN=$( cd "$WT_MAIN" && CLAUDE_PROJECT_DIR="$WT_MAIN" vibecorp_repo_id )
 ID_CHILD=$( cd "$WT_CHILD" && CLAUDE_PROJECT_DIR="$WT_CHILD" vibecorp_repo_id )
 
-if [ "$ID_MAIN" != "$ID_CHILD" ]; then
-  pass "worktree で repo-id が親と異なる (main=${ID_MAIN}, child=${ID_CHILD})"
+if [ "$ID_MAIN" = "$ID_CHILD" ]; then
+  pass "worktree で repo-id が親と同一 (${ID_MAIN})"
 else
-  fail "worktree で repo-id が親と同じ (${ID_MAIN})"
+  fail "worktree で repo-id が親と異なる (main=${ID_MAIN}, child=${ID_CHILD})"
 fi
 
 # worktree を片付け（後続テストに影響しないように）
