@@ -42,6 +42,7 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
+    - "skills/**"          # ** は cross-directory マッチ（skills 配下を再帰的に保護）
 # plan:
 #   review_agents:         # /vibecorp:plan-review-loop で使用するレビューエージェント
 #     - architect

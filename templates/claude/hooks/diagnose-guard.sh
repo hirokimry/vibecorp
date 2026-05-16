@@ -1,6 +1,7 @@
 #!/bin/bash
 # diagnose-guard.sh — /vibecorp:diagnose 実行中に保護ファイルへの編集をブロックするフック
-# diagnose-active スタンプ存在時に hooks/*.sh, vibecorp.yml, MVV.md, diagnose-guard.sh への変更を deny
+# diagnose-active スタンプ存在時に hooks/*.sh, vibecorp.yml, MVV.md, SECURITY.md, POLICY.md,
+# skills/** (再帰的に skills 配下の全パス), diagnose-guard.sh への変更を deny
 
 set -euo pipefail
 
@@ -42,12 +43,14 @@ if [ -f "$VIBECORP_YML" ]; then
 fi
 
 # forbidden_targets が空の場合はデフォルト値を使用
+# skills/** は再帰マッチ（** が `.*` に変換され、skills 配下の全パスを deny する）
 if [ -z "$FORBIDDEN_PATTERNS" ]; then
   FORBIDDEN_PATTERNS="hooks/*.sh
 vibecorp.yml
 MVV.md
 SECURITY.md
-POLICY.md"
+POLICY.md
+skills/**"
 fi
 
 # diagnose-guard.sh 自体は常に保護（forbidden_targets に関係なく）
@@ -66,12 +69,23 @@ fi
 while IFS= read -r pattern; do
   [ -z "$pattern" ] && continue
 
-  # ワイルドカードパターン（例: hooks/*.sh）
+  # ワイルドカードパターン（例: hooks/*.sh, skills/**）
   if echo "$pattern" | grep -q '\*'; then
     # glob パターンを正規表現に変換
+    # - `**` は cross-directory マッチ（`.*`）— skills/** → skills/.*$ で配下全体を保護
+    # - `*` は同一ディレクトリ内マッチ（`[^/]*`）— hooks/*.sh → hooks/[^/]*\.sh$
     # 末尾アンカー `$` を必ず付与する（付与しないと `hooks/*.sh` が `hooks/foo.sh.bak`
     # にも誤マッチして deny してしまう）。
-    REGEX_PATTERN=$(printf '%s' "$pattern" | sed 's/\./\\./g' | sed 's/\*/[^\/]*/g')'$'
+    # 変換順序:
+    #   1. `**` を sentinel `__GLOBSTAR__` に退避（次の単一 `*` 変換で食われないよう保護）
+    #   2. リテラル `.` を `\.` にエスケープ
+    #   3. 単一 `*` を `[^/]*` に変換
+    #   4. sentinel を `.*` に復元
+    REGEX_PATTERN=$(printf '%s' "$pattern" \
+      | sed 's/\*\*/__GLOBSTAR__/g' \
+      | sed 's/\./\\./g' \
+      | sed 's/\*/[^\/]*/g' \
+      | sed 's/__GLOBSTAR__/.*/g')'$'
     if echo "$FILE_PATH" | grep -qE "$REGEX_PATTERN"; then
       jq -n --arg pattern "$pattern" '{
         "hookSpecificOutput": {

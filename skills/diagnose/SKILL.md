@@ -61,6 +61,7 @@ forbidden_targets のデフォルト値:
 - `MVV.md`
 - `SECURITY.md`
 - `POLICY.md`
+- `skills/**`（再帰マッチ。`**` が `.*` に変換され、`.claude/skills/` 配下の全 SKILL.md・サブディレクトリを保護する）
 
 ### 3. diagnose-active スタンプ作成
 

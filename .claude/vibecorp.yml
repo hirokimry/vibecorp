@@ -35,3 +35,4 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
+    - "skills/**"

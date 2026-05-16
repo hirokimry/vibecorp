@@ -1041,6 +1041,7 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
+    - "skills/**"
 $(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
