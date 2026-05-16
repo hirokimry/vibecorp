@@ -1,3 +1,23 @@
+---
+description: LLM 向けプロンプト（CLAUDE.md / rules / agents / SKILL.md / knowledge / MVV / 配布版 / templates 配布元）に追加適用する作成基準。claude-code-guide サブエージェントで Claude Code 公式仕様を確認することを MUST 化する
+paths:
+  - "CLAUDE.md"
+  - "CLAUDE.local.md"
+  - "MVV.md"
+  - ".claude/CLAUDE.md"
+  - ".claude/rules/**/*.md"
+  - ".claude/agents/**/*.md"
+  - ".claude/knowledge/**/*.md"
+  - "skills/**/SKILL.md"
+  - ".claude/vibecorp-base/CLAUDE.md"
+  - ".claude/vibecorp-base/MVV.md"
+  - ".claude/vibecorp-base/rules/**/*.md"
+  - ".claude/vibecorp-base/skills/**/SKILL.md"
+  - "templates/claude/agents/**/*.md"
+  - "templates/claude/rules/**/*.md"
+  - "templates/claude/knowledge/**/*.md"
+---
+
 # プロンプト作成基準
 
 > [!IMPORTANT]
@@ -5,15 +25,29 @@
 
 ## 対象範囲
 
-本ルールは vibecorp 内の **LLM 向けプロンプト本体** が対象。
+本ルールは frontmatter の `paths` により、以下のファイルを Claude が読む / 編集する際に lazy-load される（公式仕様: https://code.claude.com/docs/en/memory#path-specific-rules ）。
 
-| 対象 | パス | 性質 |
-|------|------|------|
-| スキル | `skills/**/SKILL.md` | 動線・オーケストレーション |
-| エージェント | `.claude/agents/*.md` | 専門家ロール |
-| ルール | `.claude/rules/*.md` | 常駐規約 |
+| 対象 | パス |
+|------|------|
+| Claude Code 公式メモリ | `CLAUDE.md` / `CLAUDE.local.md` / `.claude/CLAUDE.md` |
+| プロジェクト規範 | `MVV.md` |
+| 常駐ルール | `.claude/rules/**/*.md` |
+| エージェント定義 | `.claude/agents/**/*.md` |
+| ナレッジ規範 | `.claude/knowledge/**/*.md` |
+| スキル本体 | `skills/**/SKILL.md` |
+| 配布版（vibecorp-base） | `.claude/vibecorp-base/CLAUDE.md` / `.claude/vibecorp-base/MVV.md` / `.claude/vibecorp-base/rules/**/*.md` / `.claude/vibecorp-base/skills/**/SKILL.md` |
+| 配布元（templates） | `templates/claude/agents/**/*.md` / `templates/claude/rules/**/*.md` / `templates/claude/knowledge/**/*.md` |
 
-`.coderabbit.yaml`, `REVIEW.md`, `docs/`, `~/.cache/vibecorp/plans/**` は対象外（プロンプトとして起動されない）。
+ベース基準として `.claude/rules/document-writing.md` も同時に適用される（全 `.md` に paths で適用）。本ルールはその拡張として **claude-code-guide MUST 参照 + frontmatter + triggering** を追加する。
+
+### 対象外
+
+- `.coderabbit.yaml`（YAML ファイル、paths 機能の対象外）
+- `docs/**/*.md`（ドキュメント、`document-writing.md` だけが適用される）
+- `README.md` / `CHANGELOG.md`（ドキュメント、同上）
+- `~/.cache/vibecorp/plans/**`（リポジトリ外）
+- `.github/**/*.md`（GitHub UI 用テンプレート）
+- コード内コメント（`.md` 拡張子ではない）
 
 CEO 向けの文面規約（対話応答・Issue / PR 本文・コミット・監査レポート）は `.claude/rules/communication.md` で別途定義する。本ルールはプロンプト本体専用で、対象が重ならない。
 

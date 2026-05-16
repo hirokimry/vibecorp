@@ -30,6 +30,30 @@ if [[ ! -f "$PW_RULE" ]]; then
 fi
 
 # ============================================
+echo "=== frontmatter で paths が複数指定されている ==="
+# ============================================
+
+assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$PW_RULE" "^---$"
+assert_file_contains "description キーが存在（vibecorp 慣習）" "$PW_RULE" "^description:"
+assert_file_contains "paths キーが存在" "$PW_RULE" "^paths:"
+# 必須エントリ群
+assert_file_contains "paths に CLAUDE.md（ルート）が含まれる" "$PW_RULE" '"CLAUDE\.md"'
+assert_file_contains "paths に .claude/CLAUDE.md が含まれる" "$PW_RULE" '"\.claude/CLAUDE\.md"'
+assert_file_contains "paths に MVV.md が含まれる" "$PW_RULE" '"MVV\.md"'
+assert_file_contains "paths に .claude/rules/**/*.md が含まれる" "$PW_RULE" '"\.claude/rules/\*\*/\*\.md"'
+assert_file_contains "paths に .claude/agents/**/*.md が含まれる" "$PW_RULE" '"\.claude/agents/\*\*/\*\.md"'
+assert_file_contains "paths に .claude/knowledge/**/*.md が含まれる" "$PW_RULE" '"\.claude/knowledge/\*\*/\*\.md"'
+assert_file_contains "paths に skills/**/SKILL.md が含まれる" "$PW_RULE" '"skills/\*\*/SKILL\.md"'
+# 配布版
+assert_file_contains "paths に .claude/vibecorp-base/CLAUDE.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/CLAUDE\.md"'
+assert_file_contains "paths に .claude/vibecorp-base/rules/**/*.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/rules/\*\*/\*\.md"'
+assert_file_contains "paths に .claude/vibecorp-base/skills/**/SKILL.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/skills/\*\*/SKILL\.md"'
+# 配布元 templates
+assert_file_contains "paths に templates/claude/agents/**/*.md が含まれる" "$PW_RULE" '"templates/claude/agents/\*\*/\*\.md"'
+assert_file_contains "paths に templates/claude/rules/**/*.md が含まれる" "$PW_RULE" '"templates/claude/rules/\*\*/\*\.md"'
+assert_file_contains "paths に templates/claude/knowledge/**/*.md が含まれる" "$PW_RULE" '"templates/claude/knowledge/\*\*/\*\.md"'
+
+# ============================================
 echo "=== 冒頭 IMPORTANT コールアウトに claude-code-guide MUST 化が含まれる ==="
 # ============================================
 
