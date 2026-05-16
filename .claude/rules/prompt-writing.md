@@ -74,7 +74,7 @@ CEO 向けの文面規約は `communication.md` で別途定義する。
 新規プロンプト作成・既存プロンプト改修では、`claude-code-guide` サブエージェントを使う。
 
 - 目的: Claude Code 公式仕様（`docs.claude.com`）を確認してから書く。
-- 強制: スタンプ消費型ゲート（vibecorp の `hooks/guide-gate.sh`）で実効化する。
+- 強制: スタンプ消費型ゲートで実効化する。
 
 ### claude-code-guide の振る舞い
 
@@ -340,21 +340,26 @@ SKIP: file imports `openai`/other-provider SDK, filename like `*-openai.py`/`*-g
 
 ### 既存テストとの整合
 
-`tests/test_communication_rule.sh` と同じ構造に従う。
+既存ルールのテストファイル（`tests/test_*_rule.sh`）と同じ構造に従う。
 
 - 補助関数: `tests/lib/test_helpers.sh` を使う。
 - 主要関数: `assert_file_exists` / `assert_file_contains` / `pass` / `fail`。
 
 ## 🔗 関連ルール
 
-- `communication.md`: CEO 報告向け文面規約（動作主語）。
+- 動作主語ルール（CEO 報告向け文面規約）。
   - 本ルールと対象文面が異なる。
-- `self-contained.md`: スキル間依存ガード。
+  - 例: `communication.md`。
+- スキル間依存ガード。
   - プリセット境界を越えない設計を支える。
-- `use-skills.md`: スキル使用義務。
+  - 例: `self-contained.md`。
+- スキル使用義務。
   - 役割境界（動線はスキルが担う）を支える。
-- `markdown.md`: フェンスコードブロック言語指定義務。
+  - 例: `use-skills.md`。
+- マークダウン規約。
+  - フェンスコードブロック言語指定義務。
   - プロンプト内コードブロックも対象。
+  - 例: `markdown.md`。
 
 ## 🤝 関連エージェント
 
