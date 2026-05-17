@@ -139,9 +139,9 @@ export VIBECORP_ISOLATION=1
 
 `/vibecorp:review-harvest`, `/vibecorp:sync-check`, `/vibecorp:sync-edit`, `/vibecorp:session-harvest`, `/vibecorp:harvest-all`, `/vibecorp:context7`
 
-### 🏢 full で追加（6 スキル — 並列・自律・エピック）
+### 🏢 full で追加（8 スキル — 並列・自律・エピック）
 
-`/vibecorp:diagnose`, `/vibecorp:ship-parallel`, `/vibecorp:autopilot`, `/vibecorp:plan-epic`, `/vibecorp:release-epic`, `/vibecorp:cycle-metrics`
+`/vibecorp:diagnose`, `/vibecorp:ship-parallel`, `/vibecorp:autopilot`, `/vibecorp:plan-epic`, `/vibecorp:release-epic`, `/vibecorp:cycle-metrics`, `/vibecorp:docs-rewrite-all`, `/vibecorp:prompts-rewrite-all`
 
 > 📖 **詳細**: 各スキルの引数・挙動・依存関係は [`docs/specification.md#スキル一覧source-of-truth`](docs/specification.md#スキル一覧source-of-truth) に記載。
 
