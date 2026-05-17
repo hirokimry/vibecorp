@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      - uses: actions/checkout@v4
       - name: 全ジョブの結果を確認
         env:
           UBUNTU_RESULT: ${{ needs.test-ubuntu.result }}
