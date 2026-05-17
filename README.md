@@ -7,8 +7,10 @@
 > どのリポジトリにも 2 コマンドで導入でき、Issue 駆動の開発ループを AI に委譲できます。
 > 詳細仕様は [`docs/specification.md`](docs/specification.md) を参照してください。
 
-どのリポジトリにも導入でき、Claude Code の skills / hooks / agents / rules を一括セットアップする。
-Issue 駆動の開発ループを AI に委譲し、ブランチ作成から PR の auto-merge まで一気通貫で実行する。
+どのリポジトリにも導入できる。
+Claude Code の skills / hooks / agents / rules を一括セットアップする。
+Issue 駆動の開発ループを AI に委譲する。
+ブランチ作成から PR の auto-merge まで一気通貫で実行する。
 
 | 何ができる？ | どう動く？ |
 |------------|----------|
@@ -88,7 +90,8 @@ path/to/vibecorp/install.sh --update
 | **skills（`/vibecorp:*`）** | **`/plugin update vibecorp --scope project`**（プラグインキャッシュ `~/.claude/plugins/cache/` 経由のため別経路） |
 
 `install.sh --update` 実行時にバージョン差分があれば自動で表示される。
-`/plugin update` は既に最新の場合「already at the latest version」と返すだけなので、毎回実行しても安全。
+`/plugin update` は既に最新の場合「already at the latest version」と返す。
+毎回実行しても安全。
 
 3-way マージ・プリセット変更・`--no-migrate` 等の `--update` 詳細仕様は [`docs/specification.md#--update-の挙動`](docs/specification.md#--update-の挙動) を参照。
 
@@ -113,8 +116,13 @@ path/to/vibecorp/install.sh --update
 | **full** | 並列 `/vibecorp:ship-parallel` + 単発 `/vibecorp:autopilot` + `/vibecorp:diagnose` | `/loop /vibecorp:autopilot 24h` 等 |
 
 vibecorp は sandbox を **強く推奨するだけで強制はしない**。
-`full` + sandbox OFF で並列実行する場合は、「承認ダイアログ多発」または「ユーザーが `.claude/settings.local.json` の allow リストを自己調整」のいずれかとなる。
-自己責任の運用となる（[`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)）。
+`full` + sandbox OFF で並列実行する場合、次のいずれかとなる。
+
+- 承認ダイアログが多発する
+- ユーザーが `.claude/settings.local.json` の allow リストを自己調整する
+
+自己責任の運用となる。
+詳細は [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入) を参照。
 
 > ⚠️ **必須 hook について**: 一部の必須 hook（保護系・ゲート系・API バイパス防止系・ログ系）は `vibecorp.yml` の `hooks: false` でも無効化できません。詳細は [`docs/specification.md#skip-性マトリクス`](docs/specification.md#skip-性マトリクス) を参照。
 
@@ -128,8 +136,11 @@ export VIBECORP_ISOLATION=1
 ```
 
 永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。
-Linux では `bwrap` (bubblewrap) による実隔離が稼働中（Phase 2 #310 実装済み）。
-SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる。
+Linux では `bwrap` (bubblewrap) による実隔離が稼働中。
+Phase 2 `#310` で実装済み。
+
+SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加する。
+これにより `~/.ssh` が read-only でマウントされる。
 Windows ネイティブは非対応（WSL2 を使用）。
 詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
 
@@ -182,9 +193,12 @@ Windows ネイティブは非対応（WSL2 を使用）。
 | 🛑 API バイパス防止型 | `block-api-bypass.sh` | `gh api` 直接マージや `@coderabbitai approve` 投稿を遮断 |
 | 📊 コマンドログ型 | `command-log.sh` | 全 Bash コマンドを記録し `/vibecorp:approve-audit` の入力源にする |
 
-> 🔐 **承認フロー非介入**: vibecorp は Claude Code の承認フローを書き換える hook を提供しない。
-> 並列実行時の承認負荷は sandbox + `--dangerously-skip-permissions` で低減する方針。
-> 詳細は [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)。
+> 🔐 **承認フロー非介入**
+>
+> vibecorp は Claude Code の承認フローを書き換える hook を提供しない。
+> 並列実行時の承認負荷は sandbox と `--dangerously-skip-permissions` で低減する。
+>
+> 詳細: [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)
 
 ---
 
