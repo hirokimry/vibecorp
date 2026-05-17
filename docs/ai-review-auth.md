@@ -5,6 +5,8 @@
 > 本ドキュメントは AI レビューの OAuth 認証経路の **Source of Truth**。
 > 基準: Issue #462（CEO 議論結果、2026-05-04 確定）。
 
+現在の運用状態を以下に補足する。
+
 > [!WARNING]
 > vibecorp 本体は現在 `claude_action.enabled: false` で運用中（Issue #532）。
 > CodeRabbit Bot 単独運用、vibehawk 完成までの暫定措置。
