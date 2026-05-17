@@ -2,7 +2,13 @@
 
 🤖 **AI エージェントを組織化してプロダクト開発を回すプラグイン**
 
-どのリポジトリにも導入でき、Claude Code の skills / hooks / agents / rules を一括セットアップする。Issue 駆動の開発ループを AI に委譲し、ブランチ作成から PR の auto-merge までを一気通貫で実行する。
+> [!IMPORTANT]
+> このドキュメントは **外部 OSS 読者・導入開発者** 向けの入口ガイドです。
+> どのリポジトリにも 2 コマンドで導入でき、Issue 駆動の開発ループを AI に委譲できます。
+> 詳細仕様は [`docs/specification.md`](docs/specification.md) を参照してください。
+
+どのリポジトリにも導入でき、Claude Code の skills / hooks / agents / rules を一括セットアップする。
+Issue 駆動の開発ループを AI に委譲し、ブランチ作成から PR の auto-merge まで一気通貫で実行する。
 
 | 何ができる？ | どう動く？ |
 |------------|----------|
@@ -41,7 +47,8 @@ path/to/vibecorp/install.sh --name your-project
 /plugin install vibecorp@vibecorp --scope project
 ```
 
-これで `/vibecorp:*` スキルが利用可能になる。スキルはプラグインキャッシュ（`~/.claude/plugins/cache/`）から配信される。
+これで `/vibecorp:*` スキルが利用可能になる。
+スキルはプラグインキャッシュ（`~/.claude/plugins/cache/`）から配信される。
 
 ### よく使うインストールオプション
 
@@ -80,7 +87,8 @@ path/to/vibecorp/install.sh --update
 | hooks / agents / rules / docs / knowledge / lib / settings.json / vibecorp.yml / `.claude-plugin/plugin.json`（version マニフェスト）/ CI workflow | `install.sh --update` |
 | **skills（`/vibecorp:*`）** | **`/plugin update vibecorp --scope project`**（プラグインキャッシュ `~/.claude/plugins/cache/` 経由のため別経路） |
 
-`install.sh --update` 実行時にバージョン差分があれば自動で表示される。`/plugin update` は既に最新の場合「already at the latest version」と返すだけなので毎回実行しても安全。
+`install.sh --update` 実行時にバージョン差分があれば自動で表示される。
+`/plugin update` は既に最新の場合「already at the latest version」と返すだけなので、毎回実行しても安全。
 
 3-way マージ・プリセット変更・`--no-migrate` 等の `--update` 詳細仕様は [`docs/specification.md#--update-の挙動`](docs/specification.md#--update-の挙動) を参照。
 
@@ -104,7 +112,9 @@ path/to/vibecorp/install.sh --update
 | **standard** | minimal + ゲート強制（auto-merge 維持） | `/loop` による cron 化 |
 | **full** | 並列 `/vibecorp:ship-parallel` + 単発 `/vibecorp:autopilot` + `/vibecorp:diagnose` | `/loop /vibecorp:autopilot 24h` 等 |
 
-vibecorp は sandbox を **強く推奨するだけで強制はしない**。`full` + sandbox OFF で並列実行する場合は「承認ダイアログ多発」または「ユーザーが `.claude/settings.local.json` の allow リストを自己調整」のいずれかとなり、自己責任の運用となる（[`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)）。
+vibecorp は sandbox を **強く推奨するだけで強制はしない**。
+`full` + sandbox OFF で並列実行する場合は、「承認ダイアログ多発」または「ユーザーが `.claude/settings.local.json` の allow リストを自己調整」のいずれかとなる。
+自己責任の運用となる（[`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)）。
 
 > ⚠️ **必須 hook について**: 一部の必須 hook（保護系・ゲート系・API バイパス防止系・ログ系）は `vibecorp.yml` の `hooks: false` でも無効化できません。詳細は [`docs/specification.md#skip-性マトリクス`](docs/specification.md#skip-性マトリクス) を参照。
 
@@ -117,7 +127,11 @@ source .claude/bin/activate.sh
 export VIBECORP_ISOLATION=1
 ```
 
-永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。Linux では `bwrap` (bubblewrap) による実隔離が稼働中（Phase 2 #310 実装済み）。SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる。Windows ネイティブは非対応（WSL2 を使用）。詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
+永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。
+Linux では `bwrap` (bubblewrap) による実隔離が稼働中（Phase 2 #310 実装済み）。
+SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる。
+Windows ネイティブは非対応（WSL2 を使用）。
+詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
 
 ---
 
@@ -137,11 +151,21 @@ export VIBECORP_ISOLATION=1
 
 ### 🤝 standard で追加（6 スキル — 知識蓄積と整合性）
 
-`/vibecorp:review-harvest`, `/vibecorp:sync-check`, `/vibecorp:sync-edit`, `/vibecorp:session-harvest`, `/vibecorp:harvest-all`, `/vibecorp:context7`
+| スキル | 何ができるようになるか |
+|---|---|
+| `/vibecorp:review-harvest` / `/vibecorp:session-harvest` / `/vibecorp:harvest-all` | レビュー・セッションの知見をナレッジに自動蓄積する |
+| `/vibecorp:sync-check` / `/vibecorp:sync-edit` | 仕様書と実装の整合性をチェック・自動修正する |
+| `/vibecorp:context7` | 外部ライブラリの公式ドキュメントをコンテキストに取り込む |
 
 ### 🏢 full で追加（8 スキル — 並列・自律・エピック）
 
-`/vibecorp:diagnose`, `/vibecorp:ship-parallel`, `/vibecorp:autopilot`, `/vibecorp:plan-epic`, `/vibecorp:release-epic`, `/vibecorp:cycle-metrics`, `/vibecorp:docs-rewrite-all`, `/vibecorp:prompts-rewrite-all`
+| スキル | 何ができるようになるか |
+|---|---|
+| `/vibecorp:ship-parallel` / `/vibecorp:autopilot` | 複数 Issue を並列実装・自律的に改善サイクルを回す |
+| `/vibecorp:diagnose` | 改善候補を自動検出して Issue 起票する |
+| `/vibecorp:plan-epic` / `/vibecorp:release-epic` | エピック単位の計画・リリースを管理する |
+| `/vibecorp:cycle-metrics` | 開発サイクルの指標を計測・可視化する |
+| `/vibecorp:docs-rewrite-all` / `/vibecorp:prompts-rewrite-all` | ドキュメント・プロンプトを基準に沿って一括書き直す |
 
 > 📖 **詳細**: 各スキルの引数・挙動・依存関係は [`docs/specification.md#スキル一覧source-of-truth`](docs/specification.md#スキル一覧source-of-truth) に記載。
 
@@ -158,7 +182,9 @@ export VIBECORP_ISOLATION=1
 | 🛑 API バイパス防止型 | `block-api-bypass.sh` | `gh api` 直接マージや `@coderabbitai approve` 投稿を遮断 |
 | 📊 コマンドログ型 | `command-log.sh` | 全 Bash コマンドを記録し `/vibecorp:approve-audit` の入力源にする |
 
-> 🔐 **承認フロー非介入**: vibecorp は Claude Code の承認フローを書き換える hook を提供しない。並列実行時の承認負荷は sandbox + `--dangerously-skip-permissions` で低減する方針。詳細は [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)。
+> 🔐 **承認フロー非介入**: vibecorp は Claude Code の承認フローを書き換える hook を提供しない。
+> 並列実行時の承認負荷は sandbox + `--dangerously-skip-permissions` で低減する方針。
+> 詳細は [`docs/design-philosophy.md#承認フローへの非介入`](docs/design-philosophy.md#承認フローへの非介入)。
 
 ---
 
