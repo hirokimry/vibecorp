@@ -160,7 +160,7 @@ CEO に以下の選択肢を提示する。
 書き換え後は以下を必ず実行する。
 
 - 既存テスト一式を走らせる（ドキュメント参照を持つテストの破壊検出）。
-- ドキュメント整合テスト（`tests/test_document_writing_rule.sh` 等）を走らせる。
+- 該当する rule のテスト（`tests/test_*_rule.sh`）を走らせる。
 - 破壊が出た場合はその場で書き換えをロールバックし、CEO に報告する。
 
 書き換えは **ファイル単位の commit** で行う（後追いで diff を追跡できるように）。
@@ -188,8 +188,8 @@ CEO に以下の選択肢を提示する。
 - {ファイル名}: {判断保留の論点}
 
 ### 📍 次のアクション
-- 必要に応じて `/vibecorp:commit` で書き換えをコミット
-- 残課題は別 Issue で起票（`/vibecorp:issue`）
+- 必要に応じて `/commit` で書き換えをコミット
+- 残課題は別 Issue で起票（`/issue`）
 ```
 
 レポートは **動作主語**（〜になった / 〜できるようになった）で書く（`communication.md` 規約）。
@@ -224,4 +224,4 @@ CEO に以下の選択肢を提示する。
 - shell 規約: `.claude/rules/shell.md`
 - 配置・言語ルール: `.claude/rules/documentation.md`
 - 類似多段動線スキル: `skills/sync-check/SKILL.md` / `skills/sync-edit/SKILL.md`
-- 関連スキル: `/vibecorp:prompts-rewrite-all`（プロンプト系 `.md` を扱う、Issue #594）
+- 関連スキル: `/prompts-rewrite-all`（プロンプト系 `.md` を扱う）
