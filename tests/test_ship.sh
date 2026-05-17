@@ -647,14 +647,15 @@ if [ ! -f "$SPEC_FILE" ]; then
 fi
 
 # 16-1: 「### ship のマージ後検証」セクションヘッダーが存在する
-if grep -q '^### ship のマージ後検証' "$SPEC_FILE"; then
+# document-writing.md 準拠で見出しに絵文字を付けてもマッチするよう、見出しテキスト直前の絵文字を許容する
+if grep -qE '^### ([^[:space:]]+ )?ship のマージ後検証' "$SPEC_FILE"; then
   pass "docs/specification.md に「### ship のマージ後検証」セクションが存在する"
 else
   fail "docs/specification.md に「### ship のマージ後検証」セクションが存在しない"
 fi
 
 # 16-2: 検証スコープ（本文 / CEO コメント / 共同作業者除外 / bot 除外）
-SPEC_VERIFY=$(awk '/^### ship のマージ後検証/{flag=1; next} /^### エピック運用/{flag=0} flag' "$SPEC_FILE")
+SPEC_VERIFY=$(awk '/^### ([^[:space:]]+ )?ship のマージ後検証/{flag=1; next} /^### ([^[:space:]]+ )?エピック運用/{flag=0} flag' "$SPEC_FILE")
 
 if printf '%s\n' "$SPEC_VERIFY" | grep -q 'Issue 本文'; then
   pass "specification.md のマージ後検証セクションに Issue 本文スコープがある"
