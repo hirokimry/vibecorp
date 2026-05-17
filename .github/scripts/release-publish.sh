@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# release.yml「リリース判定・実行」ステップ用スクリプト
+# Conventional Commits を解析し、semver を算出してタグ作成 + GitHub Release を生成する
+# 環境変数: GH_TOKEN（gh CLI 用、workflow 側から secrets.GITHUB_TOKEN を渡す）
+set -euo pipefail
+
+# ── 直前のタグを取得 ──────────────────────────
+LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -z "$LATEST_TAG" ]; then
+  # タグが一つもない場合は全コミットを対象にする
+  COMMITS=$(git log --pretty=format:"%s|%H|%h" HEAD)
+  CURRENT_MAJOR=0
+  CURRENT_MINOR=1
+  CURRENT_PATCH=0
+  FIRST_RELEASE=true
+else
+  COMMITS=$(git log --pretty=format:"%s|%H|%h" "${LATEST_TAG}..HEAD")
+  # タグからバージョン番号をパース
+  VERSION_STR="${LATEST_TAG#v}"
+  CURRENT_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
+  CURRENT_MINOR=$(echo "$VERSION_STR" | cut -d. -f2)
+  CURRENT_PATCH=$(echo "$VERSION_STR" | cut -d. -f3)
+  FIRST_RELEASE=false
+fi
+
+if [ -z "$COMMITS" ]; then
+  echo "新しいコミットがないためリリースをスキップ"
+  exit 0
+fi
+
+# ── Conventional Commits 解析 ─────────────────
+# バンプ種別: 0=none, 1=patch, 2=minor, 3=major
+BUMP_LEVEL=0
+
+# カテゴリ別コミットメッセージ収集
+FEAT_COMMITS=""
+FIX_COMMITS=""
+REFACTOR_COMMITS=""
+DOCS_COMMITS=""
+BREAKING_COMMITS=""
+OTHER_COMMITS=""
+
+while IFS='|' read -r subject full_hash short_hash; do
+  [ -z "$subject" ] && continue
+
+  # コミット本文に BREAKING CHANGE: があるか確認
+  BODY=$(git log -1 --pretty=format:"%b" "$full_hash" 2>/dev/null || echo "")
+  IS_BREAKING=false
+  if echo "$subject" | grep -qE '^[^:]*!:' || echo "$BODY" | grep -q "BREAKING CHANGE:"; then
+    IS_BREAKING=true
+  fi
+
+  # 絵文字プレフィックスを除去してタイプを判定
+  CLEAN_SUBJECT=$(echo "$subject" | sed 's/^[^a-zA-Z]* *//')
+
+  # Conventional Commit のタイプを抽出
+  TYPE=$(echo "$CLEAN_SUBJECT" | sed -n 's/^\([a-zA-Z]*\)\(([^)]*)\)\{0,1\}[!]\{0,1\}:.*/\1/p')
+
+  # スコープを除いた説明部分を取得
+  DESC=$(echo "$subject" | sed 's/^[^:]*: *//')
+
+  if [ "$IS_BREAKING" = true ]; then
+    [ "$BUMP_LEVEL" -lt 3 ] && BUMP_LEVEL=3
+    BREAKING_COMMITS="${BREAKING_COMMITS}- ${DESC} (${short_hash})\n"
+  fi
+
+  case "$TYPE" in
+    feat)
+      [ "$BUMP_LEVEL" -lt 2 ] && BUMP_LEVEL=2
+      FEAT_COMMITS="${FEAT_COMMITS}- ${DESC} (${short_hash})\n"
+      ;;
+    fix)
+      [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+      FIX_COMMITS="${FIX_COMMITS}- ${DESC} (${short_hash})\n"
+      ;;
+    refactor)
+      [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+      REFACTOR_COMMITS="${REFACTOR_COMMITS}- ${DESC} (${short_hash})\n"
+      ;;
+    docs)
+      [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+      DOCS_COMMITS="${DOCS_COMMITS}- ${DESC} (${short_hash})\n"
+      ;;
+    chore|ci|test)
+      # リリース対象外
+      OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
+      ;;
+    *)
+      # 認識できない形式のコミットは patch 扱い
+      if [ -n "$TYPE" ]; then
+        [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
+        OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
+      else
+        # Conventional Commits 形式でないコミットは無視
+        OTHER_COMMITS="${OTHER_COMMITS}- ${subject} (${short_hash})\n"
+      fi
+      ;;
+  esac
+done <<< "$COMMITS"
+
+# リリース対象のコミットがない場合はスキップ
+if [ "$BUMP_LEVEL" -eq 0 ]; then
+  echo "リリース対象のコミットがないためスキップ（chore/ci/test のみ）"
+  exit 0
+fi
+
+# ── バージョン番号を計算 ──────────────────────
+if [ "$FIRST_RELEASE" = true ]; then
+  NEW_VERSION="0.1.0"
+else
+  case "$BUMP_LEVEL" in
+    3)
+      NEW_MAJOR=$((CURRENT_MAJOR + 1))
+      NEW_VERSION="${NEW_MAJOR}.0.0"
+      ;;
+    2)
+      NEW_MINOR=$((CURRENT_MINOR + 1))
+      NEW_VERSION="${CURRENT_MAJOR}.${NEW_MINOR}.0"
+      ;;
+    1)
+      NEW_PATCH=$((CURRENT_PATCH + 1))
+      NEW_VERSION="${CURRENT_MAJOR}.${CURRENT_MINOR}.${NEW_PATCH}"
+      ;;
+  esac
+fi
+
+NEW_TAG="v${NEW_VERSION}"
+echo "リリースバージョン: ${NEW_TAG}"
+
+# ── リリースノートを生成 ─────────────────────
+RELEASE_NOTES=""
+
+if [ -n "$BREAKING_COMMITS" ]; then
+  RELEASE_NOTES="${RELEASE_NOTES}## ⚠️ 破壊的変更"$'\n'
+  RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$BREAKING_COMMITS")"$'\n'
+fi
+if [ -n "$FEAT_COMMITS" ]; then
+  RELEASE_NOTES="${RELEASE_NOTES}## ✨ 新機能"$'\n'
+  RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$FEAT_COMMITS")"$'\n'
+fi
+if [ -n "$FIX_COMMITS" ]; then
+  RELEASE_NOTES="${RELEASE_NOTES}## 🐛 バグ修正"$'\n'
+  RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$FIX_COMMITS")"$'\n'
+fi
+if [ -n "$REFACTOR_COMMITS" ]; then
+  RELEASE_NOTES="${RELEASE_NOTES}## 🔄 リファクタリング"$'\n'
+  RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$REFACTOR_COMMITS")"$'\n'
+fi
+if [ -n "$DOCS_COMMITS" ]; then
+  RELEASE_NOTES="${RELEASE_NOTES}## 📝 ドキュメント"$'\n'
+  RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$DOCS_COMMITS")"$'\n'
+fi
+
+# ── タグが既に存在する場合はスキップ ────────────
+if git tag -l | grep -qF "${NEW_TAG}"; then
+  echo "タグ ${NEW_TAG} は既に存在します"
+  if ! gh release view "${NEW_TAG}" > /dev/null 2>&1; then
+    echo "GitHub Release を作成します"
+    gh release create "${NEW_TAG}" \
+      --title "v${NEW_VERSION}" \
+      --notes "$RELEASE_NOTES"
+    echo "リリース完了: ${NEW_TAG}"
+  else
+    echo "GitHub Release も既に存在するためスキップ"
+  fi
+  exit 0
+fi
+
+# ── タグ作成・push ──────────────────────────
+git tag -a "${NEW_TAG}" -m "リリース v${NEW_VERSION}"
+git push origin "${NEW_TAG}"
+
+# ── GitHub Release 作成 ──────────────────────
+gh release create "${NEW_TAG}" \
+  --title "v${NEW_VERSION}" \
+  --notes "$RELEASE_NOTES"
+
+echo "リリース完了: ${NEW_TAG}"
