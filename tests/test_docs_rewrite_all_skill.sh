@@ -40,7 +40,7 @@ echo "=== description にトリガー語句が 2 個以上含まれる ==="
 # ============================================
 
 # 日本語トリガー語句（prompt-writing.md 4 章の MUST: 2 個以上）
-assert_file_contains "トリガー語句: /docs-rewrite-all" "$SKILL_MD" "/docs-rewrite-all"
+assert_file_contains "トリガー語句: /vibecorp:docs-rewrite-all" "$SKILL_MD" "/vibecorp:docs-rewrite-all"
 assert_file_contains "トリガー語句: ドキュメント全書き直し" "$SKILL_MD" "ドキュメント全書き直し"
 assert_file_contains "トリガー語句: ドキュメント棚卸し" "$SKILL_MD" "ドキュメント棚卸し"
 assert_file_contains "「〜と言った時に使用」の定型文" "$SKILL_MD" "と言った時に使用"

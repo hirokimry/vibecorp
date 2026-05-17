@@ -20,6 +20,7 @@
         "./skills/context7",
         "./skills/cycle-metrics",
         "./skills/diagnose",
+        "./skills/docs-rewrite-all",
         "./skills/harvest-all",
         "./skills/issue",
         "./skills/knowledge-pr",

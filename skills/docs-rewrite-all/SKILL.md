@@ -5,7 +5,7 @@ description: >
   `.claude/rules/document-writing.md` と機械的に照合する。
   領域別に C*O へ書き換えを委譲し、diff 提案 → CEO 承認 → 書換の
   2 段階で自動マージを禁じる。`LICENSE` は除外する。
-  「/docs-rewrite-all」「ドキュメント全書き直し」「ドキュメント棚卸し」
+  「/vibecorp:docs-rewrite-all」「ドキュメント全書き直し」「ドキュメント棚卸し」
   と言った時に使用。
 ---
 
@@ -215,6 +215,7 @@ CEO に以下の選択肢を提示する。
 - **LICENSE 除外**: 法的文書は本スキルの対象外。
 - **既存テスト破壊禁止**: 書き換え後にテストを走らせ、破壊があればロールバック。
 - **shell 規約**: スクリプト記述は `.claude/rules/shell.md` を遵守する。
+- **autonomous-restrictions 準拠**: 本スキルは自律改善ループ（`/vibecorp:diagnose` → `/vibecorp:autopilot` → `/vibecorp:ship-parallel`）の自動実行対象外とし、人間（CEO）の明示承認を必須化する（`.claude/rules/autonomous-restrictions.md`）。
 
 ## 🔗 関連
 
@@ -223,5 +224,6 @@ CEO に以下の選択肢を提示する。
 - マークダウン規約: `.claude/rules/markdown.md`
 - shell 規約: `.claude/rules/shell.md`
 - 配置・言語ルール: `.claude/rules/documentation.md`
+- 自律実行不可領域（人間承認必須）: `.claude/rules/autonomous-restrictions.md`
 - 類似多段動線スキル: `skills/sync-check/SKILL.md` / `skills/sync-edit/SKILL.md`
 - 関連スキル: `/prompts-rewrite-all`（プロンプト系 `.md` を扱う）
