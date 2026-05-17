@@ -10,7 +10,7 @@
 
 ### 修正
 
-- 旧構造で作られた知見バッファが新構造へ自動移行されるようになった。([#543](https://github.com/hirokimry/vibecorp/issues/543))
+- 旧構造で作られた知見バッファが新構造へ自動移行されるようになった。([Issue #543](https://github.com/hirokimry/vibecorp/issues/543))
   - `/sync-edit` / `/review-harvest` / `/knowledge-pr` の次回実行時に自動回復する。
   - 未プッシュのコミットは移行中に保全される。
 - `install.sh --update` 実行でバージョンがダウングレードする問題を修正した。([Issue #540](https://github.com/hirokimry/vibecorp/issues/540), [PR #542](https://github.com/hirokimry/vibecorp/pull/542))
