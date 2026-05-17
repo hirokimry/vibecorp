@@ -54,7 +54,12 @@ assert_file_exists "prompt-writing.md が実在する" "$PROMPT_WRITING_RULE"
 echo "=== frontmatter が最小限・正確に書かれている ==="
 # ============================================
 
-assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$SKILL_FILE" "^---$"
+FIRST_LINE=$(sed -n '1p' "$SKILL_FILE")
+if [[ "$FIRST_LINE" == "---" ]]; then
+  pass "ファイル先頭が --- で始まる frontmatter（1 行目厳密一致）"
+else
+  fail "ファイル先頭が --- で始まる frontmatter（1 行目: '${FIRST_LINE}'）"
+fi
 assert_file_contains "name キーが prompts-rewrite-all" "$SKILL_FILE" "^name: prompts-rewrite-all$"
 assert_file_contains "description キーが存在" "$SKILL_FILE" "^description:"
 
@@ -62,8 +67,6 @@ assert_file_contains "description キーが存在" "$SKILL_FILE" "^description:"
 echo "=== description にトリガー語句が 2 個以上含まれている ==="
 # ============================================
 
-# 「〜と言った時に使用」「〜と言われた時に使う」形式のトリガー語句
-TRIGGER_COUNT=$(grep -o '「[^」]\+」' "$SKILL_FILE" | head -1 | wc -l | tr -d ' ')
 # description 行から「...」で囲まれたトリガー語句を抽出（先頭近辺）
 TRIGGER_IN_DESC=$(awk '/^description:/,/^---$/' "$SKILL_FILE" | grep -o '「[^」]\+」' | wc -l | tr -d ' ')
 if [[ "$TRIGGER_IN_DESC" -ge 2 ]]; then
@@ -79,7 +82,17 @@ assert_file_contains "description に主務動詞「書き直し」" "$SKILL_FIL
 echo "=== 冒頭 IMPORTANT コールアウトが存在する ==="
 # ============================================
 
-assert_file_contains "冒頭に > [!IMPORTANT] コールアウト" "$SKILL_FILE" "^> \[!IMPORTANT\]"
+PRE_H2_BLOCK=$(awk '
+  /^---$/ { fm++; next }
+  fm < 2 { next }
+  /^## / { exit }
+  { print }
+' "$SKILL_FILE")
+if printf '%s\n' "$PRE_H2_BLOCK" | grep -q '^> \[!IMPORTANT\]'; then
+  pass "冒頭（frontmatter 終了〜最初の H2 まで）に > [!IMPORTANT] コールアウト"
+else
+  fail "冒頭（frontmatter 終了〜最初の H2 まで）に > [!IMPORTANT] コールアウトが存在しない"
+fi
 
 # ============================================
 echo "=== 中核セクション（絵文字付き）が揃っている ==="
