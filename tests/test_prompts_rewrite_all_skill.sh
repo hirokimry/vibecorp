@@ -68,7 +68,10 @@ echo "=== description にトリガー語句が 2 個以上含まれている ===
 # ============================================
 
 # description 行から「...」で囲まれたトリガー語句を抽出（先頭近辺）
-TRIGGER_IN_DESC=$(awk '/^description:/,/^---$/' "$SKILL_FILE" | grep -o '「[^」]\+」' | wc -l | tr -d ' ')
+# grep -o は 0 件時に exit 1 を返す。set -euo pipefail 配下では pipefail で
+# パイプ全体が失敗扱いとなり、件数判定の if に到達する前にスクリプトが終了する。
+# || true でパイプ全体の失敗を無害化し、0 件を正常に fail 判定へ流す。
+TRIGGER_IN_DESC=$(awk '/^description:/,/^---$/' "$SKILL_FILE" | grep -o '「[^」]\+」' | wc -l | tr -d ' ' || true)
 if [[ "$TRIGGER_IN_DESC" -ge 2 ]]; then
   pass "description にトリガー語句が 2 個以上ある（${TRIGGER_IN_DESC} 個検出）"
 else
