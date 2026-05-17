@@ -88,7 +88,11 @@ claude-code-action による AI レビューの制御。
 | `enabled: false` | AI レビューを無効化する |
 | `skip_paths` | AI レビュー対象から除外するパス（lock ファイル・依存・ビルド成果物等） |
 
-`enabled: true` 時は `install.sh` 実行時に GitHub secrets に `CLAUDE_CODE_OAUTH_TOKEN` が登録されているか確認し、未登録なら警告を出す（詳細は [`docs/ai-review-auth.md`](ai-review-auth.md)）。
+`enabled: true` 時の挙動:
+
+- `install.sh` が GitHub secrets の `CLAUDE_CODE_OAUTH_TOKEN` 登録を確認する
+- 未登録なら警告を表示する
+- 詳細は [`docs/ai-review-auth.md`](ai-review-auth.md) を参照
 
 ### 🔁 `skip_paths` の単一入力源化
 
