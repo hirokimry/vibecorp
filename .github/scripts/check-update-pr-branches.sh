@@ -46,13 +46,13 @@ for PR in $PR_NUMBERS; do
     exit 1
   fi
 
-  # ブランチ更新（終了コード + レスポンスボディで分岐）
-  RESPONSE=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
+  # ブランチ更新（終了コードで分岐、A && B || C パターンの分岐誤判定を避けるため if/else を使用 - SC2015）
+  if RESPONSE=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
     --method PUT \
-    --field expected_head_sha="${HEAD_SHA}" 2>&1) && {
+    --field expected_head_sha="${HEAD_SHA}" 2>&1); then
     echo "PR #${PR}: 更新成功"
     UPDATED=$((UPDATED + 1))
-  } || {
+  else
     if echo "${RESPONSE}" | grep -qi "merge conflict"; then
       echo "PR #${PR}: コンフリクトのためスキップ"
       CONFLICT=$((CONFLICT + 1))
@@ -64,7 +64,7 @@ for PR in $PR_NUMBERS; do
       echo "PR #${PR}: 更新失敗 — ${RESPONSE}"
       FAILED=$((FAILED + 1))
     fi
-  }
+  fi
 done
 
 echo ""

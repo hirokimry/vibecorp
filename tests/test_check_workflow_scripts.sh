@@ -40,11 +40,11 @@ for rel_path in "${SCRIPTS[@]}"; do
   # 4. set -euo pipefail が含まれる
   assert_file_contains "set -euo pipefail を含む: ${rel_path}" "$abs_path" "set -euo pipefail"
 
-  # 5. bash -n で構文エラーがない
-  if bash -n "$abs_path" 2>/dev/null; then
+  # 5. bash -n で構文エラーがない（エラー詳細を fail メッセージに含めデバッグ容易化）
+  if error_output=$(bash -n "$abs_path" 2>&1); then
     pass "bash -n で構文エラーなし: ${rel_path}"
   else
-    fail "bash -n で構文エラーあり: ${rel_path}"
+    fail "bash -n で構文エラーあり: ${rel_path}"$'\n'"${error_output}"
   fi
 done
 
