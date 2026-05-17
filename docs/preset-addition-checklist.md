@@ -1,25 +1,32 @@
-# プリセット引き算方式 — 新規フック/スキル追加時チェックリスト
+# ✅ プリセット引き算方式 — 新規フック / スキル追加時チェックリスト
 
-> 新しいフックやスキルを追加した際に、プリセット別の引き算ロジックを更新し忘れないためのチェックリストです。
+> [!IMPORTANT]
+> 読者像はフック・スキルを追加する開発者（コントリビューター）。
+> プリセット別の引き算ロジックを更新し忘れないためのチェックリスト。
+> **全 7 ステップを確認するまで PR を出さない**。
 
-## 前提知識
+## 🎯 前提知識
 
-vibecorp はプリセット（minimal / standard / full）で機能を段階的に提供しています。
-テンプレートには **全機能（full 相当）** を収録し、低プリセットでは不要なファイルを **削除（引き算）** する方式です。
+vibecorp はプリセット（minimal / standard / full）で機能を段階的に提供する。
+
+引き算方式の構造を以下に整理する。
+
+- 🧱 テンプレートには **全機能（full 相当）** を収録する。
+- ✂️ 低プリセットでは不要なファイルを **削除（引き算）** する。
 
 ```text
 full = テンプレート全体（何も削除しない）
-standard = full − (full 専用のフック/スキル)
-minimal = standard − (standard 専用のフック/スキル)
+standard = full − (full 専用のフック / スキル)
+minimal = standard − (standard 専用のフック / スキル)
 ```
 
-## チェックリスト
+## 🪜 チェックリスト
 
-新しいフックまたはスキルを追加するとき、以下の **全ステップ** を確認してください。
+新しいフックまたはスキルを追加するとき、以下の **全ステップ** を確認する。
 
-### 1. install.sh — プリセット別削除（case 文）
+### 1️⃣ install.sh — プリセット別削除（case 文）
 
-**ファイル**: `install.sh` L633–656 付近
+📍 ファイル: `install.sh` L633–656 付近。
 
 ```bash
 # プリセット別削除（引き算方式）
@@ -35,20 +42,30 @@ case "$PRESET" in
 esac
 ```
 
-**判断基準**:
-- minimal 専用で削除するもの → `minimal)` ブロックに追加
-- standard でも削除するもの → `minimal)` と `standard)` の両方に追加
-- full 専用で削除するものは通常ないが、もし必要なら `full)` ブロックを新設
+#### 🎯 判断基準
 
-**注意**: `minimal)` ブロックには standard で削除するものも含める（minimal は standard のサブセット）
+- ➡️ minimal 専用で削除するもの → `minimal)` ブロックに追加。
+- ➡️ standard でも削除するもの → `minimal)` と `standard)` の両方に追加。
+- ➡️ full 専用で削除するものは通常ない。
+  - もし必要なら `full)` ブロックを新設する。
 
-**full プリセット専用スキル/フック追加時の必須対応**:
-- `/vibecorp:autopilot`, `/vibecorp:ship-parallel` のように full 限定のスキルを追加した場合、必ず `minimal)` と `standard)` の両方に `rm -rf "${skills_dir}/<スキル名>"` を追加する
-- SKILL.md 内のソフトガード（preset 判定ロジック）だけに頼らず、install.sh で物理削除することがハード制限の本筋（隔離レイヤが full でしか効かないため、minimal/standard で誤爆させない）
+> [!NOTE]
+> `minimal)` ブロックには standard で削除するものも含める。
+> minimal は standard のサブセットだから。
 
-### 2. install.sh — settings.json フィルタ（jq）
+#### 🚨 full プリセット専用スキル / フック追加時の必須対応
 
-**ファイル**: `install.sh` L1007–1026 付近
+`/vibecorp:autopilot`、`/vibecorp:ship-parallel` のように full 限定のスキルを追加した場合の対応。
+
+- ✅ MUST: `minimal)` と `standard)` の両方に `rm -rf "${skills_dir}/<スキル名>"` を追加する。
+- 🛡️ SKILL.md 内のソフトガード（preset 判定ロジック）だけに頼らない。
+  - install.sh で物理削除することがハード制限の本筋。
+  - 隔離レイヤが full でしか効かないため。
+  - minimal / standard で誤爆させないため。
+
+### 2️⃣ install.sh — settings.json フィルタ（jq）
+
+📍 ファイル: `install.sh` L1007–1026 付近。
 
 ```bash
 case "$PRESET" in
@@ -72,26 +89,31 @@ case "$PRESET" in
 esac
 ```
 
-**判断基準**: ステップ1と同じプリセット区分に合わせる。settings.json.tpl にフックを登録した場合は必須。
+#### 🎯 判断基準
 
-### 3. install.sh — knowledge コピー制御
+- ➡️ ステップ 1 と同じプリセット区分に合わせる。
+- ➡️ settings.json.tpl にフックを登録した場合は必須。
 
-**ファイル**: `install.sh` L1239–1242 付近
+### 3️⃣ install.sh — knowledge コピー制御
 
-新しいエージェントロールに紐づく knowledge ディレクトリがある場合:
-- `templates/claude/knowledge/` 配下にディレクトリを作成
-- minimal では自動的にスキップされる（既存ロジック）
-- standard / full 固有の knowledge がある場合は個別制御を追加
+📍 ファイル: `install.sh` L1239–1242 付近。
 
-### 4. settings.json.tpl — フックエントリ追加
+新しいエージェントロールに紐づく knowledge ディレクトリがある場合の対応。
 
-**ファイル**: `templates/settings.json.tpl`
+- ✅ `templates/claude/knowledge/` 配下にディレクトリを作成する。
+- ✅ minimal では自動的にスキップされる（既存ロジック）。
+- ⚙️ standard / full 固有の knowledge がある場合は個別制御を追加する。
 
-新しいフックを追加する場合:
+### 4️⃣ settings.json.tpl — フックエントリ追加
 
-1. 適切な `matcher`（`Edit|Write`, `Bash` 等）のブロックに hook エントリを追加
-2. `command` パスは `"$CLAUDE_PROJECT_DIR"/.claude/hooks/新しいフック.sh` の形式
-3. 必要に応じて `timeout` を設定
+📍 ファイル: `templates/settings.json.tpl`。
+
+新しいフックを追加する場合の手順を以下に整理する。
+
+1. 適切な `matcher`（`Edit|Write`、`Bash` 等）のブロックに hook エントリを追加する。
+2. `command` パスを所定の形式で記述する。
+   - 形式: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/新しいフック.sh`。
+3. 必要に応じて `timeout` を設定する。
 
 ```json
 {
@@ -100,63 +122,70 @@ esac
 }
 ```
 
-### 5. ドキュメント更新（README.md と docs/specification.md）
+### 5️⃣ ドキュメント更新（README.md と docs/specification.md）
 
-#### 5-1. `docs/specification.md` — Source of Truth の更新
+#### 5-1️⃣ `docs/specification.md` — Source of Truth の更新
 
-**位置**: `## 機能仕様` セクション内の以下サブセクション。
+📍 位置: `## 機能仕様` セクション内の以下サブセクション。
 
 | 何を更新するか | 場所（セクション見出しベース） |
-|--------------|--------------------------|
-| スキル詳細テーブル | `### スキル一覧（Source of Truth）` 配下の `#### minimal プリセット` / `#### standard プリセットで追加` / `#### full プリセットで追加` |
-| フック詳細テーブル | `### フック一覧（Source of Truth）` 配下の `#### ファイル保護型` / `#### ワークフローゲート型` / `#### API バイパス防止型` / `#### コマンドログ型` |
+|---|---|
+| スキル詳細テーブル | `### スキル一覧（Source of Truth）` 配下のプリセット別サブセクション |
+| フック詳細テーブル | `### フック一覧（Source of Truth）` 配下の系統別サブセクション |
 | ゲートフック対応表 | `### ゲートフックとスタンプ` |
 | `settings.json` フックエントリ | `### フック登録構造（settings.json）` のコードブロック |
 
-> 📌 行番号ではなく **セクション見出し** で参照すること。`docs/specification.md` の構成変更により行番号は容易に腐敗する。
+> [!NOTE]
+> 行番号ではなく **セクション見出し** で参照する。
+> `docs/specification.md` の構成変更により行番号は容易に腐敗する。
 
-#### 5-2. `README.md` — 概要テーブルとリンクの更新
+#### 5-2️⃣ `README.md` — 概要テーブルとリンクの更新
 
-**位置**: `## 🎁 プリセット` セクション内の以下テーブル。
+📍 位置: `## 🎁 プリセット` セクション内の以下テーブル。
 
 | 何を更新するか | 場所（セクション見出しベース） |
-|--------------|--------------------------|
-| プリセット概要テーブル | `## 🎁 プリセット` 直下の比較テーブル（minimal / standard / full の主な追加要素列） |
+|---|---|
+| プリセット概要テーブル | `## 🎁 プリセット` 直下の比較テーブル |
 | auto 体験射程テーブル | `### auto 体験射程` 配下のテーブル |
-| スキル概要 | `## 🛠️ スキル一覧（概要）` 配下の `### 🚀 minimal` / `### 🤝 standard で追加` / `### 🏢 full で追加`（**詳細は specification.md にリンクする**） |
+| スキル概要 | `## 🛠️ スキル一覧（概要）` 配下のプリセット別サブセクション |
 | フック概要 | `## 🪝 フック概要` 配下の系統別テーブル |
 
-`README.md` には**詳細を載せない**。新規スキル / フックの詳細仕様は必ず `docs/specification.md` を更新し、README には簡略版を記載する。SoT 重複を作らない。
+> [!IMPORTANT]
+> `README.md` には**詳細を載せない**。
+> 新規スキル / フックの詳細仕様は必ず `docs/specification.md` を更新する。
+> README には簡略版を記載し、SoT 重複を作らない。
 
-### 6. テスト追加
+### 6️⃣ テスト追加
 
-**ファイル**: `tests/test_新しいフック.sh`（新規作成）
+📍 ファイル: `tests/test_新しいフック.sh`（新規作成）。
 
-- フックの場合: `tests/` 配下に `test_新しいフック.sh` を作成
-- 既存テストのパターン（`tests/test_*.sh`）に従う
-- 正常系・異常系・バイパス耐性をテストする
-- 既存テストが壊れていないことを確認する
+テスト要件を以下に整理する。
 
-### 7. templates/ — テンプレートファイル配置
+- ✅ フックの場合は `tests/` 配下に `test_新しいフック.sh` を作成する。
+- ✅ 既存テストのパターン（`tests/test_*.sh`）に従う。
+- ✅ 正常系・異常系・バイパス耐性をテストする。
+- ✅ 既存テストが壊れていないことを確認する。
 
-新しいフック/スキルのテンプレートファイルを適切な場所に配置する:
+### 7️⃣ templates/ — テンプレートファイル配置
+
+新しいフック / スキルのテンプレートファイルを所定の場所に配置する。
 
 | 種別 | 配置先 |
-|------|--------|
+|---|---|
 | フック | `templates/claude/hooks/新しいフック.sh` |
 | スキル | `skills/新しいスキル/SKILL.md` |
 | エージェント | `templates/claude/agents/新しいエージェント.md` |
 | knowledge | `templates/claude/knowledge/新しいロール/` |
 
-## まとめ: 更新箇所の早見表
+## 📋 まとめ: 更新箇所の早見表
 
 | # | ファイル | 更新内容 | 必須条件 |
-|---|---------|---------|---------|
-| 1 | `install.sh`（case 文） | rm 行を追加 | フック/スキルが全プリセット対象でない場合 |
+|---|---|---|---|
+| 1 | `install.sh`（case 文） | rm 行を追加 | フック / スキルが全プリセット対象でない場合 |
 | 2 | `install.sh`（jq フィルタ） | select 条件を追加 | フックを settings.json.tpl に登録した場合 |
 | 3 | `install.sh`（knowledge） | コピー制御を追加 | 新エージェントに knowledge がある場合 |
 | 4 | `settings.json.tpl` | フックエントリを追加 | フックの場合 |
 | 5a | `docs/specification.md` | スキル / フック詳細テーブル（SoT）を更新 | 常に必須 |
-| 5b | `README.md` | プリセット概要テーブル + 概要セクションを更新（詳細は specification.md にリンク） | 常に必須 |
+| 5b | `README.md` | プリセット概要テーブル + 概要セクションを更新 | 常に必須 |
 | 6 | `tests/test_*.sh` | テストケースを追加 | 常に必須 |
 | 7 | `templates/` | テンプレートファイルを配置 | 常に必須 |
