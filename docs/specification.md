@@ -58,7 +58,7 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
   - 親プロセスの認証が `ANTHROPIC_API_KEY` の場合は API 従量課金に到達しうる
   - 課金モデル詳細は [`docs/cost-analysis.md`](./cost-analysis.md) を参照
 - 🍎 macOS の `sandbox-exec` による隔離レイヤは **full + macOS 環境** のとき `install.sh` が `.claude/bin/` と `.claude/sandbox/` を自動配置する
-  - Linux（bwrap）対応は Phase 2 で追加予定
+  - Linux（bwrap）対応は Phase 2（#310）で実装済み
   - Windows ネイティブは非対応（WSL2 を使用）
 
 ### 🪟 Agent Teams 動作環境
