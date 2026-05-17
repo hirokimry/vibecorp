@@ -8,13 +8,13 @@ set -euo pipefail
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -z "$LATEST_TAG" ]; then
   # タグが一つもない場合は全コミットを対象にする
-  COMMITS=$(git log --pretty=format:"%s|%H|%h" HEAD)
+  COMMITS=$(git log --pretty=format:'%s%x1f%H%x1f%h%x1e' HEAD)
   CURRENT_MAJOR=0
   CURRENT_MINOR=1
   CURRENT_PATCH=0
   FIRST_RELEASE=true
 else
-  COMMITS=$(git log --pretty=format:"%s|%H|%h" "${LATEST_TAG}..HEAD")
+  COMMITS=$(git log --pretty=format:'%s%x1f%H%x1f%h%x1e' "${LATEST_TAG}..HEAD")
   # タグからバージョン番号をパース
   VERSION_STR="${LATEST_TAG#v}"
   CURRENT_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
@@ -40,7 +40,7 @@ DOCS_COMMITS=""
 BREAKING_COMMITS=""
 OTHER_COMMITS=""
 
-while IFS='|' read -r subject full_hash short_hash; do
+while IFS=$'\x1f' read -r -d $'\x1e' subject full_hash short_hash; do
   [ -z "$subject" ] && continue
 
   # コミット本文に BREAKING CHANGE: があるか確認
@@ -96,7 +96,7 @@ while IFS='|' read -r subject full_hash short_hash; do
       fi
       ;;
   esac
-done <<< "$COMMITS"
+done < <(printf '%s' "$COMMITS")
 
 # リリース対象のコミットがない場合はスキップ
 if [ "$BUMP_LEVEL" -eq 0 ]; then
