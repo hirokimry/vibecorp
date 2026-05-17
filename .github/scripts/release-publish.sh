@@ -152,7 +152,8 @@ if [ -n "$DOCS_COMMITS" ]; then
 fi
 
 # ── タグが既に存在する場合はスキップ ────────────
-if git tag -l | grep -qF "${NEW_TAG}"; then
+# 完全一致判定: -x で行全体マッチを要求し、v1.2.3 が v1.2.30 等に部分一致するのを防ぐ
+if git tag -l | grep -qxF "${NEW_TAG}"; then
   echo "タグ ${NEW_TAG} は既に存在します"
   if ! gh release view "${NEW_TAG}" > /dev/null 2>&1; then
     echo "GitHub Release を作成します"
