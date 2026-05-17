@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > 利用者（vibecorp を導入するプロジェクト）向けのリリース別変更点一覧。
-> カテゴリ: **追加** / **変更** / **削除** / **修正** / **セキュリティ**（[Keep a Changelog 1.1.0](https://keepachangelog.com/ja/1.1.0/) 準拠）。
+> カテゴリ: **追加** / **変更** / **非推奨** / **削除** / **修正** / **セキュリティ**（[Keep a Changelog 1.1.0](https://keepachangelog.com/ja/1.1.0/) 準拠の 6 種）。
 > バージョンは `[X.Y.Z] - YYYY-MM-DD` 形式。
 
 ## [Unreleased]
