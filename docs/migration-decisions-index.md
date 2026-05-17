@@ -16,10 +16,10 @@ description: C*O decisions.md を decisions-index.md + 四半期アーカイブ 
 C\*O エージェントは workflow step 1「情報収集」を毎回行う。
 
 - 対象 C\*O: CISO / CTO / CPO / CFO / CLO / SM。
-- このステップで `.claude/knowledge/{role}/decisions.md` を Read する。
-- 旧構造は append-only でファイルが肥大化していく構造である。
+- 対象ファイル: `.claude/knowledge/{role}/decisions.md`。
+- 旧構造は append-only でファイルが肥大化する。
 - CISO では 631 行 / 約 40KB に達した実例がある。
-- サブエージェント起動のたびに全量がトークンコストに乗る問題が発生した（Issue #335）。
+- 起動のたびに全量がトークンコストに乗る（Issue #335）。
 
 新構造（次節）でこの問題が解消するようになる。
 
@@ -162,9 +162,10 @@ step 4（記録）も同様に fallback する。
 
 ## 🔮 肥大化時の 2 次分割方針（将来）
 
-単一四半期アーカイブが 1,000 行を超えた場合の月次分割（`decisions/2026-Q2-05.md` 等）は将来対応とする。
+単一四半期が 1,000 行超の場合は月次分割を検討する。
 
-- 判断基準は本 Issue では未定義である（YAGNI）。
+- 例: `decisions/2026-Q2-05.md`。
+- 判断基準は本 Issue では未定義（YAGNI）。
 
 - 現状どの role も単一 Q で 1,000 行未満。
 - 肥大化が顕在化した段階で別 Issue で定義する。
