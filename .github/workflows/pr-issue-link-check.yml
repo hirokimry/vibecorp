@@ -24,6 +24,13 @@ jobs:
     # Fork PR は secrets が渡らないため除外（draft も除外でコスト抑制）
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     steps:
+      - name: チェックアウト（通知文ファイル参照のため）
+        uses: actions/checkout@v4
+        with:
+          # 通知文 .md のみ必要なので sparse-checkout で最小化
+          sparse-checkout: .github/workflows/messages
+          sparse-checkout-cone-mode: false
+
       - name: PR 本文の Issue 参照チェック
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,5 +45,5 @@ jobs:
             exit 0
           fi
           gh pr comment "$PR_NUMBER" --repo "$REPO" \
-            --body "⚠️ PR 本文に対応 Issue への参照（\`close #123\` / \`fixes #123\` / \`Refs #123\` など）が含まれていません。vibecorp は Issue 経由起票必須運用（Issue #469 残 #5）のため、PR 本文に Issue 参照を追加してから再 push してください。詳細は .claude/rules/intent-labels.md と docs/conventional-commits.md を参照。"
+            --body-file .github/workflows/messages/notify-pr-issue-link-missing.md
           exit 1
