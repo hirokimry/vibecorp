@@ -8,7 +8,8 @@ set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-mapfile -t targets < <(find "$SCRIPTS_DIR" -maxdepth 1 -name '*.sh' -type f | sort)
+# `.github/scripts/` 配下のサブディレクトリを将来追加されても拾えるよう再帰探索する
+mapfile -t targets < <(find "$SCRIPTS_DIR" -type f -name '*.sh' | sort)
 
 if [ "${#targets[@]}" -eq 0 ]; then
   echo "::warning::shellcheck 対象スクリプトが見つかりませんでした: $SCRIPTS_DIR"

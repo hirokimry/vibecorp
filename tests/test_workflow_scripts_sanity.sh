@@ -28,12 +28,12 @@ if [ ! -d "$SCRIPTS_BASE" ]; then
   exit 1
 fi
 
-# .github/scripts/ 配下の *.sh を全列挙
+# .github/scripts/ 配下の *.sh を全列挙（サブディレクトリも再帰）
 # mapfile は bash 4+ 専用のため、macOS bash 3.2 互換の read ループで構築する
 scripts=()
 while IFS= read -r line; do
   scripts+=("$line")
-done < <(find "$SCRIPTS_BASE" -maxdepth 1 -name '*.sh' -type f | sort)
+done < <(find "$SCRIPTS_BASE" -type f -name '*.sh' | sort)
 
 if [ "${#scripts[@]}" -eq 0 ]; then
   fail ".github/scripts/ にスクリプトが 1 つ以上存在する"
