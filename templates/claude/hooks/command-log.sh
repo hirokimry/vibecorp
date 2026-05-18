@@ -21,11 +21,9 @@ if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# state ディレクトリを作成してログファイルに追記
 vibecorp_state_mkdir >/dev/null
 LOG_FILE="$(vibecorp_state_path command-log)"
 
-# タイムスタンプ + コマンドをログに追記
 printf '%s\t%s\n' "$(date +%Y-%m-%dT%H:%M:%S)" "$COMMAND" >> "$LOG_FILE"
 
 exit 0
