@@ -10,7 +10,7 @@
 set -euo pipefail
 
 bwrap --version
-if bwrap --unshare-pid --proc /proc --dev /dev --tmpfs /tmp /bin/true; then
+if bwrap --unshare-pid --proc /proc --dev /dev --tmpfs /tmp -- /bin/sh -c :; then
   echo "bwrap 試し実行 OK: 隔離テストが実機検証として走ります。"
 else
   echo "::warning::bwrap が user namespace 隔離を実行できません（GitHub Actions ubuntu-24.04 では既知制約）。"
