@@ -26,7 +26,6 @@ CANONICAL_PATH="$(_pkw_normalize_path "$FILE_PATH" 2>/dev/null || true)"
 
 STAMP_FILE="$(vibecorp_state_path diagnose-active)"
 
-# diagnose-active スタンプが存在しない場合は何もしない
 if [ ! -f "$STAMP_FILE" ]; then
   exit 0
 fi

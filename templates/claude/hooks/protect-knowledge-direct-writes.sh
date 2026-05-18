@@ -55,7 +55,6 @@ if [ -z "$abs_file_path" ]; then
   esac
 fi
 
-# deny 対象パターン判定
 is_deny_target=0
 case "$abs_file_path" in
   *.claude/knowledge/*/decisions/*.md|\
@@ -65,7 +64,6 @@ case "$abs_file_path" in
     ;;
 esac
 
-# 非対象なら関与せず通す
 if [ "$is_deny_target" -eq 0 ]; then
   exit 0
 fi
@@ -86,7 +84,6 @@ fi
 # 仕様: スタンプは knowledge/{role}/{topic}.md のような decisions/audit-log 以外への直書き許可専用。
 # decisions/ や {role}/audit-log/ は C*O 判断記録 / 監査の責務領域であり、スタンプ通過対象から除外する。
 
-# deny を返却
 jq -n '{
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",

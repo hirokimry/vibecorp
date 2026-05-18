@@ -26,7 +26,7 @@ if [ -z "$ROLE" ]; then
   exit 0
 fi
 
-# knowledge/ 配下は全ロール編集可
+# knowledge/ 配下はロール横断の共有領域として全ロールに編集を許可
 if [[ "$FILE_PATH" == */knowledge/* ]] || [[ "$FILE_PATH" == knowledge/* ]]; then
   exit 0
 fi
@@ -78,7 +78,6 @@ if is_allowed "$ROLE" "$FILE_PATH"; then
   exit 0
 fi
 
-# 管轄外 → deny
 jq -n --arg role "$ROLE" --arg file "$FILE_PATH" '{
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",

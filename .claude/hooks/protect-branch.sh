@@ -17,7 +17,7 @@ source "${HOOK_DIR}/../lib/common.sh"
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 
-# vibecorp.yml から base_branch を取得（デフォルト: main）
+# BASE_BRANCH 既定値は main（vibecorp.yml で上書き可能）
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 VIBECORP_YML="${PROJECT_DIR}/.claude/vibecorp.yml"
 BASE_BRANCH="main"
@@ -95,14 +95,12 @@ if [ -n "$ALLOWED_ROOT" ] && [ "$ALLOWED_ROOT" != "/" ]; then
   fi
 fi
 
-# 現在のブランチを取得（CHECK_DIR を基準に）
 CURRENT_BRANCH=$(git -C "$CHECK_DIR" branch --show-current 2>/dev/null || echo "")
 if [ -z "$CURRENT_BRANCH" ]; then
-  # detached HEAD 等 → スキップ
+  # detached HEAD など branch 名が取れない状況は誤判定を避けて素通しする
   exit 0
 fi
 
-# メインブランチでなければ許可
 if [ "$CURRENT_BRANCH" != "$BASE_BRANCH" ]; then
   exit 0
 fi
