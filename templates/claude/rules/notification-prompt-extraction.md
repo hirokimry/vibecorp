@@ -272,6 +272,7 @@ Task tool で以下を実行する。プロンプトは `skills/plan-review-loop
 ## 📂 関連ファイル
 
 - `tests/test_notification_prompt_extraction_rule.sh`（本ルールの静的検証）
+- `tests/test_distribution_notification_prompt_extraction.sh`（本ルールの配布同期検証）
 - `.github/workflows/messages/`（切り出し先、子3 #640 で本体セルフ適応）
 - `skills/<skill>/prompts/`（切り出し先、子4 #642 で本体セルフ適応）
 - `hooks/messages/`（切り出し先、子3 #640 で本体セルフ適応）
