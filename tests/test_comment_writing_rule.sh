@@ -142,12 +142,19 @@ assert_file_exists "review-handling.md が実在する" "$REVIEW_HANDLING"
 assert_file_exists "severity/coderabbit.md が実在する" "$SEVERITY_CR"
 
 # ============================================
-echo "=== 既存 comments.md は触られていない（#652 で別扱い） ==="
+echo "=== コード内コメント基準が code-comments.md に分離されている（#652 完了） ==="
 # ============================================
 
+# Issue #652 で comments.md は code-comments.md にリネーム + 拡充されたため、
+# GitHub コメント基準（本ルール）とは別ファイルに分離されていることを保証する。
+CODE_COMMENTS="${SCRIPT_DIR}/.claude/rules/code-comments.md"
 COMMENTS_OLD="${SCRIPT_DIR}/.claude/rules/comments.md"
-assert_file_exists "comments.md が現在も存在する" "$COMMENTS_OLD"
-assert_file_contains "comments.md がコード内コメント規定のままである" "$COMMENTS_OLD" "コード内のコメント"
+assert_file_exists "code-comments.md が存在する（#652 のリネーム後）" "$CODE_COMMENTS"
+if [[ ! -f "$COMMENTS_OLD" ]]; then
+  pass "旧 comments.md が削除されている（#652 のリネーム後）"
+else
+  fail "旧 comments.md がまだ残っている（#652 のリネーム未完了）"
+fi
 
 # ============================================
 echo "=== Markdown フェンスに言語指定がある（markdown.md 整合） ==="

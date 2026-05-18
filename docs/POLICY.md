@@ -146,7 +146,7 @@ intent 別の必須テスト:
   - 📍 根拠: [`.claude/rules/markdown.md`](../.claude/rules/markdown.md)
 - **コードコメントは実コードの挙動と一致させる**
   - 誤解を招くコメントはバグと同等に扱う
-  - 📍 根拠: [`.claude/rules/comments.md`](../.claude/rules/comments.md)
+  - 📍 根拠: [`.claude/rules/code-comments.md`](../.claude/rules/code-comments.md)
 - **管轄外ファイルの編集は禁止**
   - `role-gate.sh` フックが `docs/` 配下の書き込みを管轄エージェントに制限する
   - 管轄外の更新が必要な場合は管轄エージェントに承認を仰ぎ、管轄エージェントが代行する

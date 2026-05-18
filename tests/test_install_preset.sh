@@ -47,7 +47,7 @@ assert_file_contains "vibecorp.lock に version" "$R/.claude/vibecorp.lock" "ver
 # E7. vibecorp.lock にマニフェスト
 assert_file_contains "vibecorp.lock に hooks マニフェスト" "$R/.claude/vibecorp.lock" "protect-files.sh"
 assert_file_contains "vibecorp.lock に skills マニフェスト" "$R/.claude/vibecorp.lock" "review"
-assert_file_contains "vibecorp.lock に rules マニフェスト" "$R/.claude/vibecorp.lock" "comments.md"
+assert_file_contains "vibecorp.lock に rules マニフェスト" "$R/.claude/vibecorp.lock" "code-comments.md"
 
 # E8. settings.json に hooks 構造
 assert_file_contains "settings.json に hooks 構造" "$R/.claude/settings.json" "PreToolUse"
@@ -277,9 +277,9 @@ echo "=== J. rules コピー ==="
 # J1. 既存同名ルールはスキップ
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/rules"
-echo "# カスタムルール" > "$TMPDIR_ROOT/.claude/rules/comments.md"
+echo "# カスタムルール" > "$TMPDIR_ROOT/.claude/rules/code-comments.md"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
-CONTENT=$(cat "$TMPDIR_ROOT/.claude/rules/comments.md")
+CONTENT=$(cat "$TMPDIR_ROOT/.claude/rules/code-comments.md")
 if [ "$CONTENT" = "# カスタムルール" ]; then
   pass "既存同名ルールはスキップ"
 else
@@ -1516,13 +1516,13 @@ find "$TMP_SANDBOX" -maxdepth 1 -type f -name 'tmp.*' | sort > "$TMP_BEFORE"
 # 1. current_hash != base_hash（ユーザーがカスタマイズした状態）
 # 2. template_hash != base_hash（テンプレートも変更された状態）
 # まず current ファイルを改変してカスタマイズ済みにする
-echo "# ユーザーによるカスタマイズ" >> "$R/.claude/rules/comments.md"
+echo "# ユーザーによるカスタマイズ" >> "$R/.claude/rules/code-comments.md"
 # ベーススナップショットを改変してテンプレート変更を模擬する
-echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/code-comments.md"
 # vibecorp.lock の base_hashes を更新して current_hash != base_hash にする
-NEW_BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+NEW_BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/code-comments.md" | awk '{print $1}')
 LOCK_FILE="$R/.claude/vibecorp.lock"
-ORIG_HASH=$(grep 'rules/comments\.md:' "$LOCK_FILE" | awk '{print $2}')
+ORIG_HASH=$(grep 'rules/code-comments\.md:' "$LOCK_FILE" | awk '{print $2}')
 sed "s/${ORIG_HASH}/${NEW_BASE_HASH}/" "$LOCK_FILE" > "${LOCK_FILE}.tmp" && mv "${LOCK_FILE}.tmp" "$LOCK_FILE"
 
 EXIT_CODE=0
