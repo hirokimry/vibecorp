@@ -4,6 +4,7 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-18 — epic #636 extraction 系 skill 新設 — 要注意（子5 として分離、命名を分割、子3/4 は skill 経由へ順序変更を推奨）
 - 2026-05-16 — Phase 系 Issue でのドキュメント Phase 状態追従パターン — 運用原則化（sync-check が CPO 管轄 specification.md / README.md の陳腐化を検出する役割を明示。Phase 系 PR レビューの必須チェック項目として確立）
 - 2026-05-16 — Linux Phase 2: isolation.allow_ssh opt-in 設計 — OK（opt-in パターンは既存 VIBECORP_ISOLATION=1 と一貫。セキュアバイデフォルト・透明性バリュー適合）
 - 2026-05-10 — ship ステップ 11（マージ後 LLM 検証 + 未完了項目再帰実装）追加提案 — OK（透明性・規律の自動化バリュー合致。プリセットスコープと specification.md 反映は plan mode での確認事項）
