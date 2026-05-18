@@ -73,5 +73,7 @@ YYYY-MM-DD（生成スキル: `/vibecorp:cycle-metrics`）
 
 ## 生データ
 
-- PR メトリクス JSON: `fetch-pr-metrics.sh` の出力を参照
-- Agent メトリクス JSON: `fetch-agent-metrics.sh` の出力を参照
+実行スクリプトは `/cycle-metrics` スキル（vibecorp プラグイン同梱）が内部で呼び出す。配置先で個別に手動実行する想定はないため、本テンプレートは `/cycle-metrics` 実行時に生成された出力を貼り付ける用途で使用する。
+
+- PR メトリクス JSON: vibecorp プラグインの `skills/cycle-metrics/fetch-pr-metrics.sh` 出力（`/cycle-metrics` 実行時に生成）
+- Agent メトリクス JSON: vibecorp プラグインの `skills/cycle-metrics/fetch-agent-metrics.sh` 出力（同上）

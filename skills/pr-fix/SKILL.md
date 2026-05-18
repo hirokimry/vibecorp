@@ -181,9 +181,63 @@ unresolved="$(printf '%s' "$threads_all" \
 
 ### 6. 指摘の修正
 
+#### 6.0 intent ラベルの取得（Issue 側から直接参照）
+
+レビュー判定（intent × severity）の SoT は **Issue ラベル**。PR には intent ラベルを付与しないため（Issue #575）、Issue 番号を解決して `gh issue view --json labels` で intent を取得する。
+
+**4 段フォールバック**:
+
+| 優先 | 取得経路 | コマンド例 |
+|---|---|---|
+| 1 | `closingIssuesReferences`（GitHub 自動 close キーワード由来） | `gh pr view {pr_number} --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty'` |
+| 2 | PR 本文 grep（`--ref` 経由 PR / 手動編集対応） | `pr-issue-link-check.yml` 互換正規表現 `(close[sd]?\|fix(es\|ed)?\|resolve[sd]?\|refs?)[[:space:]]+#([0-9]+)` で PR 本文を解析。最初のマッチを採用 |
+| 3 | ブランチ名 | `dev/<num>_*` パターンから `<num>` 抽出（`gh pr view --json headRefName --jq '.headRefName'`）|
+| 4 | 空（severity-only fallback） | warning ログ + severity-only 判定モードに切替 |
+
+```bash
+# Step 1: closingIssuesReferences（実機検証済み: フラット配列、nodes ラッパー無し）
+ISSUE_NUM=$(gh pr view {pr_number} --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
+
+# Step 2: PR 本文 grep（#N 形式 + GitHub URL 形式の両対応、pr-issue-link-check.yml と互換）
+if [ -z "$ISSUE_NUM" ]; then
+  PR_BODY=$(gh pr view {pr_number} --json body --jq '.body')
+  ISSUE_NUM=$(printf '%s' "$PR_BODY" \
+    | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+(#[0-9]+|https?://[^[:space:]]+/issues/[0-9]+)' \
+    | head -1 \
+    | grep -oE '[0-9]+$')
+fi
+
+# Step 3: ブランチ名
+if [ -z "$ISSUE_NUM" ]; then
+  HEAD_REF=$(gh pr view {pr_number} --json headRefName --jq '.headRefName')
+  ISSUE_NUM=$(printf '%s' "$HEAD_REF" | grep -oE '^dev/([0-9]+)_' | grep -oE '[0-9]+')
+fi
+
+# Step 4: intent ラベル取得（ISSUE_NUM の数値検証を実施した上で gh に渡す）
+PR_INTENT=""
+if [ -n "$ISSUE_NUM" ]; then
+  if [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+    PR_INTENT=$(gh issue view "$ISSUE_NUM" --json labels --jq '[.labels[].name | select(startswith("intent/"))][0] // empty')
+  else
+    echo "[WARN] ISSUE_NUM が数値以外（'$ISSUE_NUM'）。intent 取得をスキップして severity-only fallback に切替" >&2
+  fi
+fi
+```
+
+**severity-only fallback の挙動**:
+
+Step 1-3 で Issue 番号を解決できない、または Issue に intent ラベルが付いていない場合、`PR_INTENT` が空となる。この場合は intent 重視軸判定が不可能となるため、`.claude/rules/review-handling.md` の判定基準を **severity のみで** 適用する:
+
+- **Critical / Major**: 通常通り修正対象（intent 問わず必ず対応）
+- **Minor / Trivial / Info（Minor 以下）**: 全スキップ（intent 重視軸該当判定が不能のため保守的に倒す）
+
+warning ログ `[WARN] Issue 番号 / intent ラベルが解決できませんでした。severity-only fallback で Critical / Major のみ修正対象とします` を出力する。
+
+**複数 Issue close PR の優先順位**: 1 PR で複数 Issue を close する場合、`closingIssuesReferences[0]` が採用される（GitHub 仕様順）。1 PR 1 Issue 運用が `pr-issue-link-check.yml` で前提化されているため実運用上稀。
+
 #### 6.1 妥当性検証
 
-`.claude/rules/review-handling.md` の捌き基準（intent × severity）と `.claude/rules/severity/claude-action.md` / `severity/coderabbit.md` の severity 定義に従い、指摘を分類する。
+`.claude/rules/review-handling.md` の捌き基準（intent × severity）と `.claude/rules/severity/claude-action.md` / `severity/coderabbit.md` の severity 定義に従い、指摘を分類する。判定の入力としては **6.0 で取得した `PR_INTENT`** を使う（PR ラベルではなく Issue ラベル直接参照）。
 設計方針に関わる大きな変更はユーザーに確認する。
 
 #### 6.2 修正計画
@@ -286,5 +340,6 @@ git push
 - 判断に迷う指摘はユーザーに確認する
 - 修正前に必ず関連ファイルを読み込む
 - **`@coderabbitai approve` の投稿は禁止** — approve は CodeRabbit が自動発行するか、人間が手動で行う
+- **PR 本文修正時は auto-close キーワード `Closes #N` / `Refs #N` を保持する** — `gh pr edit --body` で本文を書き換える場合、既存の `Closes #N` / `Refs #N` 行を消さない。新規追加する場合も `#N` 形式（URL 形式不可）で記載する。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する（[根拠](docs/design-philosophy.md#jq-string-interpolation-の禁止)）
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）

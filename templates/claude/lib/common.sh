@@ -73,11 +73,29 @@ _vibecorp_sha256_short() {
 # 出力例: vibecorp-a1b2c3d4
 # 形式: <basename（サニタイズ済み）>-<sha256先頭8桁>
 # ゲートスタンプ（vibecorp_stamp_dir）と knowledge/buffer worktree（knowledge_buffer.sh）で共有する
+#
+# worktree 対応: `--git-common-dir` は main repo の .git ディレクトリを常に返すため、
+# main / 各 worktree のどこから呼んでも同一 repo_id が生成される。
+# `--show-toplevel` は worktree ごとに別パスを返すため不可（Issue #600）。
 vibecorp_repo_id() {
   local root
-  if ! root="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
-    root="${CLAUDE_PROJECT_DIR:-$PWD}"
-    echo "vibecorp_repo_id: git toplevel 取得に失敗、フォールバック使用: ${root}" >&2
+  local common_dir
+  local start_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+  if common_dir="$(git -C "$start_dir" rev-parse --git-common-dir 2>/dev/null)"; then
+    # common_dir は main では ".git"（相対）、worktree では絶対パスを返すため正規化する
+    if [[ "$common_dir" != /* ]]; then
+      common_dir="$start_dir/$common_dir"
+    fi
+    # main repo root = .git の親ディレクトリ。
+    # `pwd -P` で物理パスに正規化する（macOS の /tmp → /private/tmp 等のシンボリックリンクで
+    #  main と worktree の解決パスが食い違うのを防ぐ）
+    if ! root="$(cd "$(dirname "$common_dir")" 2>/dev/null && pwd -P)"; then
+      root="$start_dir"
+      echo "vibecorp_repo_id: git common-dir 解決に失敗、フォールバック使用: ${root}" >&2
+    fi
+  else
+    root="$start_dir"
+    echo "vibecorp_repo_id: git common-dir 取得に失敗、フォールバック使用: ${root}" >&2
   fi
   # basename をサニタイズ（shell.md「ファイル名に外部入力を使う場合」ルール準拠）
   # printf で trailing newline を剥がしてから tr に渡す（改行が "_" に変換される副作用を防ぐ）

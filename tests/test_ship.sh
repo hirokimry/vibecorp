@@ -358,6 +358,345 @@ fi
 
 echo ""
 
+# --- テスト12: ステップ 3 plan 委譲 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# （セクションヘッダー・コードブロック存在・負検証で検証する）
+
+echo "--- テスト12: ステップ 3 plan 委譲 ---"
+
+SHIP_STEP3=$(awk '/^### 3\. 実装計画の策定/{flag=1; next} /^### 4\./{flag=0} flag' "$SKILL_FILE")
+
+# 12-1: ステップ 3 のセクションヘッダーが存在する（構造検証）
+if grep -q '^### 3\. 実装計画の策定' "$SKILL_FILE"; then
+  pass "ship/SKILL.md にステップ 3 のセクションヘッダーが存在する"
+else
+  fail "ship/SKILL.md にステップ 3 のセクションヘッダーが存在しない"
+fi
+
+# 12-2: ステップ 3 が /vibecorp:plan への委譲を明記している（コマンド名検証）
+if printf '%s\n' "$SHIP_STEP3" | grep -q '/vibecorp:plan'; then
+  pass "ステップ 3 で /vibecorp:plan への委譲が記載されている"
+else
+  fail "ステップ 3 で /vibecorp:plan への委譲が記載されていない"
+fi
+
+# 12-3: ship 自身が gh api でコメント取得を直接呼ばない（負検証、既存テスト 10-5b と同じスタイル）
+# ステップ 3 のスコープ内で `gh api ...issues/.../comments` がコード行として現れないことを確認する。
+# CodeRabbit #565 Major 指摘を反映: `cd <path> && gh api ...` チェイン形式も検出対象に含める。
+if printf '%s\n' "$SHIP_STEP3" | grep -qE '^[[:space:]]*(cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh api.*issues/.*comments'; then
+  fail "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が残存（plan に委譲すべき）"
+else
+  pass "ship/SKILL.md ステップ 3 に gh api によるコメント直接取得が無い（plan に委譲）"
+fi
+
+echo ""
+
+# --- テスト13: plan/SKILL.md 全コメント取得 (#564) ---
+# CodeRabbit #565 Major 指摘: prose 文言依存の grep を構造検証中心に変更
+# - サブセクションヘッダー（#### 1-X. ...）の存在
+# - コードブロック内のコマンド存在
+# - 負検証（禁止パターン不在）
+
+echo "--- テスト13: plan/SKILL.md 全コメント取得 ---"
+
+PLAN_FILE="$PROJECT_DIR/skills/plan/SKILL.md"
+
+if [ ! -f "$PLAN_FILE" ]; then
+  fail "plan/SKILL.md が存在しない: $PLAN_FILE"
+  exit 1
+fi
+
+# 13-1: 親セクション「### 1. Issue 情報の取得」が存在する（構造検証）
+if grep -q '^### 1\. Issue 情報の取得' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在する"
+else
+  fail "plan/SKILL.md に親セクション「### 1. Issue 情報の取得」が存在しない"
+fi
+
+# 13-2: 9 つのサブセクション（#### 1-1 〜 #### 1-9）がそれぞれ欠番なく存在する（構造検証）
+# 各サブセクションは独立した責務を表す。ヘッダーの欠落 = 機能の欠落として検出する。
+# CodeRabbit #565 Major 指摘を反映: 件数判定では重複見出しで欠番を見逃すため、各番号の存在を個別検証する。
+MISSING_SUBSECTIONS=""
+for i in 1 2 3 4 5 6 7 8 9; do
+  if ! grep -qE "^#### 1-${i}\. " "$PLAN_FILE"; then
+    MISSING_SUBSECTIONS="${MISSING_SUBSECTIONS} 1-${i}"
+  fi
+done
+if [ -z "${MISSING_SUBSECTIONS# }" ]; then
+  pass "plan/SKILL.md にサブセクション #### 1-1 〜 #### 1-9 が欠番なく存在する"
+else
+  fail "plan/SKILL.md に欠けているサブセクションがある:${MISSING_SUBSECTIONS}"
+fi
+
+# 13-3: コード行で gh api ... /comments --paginate が存在する（コードブロック検証）
+# 行頭スペース許容。インラインコード（バッククォート内の言及）は対象外。
+if grep -qE '^[[:space:]]*gh api.*issues.*/comments.*--paginate' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在する"
+else
+  fail "plan/SKILL.md にコード行レベルの gh api ... /comments --paginate が存在しない"
+fi
+
+# 13-4: --json comments をコード行で使わない（負検証）
+# 既存テスト 10-5b と同じ負検証スタイル。説明文中のインラインコード（`...` 内）は対象外。
+# CodeRabbit #565 Major 指摘を反映: 行頭 `gh` 限定だと `VAR=$(gh ...)` 代入形式や
+# `cd <path> && gh ...` チェイン形式を取りこぼすため、それらも検出対象に含める。
+if grep -qE '^[[:space:]]*([a-zA-Z_][a-zA-Z0-9_]*=.*)?([[:space:]]*cd[[:space:]]+<path>[[:space:]]*&&[[:space:]]*)?gh[[:space:]].*\-\-json[[:space:]]+comments([[:space:]]|$)' "$PLAN_FILE"; then
+  fail "plan/SKILL.md にコード行レベルの --json comments 使用が残存（30 件制限の混入経路）"
+else
+  pass "plan/SKILL.md にコード行レベルの --json comments 使用が無い（30 件制限を回避）"
+fi
+
+# 13-5: bot 除外フィルタの jq テストパターンが select(...test(...)) コード行に存在する（コードブロック検証）
+# 既知の bot ユーザー名 4 種のうち 2 種以上が jq の select(.user.login | test(...)) 行に存在することを検証する。
+# CodeRabbit #565 Major 指摘を反映: 説明文の箇条書きでも一致してしまう緩いパターンを廃し、
+# select(...test(...)) を含むコード行に限定して、jq の実フィルタが消えても通過する偽陽性を防ぐ。
+BOT_HIT_COUNT=0
+for bot in coderabbitai github-actions codecov dependabot; do
+  if grep -qE "select\(.+test\(.+${bot}" "$PLAN_FILE"; then
+    BOT_HIT_COUNT=$((BOT_HIT_COUNT + 1))
+  fi
+done
+if [ "$BOT_HIT_COUNT" -ge 2 ]; then
+  pass "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件存在する（2 件以上必須）"
+else
+  fail "plan/SKILL.md の jq select(...test(...)) フィルタに既知 bot 名が ${BOT_HIT_COUNT} 件しか存在しない（2 件以上必須）"
+fi
+
+# 13-6: owner/repo 動的解決のコマンドがコード行に存在する（コードブロック検証）
+if grep -qE '^[[:space:]]*[a-zA-Z_]+=.*gh repo view.*nameWithOwner' "$PLAN_FILE"; then
+  pass "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在する"
+else
+  fail "plan/SKILL.md にコード行レベルの gh repo view ... nameWithOwner が存在しない"
+fi
+
+echo ""
+
+# --- テスト14: ステップ 11 マージ後検証 (#561) ---
+
+echo "--- テスト14: ステップ 11 マージ後検証 ---"
+
+SHIP_STEP11=$(awk '/^### 11\. /{flag=1; next} /^## 介入ポイント/{flag=0} flag' "$SKILL_FILE")
+
+# 14-1: ステップ 11 のセクションヘッダーが存在する
+if grep -q '^### 11\. ' "$SKILL_FILE"; then
+  pass "ship/SKILL.md にステップ 11 のセクションヘッダーが存在する"
+else
+  fail "ship/SKILL.md にステップ 11 のセクションヘッダーが存在しない"
+fi
+
+# 14-2: サブステップ 11-1 〜 11-4 がそれぞれ欠番なく存在する
+MISSING_STEP11_SUBS=""
+for i in 1 2 3 4; do
+  if ! grep -qE "^#### 11-${i}\. " "$SKILL_FILE"; then
+    MISSING_STEP11_SUBS="${MISSING_STEP11_SUBS} 11-${i}"
+  fi
+done
+if [ -z "${MISSING_STEP11_SUBS# }" ]; then
+  pass "ship/SKILL.md にサブステップ #### 11-1 〜 #### 11-4 が欠番なく存在する"
+else
+  fail "ship/SKILL.md に欠けているサブステップがある:${MISSING_STEP11_SUBS}"
+fi
+
+# 14-3: CEO（リポジトリオーナー）検証スコープと bot / 共同作業者の対象外明記
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'リポジトリオーナー'; then
+  pass "ステップ 11 に「リポジトリオーナー」スコープ説明がある"
+else
+  fail "ステップ 11 に「リポジトリオーナー」スコープ説明がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q '共同作業者'; then
+  pass "ステップ 11 に「共同作業者」対象外の明記がある"
+else
+  fail "ステップ 11 に「共同作業者」対象外の明記がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'bot'; then
+  pass "ステップ 11 に bot コメント対象外の明記がある"
+else
+  fail "ステップ 11 に bot コメント対象外の明記がない"
+fi
+
+# 14-4: 機械的全 ✅ 禁止と新規ヘッドレス LLM 呼び出し禁止（CISO 条件付き OK 前提条件）
+if printf '%s\n' "$SHIP_STEP11" | grep -q '機械的に全'; then
+  pass "ステップ 11 に「機械的に全 ✅ 禁止」の明記がある"
+else
+  fail "ステップ 11 に「機械的に全 ✅ 禁止」の明記がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'claude -p'; then
+  pass "ステップ 11 に「新規ヘッドレス LLM 呼び出し禁止（claude -p 等）」の明記がある"
+else
+  fail "ステップ 11 に「新規ヘッドレス LLM 呼び出し禁止（claude -p 等）」の明記がない"
+fi
+
+# 14-5: プロンプトインジェクション対策の記載
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'プロンプトインジェクション'; then
+  pass "ステップ 11-2 にプロンプトインジェクション対策の記載がある"
+else
+  fail "ステップ 11-2 にプロンプトインジェクション対策の記載がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q '外部入力'; then
+  pass "ステップ 11-2 に「外部入力」の明記がある"
+else
+  fail "ステップ 11-2 に「外部入力」の明記がない"
+fi
+
+# 14-6: fail-safe 挙動（gh api PATCH / gh issue reopen 失敗時）
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'fail-safe'; then
+  pass "ステップ 11 に fail-safe 挙動の明記がある"
+else
+  fail "ステップ 11 に fail-safe 挙動の明記がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'Reopen に失敗'; then
+  pass "ステップ 11-4 に Reopen 失敗時の挙動明記がある"
+else
+  fail "ステップ 11-4 に Reopen 失敗時の挙動明記がない"
+fi
+
+# 14-7: escalate 終了時のスキップ記載（負検証）
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'MERGED で正常終了'; then
+  pass "ステップ 11 に「MERGED で正常終了した直後にのみ実行」の明記がある"
+else
+  fail "ステップ 11 に「MERGED で正常終了した直後にのみ実行」の明記がない"
+fi
+
+if printf '%s\n' "$SHIP_STEP11" | grep -q 'escalate'; then
+  pass "ステップ 11 に escalate 終了時のスキップ記載がある"
+else
+  fail "ステップ 11 に escalate 終了時のスキップ記載がない"
+fi
+
+# 14-8: 結果報告 3 パターンのテンプレート
+SHIP_RESULT=$(awk '/^## 結果報告/{flag=1; next} /^## 制約/{flag=0} flag' "$SKILL_FILE")
+
+if printf '%s\n' "$SHIP_RESULT" | grep -q '検証結果'; then
+  pass "結果報告セクションに「検証結果」フィールドがある"
+else
+  fail "結果報告セクションに「検証結果」フィールドがない"
+fi
+
+if printf '%s\n' "$SHIP_RESULT" | grep -q '全完了' && \
+   printf '%s\n' "$SHIP_RESULT" | grep -q '未完了あり' && \
+   printf '%s\n' "$SHIP_RESULT" | grep -q 'スキップ'; then
+  pass "結果報告セクションに 3 パターン（全完了 / 未完了あり / スキップ）の記載がある"
+else
+  fail "結果報告セクションに 3 パターン（全完了 / 未完了あり / スキップ）の記載が不完全"
+fi
+
+# 14-9: rate limit 対策（指数バックオフ）の記載
+if printf '%s\n' "$SHIP_STEP11" | grep -q '指数バックオフ'; then
+  pass "ステップ 11-3 に rate limit 対策（指数バックオフ）の記載がある"
+else
+  fail "ステップ 11-3 に rate limit 対策（指数バックオフ）の記載がない"
+fi
+
+# 14-10: CEO への次のアクションガイダンス
+if printf '%s\n' "$SHIP_STEP11" | grep -q '/vibecorp:ship.*再実行'; then
+  pass "ステップ 11-4 に CEO への次のアクションガイダンス（再 ship 案内）がある"
+else
+  fail "ステップ 11-4 に CEO への次のアクションガイダンス（再 ship 案内）がない"
+fi
+
+echo ""
+
+# --- テスト15: plan/SKILL.md の ⬜ のみ計画化仕様 (#561) ---
+
+echo "--- テスト15: plan/SKILL.md の ⬜ のみ計画化仕様 ---"
+
+# 15-1: plan/SKILL.md に「ship 標準挙動: ⬜ のみ実装」サブセクションが存在する
+if grep -qF '#### ship 標準挙動: ⬜ のみ実装' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に「ship 標準挙動: ⬜ のみ実装」サブセクションが存在する"
+else
+  fail "plan/SKILL.md に「ship 標準挙動: ⬜ のみ実装」サブセクションが存在しない"
+fi
+
+# 15-2: ⬜ / ✅ / 再実装しない の記述
+if grep -q '再実装しない' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に「再実装しない」の記述がある"
+else
+  fail "plan/SKILL.md に「再実装しない」の記述がない"
+fi
+
+# 15-3: 責務境界の明示（plan の責務 / ship の責務）
+if grep -q 'plan の責務' "$PLAN_FILE" && grep -q 'ship の責務' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に責務境界（plan の責務 / ship の責務）が明示されている"
+else
+  fail "plan/SKILL.md に責務境界（plan の責務 / ship の責務）が明示されていない"
+fi
+
+# 15-4: CEO コメント内の ⬜ 項目も拾う仕様
+if grep -q 'CEO コメント' "$PLAN_FILE"; then
+  pass "plan/SKILL.md に CEO コメント内のチェックボックス取得仕様がある"
+else
+  fail "plan/SKILL.md に CEO コメント内のチェックボックス取得仕様がない"
+fi
+
+echo ""
+
+# --- テスト16: docs/specification.md のマージ後検証セクション (#561) ---
+
+echo "--- テスト16: docs/specification.md のマージ後検証セクション ---"
+
+SPEC_FILE="$PROJECT_DIR/docs/specification.md"
+
+if [ ! -f "$SPEC_FILE" ]; then
+  fail "docs/specification.md が存在しない: $SPEC_FILE"
+  exit 1
+fi
+
+# 16-1: 「### ship のマージ後検証」セクションヘッダーが存在する
+# document-writing.md 準拠で見出しに絵文字を付けてもマッチするよう、見出しテキスト直前の絵文字を許容する
+if grep -qE '^### ([^[:space:]]+ )?ship のマージ後検証' "$SPEC_FILE"; then
+  pass "docs/specification.md に「### ship のマージ後検証」セクションが存在する"
+else
+  fail "docs/specification.md に「### ship のマージ後検証」セクションが存在しない"
+fi
+
+# 16-2: 検証スコープ（本文 / CEO コメント / 共同作業者除外 / bot 除外）
+SPEC_VERIFY=$(awk '/^### ([^[:space:]]+ )?ship のマージ後検証/{flag=1; next} /^### ([^[:space:]]+ )?エピック運用/{flag=0} flag' "$SPEC_FILE")
+
+if printf '%s\n' "$SPEC_VERIFY" | grep -q 'Issue 本文'; then
+  pass "specification.md のマージ後検証セクションに Issue 本文スコープがある"
+else
+  fail "specification.md のマージ後検証セクションに Issue 本文スコープがない"
+fi
+
+if printf '%s\n' "$SPEC_VERIFY" | grep -q 'CEO'; then
+  pass "specification.md のマージ後検証セクションに CEO コメントスコープがある"
+else
+  fail "specification.md のマージ後検証セクションに CEO コメントスコープがない"
+fi
+
+if printf '%s\n' "$SPEC_VERIFY" | grep -q '共同作業者'; then
+  pass "specification.md のマージ後検証セクションに共同作業者対象外の明記がある"
+else
+  fail "specification.md のマージ後検証セクションに共同作業者対象外の明記がない"
+fi
+
+if printf '%s\n' "$SPEC_VERIFY" | grep -q 'bot'; then
+  pass "specification.md のマージ後検証セクションに bot 除外の明記がある"
+else
+  fail "specification.md のマージ後検証セクションに bot 除外の明記がない"
+fi
+
+# 16-3: 全プリセット対応の明記
+if printf '%s\n' "$SPEC_VERIFY" | grep -q '全プリセット'; then
+  pass "specification.md のマージ後検証セクションに全プリセット対応の明記がある"
+else
+  fail "specification.md のマージ後検証セクションに全プリセット対応の明記がない"
+fi
+
+# 16-4: 新規ヘッドレス LLM 呼び出し禁止の明記
+if printf '%s\n' "$SPEC_VERIFY" | grep -q 'claude -p'; then
+  pass "specification.md のマージ後検証セクションに新規ヘッドレス LLM 呼び出し禁止の明記がある"
+else
+  fail "specification.md のマージ後検証セクションに新規ヘッドレス LLM 呼び出し禁止の明記がない"
+fi
+
+echo ""
+
 # --- 結果 ---
 
 echo "==========================="

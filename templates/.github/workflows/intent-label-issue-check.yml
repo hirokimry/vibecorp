@@ -6,7 +6,10 @@ name: Intent Label Issue Check
 
 on:
   issues:
-    types: [opened, edited, labeled, unlabeled, reopened]
+    # unlabeled は intent ラベル差し替え（旧 intent 削除 → 新 intent 追加）の途中でも発火し
+    # 「intent ラベル無し」と誤検知して警告コメントを投下するため除外する。差し替え後の
+    # labeled イベントで再検証されるため検知漏れは発生しない（Issue #533 Minor #11）。
+    types: [opened, edited, labeled, reopened]
 
 permissions:
   issues: write

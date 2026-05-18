@@ -582,6 +582,78 @@ update_vibecorp_yml() {
   fi
 }
 
+migrate_forbidden_targets_skills() {
+  # --update 時のセキュリティ移行: 既存 vibecorp.yml の diagnose.forbidden_targets に
+  # skills/** が無ければ自動追加する（Issue #460 / CodeRabbit 指摘）。
+  #
+  # 仕様根拠: Issue #460 — `.claude/skills/` を自律ループの保護対象に昇格。
+  # 既存ユーザーは vibecorp.yml に独自 forbidden_targets を持つため、hook デフォルト変更だけでは
+  # 防御が届かない。--update 実行時にここで一度だけ補完する（冪等）。
+  # bash 3.2 互換、`sed -i` 禁止（mktemp + mv で原子的置換）。
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  [[ -f "$yml" ]] || return 0
+
+  # diagnose.forbidden_targets セクションに skills/** が既にあるかチェック
+  local found
+  found=$(awk '
+    /^diagnose:/ { in_diagnose = 1; next }
+    in_diagnose && /^[^ #]/ { exit }
+    in_diagnose && /^  forbidden_targets:/ { in_targets = 1; next }
+    in_diagnose && in_targets && /^  [^ -]/ { exit }
+    in_diagnose && in_targets && /^    - / {
+      sub(/^    - /, "")
+      sub(/[[:space:]]*$/, "")
+      gsub(/"/, "")
+      gsub(/'\''/, "")
+      if ($0 == "skills/**") { print "yes"; exit }
+    }
+  ' "$yml")
+
+  if [[ "$found" == "yes" ]]; then
+    return 0
+  fi
+
+  # forbidden_targets セクション自体が存在するかチェック（diagnose セクション内）
+  local has_targets
+  has_targets=$(awk '
+    /^diagnose:/ { in_diagnose = 1; next }
+    in_diagnose && /^[^ #]/ { exit }
+    in_diagnose && /^  forbidden_targets:/ { print "yes"; exit }
+  ' "$yml")
+
+  if [[ "$has_targets" != "yes" ]]; then
+    # forbidden_targets セクション自体が無い場合は安全のため触らない（利用者が意図的に削除した可能性）
+    return 0
+  fi
+
+  # forbidden_targets: 行の直後に skills/** エントリを挿入
+  # inline 空配列形式（`forbidden_targets: []`）の場合は block 形式に正規化してから挿入する
+  # （挿入しただけだと `[]` の後に block エントリが続いて YAML が壊れる）。
+  local tmp
+  tmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+  awk '
+    BEGIN { in_diagnose = 0; inserted = 0 }
+    {
+      # inline 空配列を検出したら block 形式に正規化して skills/** を 1 件目として挿入
+      if (!inserted && in_diagnose && /^  forbidden_targets:[[:space:]]*\[[[:space:]]*\][[:space:]]*$/) {
+        print "  forbidden_targets:"
+        print "    - \"skills/**\""
+        inserted = 1
+        next
+      }
+      print
+      if (!inserted && in_diagnose && /^  forbidden_targets:/) {
+        print "    - \"skills/**\""
+        inserted = 1
+      }
+      if (/^diagnose:/) in_diagnose = 1
+      else if (in_diagnose && /^[^ #]/) in_diagnose = 0
+    }
+  ' "$yml" > "$tmp" && mv "$tmp" "$yml"
+
+  log_info "vibecorp.yml の diagnose.forbidden_targets に skills/** を追加（Issue #460 セキュリティ移行）"
+}
+
 read_lock_list() {
   # lock ファイルから指定セクションのファイル一覧を取得
   # 使い方: read_lock_list <lock_file> <section_name>
@@ -815,7 +887,10 @@ copy_managed_files() {
       rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      # macOS / Linux 両 OS の sandbox ファイルを削除（インストール時の OS と
+      # ダウングレード時の OS が異なる可能性に備える）
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rm -f "${REPO_ROOT}/.claude/sandbox/bwrap-args.sh"
       rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
       rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
@@ -839,7 +914,10 @@ copy_managed_files() {
       rm -f "${REPO_ROOT}/.claude/bin/claude-real"
       rm -f "${REPO_ROOT}/.claude/bin/vibecorp-sandbox"
       rm -f "${REPO_ROOT}/.claude/bin/activate.sh"
+      # macOS / Linux 両 OS の sandbox ファイルを削除（インストール時の OS と
+      # ダウングレード時の OS が異なる可能性に備える）
       rm -f "${REPO_ROOT}/.claude/sandbox/claude.sb"
+      rm -f "${REPO_ROOT}/.claude/sandbox/bwrap-args.sh"
       rmdir "${REPO_ROOT}/.claude/bin" 2>/dev/null || true
       rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
@@ -848,20 +926,26 @@ copy_managed_files() {
   log_info "テンプレートをコピー (preset: ${PRESET})"
 }
 
-# 隔離レイヤ（bin/sandbox）を配置する。full + Darwin のみ動作。
-# Linux は Phase 2 (#310) で bwrap 対応を追加予定のため、現時点ではスキップ。
+# 隔離レイヤ（bin/sandbox）を配置する。full プリセット専用。
+# OS 別の sandbox 実装を明示的にコピーする:
+#   - Darwin: claude.sb (sandbox-exec プロファイル)
+#   - Linux:  bwrap-args.sh (bwrap 引数生成スクリプト)
+# 逆クロス配置（macOS に bwrap-args.sh / Linux に claude.sb）を防ぐため、
+# templates/claude/sandbox/ 配下を glob ではなく OS 別ファイル名で明示的にコピーする。
 copy_isolation_templates() {
   if [[ "$PRESET" != "full" ]]; then
     return 0
   fi
-  if [[ "$OS" != "darwin" ]]; then
-    return 0
-  fi
+  case "$OS" in
+    darwin|linux) ;;
+    *) return 0 ;;  # 未対応 OS は隔離レイヤを配置しない
+  esac
 
   local bin_dir="${REPO_ROOT}/.claude/bin"
   local sandbox_dir="${REPO_ROOT}/.claude/sandbox"
   mkdir -p "$bin_dir" "$sandbox_dir"
 
+  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）
   local src
   for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
     # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
@@ -875,15 +959,22 @@ copy_isolation_templates() {
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
-  for src in "${SCRIPT_DIR}/templates/claude/sandbox/"*; do
-    # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
-    [[ -f "$src" && ! -L "$src" ]] || continue
-    local name
-    name=$(basename "$src")
-    cp "$src" "${sandbox_dir}/${name}"
-    save_base_snapshot "$src" "sandbox/${name}"
-    log_info "隔離レイヤを配置: .claude/sandbox/${name}"
-  done
+  # sandbox/ 配下は OS 別ファイル名で明示コピー
+  local sandbox_file=""
+  case "$OS" in
+    darwin) sandbox_file="claude.sb" ;;
+    linux)  sandbox_file="bwrap-args.sh" ;;
+  esac
+
+  local sandbox_src="${SCRIPT_DIR}/templates/claude/sandbox/${sandbox_file}"
+  if [[ -f "$sandbox_src" && ! -L "$sandbox_src" ]]; then
+    cp "$sandbox_src" "${sandbox_dir}/${sandbox_file}"
+    save_base_snapshot "$sandbox_src" "sandbox/${sandbox_file}"
+    log_info "隔離レイヤを配置: .claude/sandbox/${sandbox_file}"
+  else
+    log_error "sandbox ファイルが見つかりません: ${sandbox_src}"
+    exit 1
+  fi
 }
 
 # ゲートスタンプ・state・plans の保存先 ~/.cache/vibecorp/ を事前作成する (#326, #334)。
@@ -912,7 +1003,8 @@ setup_xdg_cache_dirs() {
   log_info "plans 保存先を確保: ${plans_dir}"
 }
 
-# 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full + Darwin のみ動作。
+# 隔離レイヤラッパーが exec する `claude-real` symlink を配置する。full プリセット専用。
+# Darwin / Linux 両 OS で動作する。
 # templates/claude/bin/claude は `exec claude-real "$@"` する設計のため、
 # ラッパー自身を除外して PATH 上の本物 claude を検出し、`.claude/bin/claude-real` に symlink する。
 # 検出失敗時は警告のみ出してインストールを続行する（passthrough は引き続き利用可能）。
@@ -920,9 +1012,10 @@ setup_claude_real_symlink() {
   if [[ "$PRESET" != "full" ]]; then
     return 0
   fi
-  if [[ "$OS" != "darwin" ]]; then
-    return 0
-  fi
+  case "$OS" in
+    darwin|linux) ;;
+    *) return 0 ;;  # 未対応 OS は隔離レイヤ自体が配置されないため symlink も不要
+  esac
 
   local bin_dir="${REPO_ROOT}/.claude/bin"
   local target="${bin_dir}/claude-real"
@@ -1020,6 +1113,7 @@ diagnose:
     - "MVV.md"
     - "SECURITY.md"
     - "POLICY.md"
+    - "skills/**"
 $(generate_plan_yaml_section)
 YAML
   log_info "vibecorp.yml を生成"
@@ -2751,6 +2845,7 @@ main() {
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
+    migrate_forbidden_targets_skills
   fi
 
   generate_coderabbit_yaml

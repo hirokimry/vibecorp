@@ -9,7 +9,7 @@
 # 検証対象ファイル（Source of Truth は .claude/vibecorp.yml）:
 #   1. .claude/vibecorp.yml          (Source of Truth)
 #   2. install.sh                     (YAML テンプレ初期値)
-#   3. README.md                      (例示)
+#   3. docs/configuration.md          (例示 — Issue #569 で README から移譲)
 #   4. skills/diagnose/SKILL.md       (設定テーブル)
 #   5. docs/cost-analysis.md          (上限値表)
 #
@@ -89,23 +89,25 @@ assert_eq "install.sh の max_files_per_issue が vibecorp.yml と一致" \
   "$EXPECTED_FILES_PER_ISSUE" "$ACTUAL"
 
 # ============================================
-echo "=== README.md の例示 YAML ==="
+echo "=== docs/configuration.md の例示 YAML ==="
 # ============================================
+# Issue #569 で README から docs/configuration.md に vibecorp.yml 例示を移譲した
 
-README="${REPO_ROOT}/README.md"
-assert_file_exists "README.md が存在する" "$README"
+CONFIG_MD="${REPO_ROOT}/docs/configuration.md"
+assert_file_exists "docs/configuration.md が存在する" "$CONFIG_MD"
 
-# README.md の YAML 例示は `  max_issues_per_run: <値>    # コメント` 形式
-ACTUAL=$(awk '/^  max_issues_per_run:/ { print $2; exit }' "$README")
-assert_eq "README.md の max_issues_per_run が vibecorp.yml と一致" \
+# docs/configuration.md の YAML 例示は `  max_issues_per_run: <値>    # コメント` 形式
+# Markdown 整形ツール（prettier 等）で先頭空白が変わっても拾えるよう、空白幅は可変で抽出する
+ACTUAL=$(awk '/^[[:space:]]*max_issues_per_run:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
+assert_eq "docs/configuration.md の max_issues_per_run が vibecorp.yml と一致" \
   "$EXPECTED_PER_RUN" "$ACTUAL"
 
-ACTUAL=$(awk '/^  max_issues_per_day:/ { print $2; exit }' "$README")
-assert_eq "README.md の max_issues_per_day が vibecorp.yml と一致" \
+ACTUAL=$(awk '/^[[:space:]]*max_issues_per_day:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
+assert_eq "docs/configuration.md の max_issues_per_day が vibecorp.yml と一致" \
   "$EXPECTED_PER_DAY" "$ACTUAL"
 
-ACTUAL=$(awk '/^  max_files_per_issue:/ { print $2; exit }' "$README")
-assert_eq "README.md の max_files_per_issue が vibecorp.yml と一致" \
+ACTUAL=$(awk '/^[[:space:]]*max_files_per_issue:[[:space:]]/ { print $2; exit }' "$CONFIG_MD")
+assert_eq "docs/configuration.md の max_files_per_issue が vibecorp.yml と一致" \
   "$EXPECTED_FILES_PER_ISSUE" "$ACTUAL"
 
 # ============================================

@@ -41,8 +41,7 @@ jobs:
         continue-on-error: true
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
-        run: |
-          bash scripts/check-plugin-version-bump.sh "$BASE_REF" "HEAD"
+        run: scripts/check-plugin-version-bump.sh "$BASE_REF" "HEAD"
 
       - name: bump 漏れ警告コメント投稿
         if: steps.bump_check.outcome == 'failure'
@@ -50,6 +49,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-        run: |
-          gh pr comment "$PR_NUMBER" --repo "$REPO" \
-            --body "⚠️ \`.claude-plugin/marketplace.json\` の \`plugins[0].skills\` が変更されていますが、\`.claude-plugin/plugin.json\` の \`version\` が bump されていません。利用者は新しいスキルを取得するために version bump を必要とします（PR #459 と同種の取りこぼし防止）。マージ前に \`.claude-plugin/plugin.json\` の \`version\` を更新してください。本チェックは警告のみ・非ブロックです。"
+        run: .github/scripts/check-plugin-version-bump-comment.sh

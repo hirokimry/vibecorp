@@ -169,6 +169,73 @@ cleanup
 
 # ============================================
 echo ""
+echo "=== H5. bwrap 存在時: full プリセットで bwrap-args.sh が配置される ==="
+# ============================================
+
+# bwrap を含む PATH を構成する mock を別途用意する
+# bwrap の試し実行は呼ばれないため、success 終了の fake で十分
+setup_mock_bin_with_bwrap() {
+  local mock_bin="$1"
+  setup_mock_bin "$mock_bin"
+  # fake bwrap（exit 0 を返すだけのスクリプト）
+  cat > "$mock_bin/bwrap" <<'BWRAP_EOF'
+#!/bin/bash
+exit 0
+BWRAP_EOF
+  chmod +x "$mock_bin/bwrap"
+}
+
+create_test_repo
+R="$TMPDIR_ROOT"
+MOCK_BIN="$R/_mock_bin"
+setup_mock_bin_with_bwrap "$MOCK_BIN"
+
+OS_RELEASE_FILE="$R/os-release-ubuntu"
+make_os_release "$OS_RELEASE_FILE" "ubuntu" "debian"
+
+ERR_LOG="$R/h5_err.log"
+EXIT_CODE=0
+PATH="$MOCK_BIN" VIBECORP_OS_RELEASE_PATH="$OS_RELEASE_FILE" \
+  bash "$INSTALL_SH" --name test-proj --preset full > /dev/null 2>"$ERR_LOG" \
+  || EXIT_CODE=$?
+
+assert_exit_code "H5-a: bwrap 存在時の full インストールが成功 (exit 0)" "0" "$EXIT_CODE"
+assert_file_exists "H5-b: .claude/sandbox/bwrap-args.sh が配置される" "$R/.claude/sandbox/bwrap-args.sh"
+assert_file_not_exists "H5-c: macOS 専用の claude.sb は配置されない" "$R/.claude/sandbox/claude.sb"
+assert_file_exists "H5-d: .claude/bin/claude が配置される" "$R/.claude/bin/claude"
+assert_file_exists "H5-e: .claude/bin/vibecorp-sandbox が配置される" "$R/.claude/bin/vibecorp-sandbox"
+assert_file_exists "H5-f: .claude/bin/activate.sh が配置される" "$R/.claude/bin/activate.sh"
+cleanup
+
+# ============================================
+echo ""
+echo "=== H6. minimal プリセット ダウングレード: bwrap-args.sh が削除される ==="
+# ============================================
+
+create_test_repo
+R="$TMPDIR_ROOT"
+MOCK_BIN="$R/_mock_bin"
+setup_mock_bin_with_bwrap "$MOCK_BIN"
+
+OS_RELEASE_FILE="$R/os-release-ubuntu"
+make_os_release "$OS_RELEASE_FILE" "ubuntu" "debian"
+
+# まず full でインストール
+PATH="$MOCK_BIN" VIBECORP_OS_RELEASE_PATH="$OS_RELEASE_FILE" \
+  bash "$INSTALL_SH" --name test-proj --preset full > /dev/null 2>&1
+
+assert_file_exists "H6-a: full 後に bwrap-args.sh が存在する" "$R/.claude/sandbox/bwrap-args.sh"
+
+# minimal にダウングレード
+PATH="$MOCK_BIN" VIBECORP_OS_RELEASE_PATH="$OS_RELEASE_FILE" \
+  bash "$INSTALL_SH" --update --preset minimal > /dev/null 2>&1
+
+assert_file_not_exists "H6-b: minimal ダウングレード後に bwrap-args.sh が削除される" "$R/.claude/sandbox/bwrap-args.sh"
+assert_file_not_exists "H6-c: minimal ダウングレード後に vibecorp-sandbox が削除される" "$R/.claude/bin/vibecorp-sandbox"
+cleanup
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then

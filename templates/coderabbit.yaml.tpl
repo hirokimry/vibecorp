@@ -13,9 +13,6 @@ reviews:
 
   request_changes_workflow: true
 
-  auto_resolve:
-    enabled: true
-
 {{PATH_FILTERS_BLOCK}}
 
   path_instructions:

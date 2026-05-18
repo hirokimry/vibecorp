@@ -109,3 +109,8 @@ id="$(printf '%s' "$(basename "$root")" | tr -cs 'A-Za-z0-9._-' '_')"
 ```
 
 - ファイル名サニタイズや ID 生成など、コマンド置換の出力を `tr` に渡すパターン全般に適用する
+
+## 🔗 関連
+
+- workflow yaml のインラインシェル切り出しルール: `workflow-shell.md`
+- テスト追加義務: `testing.md`

@@ -10,7 +10,7 @@
 #   3. claude_action セクション不在時はデフォルト true として生成される
 #   4. CISO 要件: on/permissions/concurrency/Fork PR 除外条件が含まれる
 #   5. claude-code-action@v1 と claude_code_oauth_token への参照が含まれる
-#   6. intent ラベル数チェックジョブが含まれる（1 PR 1 intent）
+#   6. Issue #575: PR 側 intent-label-check ジョブが含まれない（Issue 側 intent-label-issue-check.yml に SoT 集約）
 #   7. 既存ファイル（カスタマイズ無し）→ テンプレート反映
 #   8. 既存ファイル（カスタマイズあり、テンプレート未変更）→ カスタム保持
 #   9. copy_workflows が ai-review.yml を上書き処理しない（generate_ai_review_workflow に委譲）
@@ -64,31 +64,34 @@ echo "--- 3. claude-code-action 呼び出し ---"
 assert_file_contains "anthropics/claude-code-action@v1" "$yml" "anthropics/claude-code-action@v1"
 assert_file_contains "claude_code_oauth_token 渡し" "$yml" "claude_code_oauth_token: \${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
 assert_file_contains "fetch-depth: 0 (差分取得)"  "$yml" "fetch-depth: 0"
-assert_file_contains "needs: intent-label-check" "$yml" "needs: intent-label-check"
 
 # ============================================
-# 4. intent ラベル数チェックジョブ
+# 4. Issue #575: PR 側 intent-label-check ジョブが廃止されている
 # ============================================
 echo ""
-echo "--- 4. intent ラベル数チェック ---"
-assert_file_contains "intent-label-check ジョブ" "$yml" "intent-label-check:"
-assert_file_contains "1 PR 1 intent ルール記述" "$yml" "1 PR 1 intent"
-assert_file_contains "intent/ プレフィックス検査" "$yml" "intent/"
-assert_file_contains "intent ラベル 0 件 fail 検知"           "$yml" 'allowed_intent.*-eq 0'
-assert_file_contains "intent ラベル 2 件以上 fail 検知"        "$yml" 'allowed_intent.*-gt 1'
-assert_file_contains "未知 intent/* ラベル混入 fail 検知"     "$yml" 'unknown_intent.*-gt 0'
-assert_file_contains "fail 時の exit 1"                      "$yml" "exit 1"
-# intent-label-check と preflight ガードはともに checkout を行わないため gh pr comment が repo を解決できる必要がある
-# (#504 / CR Major 指摘で発覚、#509 で preflight 追加)
-# 失敗分岐は 4 つ:
-#   intent-label-check: unknown_intent > 0 / allowed_intent == 0 / allowed_intent > 1（3 件）
-#   preflight:          OAUTH_TOKEN 空（1 件）
-# 全てで --repo を必須化する
-repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
-if [[ "$repo_flag_count" -eq 4 ]]; then
-  pass "gh pr comment の全失敗分岐（4 件: intent x3 + preflight x1）で --repo \"\$REPO\" 明示"
+echo "--- 4. Issue #575: PR 側 intent-label-check ジョブが含まれない（Issue 側 SoT 集約） ---"
+if grep -q -F "  intent-label-check:" "$yml"; then
+  fail "ai-review.yml に PR 側 intent-label-check ジョブが残存（Issue #575 で削除済みのはず）: $yml"
 else
-  fail "gh pr comment の --repo \"\$REPO\" が 4 件存在すべきところ ${repo_flag_count} 件: ${yml}"
+  pass "ai-review.yml に PR 側 intent-label-check ジョブが無い（Issue 側 SoT 集約）"
+fi
+if grep -q -F "needs: intent-label-check" "$yml"; then
+  fail "ai-review.yml に needs: intent-label-check が残存（Issue #575 で削除済みのはず）: $yml"
+else
+  pass "ai-review.yml に needs: intent-label-check が無い（claude-review 単独実行）"
+fi
+if grep -q -F "1 PR 1 intent" "$yml"; then
+  fail "ai-review.yml に旧表現「1 PR 1 intent」が残存（Issue #575 で「1 Issue 1 intent」に変更）: $yml"
+else
+  pass "ai-review.yml に旧表現「1 PR 1 intent」が無い"
+fi
+# preflight ガードのみで gh pr comment "$PR_NUMBER" --repo "$REPO" が 1 回呼ばれる（OAUTH_TOKEN 空判定の fail 分岐）
+# Issue #575 で intent-label-check ジョブ削除後、4 件 → 1 件に減少
+repo_flag_count=$(grep -Ec 'gh pr comment "\$PR_NUMBER" --repo "\$REPO"' "$yml" || true)
+if [[ "$repo_flag_count" -eq 1 ]]; then
+  pass "gh pr comment の preflight 失敗分岐（1 件）で --repo \"\$REPO\" 明示"
+else
+  fail "gh pr comment の --repo \"\$REPO\" が 1 件存在すべきところ ${repo_flag_count} 件: ${yml}"
 fi
 
 # ============================================

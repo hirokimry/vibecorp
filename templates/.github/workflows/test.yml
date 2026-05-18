@@ -45,7 +45,9 @@ jobs:
       - name: 全 matrix ジョブの成功を確認
         run: |
           result="${{ needs.test-matrix.result }}"
-          if [ "$result" = "success" ] || [ "$result" = "cancelled" ]; then
+          # success のみを成功扱いし、cancelled / failure / skipped は全て fail とする
+          # （Issue #533: cancelled を success 扱いすると required check のブランチ保護を迂回できるため）
+          if [ "$result" = "success" ]; then
             echo "test-matrix: $result"
             exit 0
           fi
