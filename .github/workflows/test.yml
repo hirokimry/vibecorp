@@ -14,6 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # .github/scripts/ 配下シェルスクリプトの静的解析（shellcheck）
+  # Issue #625: workflow から切り出したシェルスクリプトを shellcheck で機械検証する
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck の install
+        run: sudo apt-get update -q && sudo apt-get install -y shellcheck
+      - name: .github/scripts/ を shellcheck で検証
+        run: .github/scripts/run-shellcheck.sh
+
   # Ubuntu テスト: schedule 以外（PR / push:main / workflow_dispatch）で実行
   # Issue #340: test_install.sh を 4 シャード + other に分割して matrix 並列実行
   test-ubuntu:
@@ -81,13 +92,14 @@ jobs:
   #
   # matrix 展開後は親 job の result が全シャードの成功で初めて success になる
   test:
-    needs: [test-ubuntu, test-macos]
+    needs: [shellcheck, test-ubuntu, test-macos]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - uses: actions/checkout@v4
       - name: 全ジョブの結果を確認
         env:
+          SHELLCHECK_RESULT: ${{ needs.shellcheck.result }}
           UBUNTU_RESULT: ${{ needs.test-ubuntu.result }}
           MACOS_RESULT: ${{ needs.test-macos.result }}
         run: .github/scripts/test-aggregate-results.sh

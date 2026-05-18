@@ -13,17 +13,21 @@
 #   - failure / その他: fail（exit 1）
 #
 # 環境変数:
-#   UBUNTU_RESULT: ${{ needs.test-ubuntu.result }}
-#   MACOS_RESULT:  ${{ needs.test-macos.result }}
+#   SHELLCHECK_RESULT: ${{ needs.shellcheck.result }}
+#   UBUNTU_RESULT:     ${{ needs.test-ubuntu.result }}
+#   MACOS_RESULT:      ${{ needs.test-macos.result }}
 set -euo pipefail
 
-# shellcheck disable=SC2153  # UBUNTU_RESULT / MACOS_RESULT は workflow 側 env: で渡される
+# shellcheck disable=SC2153  # SHELLCHECK_RESULT / UBUNTU_RESULT / MACOS_RESULT は workflow 側 env: で渡される
+shellcheck_result="${SHELLCHECK_RESULT}"
+# shellcheck disable=SC2153  # workflow 側 env: で渡される（上記コメント参照）
 ubuntu_result="${UBUNTU_RESULT}"
 # shellcheck disable=SC2153  # workflow 側 env: で渡される（上記コメント参照）
 macos_result="${MACOS_RESULT}"
+echo "shellcheck: $shellcheck_result"
 echo "test-ubuntu: $ubuntu_result"
 echo "test-macos: $macos_result"
-for r in "$ubuntu_result" "$macos_result"; do
+for r in "$shellcheck_result" "$ubuntu_result" "$macos_result"; do
   case "$r" in
     success|skipped)
       # success: 全シャードが pass / skipped: event 条件で未実行 → 集約は pass
