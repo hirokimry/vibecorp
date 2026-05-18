@@ -174,7 +174,7 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
 | `/vibecorp:harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/vibecorp:context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-#### full プリセットで追加（8 スキル）
+#### full プリセットで追加（10 スキル）
 
 | スキル | 説明 |
 |---|---|
@@ -186,6 +186,8 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
 | `/vibecorp:cycle-metrics` | 開発サイクル計測データ（スループット・リードタイム）を `~/.cache/vibecorp/state/<repo-id>/cycle-metrics/` に出力 |
 | `/vibecorp:docs-rewrite-all` | `docs/**/*.md` + `README.md` + `CHANGELOG.md` を `.claude/rules/document-writing.md` 基準で一括棚卸し。領域別 C\*O 委譲 + diff 提案 → CEO 承認 → 書換の 2 段階で自動マージ禁止 |
 | `/vibecorp:prompts-rewrite-all` | `skills/**/SKILL.md` + `.claude/agents/*.md` + `.claude/rules/*.md` を `.claude/rules/prompt-writing.md` 基準で一括書き直し。claude-code-guide MUST 参照 + 3 軸検証（frontmatter / triggering / 行動主語）+ diff 提案 → CEO 承認 → 書換 |
+| `/vibecorp:notifications-extract-all` | `.github/workflows/**` と `hooks/**` に embed された CEO 向け通知文を `.claude/rules/notification-prompt-extraction.md` 基準で個別 `.md` ファイルに切り出す migration skill。diff 提案 → CEO 承認 → 書換の 2 段階で挙動不変を保証。自動マージ禁止、自律ループ対象外 |
+| `/vibecorp:prompts-extract-all` | `skills/**/SKILL.md` に embed されたエージェント呼出プロンプトテンプレを `.claude/rules/notification-prompt-extraction.md` 基準で `skills/<skill>/prompts/<name>.md` に切り出す migration skill。diff 提案 → CEO 承認 → 書換の 2 段階で挙動不変を保証。自動マージ禁止、自律ループ対象外 |
 
 その他、`/vibecorp:audit-cost` / `/vibecorp:audit-security` / `/vibecorp:knowledge-pr` / `/vibecorp:plan-epic` 等の運用補助スキルも full プリセットに同梱される。
 
