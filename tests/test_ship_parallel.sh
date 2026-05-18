@@ -11,6 +11,8 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/ship-parallel/SKILL.md"
+# Issue #642: Agent プロンプト本体は skills/ship-parallel/prompts/agent-call-child-agent-ship.md に切り出された
+AGENT_PROMPT_FILE="$PROJECT_DIR/skills/ship-parallel/prompts/agent-call-child-agent-ship.md"
 
 echo "=== 並列 ship オーケストレーションスキル テスト ==="
 echo ""
@@ -233,21 +235,21 @@ else
 fi
 
 # 8-3: Agent プロンプトに SendMessage での報告指示がある
-if grep -q 'SendMessage.*チームリーダー' "$SKILL_FILE"; then
+if grep -q 'SendMessage.*チームリーダー' "$AGENT_PROMPT_FILE"; then
   pass "Agent プロンプトに SendMessage での報告指示がある"
 else
   fail "Agent プロンプトに SendMessage での報告指示がない"
 fi
 
 # 8-4: Agent プロンプトに compound command 分割指示がある（#258）
-if grep -q '1 コマンド 1 呼び出し' "$SKILL_FILE"; then
+if grep -q '1 コマンド 1 呼び出し' "$AGENT_PROMPT_FILE"; then
   pass "Agent プロンプトに compound command 分割指示がある"
 else
   fail "Agent プロンプトに compound command 分割指示がない"
 fi
 
 # 8-5: Agent プロンプトに built-in check の禁止理由が明示されている（#258）
-if grep -q 'path resolution bypass' "$SKILL_FILE"; then
+if grep -q 'path resolution bypass' "$AGENT_PROMPT_FILE"; then
   pass "Agent プロンプトに path resolution bypass の禁止理由が明示されている"
 else
   fail "Agent プロンプトに path resolution bypass の禁止理由が明示されていない"
