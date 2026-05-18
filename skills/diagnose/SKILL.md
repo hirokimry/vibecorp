@@ -87,63 +87,19 @@ touch "${stamp_dir}/diagnose-active"
 
 #### 4b. CTO による技術的負債分析
 
-CTO エージェントに以下を依頼する:
-
-```text
-以下の観点でコードベースを分析し、改善候補をリストアップしてください:
-- 技術的負債（コード重複、過度な複雑性、古い依存関係）
-- テストカバレッジの不足
-- エラーハンドリングの改善余地
-- パフォーマンスボトルネック
-- スピード/UX（ユーザー待ち時間の短縮）:
-  - 並列化可能な逐次処理（独立したエージェント呼び出し・スキル呼び出し・テストが直列に並んでいる箇所）
-  - 同期待ちが長いフェーズ（CI 待ち・レビュー待ち等の構造的ボトルネック）
-  - フック実行時間の肥大化（PreToolUse / PostToolUse フックが 1 処理あたり閾値を超える）
-  - スキル間の冗長な再実行（同じチェック・同じ走査が複数スキルで重複実行されている）
-
-**スピード/UX 観点で出してはいけない提案（CFO 管轄に閉じ込める）**:
-- モデル指定の変更提案（Opus → Sonnet 等）は出さない
-- エージェント削減・合議制回数削減は出さない
-- 並列度自体の削減は出さない
-- `max_issues_per_run` / `max_issues_per_day` 等のコスト上限値の変更は出さない
-```
+CTO エージェントに以下を依頼する。プロンプトは `skills/diagnose/prompts/agent-call-cto-tech-debt.md` を参照する。
 
 `--scope` が指定されている場合はそのディレクトリに限定して分析する。
 
 #### 4c. CPO によるプロダクト整合分析
 
-CPO エージェントに以下を依頼する:
-
-```text
-以下の観点でコードベースを分析し、MVV・プロダクト方針に沿っていない箇所をリストアップしてください:
-- MVV.md のバリューに属さない機能の検出（例: 規律の自動化に寄与しないフック）
-- docs/specification.md / docs/design-philosophy.md と矛盾する実装
-- 追加されたが使われていない機能（dead feature）
-- プリセット間でのスコープ漏れ（full 専用機能が standard に露出している等）
-```
+CPO エージェントに以下を依頼する。プロンプトは `skills/diagnose/prompts/agent-call-cpo-mvv-alignment.md` を参照する。
 
 `--scope` が指定されている場合はそのディレクトリに限定して分析する。
 
 #### 4d. Claude Code 仕様準拠分析
 
-`claude-code-guide` エージェントに以下を依頼する:
-
-```text
-以下のファイル一覧と公式 Claude Code 仕様（docs.claude.com）を突合し、
-仕様ドリフトを検出してください:
-
-- .claude/hooks/*.sh（PreToolUse / PostToolUse 等のイベント名・引数スキーマ）
-- .claude/skills/*/SKILL.md（front matter スキーマ、name / description）
-- .claude/agents/*.md（front matter スキーマ、tools フィールド）
-- .claude/settings.json（permissions / hooks / MCP スキーマ）
-- *.mcp.json（MCP サーバー定義）
-
-検出例:
-- 廃止イベント名（古い PreToolUse 引数構造等）
-- 非推奨設定キー
-- 新規必須フィールドの未指定
-- MCP server 定義の旧形式
-```
+`claude-code-guide` エージェントに以下を依頼する。プロンプトは `skills/diagnose/prompts/agent-call-claude-code-guide-drift.md` を参照する。
 
 `--scope` が指定されている場合はそのディレクトリに限定して分析する。
 
@@ -161,51 +117,19 @@ CPO エージェントに以下を依頼する:
 
 ### 5. CISO フィルタリング（自己制約緩和チェック）
 
-CISO エージェントに発見した改善候補を渡し、以下をチェックさせる:
-
-```text
-以下の改善候補について、自己制約の緩和に該当するものがないかチェックしてください:
-- protect-files の保護対象を削減する提案
-- hook の条件を緩和する提案
-- セキュリティガードレールを弱める提案
-- forbidden_targets に含まれるファイルの変更提案
-
-該当する候補には「除外」と判定してください。
-```
+CISO エージェントに発見した改善候補を渡し、以下をチェックさせる。プロンプトは `skills/diagnose/prompts/agent-call-ciso-self-constraint.md` を参照する。
 
 CISO が「除外」と判定した候補はリストから除外する。
 
 ### 6. CPO フィルタリング（MVV 整合チェック）
 
-CPO エージェントに残った候補を渡し、以下をチェックさせる:
-
-```text
-以下の改善候補について、MVV.md に定義されたミッション・ビジョン・バリューとの整合性をチェックしてください:
-- MVV に反する変更提案がないか
-- プロジェクトの方向性と合致しているか
-
-整合しない候補には「除外」と判定してください。
-```
+CPO エージェントに残った候補を渡し、以下をチェックさせる。プロンプトは `skills/diagnose/prompts/agent-call-cpo-mvv-filter.md` を参照する。
 
 CPO が「除外」と判定した候補はリストから除外する。
 
 ### 6b. SM フィルタリング（自律実行可否チェック）
 
-SM エージェントに残った候補を渡し、`rules/autonomous-restrictions.md` の不可領域に該当するものを除外させる。
-
-```text
-以下の改善候補について、rules/autonomous-restrictions.md に定義された不可領域に該当するものをチェックしてください:
-
-不可領域:
-1. 認証（hooks/*auth*, hooks/*permission*, settings.json の permissions, gh auth, ANTHROPIC_API_KEY 扱い）
-2. 暗号（encrypt/decrypt/secret/credential/token を扱うコード）
-3. 課金構造（docs/cost-analysis.md, max_issues_per_day 等のコスト上限, claude -p / npx / bunx で LLM を呼ぶ箇所、**モデル指定の変更（Opus → Sonnet 等）**）
-4. ガードレール（protect-files.sh, diagnose-guard.sh, forbidden_targets, diagnose-active スタンプの制御、**エージェント削減・合議制回数削減・並列度自体の削減**）
-5. MVV（MVV.md 自体の変更）
-6. CI エージェント（GitHub Actions）（`.github/workflows/claude*.{yml,yaml}` / `.github/workflows/ai-review.{yml,yaml}` の `permissions` / `secrets` 参照変更、トリガーを `pull_request_target` に変更する候補、`CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` の参照方式変更、Fork PR 除外条件（`if: github.event.pull_request.head.repo.full_name == github.repository`）の削除・緩和、GitHub App に与える権限スコープの変更（特に `administration: write` / `secrets: write` / `workflows: write` の追加））
-
-該当する候補には「除外」と判定し、理由として該当領域名を付記してください。
-```
+SM エージェントに残った候補を渡し、`rules/autonomous-restrictions.md` の不可領域に該当するものを除外させる。プロンプトは `skills/diagnose/prompts/agent-call-sm-autonomous-filter.md` を参照する。
 
 SM が「除外」と判定した候補はリストから除外する。
 

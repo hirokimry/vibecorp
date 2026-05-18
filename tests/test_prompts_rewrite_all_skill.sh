@@ -13,6 +13,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_FILE="${SCRIPT_DIR}/skills/prompts-rewrite-all/SKILL.md"
 DIST_SKILL_FILE="${SCRIPT_DIR}/.claude/vibecorp-base/skills/prompts-rewrite-all/SKILL.md"
 PROMPT_WRITING_RULE="${SCRIPT_DIR}/.claude/rules/prompt-writing.md"
+# Issue #642: claude-code-guide 呼出プロンプト本体は skills/prompts-rewrite-all/prompts/agent-call-claude-code-guide-check.md に切り出された
+SKILL_ALL="$(mktemp -t prompts_rewrite_all_skill_all.XXXXXX)"
+trap 'rm -f "$SKILL_ALL" || true' EXIT
+cat "${SCRIPT_DIR}/skills/prompts-rewrite-all/SKILL.md" "${SCRIPT_DIR}"/skills/prompts-rewrite-all/prompts/*.md > "$SKILL_ALL" 2>/dev/null || true
 
 # ============================================
 echo "=== skills/prompts-rewrite-all/SKILL.md が存在する ==="
@@ -129,7 +133,7 @@ echo "=== claude-code-guide サブエージェント呼出が MUST 化されて�
 assert_file_contains "claude-code-guide への参照" "$SKILL_FILE" "claude-code-guide"
 assert_file_contains "ステップ 3 で MUST 表記" "$SKILL_FILE" "claude-code-guide サブエージェント呼出（MUST）"
 assert_file_contains "docs.claude.com 公式仕様への参照" "$SKILL_FILE" "docs\.claude\.com"
-assert_file_contains "確認トピックは prompt-writing.md の参照に集約" "$SKILL_FILE" "確認必須トピック"
+assert_file_contains "確認トピックは prompt-writing.md の参照に集約" "$SKILL_ALL" "確認必須トピック"
 assert_file_contains "claude-code-guide フォールバック（WebFetch 直参照）" "$SKILL_FILE" "WebFetch"
 assert_file_contains "完全省略禁止の宣言" "$SKILL_FILE" "完全省略は禁止"
 
