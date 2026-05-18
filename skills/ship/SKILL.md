@@ -207,7 +207,7 @@ git push origin HEAD
 /vibecorp:pr --close
 ```
 
-`--close` を渡すことで PR 本文の Issue リンクが `close <Issue URL>` 形式となり、PR マージ時に Issue が自動 close される。
+`--close` を渡すことで PR 本文の Issue リンクが `Closes #N` 形式（GitHub auto-close キーワード）となり、PR マージ時に Issue が自動 close される。`#N` 形式必須（URL 形式は `close-on-feature-merge.yml` の抽出対象外）。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照。
 
 **9-2. base ブランチが ship 側で確定している場合の挙動:**
 
