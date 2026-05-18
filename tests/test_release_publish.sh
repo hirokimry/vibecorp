@@ -60,17 +60,7 @@ STUB
   chmod +x "${stub_bin}/gh"
 
   # stub: git push を握りつぶす（origin 未設定の temp repo で fail しないように）
-  # 他の git サブコマンドは本物に委譲する
-  cat > "${stub_bin}/git" <<'STUB'
-#!/usr/bin/env bash
-# テスト用 stub: git push のみ握りつぶし、他は本物の git に委譲
-if [ "${1:-}" = "push" ]; then
-  echo "[stub git] push $*"
-  exit 0
-fi
-exec /usr/bin/env -i HOME="$HOME" PATH="/usr/local/bin:/usr/bin:/bin" /usr/bin/git "$@"
-STUB
-  # 上記の env -i は環境を最小化しすぎるので、テスト時は単に本物 git を呼ぶだけで良い
+  # 他の git サブコマンドは PATH から自身を除外した上で本物の git に委譲する
   cat > "${stub_bin}/git" <<'STUB'
 #!/usr/bin/env bash
 # テスト用 stub: git push のみ握りつぶし、他は本物の git に委譲
