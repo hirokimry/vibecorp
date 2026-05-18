@@ -18,7 +18,7 @@ paths:
 > マークダウンと状態絵文字でスキャン性を上げる。
 > 機械生成 Bot 通知は別節の例外規定に従う。
 > 対象はあくまで **GitHub 上のコメント**。
-> コード内コメントは `comments.md`（後継: `code-comments.md`）が担う。
+> コード内コメントは `code-comments.md`（旧: `comments.md`）が担う。
 
 # 💬 GitHub コメント作成基準
 
@@ -51,7 +51,7 @@ GitHub 上で投稿するコメント 3 種の書き方を定める。
 以下は本ルールの対象外。
 
 - コード内コメント（`.sh` / `.js` / `.ts` / `.py` / `.rb` 等）。
-  - 対象基準は `comments.md`（後継: `code-comments.md`、Issue #652）。
+  - 対象基準は `code-comments.md`（旧: `comments.md`、Issue #652）。
 - CEO 対話応答 / Issue 本文 / PR 本文 / コミットメッセージ。
   - 対象基準は `communication.md`。
 - ドキュメント本体（README / docs/ 等）。
@@ -305,7 +305,7 @@ severity も結論もなく、議論が拡散する。
 - 動作主語ルール（土台）: `communication.md`
 - ドキュメント作成基準（兄弟ルール）: `document-writing.md`
 - プロンプト作成基準（兄弟ルール）: `prompt-writing.md`
-- コード内コメント基準（対象外、Issue #652 で `code-comments.md` 化予定）: `comments.md`
+- コード内コメント基準（対象外、`code-comments.md`）: `code-comments.md`
 - レビュー判定基準（intent × severity）: `review-handling.md`
 - severity 公式定義: `severity/coderabbit.md`
 - マークダウン規約（フェンスコードブロック言語指定）: `markdown.md`
