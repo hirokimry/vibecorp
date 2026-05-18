@@ -753,6 +753,18 @@ copy_managed_files() {
     fi
   done
 
+  # hooks/messages: hook が参照する CEO 向け通知文ファイルを配布（常に最新で上書き）
+  # .claude/rules/notification-prompt-extraction.md に基づき hook から外部化された通知文。
+  # protect-knowledge-direct-writes.sh / protect-knowledge-bash-writes.sh 等が cat で読み込む。
+  if [[ -d "${SCRIPT_DIR}/templates/claude/hooks/messages" ]]; then
+    local messages_dir="${hooks_dir}/messages"
+    mkdir -p "$messages_dir"
+    for src in "${SCRIPT_DIR}/templates/claude/hooks/messages/"*.md; do
+      [[ -f "$src" ]] || continue
+      cp "$src" "${messages_dir}/$(basename "$src")"
+    done
+  fi
+
   # --update: テンプレートから廃止された hook（lock 記載 + templates 不在）を削除
   if [[ "$UPDATE_MODE" == true ]]; then
     remove_orphan_hooks

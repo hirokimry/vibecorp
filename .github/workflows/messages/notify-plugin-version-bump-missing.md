@@ -1,0 +1,1 @@
+⚠️ `.claude-plugin/marketplace.json` の `plugins[0].skills` が変更されていますが、`.claude-plugin/plugin.json` の `version` が bump されていません。利用者は新しいスキルを取得するために version bump を必要とします（PR #459 と同種の取りこぼし防止）。マージ前に `.claude-plugin/plugin.json` の `version` を更新してください。本チェックは警告のみ・非ブロックです。
