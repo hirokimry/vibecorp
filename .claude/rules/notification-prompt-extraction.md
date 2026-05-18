@@ -5,8 +5,6 @@ paths:
   - ".github/workflows/**/*.yaml"
   - "hooks/**/*.sh"
   - "skills/**/SKILL.md"
-  - ".claude/vibecorp-base/skills/**/SKILL.md"
-  - "templates/claude/agents/**/*.md"
 ---
 
 > [!IMPORTANT]
