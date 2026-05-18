@@ -24,7 +24,7 @@ jobs:
     # Fork PR は secrets が渡らないため除外（draft も除外でコスト抑制）
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     steps:
-      - name: チェックアウト
+      - name: チェックアウト（スクリプト + 通知文ファイル参照のため）
         uses: actions/checkout@v4
 
       - name: PR 本文の Issue 参照チェック

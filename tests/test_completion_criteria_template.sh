@@ -28,6 +28,20 @@ GITHUB_BUG="${SCRIPT_DIR}/.github/ISSUE_TEMPLATE/bug_report.md"
 TEMPLATES_FEATURE="${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE/feature_request.md"
 TEMPLATES_BUG="${SCRIPT_DIR}/templates/.github/ISSUE_TEMPLATE/bug_report.md"
 ISSUE_SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
+# Issue #642: プロンプト本体は skills/issue/prompts/*.md に切り出された
+# SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
+ISSUE_SKILL_ALL="$(mktemp -t completion_criteria_issue_all.XXXXXX)"
+trap 'rm -f "$ISSUE_SKILL_ALL" || true' EXIT
+# プロンプトファイルの存在を事前検証（nullglob で glob リテラル残留を防ぐ）
+shopt -s nullglob
+ISSUE_PROMPT_FILES=("${SCRIPT_DIR}"/skills/issue/prompts/*.md)
+shopt -u nullglob
+if [ ${#ISSUE_PROMPT_FILES[@]} -eq 0 ]; then
+  fail "skills/issue/prompts/*.md が 1 件も存在しない (Issue #642 切り出し前提が崩れている)"
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了
+  exit 1
+fi
+cat "${SCRIPT_DIR}/skills/issue/SKILL.md" "${ISSUE_PROMPT_FILES[@]}" > "$ISSUE_SKILL_ALL"
 DIAGNOSE_SKILL="${SCRIPT_DIR}/skills/diagnose/SKILL.md"
 PLAN_EPIC_SKILL="${SCRIPT_DIR}/skills/plan-epic/SKILL.md"
 
@@ -118,7 +132,7 @@ assert_file_contains "CPO 判定基準に 4 要素列挙がある" "$ISSUE_SKILL
 # 各要素のチェック観点が説明されている
 assert_file_contains "CPO 判定: ✅ 完了条件 セクション要件" "$ISSUE_SKILL" "## ✅ 完了条件"
 assert_file_contains "CPO 判定: 📍 関連ファイル セクション要件" "$ISSUE_SKILL" "## 📍 関連ファイル"
-assert_file_contains "CPO 判定: 完了条件の空欄不可" "$ISSUE_SKILL" "空欄不可"
+assert_file_contains "CPO 判定: 完了条件の空欄不可" "$ISSUE_SKILL_ALL" "空欄不可"
 
 # --- E. skills/diagnose/SKILL.md 自律起票テンプレ ---
 

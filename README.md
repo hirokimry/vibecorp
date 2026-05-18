@@ -105,7 +105,7 @@ path/to/vibecorp/install.sh --update
 |---|---|---|---|---|
 | **minimal** | 個人〜小規模 | Claude Max 定額内 | コア skills（13 個）+ 保護系 hooks | 対象外 |
 | **standard** | チーム開発 | Claude Max 定額内 | 知識蓄積 skills（6 個）+ ゲート hooks + CTO・CPO エージェント | 対象外 |
-| **full** | AI 企業・コンプライアンス重視 | ⚠️ **ANTHROPIC_API_KEY 従量課金に到達しうる** | 並列 / 自律 skills（6 個）+ C-suite 全員 + 分析員（14 ロール）+ 隔離レイヤ | macOS 推奨・opt-in |
+| **full** | AI 企業・コンプライアンス重視 | ⚠️ **ANTHROPIC_API_KEY 従量課金に到達しうる** | 並列 / 自律 skills（10 個）+ C-suite 全員 + 分析員（14 ロール）+ 隔離レイヤ | macOS 推奨・opt-in |
 
 ### auto 体験射程
 
@@ -168,7 +168,7 @@ Windows ネイティブは非対応（WSL2 を使用）。
 | `/vibecorp:sync-check` / `/vibecorp:sync-edit` | 仕様書と実装の整合性をチェック・自動修正する |
 | `/vibecorp:context7` | 外部ライブラリの公式ドキュメントをコンテキストに取り込む |
 
-### 🏢 full で追加（8 スキル — 並列・自律・エピック）
+### 🏢 full で追加（10 スキル — 並列・自律・エピック）
 
 | スキル | 何ができるようになるか |
 |---|---|
@@ -177,6 +177,7 @@ Windows ネイティブは非対応（WSL2 を使用）。
 | `/vibecorp:plan-epic` / `/vibecorp:release-epic` | エピック単位の計画・リリースを管理する |
 | `/vibecorp:cycle-metrics` | 開発サイクルの指標を計測・可視化する |
 | `/vibecorp:docs-rewrite-all` / `/vibecorp:prompts-rewrite-all` | ドキュメント・プロンプトを基準に沿って一括書き直す |
+| `/vibecorp:notifications-extract-all` / `/vibecorp:prompts-extract-all` | workflow / hook / SKILL.md に embed された通知文・プロンプトテンプレを個別 `.md` ファイルに切り出す（migration skill） |
 
 > 📖 **詳細**: 各スキルの引数・挙動・依存関係は [`docs/specification.md#スキル一覧source-of-truth`](docs/specification.md#スキル一覧source-of-truth) に記載。
 

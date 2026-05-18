@@ -72,22 +72,7 @@ git diff main...HEAD -U0 | grep -iE 'auth|token|secret|encrypt|permission|creden
 - セキュリティ → `.claude/agents/security-analyst.md` を ×3
 - 法務 → `.claude/agents/legal-analyst.md` を ×3
 
-各 analyst に渡すプロンプト:
-
-```text
-あなたは {領域} の分析員です。以下のコード差分をレビューしてください。
-
-## 差分
-{git diff main...HEAD の内容}
-
-## レビュー観点
-- プロジェクト固有ポリシー（{SECURITY.md / POLICY.md / cost-analysis.md}）への MUST / MUST NOT 違反
-- {領域固有の観点: OWASP Top 10 / OSSライセンス / API 課金影響}
-
-## 出力
-- 発見した問題（重要度: Critical / Major / Minor / Trivial / Info）
-- 問題なしならその旨
-```
+各 analyst に渡すプロンプトは `skills/review-loop/prompts/agent-call-review-analyst.md` を参照する。
 
 #### C*O メタレビュー
 

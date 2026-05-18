@@ -11,11 +11,26 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_MD="${SCRIPT_DIR}/skills/sync-check/SKILL.md"
+# Issue #642: プロンプト本体は skills/sync-check/prompts/*.md に切り出された
+# SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
+SKILL_ALL="$(mktemp -t sync_check_skill_all.XXXXXX)"
+trap 'rm -f "$SKILL_ALL" || true' EXIT
+# プロンプトファイルの存在を事前検証（nullglob で glob リテラル残留を防ぐ）
+shopt -s nullglob
+SYNC_CHECK_PROMPT_FILES=("${SCRIPT_DIR}"/skills/sync-check/prompts/*.md)
+shopt -u nullglob
+if [ ${#SYNC_CHECK_PROMPT_FILES[@]} -eq 0 ]; then
+  fail "skills/sync-check/prompts/*.md が 1 件も存在しない (Issue #642 切り出し前提が崩れている)"
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了
+  exit 1
+fi
+cat "${SCRIPT_DIR}/skills/sync-check/SKILL.md" "${SYNC_CHECK_PROMPT_FILES[@]}" > "$SKILL_ALL"
 
 assert_contains() {
   local desc="$1"
   local pattern="$2"
-  if grep -q "$pattern" "$SKILL_MD"; then
+  local target="${3:-$SKILL_MD}"
+  if grep -q "$pattern" "$target"; then
     pass "$desc"
   else
     fail "$desc (パターン未検出: $pattern)"
@@ -65,12 +80,13 @@ assert_contains "CPO 起動条件に README 関連の変更が含まれる" \
   "| CPO.*README 関連の変更"
 
 # 7. チェック観点に README 乖離（CPO）が含まれる
+# 切り出し済プロンプト（prompts/agent-call-cxo-sync-check.md）にも記載があるため SKILL_ALL を検査対象にする
 assert_contains "チェック観点に README 乖離（CPO）が含まれる" \
-  "README 乖離（CPO）.*実装と README の記載に乖離がないか"
+  "README 乖離（CPO）.*実装と README の記載に乖離がないか" "$SKILL_ALL"
 
 # 8. チェック観点に README 未反映（CPO）が含まれる
 assert_contains "チェック観点に README 未反映（CPO）が含まれる" \
-  "README 未反映（CPO）.*スキル・フック・エージェントが追加されたのに README に未反映"
+  "README 未反映（CPO）.*スキル・フック・エージェントが追加されたのに README に未反映" "$SKILL_ALL"
 
 # 9. 軽微な変更リストから README.md が除外されている
 if grep -q '\.gitignore.*README\.md.*軽微な変更' "$SKILL_MD"; then

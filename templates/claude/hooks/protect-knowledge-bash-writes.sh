@@ -124,14 +124,16 @@ fi
 
 buffer_label="${buffer_dir:-（未取得・knowledge_buffer_ensure を実行してください）}"
 
-jq -n \
-  --arg detected "$detected_path" \
-  --arg buffer "$buffer_label" \
-  '{
-    "hookSpecificOutput": {
-      "hookEventName": "PreToolUse",
-      "permissionDecision": "deny",
-      "permissionDecisionReason": ("検出パス: " + $detected + "\n\n.claude/knowledge/{role}/decisions/ や {role}/audit-log/ への Bash 経由直書きは禁止です（>, >>, tee, cp, mv, sed -i, awk -i inplace を含む）。\n\n復旧手順:\n1. . .claude/lib/knowledge_buffer.sh\n2. knowledge_buffer_ensure\n3. BUFFER_DIR=" + $buffer + "\n4. コマンドの宛先を ${BUFFER_DIR}/.claude/knowledge/... に置き換えて再実行\n\n書込みは Bash redirect ではなく Edit/Write/MultiEdit ツールを使うことを推奨します（hook が deny を確実に検出できます）。")
-    }
-  }'
+# 通知文テンプレートを外部 .md から読み込み、bash 文字列置換でプレースホルダを展開
+template=$(cat "${HOOK_DIR}/messages/notify-knowledge-bash-write-denied.md")
+reason="${template//\{\{DETECTED\}\}/$detected_path}"
+reason="${reason//\{\{BUFFER\}\}/$buffer_label}"
+
+jq -n --arg reason "$reason" '{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": $reason
+  }
+}'
 exit 0

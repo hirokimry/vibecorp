@@ -28,6 +28,10 @@ if echo "$body" | grep -qiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space
   echo "PR 本文に Issue 参照が見つかりました"
   exit 0
 fi
+# notification-prompt-extraction.md ルールに従い、CEO 向け通知文は個別 .md に切り出して参照する
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MESSAGE_FILE="${SCRIPT_DIR}/../workflows/messages/notify-pr-issue-link-missing.md"
+
 gh pr comment "$PR_NUMBER" --repo "$REPO" \
-  --body "⚠️ PR 本文に対応 Issue への参照（\`close #123\` / \`fixes #123\` / \`Refs #123\` など）が含まれていません。vibecorp は Issue 経由起票必須運用（Issue #469 残 #5）のため、PR 本文に Issue 参照を追加してから再 push してください。詳細は .claude/rules/intent-labels.md と docs/conventional-commits.md を参照。"
+  --body-file "$MESSAGE_FILE"
 exit 1

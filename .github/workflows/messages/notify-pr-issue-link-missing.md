@@ -1,0 +1,1 @@
+⚠️ PR 本文に対応 Issue への参照（`close #123` / `fixes #123` / `Refs #123` など）が含まれていません。vibecorp は Issue 経由起票必須運用（Issue #469 残 #5）のため、PR 本文に Issue 参照を追加してから再 push してください。詳細は .claude/rules/intent-labels.md と docs/conventional-commits.md を参照。

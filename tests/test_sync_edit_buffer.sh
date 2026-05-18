@@ -9,6 +9,8 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
 SKILL_FILE="${PROJECT_DIR}/skills/sync-edit/SKILL.md"
+# Issue #642: C*O プロンプト本体は skills/sync-edit/prompts/agent-call-cxo-sync-edit.md に切り出された
+CXO_PROMPT_FILE="${PROJECT_DIR}/skills/sync-edit/prompts/agent-call-cxo-sync-edit.md"
 
 echo "=== Issue #439: sync-edit buffer 化テスト ==="
 
@@ -33,7 +35,7 @@ assert_file_contains "knowledge_buffer_push 呼び出しがある" "$SKILL_FILE"
 # --- テスト3: C*O プロンプトに BUFFER_DIR 注入 ---
 echo ""
 echo "--- テスト3: C*O プロンプトに BUFFER_DIR 注入 ---"
-assert_file_contains "C*O プロンプトに BUFFER_DIR= が含まれる" "$SKILL_FILE" 'BUFFER_DIR=${BUFFER_DIR}'
+assert_file_contains "C*O プロンプトに BUFFER_DIR= が含まれる" "$CXO_PROMPT_FILE" 'BUFFER_DIR=${BUFFER_DIR}'
 
 # --- テスト4: 管轄表で knowledge/ が buffer worktree に変更されている ---
 echo ""
@@ -48,7 +50,7 @@ assert_file_contains 'accounting 管轄に ${BUFFER_DIR}/.claude/knowledge/accou
 echo ""
 echo "--- テスト5: フォールバック警告検知ステップ ---"
 assert_file_contains "判断記録（記録先取得失敗）の検知記述がある" "$SKILL_FILE" '### 判断記録（記録先取得失敗）'
-assert_file_contains "ヘッダ名厳格指定の記述がある" "$SKILL_FILE" 'ヘッダ名は厳格指定'
+assert_file_contains "ヘッダ名厳格指定の記述がある" "$CXO_PROMPT_FILE" 'ヘッダ名は厳格指定'
 assert_file_contains "手動反映ブロックがある" "$SKILL_FILE" '⚠️ 手動反映が必要な判断記録'
 assert_file_contains "migration ドキュメントへの誘導がある" "$SKILL_FILE" 'docs/migration-knowledge-buffer.md'
 

@@ -16,5 +16,9 @@ set -euo pipefail
 : "${PR_NUMBER:?PR_NUMBER が未設定です}"
 : "${REPO:?REPO が未設定です}"
 
+# notification-prompt-extraction.md ルールに従い、CEO 向け通知文は個別 .md に切り出して参照する
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MESSAGE_FILE="${SCRIPT_DIR}/../workflows/messages/notify-plugin-version-bump-missing.md"
+
 gh pr comment "$PR_NUMBER" --repo "$REPO" \
-  --body "⚠️ \`.claude-plugin/marketplace.json\` の \`plugins[0].skills\` が変更されていますが、\`.claude-plugin/plugin.json\` の \`version\` が bump されていません。利用者は新しいスキルを取得するために version bump を必要とします（PR #459 と同種の取りこぼし防止）。マージ前に \`.claude-plugin/plugin.json\` の \`version\` を更新してください。本チェックは警告のみ・非ブロックです。"
+  --body-file "$MESSAGE_FILE"
