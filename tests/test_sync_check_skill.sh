@@ -15,7 +15,16 @@ SKILL_MD="${SCRIPT_DIR}/skills/sync-check/SKILL.md"
 # SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
 SKILL_ALL="$(mktemp -t sync_check_skill_all.XXXXXX)"
 trap 'rm -f "$SKILL_ALL" || true' EXIT
-cat "${SCRIPT_DIR}/skills/sync-check/SKILL.md" "${SCRIPT_DIR}"/skills/sync-check/prompts/*.md > "$SKILL_ALL" 2>/dev/null || true
+# プロンプトファイルの存在を事前検証（nullglob で glob リテラル残留を防ぐ）
+shopt -s nullglob
+SYNC_CHECK_PROMPT_FILES=("${SCRIPT_DIR}"/skills/sync-check/prompts/*.md)
+shopt -u nullglob
+if [ ${#SYNC_CHECK_PROMPT_FILES[@]} -eq 0 ]; then
+  fail "skills/sync-check/prompts/*.md が 1 件も存在しない (Issue #642 切り出し前提が崩れている)"
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了
+  exit 1
+fi
+cat "${SCRIPT_DIR}/skills/sync-check/SKILL.md" "${SYNC_CHECK_PROMPT_FILES[@]}" > "$SKILL_ALL"
 
 assert_contains() {
   local desc="$1"

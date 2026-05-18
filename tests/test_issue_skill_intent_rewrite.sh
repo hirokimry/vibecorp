@@ -17,7 +17,16 @@ SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
 # SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
 SKILL_ALL="$(mktemp -t issue_skill_intent_skill_all.XXXXXX)"
 trap 'rm -f "$SKILL_ALL" || true' EXIT
-cat "${SCRIPT_DIR}/skills/issue/SKILL.md" "${SCRIPT_DIR}"/skills/issue/prompts/*.md > "$SKILL_ALL" 2>/dev/null || true
+# プロンプトファイルの存在を事前検証（nullglob で glob リテラル残留を防ぐ）
+shopt -s nullglob
+ISSUE_PROMPT_FILES=("${SCRIPT_DIR}"/skills/issue/prompts/*.md)
+shopt -u nullglob
+if [ ${#ISSUE_PROMPT_FILES[@]} -eq 0 ]; then
+  fail "skills/issue/prompts/*.md が 1 件も存在しない (Issue #642 切り出し前提が崩れている)"
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了
+  exit 1
+fi
+cat "${SCRIPT_DIR}/skills/issue/SKILL.md" "${ISSUE_PROMPT_FILES[@]}" > "$SKILL_ALL"
 
 # ============================================
 # 1. 旧 type 14 種キーワード判定表が削除されている

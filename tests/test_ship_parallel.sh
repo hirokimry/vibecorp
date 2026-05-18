@@ -32,6 +32,19 @@ else
   exit 1
 fi
 
+# Issue #642 切り出し前提の検証: AGENT_PROMPT_FILE が存在しなければ後続 grep が
+# set -e で意図せず終了し fail メッセージが出せないため、ここで明示的にチェックする
+if [ -f "$AGENT_PROMPT_FILE" ]; then
+  pass "Agent プロンプトファイルが存在する"
+else
+  fail "Agent プロンプトファイルが存在しない: $AGENT_PROMPT_FILE"
+  echo ""
+  echo "==========================="
+  echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
+  echo "==========================="
+  exit 1
+fi
+
 echo ""
 
 # --- テスト2: frontmatter の検証 ---
