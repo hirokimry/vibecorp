@@ -65,9 +65,11 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 
 ### 5. Issueリンクのプレフィックス決定
 
-- `--close` オプション指定時: `close`
-- `--ref` オプション指定時: `ref`
-- 未指定時: ユーザーに質問する（デフォルト: `close`）
+- `--close` オプション指定時: `Closes`（GitHub auto-close キーワード、PR マージで Issue が自動 close）
+- `--ref` オプション指定時: `Refs`（auto-close 対象外、参照のみ。親エピックなど）
+- 未指定時: ユーザーに質問する（デフォルト: `Closes`）
+
+プレフィックスは `Closes` / `Refs` の大文字始まりで統一する。`templates/.github/workflows/close-on-feature-merge.yml` が `(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+` を抽出対象とするため、書式は `Closes #N` （URL 形式ではなく `#N` 形式）でなければ feature ブランチへのマージ時に Issue が auto-close されない。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照。
 
 ### 6. PRテンプレート作成
 
@@ -183,9 +185,27 @@ PR タイトル・本文は CEO が読むため `.claude/rules/communication.md`
 
 **Issueリンクの書き方:**
 
+PR 本文には auto-close キーワードを `#N` 形式で記載する（URL 形式は使わない）。
+
 ```text
-{prefix} https://github.com/{REPO_OWNER}/{REPO_NAME}/issues/{ISSUE_NUMBER}
+{prefix} #{ISSUE_NUMBER}
 ```
+
+例:
+
+```text
+Closes #123        # ← 子 Issue / 通常 Issue を auto-close する
+Refs #345          # ← 親エピック Issue を参照するだけ（auto-close 対象外）
+```
+
+複数 Issue を close する PR では複数行記載する:
+
+```text
+Closes #123
+Closes #124
+```
+
+既存の `📍 関連` セクション（人間向けナビゲーション）を残す場合も、上記の `Closes #N` / `Refs #N` 行を必ず併記する。
 
 ### 7. PR作成/更新
 

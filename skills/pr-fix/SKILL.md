@@ -340,5 +340,6 @@ git push
 - 判断に迷う指摘はユーザーに確認する
 - 修正前に必ず関連ファイルを読み込む
 - **`@coderabbitai approve` の投稿は禁止** — approve は CodeRabbit が自動発行するか、人間が手動で行う
+- **PR 本文修正時は auto-close キーワード `Closes #N` / `Refs #N` を保持する** — `gh pr edit --body` で本文を書き換える場合、既存の `Closes #N` / `Refs #N` 行を消さない。新規追加する場合も `#N` 形式（URL 形式不可）で記載する。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照
 - **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する（[根拠](docs/design-philosophy.md#jq-string-interpolation-の禁止)）
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
