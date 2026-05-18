@@ -203,6 +203,48 @@ STAMP_DIR="$(vibecorp_stamp_mkdir)"
 
 ゲート系フック（sync-gate, session-harvest-gate 等）はこのパターンに従うこと。
 
+## Linux bwrap 引数生成スクリプトの責務分離（2026-05-16 確立）
+
+### bwrap-args.sh 分離パターン
+
+bwrap の引数生成ロジックを `vibecorp-sandbox` 本体から `bwrap-args.sh` に分離する設計を採用する。
+
+**分離の利点**:
+- `vibecorp.yml` の `isolation.allow_ssh` opt-in を `bwrap-args.sh` 内で完結させる（`install.sh` の YAML パースと直交する）
+- 起動時点の `~/.claude.json*` 系サイドカーを個別 `--bind-try` で列挙管理できる
+- 将来の distro 差異（bwrap バージョン差など）対応時に `vibecorp-sandbox` 本体を修正不要
+
+**bwrap の regex 非対応制約**:
+
+macOS sandbox-exec では `(regex ...)` で動的ファイル名をパターン許可できるが、bwrap にはその機能がない。`~/.claude.json.tmp.<pid>.<epoch>` のような動的ファイルは、起動時点でのファイル一覧を取得し個別 `--bind-try` で許可する設計とする。
+
+```bash
+# 起動時点の ~/.claude.json* を個別 bind-try で許可する例
+for f in "$HOME"/.claude.json*; do
+  [ -e "$f" ] && bwrap_args+=("--bind-try" "$f" "$f")
+done
+```
+
+### claude shim の OS 別ディスパッチ（2026-05-16 確立）
+
+claude shim（wrapper スクリプト）の sandbox 判定関数と OS 別ディスパッチ設計:
+
+- 関数名: `is_inside_sandbox`（OS 実装を抽象化。`is_inside_sandbox_exec` から改名）
+- OS 切り替え: `uname -s` で Darwin=sandbox-exec / Linux=bwrap を分岐
+- **fail-closed**: 祖先プロセス検出が失敗した場合（偽陰性）、`VIBECORP_SANDBOXED` との AND 条件が成立せず通常の ISOLATION 経路に進む（passthrough しない）
+
+```bash
+is_inside_sandbox() {
+  case "$(uname -s)" in
+    Darwin) _is_inside_sandbox_exec ;;
+    Linux)  _is_inside_bwrap ;;
+    *)      return 1 ;;  # 不明な OS は fail-closed（sandbox 外扱い）
+  esac
+}
+```
+
+fail-closed の根拠: 「sandbox 内かどうか不明」な状態で passthrough を許すと sandbox 脱出のフォールバックになる。不明時は再ラップ経路を選ぶ（二重起動リスクはあるが安全側に倒す）。
+
 ## 共通ヘルパー関数の重複呼び出し回避
 
 `vibecorp_stamp_path` が内部で `vibecorp_stamp_dir`（`git rev-parse` + `shasum`）を呼ぶ設計の場合、同一スクリプト内で複数回 `vibecorp_stamp_path` を呼ぶと外部プロセスが同回数走る。

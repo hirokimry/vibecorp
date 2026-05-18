@@ -84,11 +84,13 @@ fi
 # 仕様: スタンプは knowledge/{role}/{topic}.md のような decisions/audit-log 以外への直書き許可専用。
 # decisions/ や {role}/audit-log/ は C*O 判断記録 / 監査の責務領域であり、スタンプ通過対象から除外する。
 
-jq -n '{
+# deny を返却（通知文本体は外部 .md ファイルから読み込む）
+reason=$(cat "${HOOK_DIR}/messages/notify-knowledge-direct-write-denied.md")
+jq -n --arg reason "$reason" '{
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": ".claude/knowledge/{role}/decisions/ や {role}/audit-log/ は knowledge/buffer worktree 経由で更新してください。\n\n復旧手順:\n1. . .claude/lib/knowledge_buffer.sh\n2. knowledge_buffer_ensure\n3. BUFFER_DIR=$(knowledge_buffer_worktree_dir)\n4. ファイルパスを ${BUFFER_DIR}/.claude/knowledge/... に置き換えて再実行\n\nスキル経由の場合: /vibecorp:session-harvest, /vibecorp:sync-edit, /vibecorp:audit-cost, /vibecorp:audit-security のいずれかを使用\n詳細: docs/specification.md の「自動反映フロー」節"
+    "permissionDecisionReason": $reason
   }
 }'
 exit 0

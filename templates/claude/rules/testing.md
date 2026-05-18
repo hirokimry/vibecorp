@@ -20,3 +20,8 @@ else
   exit 1
 fi
 ```
+
+## 🔗 関連
+
+- workflow yaml のインラインシェル切り出しルール: `workflow-shell.md`（切り出したスクリプトには本ルールに従ってテストを追加する）
+- シェルスクリプト共通規約: `shell.md`

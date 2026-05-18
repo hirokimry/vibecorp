@@ -10,6 +10,8 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
 SKILL_FILE="${PROJECT_DIR}/skills/audit-security/SKILL.md"
+# CISO プロンプト本体は Issue #642 で skills/audit-security/prompts/agent-call-ciso-monthly-audit.md に切り出された
+CISO_PROMPT_FILE="${PROJECT_DIR}/skills/audit-security/prompts/agent-call-ciso-monthly-audit.md"
 
 echo "=== Issue #439: audit-security buffer 化テスト ==="
 
@@ -39,7 +41,7 @@ assert_file_contains "knowledge_buffer_push 呼び出しがある" "$SKILL_FILE"
 echo ""
 echo "--- テスト3: CISO プロンプトに BUFFER_DIR 注入 ---"
 
-assert_file_contains "CISO プロンプトに BUFFER_DIR= が含まれる" "$SKILL_FILE" 'BUFFER_DIR=${BUFFER_DIR}'
+assert_file_contains "CISO プロンプトに BUFFER_DIR= が含まれる" "$CISO_PROMPT_FILE" 'BUFFER_DIR=${BUFFER_DIR}'
 
 # --- テスト4: 書込先が buffer worktree 内かつ audit-log/ 構造（Issue #442） ---
 echo ""

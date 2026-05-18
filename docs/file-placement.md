@@ -157,6 +157,21 @@ Issue 対応時の実装計画ファイル（#334 で `.claude/plans/` から移
 - worktree 配下に書き込むと Claude Code の `.claude/` 書き込み確認ダイアログが parent session に届かず、teammate プロセスが応答しなくなる（Anthropic bug #25254）
 - XDG キャッシュ配下に配置することでダイアログを回避しつつ、`<repo-id>` によって worktree 間でも一意の保存先が得られる
 
+### 🔧 `.github/` — GitHub Actions ワークフロー
+
+GitHub Actions のワークフロー定義、切り出したシェルスクリプト、CEO 向け Bot 通知文を配置する。
+
+| ディレクトリ | 役割 | 配置基準 |
+|---|---|---|
+| `.github/workflows/` | ワークフロー定義 | yaml は構造のみ残す。3 行以上のシェルは `.github/scripts/` に切り出す（`.claude/rules/workflow-shell.md`） |
+| `.github/workflows/messages/` | CEO 向け Bot 通知文 | GHA の `--body-file` で参照する `.md` ファイル。命名規約・切り出し閾値は `.claude/rules/notification-prompt-extraction.md` |
+| `.github/scripts/` | workflow から切り出したシェルスクリプト | `.claude/rules/workflow-shell.md` の切り出し基準に従う |
+
+| 観点 | 内容 |
+|---|---|
+| ✅ **置くもの** | ワークフロー定義 / 切り出したシェルスクリプト / CEO 向け通知文 `.md` |
+| ❌ **置かないもの** | アプリケーションコード → `templates/` や本体パッケージへ / 設計思想 → `docs/` へ |
+
 ### 🧪 `tests/` — 自動テスト
 
 hooks・install.sh 等のシェルスクリプトの自動テスト。

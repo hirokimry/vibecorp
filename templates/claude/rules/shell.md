@@ -23,3 +23,8 @@
 
 - リスト系エンドポイント（comments, reviews 等）は `--paginate` を付ける
 - 未指定だと最初の30件のみ返り、以降が欠落する
+
+## 🔗 関連
+
+- workflow yaml のインラインシェル切り出しルール: `workflow-shell.md`
+- テスト追加義務: `testing.md`

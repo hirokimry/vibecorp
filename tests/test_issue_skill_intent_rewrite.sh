@@ -13,6 +13,20 @@ echo ""
 echo "=== Issue #485 /vibecorp:issue 書き換え検証 ==="
 
 SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
+# Issue #642: プロンプト本体は skills/issue/prompts/*.md に切り出された
+# SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
+SKILL_ALL="$(mktemp -t issue_skill_intent_skill_all.XXXXXX)"
+trap 'rm -f "$SKILL_ALL" || true' EXIT
+# プロンプトファイルの存在を事前検証（nullglob で glob リテラル残留を防ぐ）
+shopt -s nullglob
+ISSUE_PROMPT_FILES=("${SCRIPT_DIR}"/skills/issue/prompts/*.md)
+shopt -u nullglob
+if [ ${#ISSUE_PROMPT_FILES[@]} -eq 0 ]; then
+  fail "skills/issue/prompts/*.md が 1 件も存在しない (Issue #642 切り出し前提が崩れている)"
+  # 前提ファイル不在 → 後続テストは全て無意味なので即終了
+  exit 1
+fi
+cat "${SCRIPT_DIR}/skills/issue/SKILL.md" "${ISSUE_PROMPT_FILES[@]}" > "$SKILL_ALL"
 
 # ============================================
 # 1. 旧 type 14 種キーワード判定表が削除されている
@@ -99,8 +113,8 @@ assert_file_contains "逆引き禁止"               "$SKILL" "逆引き禁止"
 # ============================================
 echo ""
 echo "--- 6. SM フィルタの不可領域 6 分類 ---"
-assert_file_contains "不可領域 6 分類" "$SKILL" "不可領域 6 分類"
-assert_file_contains "CI エージェント領域追加" "$SKILL" "CI エージェント"
+assert_file_contains "不可領域 6 分類" "$SKILL_ALL" "不可領域 6 分類"
+assert_file_contains "CI エージェント領域追加" "$SKILL_ALL" "CI エージェント"
 
 # ============================================
 # 7. Issue 起票で intent/* ラベル必須

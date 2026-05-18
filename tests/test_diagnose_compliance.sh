@@ -12,6 +12,11 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_MD="${SCRIPT_DIR}/skills/diagnose/SKILL.md"
 SPEC_MD="${SCRIPT_DIR}/docs/specification.md"
+# Issue #642: プロンプト本体は skills/diagnose/prompts/*.md に切り出された
+# SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
+SKILL_ALL="$(mktemp -t diagnose_compliance_skill_all.XXXXXX)"
+trap 'rm -f "$SKILL_ALL" || true' EXIT
+cat "${SCRIPT_DIR}/skills/diagnose/SKILL.md" "${SCRIPT_DIR}"/skills/diagnose/prompts/*.md > "$SKILL_ALL" 2>/dev/null || true
 
 # ============================================
 echo "=== /vibecorp:diagnose Claude Code 仕様準拠観点 テスト（Issue #324） ==="
@@ -42,32 +47,32 @@ assert_file_contains "並行実行カウントが 4 に更新されている" \
 echo "--- 4d 対象ファイル一覧 ---"
 
 assert_file_contains "対象: .claude/hooks/*.sh" \
-  "$SKILL_MD" '\.claude/hooks/\*\.sh'
+  "$SKILL_ALL" '\.claude/hooks/\*\.sh'
 
 assert_file_contains "対象: .claude/skills/*/SKILL.md" \
-  "$SKILL_MD" '\.claude/skills/\*/SKILL\.md'
+  "$SKILL_ALL" '\.claude/skills/\*/SKILL\.md'
 
 assert_file_contains "対象: .claude/agents/*.md" \
-  "$SKILL_MD" '\.claude/agents/\*\.md'
+  "$SKILL_ALL" '\.claude/agents/\*\.md'
 
 assert_file_contains "対象: .claude/settings.json" \
-  "$SKILL_MD" '\.claude/settings\.json'
+  "$SKILL_ALL" '\.claude/settings\.json'
 
 assert_file_contains "対象: *.mcp.json" \
-  "$SKILL_MD" '\*\.mcp\.json'
+  "$SKILL_ALL" '\*\.mcp\.json'
 
 # --- 受入基準 3: 検出例が示されている ---
 
 echo "--- 4d 検出例 ---"
 
 assert_file_contains "検出例: 廃止イベント名" \
-  "$SKILL_MD" "廃止イベント名"
+  "$SKILL_ALL" "廃止イベント名"
 
 assert_file_contains "検出例: 非推奨設定キー" \
-  "$SKILL_MD" "非推奨設定キー"
+  "$SKILL_ALL" "非推奨設定キー"
 
 assert_file_contains "検出例: 新規必須フィールドの未指定" \
-  "$SKILL_MD" "新規必須フィールドの未指定"
+  "$SKILL_ALL" "新規必須フィールドの未指定"
 
 # --- 受入基準 4: フォールバック動作（claude-code-guide 利用不可時のスキップ）---
 

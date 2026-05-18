@@ -151,6 +151,30 @@ curl -s --max-time 2 https://example.com > /dev/null 2>&1 && echo "ok"
 
 **判定ロジック**: 拒否すべきもの（$HOME 直書き）が拒否され、許可すべきもの（/tmp 書き込み・ネット）が通る場合に sandbox が正しく機能していると判断できる。
 
+## cross-platform parity テストの設計制約（2026-05-16 確立）
+
+### macOS sandbox-exec の read 境界制約
+
+macOS sandbox profile は `/private/var/folders` を広く読取許可している。`mktemp -d` で作られる FAKE_HOME がこのパスに含まれるため、`cat $FAKE_HOME/.ssh/probe.txt` は sandbox 下でも成功してしまう。read 境界テストに FAKE_HOME を `/private/var/folders` 外に置く必要があるが、test mock では困難。
+
+### Linux bwrap の /tmp 制約
+
+bwrap は `--tmpfs /tmp` で /tmp 全体を tmpfs で被せる。FAKE_HOME を /tmp 配下に置くと bwrap 起動時に全体が見えなくなり、テスト自体が成立しない。
+
+### 設計原則: exit code 二値判定に集中
+
+上記 2 制約から、**cross-platform parity テストは「拒否すべき / 許可すべき」の exit 0 / 非 0 二値判定に集中させる**。errno 差異（macOS=EPERM / Linux=EROFS 等）は許容する。
+
+```bash
+# parity テストの推奨パターン
+# exit code のみ検証。stderr 内容・errno は検証しない
+if run_in_sandbox cat /etc/shadow > /dev/null 2>&1; then
+  fail "機密ファイルが読めてしまった"
+else
+  pass "機密ファイルを正しく拒否"
+fi
+```
+
 ## sandbox 経由でのバイナリテスト戦略
 
 ### FAKE_HOME vs 実 HOME の役割分担（Issue #320 で確立）
