@@ -124,13 +124,41 @@ assert_file_contains "2 段階必須の明示" "$SKILL_MD" "2 段階"
 assert_file_contains "自動マージ禁止の明示" "$SKILL_MD" "自動マージ.*禁止"
 
 # ============================================
-echo "=== 対象拡張子が code-comments.md と整合している ==="
+echo "=== 対象拡張子が code-comments.md と整合している（全 18 拡張子）==="
 # ============================================
 
+# code-comments.md frontmatter paths と SKILL.md「対象範囲」表が完全に揃っていることを保証する。
+# 拡張子が欠落すると利用者が想定していたファイルがスキル対象から漏れて静かに失敗するため、
+# 主要言語（shell / TS / Python / Ruby / Go / Rust / JVM 系 / Swift / 設定）を全件チェックする。
+
+# シェル系
 assert_file_contains "対象パス: .sh" "$SKILL_MD" '\*\.sh'
+assert_file_contains "対象パス: .bash" "$SKILL_MD" '\*\.bash'
+
+# TypeScript / JavaScript 系（.tsx / .jsx / .mjs / .cjs を含む）
 assert_file_contains "対象パス: .js" "$SKILL_MD" '\*\.js'
+assert_file_contains "対象パス: .mjs" "$SKILL_MD" '\*\.mjs'
+assert_file_contains "対象パス: .cjs" "$SKILL_MD" '\*\.cjs'
 assert_file_contains "対象パス: .ts" "$SKILL_MD" '\*\.ts'
+assert_file_contains "対象パス: .tsx" "$SKILL_MD" '\*\.tsx'
+assert_file_contains "対象パス: .jsx" "$SKILL_MD" '\*\.jsx'
+
+# Python / Ruby / Go / Rust
 assert_file_contains "対象パス: .py" "$SKILL_MD" '\*\.py'
+assert_file_contains "対象パス: .rb" "$SKILL_MD" '\*\.rb'
+assert_file_contains "対象パス: .go" "$SKILL_MD" '\*\.go'
+assert_file_contains "対象パス: .rs" "$SKILL_MD" '\*\.rs'
+
+# JVM 系 / Swift
+assert_file_contains "対象パス: .java" "$SKILL_MD" '\*\.java'
+assert_file_contains "対象パス: .kt" "$SKILL_MD" '\*\.kt'
+assert_file_contains "対象パス: .swift" "$SKILL_MD" '\*\.swift'
+
+# 設定ファイル
+assert_file_contains "対象パス: .json" "$SKILL_MD" '\*\.json'
+assert_file_contains "対象パス: .yml" "$SKILL_MD" '\*\.yml'
+assert_file_contains "対象パス: .yaml" "$SKILL_MD" '\*\.yaml'
+assert_file_contains "対象パス: .toml" "$SKILL_MD" '\*\.toml'
 
 # ============================================
 echo "=== 除外パスが明示されている ==="
