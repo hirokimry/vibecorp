@@ -16,7 +16,7 @@ paths:
 
 `.github/workflows/**/*.yml` の `--body "..."` で投稿される **CEO 向け Bot 通知文**、`skills/**/SKILL.md` 内のエージェント呼出プロンプトテンプレ、`hooks/**/*.sh` の長めのエラーメッセージを **個別 `.md` ファイルに切り出す** ことで以下を達成する。
 
-- 規範対象ファイルが明確化（個別 `.md` = `comment-writing.md` / `prompt-writing.md` の管轄）
+- 規範対象ファイルが明確化（個別 `.md` = `document-writing.md` / `prompt-writing.md` の管轄）
 - 既存書き換え動線（`/vibecorp:docs-rewrite-all` / `/vibecorp:prompts-rewrite-all`）が切り出された `.md` を自然に拾える
 - yml / SKILL.md / sh 自体は構造のみ残り、規範チェックの対象が狭まる
 
@@ -38,7 +38,7 @@ paths:
 
 ## 📏 切り出し閾値
 
-**行数軸 + 用途軸の両方**で判定する。**どちらか一方を満たせば切り出し対象**。
+**行数軸と用途軸を併用して判定し、いずれか（OR）を満たせば切り出し対象**とする。
 
 ### 行数軸
 

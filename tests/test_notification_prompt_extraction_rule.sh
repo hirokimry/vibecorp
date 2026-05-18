@@ -33,7 +33,12 @@ fi
 echo "=== frontmatter で paths が複数指定されている ==="
 # ============================================
 
-assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$NPE_RULE" "^---$"
+FIRST_LINE="$(head -n1 "$NPE_RULE")"
+if [[ "$FIRST_LINE" == "---" ]]; then
+  pass "ファイル先頭が --- で始まる frontmatter"
+else
+  fail "ファイル先頭が --- ではありません（先頭: ${FIRST_LINE}）"
+fi
 assert_file_contains "description キーが存在" "$NPE_RULE" "^description:"
 assert_file_contains "paths キーが存在" "$NPE_RULE" "^paths:"
 # 必須エントリ群（対象範囲: yaml workflow / hook / SKILL.md）
