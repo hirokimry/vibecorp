@@ -29,7 +29,7 @@ Issue 対応は以下の順序で進める:
 
 ## PR 本文の Issue リンク（auto-close キーワード）
 
-PR 本文には GitHub の auto-close キーワードを **必ず `#N` 形式** で記載する。`templates/.github/workflows/close-on-feature-merge.yml` が `(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+` のみを抽出対象とするため、URL 形式（例: `close https://github.com/.../issues/N`）では feature ブランチへのマージ時に Issue が auto-close されない。
+PR 本文には GitHub の auto-close キーワードを **必ず `#N` 形式** で記載する。`.github/workflows/close-on-feature-merge.yml` が `(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+` のみを抽出対象とするため、URL 形式（例: `close https://github.com/.../issues/N`）では feature ブランチへのマージ時に Issue が auto-close されない。
 
 | 用途 | 書式 | 動作 |
 |------|------|------|
@@ -46,7 +46,7 @@ PR 本文には GitHub の auto-close キーワードを **必ず `#N` 形式** 
 
 ### 根拠
 
-- `templates/.github/workflows/close-on-feature-merge.yml` が `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` のみを抽出対象とし、`Refs` / `Related to` は意図的に除外している（暴発防止）
+- `.github/workflows/close-on-feature-merge.yml` が `close[sd]?` / `fix(es|ed)?` / `resolve[sd]?` のみを抽出対象とし、`Refs` / `Related to` は意図的に除外している（暴発防止）
 - GitHub 公式: <https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue>
 
 ## 言語

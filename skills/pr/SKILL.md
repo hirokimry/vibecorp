@@ -69,7 +69,7 @@ git log --oneline origin/$BASE_BRANCH...HEAD
 - `--ref` オプション指定時: `Refs`（auto-close 対象外、参照のみ。親エピックなど）
 - 未指定時: ユーザーに質問する（デフォルト: `Closes`）
 
-プレフィックスは `Closes` / `Refs` の大文字始まりで統一する。`templates/.github/workflows/close-on-feature-merge.yml` が `(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+` を抽出対象とするため、書式は `Closes #N` （URL 形式ではなく `#N` 形式）でなければ feature ブランチへのマージ時に Issue が auto-close されない。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照。
+プレフィックスは `Closes` / `Refs` の大文字始まりで統一する。`.github/workflows/close-on-feature-merge.yml` が `(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+` を抽出対象とするため、書式は `Closes #N` （URL 形式ではなく `#N` 形式）でなければ feature ブランチへのマージ時に Issue が auto-close されない。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照。
 
 ### 6. PRテンプレート作成
 
