@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_distribution_writing_rules.sh — 書き方ルール 4 ファイルが配布対象に追加されたことを検証する（Issue #599）
+# test_distribution_writing_rules.sh — 書き方ルール 6 ファイルが配布対象に追加されたことを検証する（Issue #599 / #632）
 # 使い方: bash tests/test_distribution_writing_rules.sh
 # CI: GitHub Actions で自動実行
 
@@ -11,12 +11,14 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-# 配布対象 4 ファイル
+# 配布対象 6 ファイル（#599 で 4 本、#632 でコメント基準 2 本を追加）
 RULES=(
   "communication.md"
   "documentation.md"
   "document-writing.md"
   "prompt-writing.md"
+  "comment-writing.md"
+  "code-comments.md"
 )
 
 # 配置先 3 か所
