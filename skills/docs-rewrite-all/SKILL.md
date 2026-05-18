@@ -25,7 +25,8 @@ description: >
 |------|------|
 | 📂 **対象パス** | `docs/**/*.md` + `README.md` + `CHANGELOG.md` |
 | 🚫 **除外** | `LICENSE`（法的文書、書き換え対象外） |
-| 📐 **適用基準** | `.claude/rules/document-writing.md`（書き方の基準） |
+| 📐 **適用基準（本文）** | `.claude/rules/document-writing.md`（ドキュメント本文の書き方基準） |
+| 💬 **適用基準（md 内コメント例）** | `.claude/rules/comment-writing.md`（Issue/PR/レビュー/Bot 通知のコメント例を含む md の照合基準） |
 | 🤝 **委譲先** | 領域に応じた C*O Agent |
 | 🔐 **承認** | CEO 承認なしに書き換えない（2 段階必須） |
 
@@ -63,12 +64,18 @@ ls README.md CHANGELOG.md
 
 ## 2️⃣ 照合: 基準との機械的突き合わせ
 
-ステップ 1 のファイル一覧を、`document-writing.md` の **指針 MUST 全項目** と **禁止パターン全項目** に対して 1 件ずつ突き合わせる。
+ステップ 1 のファイル一覧を、以下 2 基準の **指針 MUST 全項目** と **禁止パターン全項目** に対して 1 件ずつ突き合わせる。
 
-照合対象の項目本体は `.claude/rules/document-writing.md` が Single Source of Truth。
+| 基準 | 照合対象 |
+|------|---------|
+| `.claude/rules/document-writing.md` | ドキュメント本文（章立て・動作主語・スキャン性等） |
+| `.claude/rules/comment-writing.md` | md 内に登場する GitHub コメント例（Issue/PR テンプレ例・レビュー例・Bot 通知例） |
+
+照合対象の項目本体は各基準ルールが Single Source of Truth。
 
 - 指針 / 禁止の項目本体は基準ルールに閉じる（スキル側で項目を重複列挙しない）。
 - 各ファイルに対し「該当する基準項目（指針 N / 禁止 N）」と「該当行番号」を表で記録する。
+- ドキュメント本文と md 内コメント例の両方を持つファイルは両基準で照合する。
 - 検出結果が空のファイルはステップ 3 以降の対象から外す。
 
 ## 3️⃣ 委譲: 領域別 C*O Agent 呼び出し
@@ -104,7 +111,8 @@ Agent ツールで該当 C*O を起動する。プロンプトは以下を含め
 {該当した指針 / 禁止項目と行番号}
 
 ## 適用基準
-.claude/rules/document-writing.md（必読）
+.claude/rules/document-writing.md（ドキュメント本文・必読）
+.claude/rules/comment-writing.md（md 内 GitHub コメント例の照合基準・必読）
 .claude/rules/communication.md（動作主語ルール）
 .claude/rules/markdown.md（フェンスコードブロック言語指定）
 
@@ -219,11 +227,12 @@ CEO に以下の選択肢を提示する。
 
 ## 🔗 関連
 
-- 適用基準: `.claude/rules/document-writing.md`
+- 適用基準（本文）: `.claude/rules/document-writing.md`
+- 適用基準（md 内コメント例）: `.claude/rules/comment-writing.md`
 - 動作主語ルール: `.claude/rules/communication.md`
 - マークダウン規約: `.claude/rules/markdown.md`
 - shell 規約: `.claude/rules/shell.md`
 - 配置・言語ルール: `.claude/rules/documentation.md`
 - 自律実行不可領域（人間承認必須）: `.claude/rules/autonomous-restrictions.md`
 - 類似多段動線スキル: `skills/sync-check/SKILL.md` / `skills/sync-edit/SKILL.md`
-- 関連スキル: `/prompts-rewrite-all`（プロンプト系 `.md` を扱う）
+- 関連スキル: `/prompts-rewrite-all`（プロンプト系 `.md` を扱う） / `/comments-rewrite-all`（コード内コメントを扱う）
