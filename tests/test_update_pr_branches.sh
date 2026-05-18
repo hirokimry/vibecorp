@@ -84,14 +84,16 @@ test_script_has_conflict_category() {
   local content
   content=$(cat "$SCRIPT_FILE")
   assert_contains "CONFLICT カウンタがある" "$content" 'CONFLICT='
-  assert_contains "merge conflict の判定がある" "$content" 'merge conflict'
+  # CR Major 指摘対応で body grep ではなく HTTP 422 status code で判定する形に変更
+  assert_contains "422 (unprocessable) でコンフリクト判定" "$content" '422)'
   assert_contains "CONFLICT_PRS 変数がある" "$content" 'CONFLICT_PRS'
 }
 
 test_script_has_skipped_category() {
   local content
   content=$(cat "$SCRIPT_FILE")
-  assert_contains "already up to date の判定がある" "$content" 'already up to date'
+  # CR Major 指摘対応で 204 No Content（既に最新）を status code で判定する形に変更
+  assert_contains "204 (no content) で既に最新を判定" "$content" '204)'
   assert_contains "SKIPPED カウンタがある" "$content" 'SKIPPED='
 }
 
@@ -116,12 +118,16 @@ test_script_uses_pagination() {
   assert_contains "PR 一覧取得でページネーションを使用している" "$content" '\-\-paginate'
 }
 
-test_script_uses_exit_code_pattern() {
+test_script_uses_status_code_pattern() {
   local content
   content=$(cat "$SCRIPT_FILE")
-  # if RESPONSE=$(gh api ...); then ... else ... fi パターンで終了コードで分岐
-  # （旧 A && B || C パターンは SC2015 の誤判定リスクのため if/else に変更）
-  assert_contains "終了コードで成功/失敗を分岐している" "$content" 'if RESPONSE=.*gh api'
+  # HTTP status code（202/204/422）で分岐する実装。CR Major 指摘対応で
+  # body grep ではなく `gh api -i` の status 行を読む方式に変更した。
+  assert_contains "gh api -i で status 取得している" "$content" 'gh api -i'
+  assert_contains "status code で分岐している" "$content" 'STATUS_CODE'
+  assert_contains "202 (accepted) を更新成功として扱う" "$content" '202)'
+  assert_contains "204 (no content) を既に最新として扱う" "$content" '204)'
+  assert_contains "422 (unprocessable) をコンフリクトとして扱う" "$content" '422)'
 }
 
 test_script_has_pat_guard
@@ -130,7 +136,7 @@ test_script_has_skipped_category
 test_script_has_four_categories_in_summary
 test_script_has_conflict_pr_list
 test_script_uses_pagination
-test_script_uses_exit_code_pattern
+test_script_uses_status_code_pattern
 
 # --- docs/ai-review-auth.md PAT セクションテスト ---
 #

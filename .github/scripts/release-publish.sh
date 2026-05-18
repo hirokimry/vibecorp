@@ -24,6 +24,15 @@ else
 fi
 
 if [ -z "$COMMITS" ]; then
+  # 復旧パス: タグはあるが GitHub Release が無い場合（前回 release create 失敗等）は補完する
+  if [ -n "$LATEST_TAG" ] && ! gh release view "${LATEST_TAG}" > /dev/null 2>&1; then
+    echo "新しいコミットはありませんが、${LATEST_TAG} の GitHub Release が無いため作成します"
+    gh release create "${LATEST_TAG}" \
+      --title "${LATEST_TAG}" \
+      --generate-notes
+    echo "リリース完了: ${LATEST_TAG}"
+    exit 0
+  fi
   echo "新しいコミットがないためリリースをスキップ"
   exit 0
 fi

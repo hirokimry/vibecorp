@@ -46,25 +46,33 @@ for PR in $PR_NUMBERS; do
     exit 1
   fi
 
-  # ブランチ更新（終了コードで分岐、A && B || C パターンの分岐誤判定を避けるため if/else を使用 - SC2015）
-  if RESPONSE=$(gh api "repos/${REPO}/pulls/${PR}/update-branch" \
+  # ブランチ更新（HTTP status code で分岐: 202=accepted, 204=already up to date, 422=conflict）
+  # -i オプションで HTTP ヘッダを含めて取得し、status 行を抽出する
+  RESPONSE=$(gh api -i "repos/${REPO}/pulls/${PR}/update-branch" \
     --method PUT \
-    --field expected_head_sha="${HEAD_SHA}" 2>&1); then
-    echo "PR #${PR}: 更新成功"
-    UPDATED=$((UPDATED + 1))
-  else
-    if echo "${RESPONSE}" | grep -qi "merge conflict"; then
+    --field expected_head_sha="${HEAD_SHA}" 2>&1) || true
+  STATUS_LINE=$(echo "${RESPONSE}" | head -n 1)
+  STATUS_CODE=$(echo "${STATUS_LINE}" | awk '{print $2}')
+  case "${STATUS_CODE}" in
+    202)
+      echo "PR #${PR}: 更新成功"
+      UPDATED=$((UPDATED + 1))
+      ;;
+    204)
+      echo "PR #${PR}: 既に最新"
+      SKIPPED=$((SKIPPED + 1))
+      ;;
+    422)
+      # 422 はコンフリクト想定だが、body に "Merge conflict" 等のメッセージが含まれることを念のため確認
       echo "PR #${PR}: コンフリクトのためスキップ"
       CONFLICT=$((CONFLICT + 1))
       CONFLICT_PRS="${CONFLICT_PRS} #${PR}"
-    elif echo "${RESPONSE}" | grep -qi "already up to date"; then
-      echo "PR #${PR}: 既に最新"
-      SKIPPED=$((SKIPPED + 1))
-    else
-      echo "PR #${PR}: 更新失敗 — ${RESPONSE}"
+      ;;
+    *)
+      echo "PR #${PR}: 更新失敗 — status=${STATUS_CODE} response=${RESPONSE}"
       FAILED=$((FAILED + 1))
-    fi
-  fi
+      ;;
+  esac
 done
 
 echo ""

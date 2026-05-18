@@ -235,5 +235,25 @@ else
 fi
 cleanup
 
+# --- ケース 9: タグはあるが GitHub Release が無いケースの復旧パス（CR Major 指摘対応） ---
+echo "--- ケース 9: タグあり + Release 不在 → 自動補完 ---"
+read -r repo stub < <(setup_sandbox | xargs)
+commit_in "$repo" "feat: initial"
+tag_in "$repo" "v1.0.0"
+# 新しいコミットを追加しない（COMMITS が空になる経路をテスト）
+# gh stub は release view を exit 1（release 不在）で返すため、自動補完が走る想定
+output=$(run_script_in "$repo" "$stub")
+if echo "$output" | grep -q "GitHub Release が無いため作成します"; then
+  pass "タグあり + Release 不在で復旧パスが起動する"
+else
+  fail "復旧パスが起動しない: $output"
+fi
+if echo "$output" | grep -q "リリース完了: v1.0.0"; then
+  pass "復旧パスが Release を補完する"
+else
+  fail "復旧パスが Release を補完しない: $output"
+fi
+cleanup
+
 echo ""
 print_test_summary

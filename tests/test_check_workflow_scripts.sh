@@ -33,9 +33,13 @@ for rel_path in "${SCRIPTS[@]}"; do
   # 2. 実行権限あり
   assert_file_executable "実行権限あり: ${rel_path}" "$abs_path"
 
-  # 3. shebang が #!/usr/bin/env bash である
+  # 3. shebang が workflow-shell.md 規約の許容値（#!/usr/bin/env bash または #!/bin/bash）である
   first_line=$(head -n 1 "$abs_path")
-  assert_eq "shebang は #!/usr/bin/env bash: ${rel_path}" "#!/usr/bin/env bash" "$first_line"
+  if [ "$first_line" = "#!/usr/bin/env bash" ] || [ "$first_line" = "#!/bin/bash" ]; then
+    pass "shebang は許容値（#!/usr/bin/env bash or #!/bin/bash）: ${rel_path}"
+  else
+    fail "shebang が許容値外: ${rel_path} (実際: ${first_line})"
+  fi
 
   # 4. set -euo pipefail が含まれる
   assert_file_contains "set -euo pipefail を含む: ${rel_path}" "$abs_path" "set -euo pipefail"
