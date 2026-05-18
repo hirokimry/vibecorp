@@ -17,7 +17,6 @@ source "${HOOK_DIR}/../lib/common.sh"
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 
-# BASE_BRANCH 既定値は main（vibecorp.yml で上書き可能）
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 VIBECORP_YML="${PROJECT_DIR}/.claude/vibecorp.yml"
 BASE_BRANCH="main"
@@ -97,7 +96,7 @@ fi
 
 CURRENT_BRANCH=$(git -C "$CHECK_DIR" branch --show-current 2>/dev/null || echo "")
 if [ -z "$CURRENT_BRANCH" ]; then
-  # detached HEAD など branch 名が取れない状況は誤判定を避けて素通しする
+  # detached HEAD など branch 名が取れない状況は誤判定を避けて素通しする（参照: `#634`）
   exit 0
 fi
 
