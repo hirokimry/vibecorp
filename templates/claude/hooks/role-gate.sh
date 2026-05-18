@@ -26,7 +26,7 @@ if [ -z "$ROLE" ]; then
   exit 0
 fi
 
-# knowledge/ 配下はロール横断の共有領域として全ロールに編集を許可
+# knowledge/ 配下はロール横断の共有領域として全ロールに編集を許可（参照: `#634`）
 if [[ "$FILE_PATH" == */knowledge/* ]] || [[ "$FILE_PATH" == knowledge/* ]]; then
   exit 0
 fi

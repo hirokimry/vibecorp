@@ -116,14 +116,14 @@ assert_file_contains "指針: コードと一致させる" "$CC_RULE" "コード
 assert_file_contains "指針: 言語は日本語で書く" "$CC_RULE" "日本語で書く"
 
 # ============================================
-echo "=== 禁止パターンが 5 項目以上ある ==="
+echo "=== 禁止パターンが 6 項目以上ある ==="
 # ============================================
 
 FORBID_COUNT=$(awk '/^## ❌ 禁止パターン/{flag=1; next} /^## /{flag=0} flag && /^- ❌/' "$CC_RULE" | wc -l | tr -d ' ')
-if [[ "$FORBID_COUNT" -ge 5 ]]; then
-  pass "禁止パターンが 5 項目以上ある（${FORBID_COUNT} 個検出）"
+if [[ "$FORBID_COUNT" -ge 6 ]]; then
+  pass "禁止パターンが 6 項目以上ある（${FORBID_COUNT} 個検出）"
 else
-  fail "禁止パターンが 5 項目未満（${FORBID_COUNT} 個検出、5 個以上必要）"
+  fail "禁止パターンが 6 項目未満（${FORBID_COUNT} 個検出、6 個以上必要）"
 fi
 
 # ============================================

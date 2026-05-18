@@ -98,25 +98,25 @@ assert_file_contains "レビュー節に Trivial マーカー" "$CW_RULE" "🔵"
 assert_file_contains "レビュー節に Info マーカー" "$CW_RULE" "⚪"
 
 # ============================================
-echo "=== 指針（MUST）が 5 項目以上ある ==="
+echo "=== 指針（MUST）が 6 項目以上ある ==="
 # ============================================
 
 MUST_COUNT=$(awk '/^## ✅ 指針/{flag=1; next} /^## /{flag=0} flag && /^[0-9]+\. /' "$CW_RULE" | wc -l | tr -d ' ')
-if [[ "$MUST_COUNT" -ge 5 ]]; then
-  pass "指針（MUST）が 5 項目以上ある（${MUST_COUNT} 個検出）"
+if [[ "$MUST_COUNT" -ge 6 ]]; then
+  pass "指針（MUST）が 6 項目以上ある（${MUST_COUNT} 個検出）"
 else
-  fail "指針（MUST）が 5 項目未満（${MUST_COUNT} 個検出、5 個以上必要）"
+  fail "指針（MUST）が 6 項目未満（${MUST_COUNT} 個検出、6 個以上必要）"
 fi
 
 # ============================================
-echo "=== 禁止パターンが 5 項目以上ある ==="
+echo "=== 禁止パターンが 6 項目以上ある ==="
 # ============================================
 
 FORBID_COUNT=$(awk '/^## ❌ 禁止パターン/{flag=1; next} /^## /{flag=0} flag && /^- ❌/' "$CW_RULE" | wc -l | tr -d ' ')
-if [[ "$FORBID_COUNT" -ge 5 ]]; then
-  pass "禁止パターンが 5 項目以上ある（${FORBID_COUNT} 個検出）"
+if [[ "$FORBID_COUNT" -ge 6 ]]; then
+  pass "禁止パターンが 6 項目以上ある（${FORBID_COUNT} 個検出）"
 else
-  fail "禁止パターンが 5 項目未満（${FORBID_COUNT} 個検出、5 個以上必要）"
+  fail "禁止パターンが 6 項目未満（${FORBID_COUNT} 個検出、6 個以上必要）"
 fi
 
 # ============================================
@@ -154,6 +154,21 @@ if [[ ! -f "$COMMENTS_OLD" ]]; then
   pass "旧 comments.md が削除されている（#652 のリネーム後）"
 else
   fail "旧 comments.md がまだ残っている（#652 のリネーム未完了）"
+fi
+
+# ============================================
+echo "=== 本体 ↔ 配布元 templates が完全一致する ==="
+# ============================================
+
+# `.claude/rules/comment-writing.md`（本体）と `templates/claude/rules/comment-writing.md`
+# （配布元）の同期ドリフトを検知する。片方の更新漏れがあると `install.sh --update`
+# で利用先プロジェクトに不整合が配布されるため、CI で必ず byte 一致を強制する。
+CW_TEMPLATE="${SCRIPT_DIR}/templates/claude/rules/comment-writing.md"
+assert_file_exists "templates/claude/rules/comment-writing.md が存在する" "$CW_TEMPLATE"
+if cmp -s "$CW_RULE" "$CW_TEMPLATE"; then
+  pass "本体 ↔ 配布元 templates の comment-writing.md が完全一致"
+else
+  fail "本体 ↔ 配布元 templates の comment-writing.md が一致しない（同期されていない）"
 fi
 
 # ============================================
