@@ -174,7 +174,7 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
 | `/vibecorp:harvest-all` | コードベース全体を棚卸しし、ドキュメント化されていない暗黙知を docs / rules / knowledge に反映 |
 | `/vibecorp:context7` | Context7 CLI 経由でライブラリ・フレームワークの最新ドキュメントを取得・要約 |
 
-#### full プリセットで追加（8 スキル）
+#### full プリセットで追加（9 スキル）
 
 | スキル | 説明 |
 |---|---|
@@ -184,8 +184,9 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
 | `/vibecorp:plan-epic` | 親エピックの Issue と子 Issue を一括作成し sub-issue で紐付け、feature ブランチを作成 |
 | `/vibecorp:release-epic` | feature ブランチから main への集約 PR を作成（全子 Issue マージ後） |
 | `/vibecorp:cycle-metrics` | 開発サイクル計測データ（スループット・リードタイム）を `~/.cache/vibecorp/state/<repo-id>/cycle-metrics/` に出力 |
-| `/vibecorp:docs-rewrite-all` | `docs/**/*.md` + `README.md` + `CHANGELOG.md` を `.claude/rules/document-writing.md` 基準で一括棚卸し。領域別 C\*O 委譲 + diff 提案 → CEO 承認 → 書換の 2 段階で自動マージ禁止 |
-| `/vibecorp:prompts-rewrite-all` | `skills/**/SKILL.md` + `.claude/agents/*.md` + `.claude/rules/*.md` を `.claude/rules/prompt-writing.md` 基準で一括書き直し。claude-code-guide MUST 参照 + 3 軸検証（frontmatter / triggering / 行動主語）+ diff 提案 → CEO 承認 → 書換 |
+| `/vibecorp:docs-rewrite-all` | `docs/**/*.md` + `README.md` + `CHANGELOG.md` を `.claude/rules/document-writing.md` + `.claude/rules/comment-writing.md` 基準で一括棚卸し。領域別 C\*O 委譲 + diff 提案 → CEO 承認 → 書換の 2 段階で自動マージ禁止 |
+| `/vibecorp:prompts-rewrite-all` | `skills/**/SKILL.md` + `.claude/agents/*.md` + `.claude/rules/*.md` を `.claude/rules/prompt-writing.md` + `.claude/rules/comment-writing.md` 基準で一括書き直し。claude-code-guide MUST 参照 + 3 軸検証（frontmatter / triggering / 行動主語）+ diff 提案 → CEO 承認 → 書換 |
+| `/vibecorp:comments-rewrite-all` | `**/*.sh` / `**/*.js` / `**/*.ts` / `**/*.py` 等のコード内コメントを `.claude/rules/code-comments.md` 基準で一括書き直し。`node_modules` / `vendor` / 生成コードは除外。diff 提案 → CEO 承認 → 書換の 2 段階で自動マージ禁止 |
 
 その他、`/vibecorp:audit-cost` / `/vibecorp:audit-security` / `/vibecorp:knowledge-pr` / `/vibecorp:plan-epic` 等の運用補助スキルも full プリセットに同梱される。
 
