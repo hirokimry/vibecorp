@@ -24,26 +24,12 @@ jobs:
     # Fork PR は secrets が渡らないため除外（draft も除外でコスト抑制）
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     steps:
-      - name: チェックアウト（通知文ファイル参照のため）
+      - name: チェックアウト（スクリプト + 通知文ファイル参照のため）
         uses: actions/checkout@v4
-        with:
-          # 通知文 .md のみ必要なので sparse-checkout で最小化
-          sparse-checkout: .github/workflows/messages
-          sparse-checkout-cone-mode: false
 
       - name: PR 本文の Issue 参照チェック
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-        run: |
-          # PR 本文を取得し、Issue 参照キーワード（GitHub の auto-close keywords + Refs）を grep
-          # close / closes / closed / fix / fixes / fixed / resolve / resolves / resolved / Refs (大小文字区別なし) + #数字
-          body=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq '.body')
-          if echo "$body" | grep -qiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#[0-9]+|(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+https?://[^[:space:]]+/issues/[0-9]+'; then
-            echo "PR 本文に Issue 参照が見つかりました"
-            exit 0
-          fi
-          gh pr comment "$PR_NUMBER" --repo "$REPO" \
-            --body-file .github/workflows/messages/notify-pr-issue-link-missing.md
-          exit 1
+        run: .github/scripts/check-pr-issue-link.sh

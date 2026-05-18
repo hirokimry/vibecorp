@@ -132,7 +132,11 @@ git ls-remote --heads origin "feature/epic-<親番号>*"
 ## 🔗 関連
 
 - 親エピック Issue: #<親番号>
+
+Closes #<親番号>
 ```
+
+PR 本文末尾に `Closes #<親番号>` を必ず記載する（GitHub auto-close キーワード）。リリース PR が main にマージされると、親エピック Issue が自動 close される。`#N` 形式必須（URL 形式は `close-on-feature-merge.yml` の抽出対象外）。詳細は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照。
 
 PR タイトルは `🚀 release: epic #<親番号> <親タイトル>` の形式とする。
 

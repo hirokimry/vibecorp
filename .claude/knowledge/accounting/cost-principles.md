@@ -56,6 +56,27 @@ Issue #361 の `/vibecorp:issue` ゲート拡張（CPO 単独 → CISO + CPO + S
 
 per_run を変更する際は本テーブルを更新すること。
 
+## 1 ship cycle のエージェント呼出内訳（Issue #310 実測）
+
+Issue #310（Linux bwrap Phase 2）の ship フローで計測した内訳。`/vibecorp:ship` 系の見積もり精度向上に使う。
+
+| フェーズ | 内訳 | 呼出数 |
+|---------|------|--------|
+| 計画レビュー | 7 専門家並列 × 3 イテレーション + CISO メタレビュー × 1 | 約 22 |
+| コードレビュー | security-analyst ×3 + CISO メタレビュー（差し戻し 1 + 承認 1） | 5 |
+| 整合性チェック | CTO / CPO / CISO × 2 ラウンド | 6 |
+| sync-edit | CPO / CISO + buffer 操作 | 2 |
+| session-harvest | CTO / CPO / CISO / CFO / CLO 並列 | 5 |
+| **合計** | | **約 40 呼出** |
+
+- 計画フェーズが全体の過半数を占める（約 22 / 40）
+- 差し戻しが 1 回発生するとコードレビューフェーズで +4 呼出（security-analyst ×3 + CISO ×1 の再実行）
+- 計画イテレーション数が可変のため「約 25〜45 呼出 / 1 Issue ship」がバンド目安
+
+### OS 層変更のコスト中立性
+
+Linux bwrap 隔離レイヤのような OS 層変更は LLM 呼出経路を変更しない。CI に `bwrap --version` 試し実行が増えるが Ubuntu runner 課金への影響は微小（無視可）。**OS 層・プロセス隔離系の変更は課金構造変更の「許容」カテゴリとして扱う。**
+
 ## 判断基準
 
 コスト変更を含む PR をレビューする際の分類基準:

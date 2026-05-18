@@ -4,6 +4,10 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-18 — Epic #636 通知文・プロンプト抽出 skill 評価 — 既存 docs/prompts-rewrite-all パターン踏襲でフィージブル。CEO 承認 2 段階で十分、protect-files.sh deny 不要。子3/4 は skill 完成後にセルフ適応を推奨
+- 2026-05-16 — claude shim OS 別ディスパッチ — is_inside_sandbox + uname 分岐 + fail-closed 設計を確立（偽陰性時は passthrough しない）
+- 2026-05-16 — bwrap-args.sh 責務分離 — bwrap 引数生成を独立スクリプトに分離し allow_ssh opt-in と動的サイドカー bind-try を集中管理
+- 2026-05-16 — sandbox parity テスト設計制約 — macOS /private/var/folders read 許可 + bwrap --tmpfs /tmp 制約から parity テストは exit code 二値判定に集中
 - 2026-05-09 — PR #534 — workflow 削除 PR 自身を実機検証として採用。GitHub Actions ランタイムアサーション（API 検証）は heavy lift かつ静的保証で十分として却下 (from CodeRabbit review on PR #534)
 - 2026-05-08 — PR #520 — race condition 修正での PR 分割却下。責務委譲と CI 削除は分離不可能な構成要素であり一括対応が正しい設計
 - 2026-05-07 — PR #507 — CI ワークフローの graceful skip 却下。シークレット未登録時は fail-fast が正しい設計（緑なのに動いていない状態を防ぐ）(from CodeRabbit review on PR #507)

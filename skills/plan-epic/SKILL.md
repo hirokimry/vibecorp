@@ -147,15 +147,24 @@ git push -u origin "feature/epic-<親番号>_<要約>"
 
 ステップ 3 で分解した子タスクを 1 件ずつ `/vibecorp:issue` スキル経由で起票する。
 
+子タスクの本文末尾に親エピックへの参照として **`Refs #<親番号>`** を必ず含める。`Closes` ではなく `Refs` を使うことで、子 PR がマージされても親エピックは auto-close されず、`/vibecorp:release-epic` のリリース PR で最終的に close される。
+
 ```text
 /vibecorp:issue を使って以下の子 Issue を起票してください:
 
 タイトル: <子タスクのタイトル>
 本文: <子タスクの本文>
+
+---
+
+## 📍 関連
+
+Refs #<親エピック番号>
 ```
 
 - `/vibecorp:issue` の 3 者承認ゲート（CISO + CPO + SM）が自動で走る
 - いずれかの子 Issue が「除外」判定された場合は、その子 Issue だけスキップして CEO に報告する（親 Issue は残し、後から手動で追加可能とする）
+- `Closes #N` / `Refs #N` の運用は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照
 
 ### 7. sub-issue API で親に紐付け
 
