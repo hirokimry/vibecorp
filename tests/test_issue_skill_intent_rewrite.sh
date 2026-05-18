@@ -13,6 +13,11 @@ echo ""
 echo "=== Issue #485 /vibecorp:issue 書き換え検証 ==="
 
 SKILL="${SCRIPT_DIR}/skills/issue/SKILL.md"
+# Issue #642: プロンプト本体は skills/issue/prompts/*.md に切り出された
+# SKILL.md + prompts/*.md を結合した検査対象ファイルを一時生成する
+SKILL_ALL="$(mktemp -t issue_skill_intent_skill_all.XXXXXX)"
+trap 'rm -f "$SKILL_ALL" || true' EXIT
+cat "${SCRIPT_DIR}/skills/issue/SKILL.md" "${SCRIPT_DIR}"/skills/issue/prompts/*.md > "$SKILL_ALL" 2>/dev/null || true
 
 # ============================================
 # 1. 旧 type 14 種キーワード判定表が削除されている
@@ -99,8 +104,8 @@ assert_file_contains "逆引き禁止"               "$SKILL" "逆引き禁止"
 # ============================================
 echo ""
 echo "--- 6. SM フィルタの不可領域 6 分類 ---"
-assert_file_contains "不可領域 6 分類" "$SKILL" "不可領域 6 分類"
-assert_file_contains "CI エージェント領域追加" "$SKILL" "CI エージェント"
+assert_file_contains "不可領域 6 分類" "$SKILL_ALL" "不可領域 6 分類"
+assert_file_contains "CI エージェント領域追加" "$SKILL_ALL" "CI エージェント"
 
 # ============================================
 # 7. Issue 起票で intent/* ラベル必須
