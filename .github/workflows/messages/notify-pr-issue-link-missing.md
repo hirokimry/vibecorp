@@ -23,6 +23,6 @@ GitHub Issue URL 形式（`Closes https://github.com/<owner>/<repo>/issues/N`）
 
 ## 📍 根拠
 
-- 運用判断: Issue #469 残 #5（Issue 経由起票必須）
+- 運用判断: Issue #469（Issue 経由起票必須化の決定元）
 - intent ラベル定義: `.claude/rules/intent-labels.md`
 - CC prefix 厳格定義: `docs/conventional-commits.md`
