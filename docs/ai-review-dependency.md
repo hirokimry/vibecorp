@@ -343,6 +343,7 @@ fi
 - 捌き基準: `.claude/rules/review-handling.md`
 - severity 定義: `.claude/rules/severity/coderabbit.md` / `.claude/rules/severity/claude-action.md`
 - レビュー観点: `.claude/rules/review-observations.md`
+- レビューコメント / Bot 通知コメントの書式: `.claude/rules/comment-writing.md`
 - intent ラベル: `.claude/rules/intent-labels.md`
 - ロールバック手順: `docs/ai-review-rollback.md`
 
