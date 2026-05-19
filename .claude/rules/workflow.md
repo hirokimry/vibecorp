@@ -26,9 +26,9 @@ Issue 対応は以下の順序で進める。
 | 親エピック（feature ブランチ） | `feature/epic-{Issue番号}_{要約}` | `feature/epic-345_plan_epic_skill` |
 | エピック配下の子 Issue | `dev/{Issue番号}_{要約}` | `dev/346_ship_epic_child` |
 
-- 親エピックの feature ブランチは `/plan-epic` が作成する（full プリセット専用）
+- 親エピックの feature ブランチは `/vibecorp:plan-epic` が作成する（full プリセット専用）
 - 子 Issue のブランチは通常の `dev/` 命名に従う
-  - PR の base は親 feature ブランチとなる（`/ship` が自動判定する）
+  - PR の base は親 feature ブランチとなる（`/vibecorp:ship` が自動判定する）
 - 要約は英語スネークケース 2〜4 語にする
 
 ## 📝 Issue の使い方
