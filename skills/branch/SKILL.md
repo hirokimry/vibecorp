@@ -3,23 +3,29 @@ name: branch
 description: "GitHub Issue URLからブランチを自動作成するスキル。「/branch https://github.com/owner/repo/issues/12345」のようにIssue URLを指定すると、Issueタイトルを要約してdev/{Issue番号}_{要約}形式のブランチ名を生成し、現在のブランチをベースに新規ブランチを作成・チェックアウトする。「ブランチ作成」「branch作成」と言われた時にも使用。"
 ---
 
-# ブランチ自動作成
+# 🌿 ブランチ自動作成
+
+> [!IMPORTANT]
+> このスキルは Issue URL から **`dev/{Issue番号}_{要約}` 形式のブランチを 1 コマンドで作成する**。
+> 結果のみを簡潔に返す。途中経過は出力しない。
+> `--worktree` 指定時はブランチ作成と同時に git worktree を作成し、`.claude/` を rsync で同期する。
 
 GitHub Issue URL からブランチを作成する。
-**結果のみを簡潔に返すこと。途中経過は不要。**
 
-## 使用方法
+## 📖 使用方法
 
 ```bash
 /vibecorp:branch <Issue URL>
 /vibecorp:branch --worktree <Issue URL>
 ```
 
-## オプション
+## ⚙️ オプション
 
-- `--worktree`: ブランチ作成と同時に git worktree を作成し、独立したディレクトリで作業できるようにする
+| オプション | 説明 |
+|---|---|
+| `--worktree` | ブランチ作成と同時に git worktree を作成し、独立したディレクトリで作業できるようにする |
 
-## ワークフロー
+## 🔄 ワークフロー
 
 ### 1. Issue 情報の取得
 
@@ -38,12 +44,16 @@ dev/{Issue番号}_{要約}
 ```
 
 **要約ルール:**
-- 英語のスネークケース（小文字 + アンダースコア）
-- 最大30文字
-- 絵文字・タイプ接頭辞（`feat:`, `fix:` 等）は除外
-- 内容を端的に表す2〜4単語
+
+| 項目 | ルール |
+|---|---|
+| 表記 | 英語のスネークケース（小文字 + アンダースコア） |
+| 文字数 | 最大 30 文字 |
+| 除外 | 絵文字・タイプ接頭辞（`feat:`, `fix:` 等）は除外する |
+| 単語数 | 内容を端的に表す 2〜4 単語 |
 
 例:
+
 - `✨ feat: /vibecorp:ship Issue指定からマージまでの全自動スキル` → `dev/67_ship_auto_merge`
 - `🐛 fix: mvv.md path notation inconsistency` → `dev/41_mvv_path_fix`
 
@@ -103,13 +113,13 @@ git worktree add "$WORKTREE_BASE/<ブランチ名>" -b <ブランチ名>
 rsync -a "$MAIN_DIR/.claude/" "$WORKTREE_BASE/<ブランチ名>/.claude/"
 ```
 
-## 制約
+## ⚠️ 制約
 
-- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
-- 既存のブランチ名と衝突する場合はユーザーに報告して停止
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）。
+- 既存のブランチ名と衝突する場合はユーザーに報告して停止する。
 
-## 返却フォーマット
+## 📤 返却フォーマット
 
 ### 通常モード
 
@@ -123,3 +133,10 @@ rsync -a "$MAIN_DIR/.claude/" "$WORKTREE_BASE/<ブランチ名>/.claude/"
 <ブランチ名>
 worktree: <ワークツリーの絶対パス>
 ```
+
+## 🔗 関連ルール
+
+- ブランチ命名規約: `.claude/rules/workflow.md`
+- プロンプト作成基準: `.claude/rules/prompt-writing.md`
+- マークダウン規約: `.claude/rules/markdown.md`
+- シェル規約: `.claude/rules/shell.md`
