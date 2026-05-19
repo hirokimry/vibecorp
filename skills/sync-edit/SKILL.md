@@ -1,22 +1,26 @@
 ---
 name: sync-edit
 description: >
-  /sync-check で検出された不整合を、各職種エージェントに委任して修正する。
+  /vibecorp:sync-check で検出された不整合を、各職種エージェントに委任して修正する。
   各エージェントは自分の管轄ファイルのみ編集する。
-  「/sync-edit」と言った時に使用。
+  「/vibecorp:sync-edit」「整合性を直して」と言った時に使用。
 ---
 
-# sync-edit: 整合性修正（各職種が管轄のみ編集）
+# 🛠️ sync-edit: 整合性修正（各職種が管轄のみ編集）
 
-`/vibecorp:sync-check` で検出された不整合を、**各職種エージェントに委任して** 修正する。
-各エージェントは **自分の管轄ファイルだけ** を編集する。
+> [!IMPORTANT]
+> `/vibecorp:sync-check` で検出された不整合を **各職種エージェントに委任して** 修正する。
+> 各エージェントは **自分の管轄ファイルだけ** を編集する（越境禁止）。
+> `.claude/knowledge/{role}/` の書込みは `knowledge/buffer` worktree 経由限定。
 
-## 前提条件
+`/vibecorp:sync-check` の結果に基づき、不整合を各 C*O / SM に委任して直す。本スキルはスタンプを発行しない（スタンプは `sync-check` のみが発行する）。
 
-- `/vibecorp:sync-check` が先に実行されていること
-- sync-check の結果に ⚠️ または ❌ が含まれていること
+## 📥 前提条件
 
-## ワークフロー
+- `/vibecorp:sync-check` が先に実行されていること。
+- sync-check の結果に ⚠️ または ❌ が含まれていること。
+
+## 🔄 ワークフロー
 
 ### 0. buffer worktree の準備
 
@@ -62,17 +66,16 @@ BUFFER_DIR="$(knowledge_buffer_worktree_dir)"
 #### 起動方法
 
 各エージェントに以下を渡して Agent ツールで起動する。
-**重要**: 各エージェントは hooks による権限チェックを受けるため、ロール宣言が必須。
 
-プロンプトは `skills/sync-edit/prompts/agent-call-cxo-sync-edit.md` を参照する。
+**重要**: 各エージェントは hooks による権限チェックを受けるため、ロール宣言が必須。プロンプトは `skills/sync-edit/prompts/agent-call-cxo-sync-edit.md` を参照する。
 
-**注意**: エージェントは順次起動すること（並列だとロールファイルが競合する）。
+**注意**: エージェントは順次起動する（並列だとロールファイルが競合する）。
 
 ### 2.5. C*O フォールバック警告の検知
 
 各エージェントの出力に `### 判断記録（記録先取得失敗）` セクションが含まれる場合、当該エージェントの knowledge/ 書込みが buffer 取得失敗で失敗している。判断内容を結果レポート末尾の「⚠️ 手動反映が必要な判断記録」ブロックに転記し、ユーザーに `docs/migration-knowledge-buffer.md` の手順での手動反映を促す。
 
-ヘッダー名は厳格指定（バリエーション禁止）。検知は **アンカー付き grep**（行頭 `^` + 行末 `$`）で行うこと:
+ヘッダー名は厳格指定（バリエーション禁止）。検知は **アンカー付き grep**（行頭 `^` + 行末 `$`）で行う。
 
 ```bash
 if echo "$agent_output" | grep -q '^### 判断記録（記録先取得失敗）$'; then
@@ -97,7 +100,7 @@ fi
 
 ### 3. 結果の統合・レポート出力
 
-全エージェントの修正結果を統合し、以下のフォーマットで出力する:
+全エージェントの修正結果を統合し、以下のフォーマットで出力する。
 
 ```text
 ## sync-edit 結果
@@ -128,12 +131,11 @@ fi
 
 ### 4. 再チェックの案内
 
-修正完了後、必ず `/vibecorp:sync-check` の再実行を案内する。
-sync-edit 自身はスタンプを発行しない（スタンプは sync-check のみが発行する）。
+修正完了後、必ず `/vibecorp:sync-check` の再実行を案内する。sync-edit 自身はスタンプを発行しない（スタンプは sync-check のみが発行する）。
 
-## 制約
+## 🚧 制約
 
-- **knowledge/ への書込みは buffer worktree 経由限定** — 作業ブランチへの直書きは `protect-knowledge-direct-writes.sh` フックで deny される
-- `git add` / `git commit` / `git push` は `knowledge_buffer_*` ヘルパー経由でのみ実行する
-- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
+- **knowledge/ への書込みは buffer worktree 経由限定** — 作業ブランチへの直書きは `protect-knowledge-direct-writes.sh` フックで deny される。
+- `git add` / `git commit` / `git push` は `knowledge_buffer_*` ヘルパー経由でのみ実行する。
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）。
