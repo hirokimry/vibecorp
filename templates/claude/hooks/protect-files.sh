@@ -11,7 +11,6 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# vibecorp.yml から protected_files を読み取る
 VIBECORP_YML="${CLAUDE_PROJECT_DIR:-.}/.claude/vibecorp.yml"
 if [ ! -f "$VIBECORP_YML" ]; then
   exit 0

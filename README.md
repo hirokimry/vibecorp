@@ -168,7 +168,7 @@ Windows ネイティブは非対応（WSL2 を使用）。
 | `/vibecorp:sync-check` / `/vibecorp:sync-edit` | 仕様書と実装の整合性をチェック・自動修正する |
 | `/vibecorp:context7` | 外部ライブラリの公式ドキュメントをコンテキストに取り込む |
 
-### 🏢 full で追加（10 スキル — 並列・自律・エピック）
+### 🏢 full で追加（11 スキル — 並列・自律・エピック）
 
 | スキル | 何ができるようになるか |
 |---|---|
@@ -176,7 +176,7 @@ Windows ネイティブは非対応（WSL2 を使用）。
 | `/vibecorp:diagnose` | 改善候補を自動検出して Issue 起票する |
 | `/vibecorp:plan-epic` / `/vibecorp:release-epic` | エピック単位の計画・リリースを管理する |
 | `/vibecorp:cycle-metrics` | 開発サイクルの指標を計測・可視化する |
-| `/vibecorp:docs-rewrite-all` / `/vibecorp:prompts-rewrite-all` | ドキュメント・プロンプトを基準に沿って一括書き直す |
+| `/vibecorp:docs-rewrite-all` / `/vibecorp:prompts-rewrite-all` / `/vibecorp:comments-rewrite-all` | ドキュメント・プロンプト・コード内コメントを基準に沿って一括書き直す |
 | `/vibecorp:notifications-extract-all` / `/vibecorp:prompts-extract-all` | workflow / hook / SKILL.md に embed された通知文・プロンプトテンプレを個別 `.md` ファイルに切り出す（migration skill） |
 
 > 📖 **詳細**: 各スキルの引数・挙動・依存関係は [`docs/specification.md#スキル一覧source-of-truth`](docs/specification.md#スキル一覧source-of-truth) に記載。

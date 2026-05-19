@@ -7,7 +7,8 @@
 {該当した指針 / 禁止項目と行番号}
 
 ## 適用基準
-.claude/rules/document-writing.md（必読）
+.claude/rules/document-writing.md（ドキュメント本文・必読）
+.claude/rules/comment-writing.md（md 内 GitHub コメント例の照合基準・必読）
 .claude/rules/communication.md（動作主語ルール）
 .claude/rules/markdown.md（フェンスコードブロック言語指定）
 
@@ -15,7 +16,8 @@
 - 書き換え案は diff 形式で返す。ファイルを直接編集しない
 - 既存の章立て・URL リンクは可能な限り保つ
 - 意味を変える書き換えは禁止（基準適合の整形のみ）
-- 基準（`document-writing.md`）の指針 / 禁止違反を、基準ルールに従って書き直す
+- ドキュメント本文の指針 / 禁止違反は `document-writing.md` に従って書き直す
+- md 内に登場する GitHub コメント例（Issue / PR / レビュー / Bot 通知）は `comment-writing.md` に従って書き直す
 
 ## 出力フォーマット
 - 該当行と提案後の文の対比表

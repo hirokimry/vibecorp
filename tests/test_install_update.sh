@@ -274,12 +274,12 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-echo "# 古いルール" > "$R/.claude/rules/comments.md"
+echo "# 古いルール" > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
 # テンプレートが変更されていないため、カスタム版が保持される
-assert_file_contains "--update でカスタム済みルールがテンプレート未変更なら保持" "$R/.claude/rules/comments.md" "古いルール"
+assert_file_contains "--update でカスタム済みルールがテンプレート未変更なら保持" "$R/.claude/rules/code-comments.md" "古いルール"
 cleanup
 
 # ============================================
@@ -342,7 +342,7 @@ R="$TMPDIR_ROOT"
 bash "$INSTALL_SH" --update 2>/dev/null
 
 assert_file_exists "AB1: hook ファイルが存在" "$R/.claude/hooks/protect-files.sh"
-assert_file_exists "AB1: rules ファイルが存在" "$R/.claude/rules/comments.md"
+assert_file_exists "AB1: rules ファイルが存在" "$R/.claude/rules/code-comments.md"
 cleanup
 
 # AB2. カスタマイズ済み & テンプレート未変更 → カスタム版を保持
@@ -368,7 +368,7 @@ R="$TMPDIR_ROOT"
 
 assert_dir_exists "AB3: vibecorp-base ディレクトリ存在" "$R/.claude/vibecorp-base"
 assert_file_exists "AB3: hooks のベーススナップショット" "$R/.claude/vibecorp-base/hooks/protect-files.sh"
-assert_file_exists "AB3: rules のベーススナップショット" "$R/.claude/vibecorp-base/rules/comments.md"
+assert_file_exists "AB3: rules のベーススナップショット" "$R/.claude/vibecorp-base/rules/code-comments.md"
 cleanup
 
 # AB4. vibecorp.lock に base_hashes セクションが含まれる
@@ -378,7 +378,7 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "AB4: lock に base_hashes セクション" "$R/.claude/vibecorp.lock" "base_hashes:"
 assert_file_contains "AB4: lock に hooks ハッシュ" "$R/.claude/vibecorp.lock" "hooks/protect-files.sh:"
-assert_file_contains "AB4: lock に rules ハッシュ" "$R/.claude/vibecorp.lock" "rules/comments.md:"
+assert_file_contains "AB4: lock に rules ハッシュ" "$R/.claude/vibecorp.lock" "rules/code-comments.md:"
 cleanup
 
 # AB5. .claude/.gitignore に vibecorp-base/ が含まれる
@@ -524,11 +524,11 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # ベーススナップショットとは異なる内容で上書き（カスタマイズ模擬）
-echo "# カスタム版コメントルール" > "$R/.claude/rules/comments.md"
+echo "# カスタム版コメントルール" > "$R/.claude/rules/code-comments.md"
 
 # テンプレートも変更（ベースと異なる新しい内容にする）
 # ベーススナップショットを直接変更して強制的にマージをトリガー
-echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/code-comments.md"
 
 STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
 
@@ -564,12 +564,12 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # ファイルは変更しないが、ベーススナップショットを差し替えて「テンプレート変更」を模擬
-echo "# 古いベース" > "$R/.claude/vibecorp-base/rules/comments.md"
+echo "# 古いベース" > "$R/.claude/vibecorp-base/rules/code-comments.md"
 # lock のハッシュもベースに合わせる
-OLD_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
-CURRENT_HASH=$(shasum -a 256 "$R/.claude/rules/comments.md" | awk '{print $1}')
+OLD_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/code-comments.md" | awk '{print $1}')
+CURRENT_HASH=$(shasum -a 256 "$R/.claude/rules/code-comments.md" | awk '{print $1}')
 # lock のハッシュを現在のファイルのハッシュに設定（= カスタムなし状態を作る）
-awk -v path="rules/comments.md" -v newhash="$CURRENT_HASH" '
+awk -v path="rules/code-comments.md" -v newhash="$CURRENT_HASH" '
   /^  base_hashes:/ { in_hashes = 1; print; next }
   in_hashes && /^  [a-z]/ { in_hashes = 0 }
   in_hashes && /^[^ ]/ { in_hashes = 0 }
@@ -587,7 +587,7 @@ awk -v path="rules/comments.md" -v newhash="$CURRENT_HASH" '
 bash "$INSTALL_SH" --update 2>/dev/null
 
 # テンプレート版（=元々のテンプレート）で上書きされているはず
-assert_file_exists "AB12: rules ファイルが存在" "$R/.claude/rules/comments.md"
+assert_file_exists "AB12: rules ファイルが存在" "$R/.claude/rules/code-comments.md"
 cleanup
 
 # AB13. --update 後のコンフリクト警告表示テスト
@@ -597,11 +597,11 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # ベーススナップショットを置き換え（独立した3つの内容を作る）
-echo "ベース版の内容" > "$R/.claude/vibecorp-base/rules/comments.md"
-BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/comments.md" | awk '{print $1}')
+echo "ベース版の内容" > "$R/.claude/vibecorp-base/rules/code-comments.md"
+BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/code-comments.md" | awk '{print $1}')
 
 # lock のハッシュをベースに合わせる
-awk -v path="rules/comments.md" -v newhash="$BASE_HASH" '
+awk -v path="rules/code-comments.md" -v newhash="$BASE_HASH" '
   /^  base_hashes:/ { in_hashes = 1; print; next }
   in_hashes && /^  [a-z]/ { in_hashes = 0 }
   in_hashes && /^[^ ]/ { in_hashes = 0 }
@@ -617,7 +617,7 @@ awk -v path="rules/comments.md" -v newhash="$BASE_HASH" '
 ' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
 
 # カスタム版に書き換え
-echo "カスタム版の内容" > "$R/.claude/rules/comments.md"
+echo "カスタム版の内容" > "$R/.claude/rules/code-comments.md"
 
 # --update 実行（テンプレートはベースと異なる → 3-way マージ発生）
 STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true

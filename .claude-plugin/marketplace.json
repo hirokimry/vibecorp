@@ -16,6 +16,7 @@
         "./skills/audit-security",
         "./skills/autopilot",
         "./skills/branch",
+        "./skills/comments-rewrite-all",
         "./skills/commit",
         "./skills/context7",
         "./skills/cycle-metrics",

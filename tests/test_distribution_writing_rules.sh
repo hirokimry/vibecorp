@@ -1,5 +1,5 @@
 #!/bin/bash
-# test_distribution_writing_rules.sh — 書き方ルール 4 ファイルが配布対象に追加されたことを検証する（Issue #599）
+# test_distribution_writing_rules.sh — 書き方ルール 6 ファイルが配布対象に追加されたことを検証する（Issue #599 / #632）
 # 使い方: bash tests/test_distribution_writing_rules.sh
 # CI: GitHub Actions で自動実行
 
@@ -11,12 +11,14 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-# 配布対象 4 ファイル
+# 配布対象 6 ファイル（#599 で 4 本、#632 でコメント基準 2 本を追加）
 RULES=(
   "communication.md"
   "documentation.md"
   "document-writing.md"
   "prompt-writing.md"
+  "comment-writing.md"
+  "code-comments.md"
 )
 
 # 配置先 3 か所
@@ -25,7 +27,7 @@ BASE_DIR="${SCRIPT_DIR}/.claude/vibecorp-base/rules"
 TEMPLATE_DIR="${SCRIPT_DIR}/templates/claude/rules"
 
 # ============================================
-echo "=== 本体 .claude/rules/ に 4 ファイルが存在する ==="
+echo "=== 本体 .claude/rules/ に 6 ファイルが存在する ==="
 # ============================================
 
 for f in "${RULES[@]}"; do
@@ -43,7 +45,7 @@ for f in "${RULES[@]}"; do
 done
 
 # ============================================
-echo "=== 配布元 templates/claude/rules/ に 4 ファイルが存在する（git 管理対象） ==="
+echo "=== 配布元 templates/claude/rules/ に 6 ファイルが存在する（git 管理対象） ==="
 # ============================================
 
 for f in "${RULES[@]}"; do
@@ -121,7 +123,7 @@ if [[ -f "${BASE_DIR}/prompt-writing.md" ]]; then
 fi
 
 # ============================================
-echo "=== install.sh が新規 4 ファイルを配布対象として列挙する ==="
+echo "=== install.sh が 6 ファイルを配布対象として列挙する ==="
 # ============================================
 
 # copy_rules() は find -maxdepth 2 -type f -name "*.md" で自動列挙する

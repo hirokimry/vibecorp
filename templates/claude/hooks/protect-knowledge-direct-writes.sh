@@ -55,7 +55,6 @@ if [ -z "$abs_file_path" ]; then
   esac
 fi
 
-# deny 対象パターン判定
 is_deny_target=0
 case "$abs_file_path" in
   *.claude/knowledge/*/decisions/*.md|\
@@ -65,7 +64,6 @@ case "$abs_file_path" in
     ;;
 esac
 
-# 非対象なら関与せず通す
 if [ "$is_deny_target" -eq 0 ]; then
   exit 0
 fi
