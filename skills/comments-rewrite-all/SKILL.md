@@ -33,8 +33,8 @@ description: >
 
 ### 対象外（本スキルは扱わない）
 
-- `.md` 全般（ドキュメント本体）→ `/docs-rewrite-all`
-- LLM 向けプロンプト `.md`（`skills/**/SKILL.md` / `.claude/agents/*.md` / `.claude/rules/*.md`）→ `/prompts-rewrite-all`
+- `.md` 全般（ドキュメント本体）→ `/vibecorp:docs-rewrite-all`
+- LLM 向けプロンプト `.md`（`skills/**/SKILL.md` / `.claude/agents/*.md` / `.claude/rules/*.md`）→ `/vibecorp:prompts-rewrite-all`
 - GitHub コメント（Issue / PR / レビュー本文 / Bot 通知）→ `comment-writing.md` 直接適用
 - コミットメッセージ本文 → `communication.md` 直接適用
 
@@ -305,5 +305,5 @@ CEO に以下の選択肢を提示する。
 - マークダウン規約: `.claude/rules/markdown.md`
 - shell 規約: `.claude/rules/shell.md`
 - 自律実行不可領域（人間承認必須）: `.claude/rules/autonomous-restrictions.md`
-- 兄弟スキル: `/docs-rewrite-all`（ドキュメント本文 + md 内コメント例を扱う）
-- 兄弟スキル: `/prompts-rewrite-all`（プロンプト本文 + md 内コメント例を扱う）
+- 兄弟スキル: `/vibecorp:docs-rewrite-all`（ドキュメント本文 + md 内コメント例を扱う）
+- 兄弟スキル: `/vibecorp:prompts-rewrite-all`（プロンプト本文 + md 内コメント例を扱う）
