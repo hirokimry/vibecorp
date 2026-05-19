@@ -17,8 +17,6 @@ INSTALL_SCRIPT="$PROJECT_DIR/install.sh"
 echo "=== 専門家エージェント プランレビュー テスト ==="
 echo ""
 
-# --- テスト1: エージェント定義ファイルの存在 ---
-
 echo "--- テスト1: エージェント定義ファイルの存在 ---"
 
 AGENT_FILES=(
@@ -40,8 +38,6 @@ for agent_file in "${AGENT_FILES[@]}"; do
 done
 
 echo ""
-
-# --- テスト2: エージェント定義の frontmatter 検証 ---
 
 echo "--- テスト2: エージェント定義の frontmatter 検証 ---"
 
@@ -88,8 +84,6 @@ done
 
 echo ""
 
-# --- テスト3: エージェント定義の出力形式セクション確認 ---
-
 echo "--- テスト3: エージェント定義の出力形式セクション確認 ---"
 
 for agent_file in "${AGENT_FILES[@]}"; do
@@ -118,8 +112,6 @@ for agent_file in "${AGENT_FILES[@]}"; do
 done
 
 echo ""
-
-# --- テスト4: plan-review-loop SKILL.md の専門家エージェント対応 ---
 
 echo "--- テスト4: plan-review-loop SKILL.md の専門家エージェント対応 ---"
 
@@ -193,8 +185,6 @@ fi
 
 echo ""
 
-# --- テスト5: vibecorp.yml テンプレートの plan.review_agents ---
-
 echo "--- テスト5: vibecorp.yml テンプレートの plan.review_agents ---"
 
 if grep -q 'review_agents' "$INSTALL_SCRIPT"; then
@@ -211,8 +201,6 @@ else
 fi
 
 echo ""
-
-# --- テスト6: エージェント名の一致確認 ---
 
 echo "--- テスト6: エージェント名の一致確認 ---"
 
@@ -284,8 +272,6 @@ fi
 
 echo ""
 
-# --- テスト8: 既存エージェント定義との共存確認 ---
-
 echo "--- テスト8: 既存エージェント定義との共存確認 ---"
 
 EXISTING_AGENTS=("cto.md" "cpo.md" "sm.md" "cfo.md" "ciso.md" "clo.md")
@@ -299,8 +285,6 @@ for existing in "${EXISTING_AGENTS[@]}"; do
 done
 
 echo ""
-
-# --- テスト9: plan-cost / plan-legal の権限境界記述 ---
 
 echo "--- テスト9: plan-cost / plan-legal の権限境界記述 ---"
 
@@ -331,8 +315,6 @@ if [ -f "$AGENTS_DIR/plan-legal.md" ]; then
 fi
 
 echo ""
-
-# --- テスト10: SKILL.md の C*O メタレビュー層セクション ---
 
 echo "--- テスト10: SKILL.md の C*O メタレビュー層セクション ---"
 
@@ -379,8 +361,6 @@ else
 fi
 
 echo ""
-
-# --- テスト11: SKILL.md のプリセット別デフォルト記述 ---
 
 echo "--- テスト11: SKILL.md のプリセット別デフォルト記述 ---"
 

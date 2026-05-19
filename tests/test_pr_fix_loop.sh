@@ -15,8 +15,6 @@ SKILL_FILE="$PROJECT_DIR/skills/pr-fix-loop/SKILL.md"
 echo "=== /vibecorp:pr-fix-loop 同期ループ仕様ガード テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -28,8 +26,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: frontmatter ---
 
 echo "--- テスト2: frontmatter ---"
 
@@ -48,8 +44,6 @@ else
 fi
 
 echo ""
-
-# --- テスト3: scheduler 依存の不在 ---
 
 echo "--- テスト3: scheduler 依存の不在 ---"
 
@@ -82,8 +76,6 @@ fi
 
 echo ""
 
-# --- テスト4: 同期ポーリングループの記述 ---
-
 echo "--- テスト4: 同期ポーリングループの記述 ---"
 
 if grep -q -e '同期ポーリングループ\|同期ループ\|同期版' "$SKILL_FILE"; then
@@ -110,8 +102,6 @@ done
 
 echo ""
 
-# --- テスト5: 状態遷移表の記述 ---
-
 echo "--- テスト5: 状態遷移表の記述 ---"
 
 STATES=("MERGED" "CLOSED" "CHANGES_REQUESTED" "CLEAN" "BLOCKED" "DIRTY" "DRAFT")
@@ -131,8 +121,6 @@ else
 fi
 
 echo ""
-
-# --- テスト6: ループ制御値（iterations / timeout / polling 間隔） ---
 
 echo "--- テスト6: ループ制御値（iterations / timeout / polling 間隔） ---"
 
@@ -158,8 +146,6 @@ else
 fi
 
 echo ""
-
-# --- テスト7: escalation 条件 ---
 
 echo "--- テスト7: escalation 条件 ---"
 
@@ -194,8 +180,6 @@ fi
 
 echo ""
 
-# --- テスト8: worktree モードの記述 ---
-
 echo "--- テスト8: worktree モードの記述 ---"
 
 if grep -q -e 'worktree モード\|--worktree' "$SKILL_FILE"; then
@@ -212,8 +196,6 @@ else
 fi
 
 echo ""
-
-# --- テスト9: CodeRabbit enabled=false 時のフォールバック ---
 
 echo "--- テスト9: CodeRabbit enabled=false 時のフォールバック ---"
 

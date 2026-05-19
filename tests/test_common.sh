@@ -36,7 +36,6 @@ YAML
 RESULT=$(CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case1" source "$COMMON_SH" && CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case1" get_project_name)
 assert_eq "vibecorp.yml あり → プロジェクト名を返す" "my-cool-project" "$RESULT"
 
-# 2. vibecorp.yml なし → デフォルト名を返す
 mkdir -p "${TMPDIR_TEST}/case2/.claude"
 
 RESULT=$(CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case2" source "$COMMON_SH" && CLAUDE_PROJECT_DIR="${TMPDIR_TEST}/case2" get_project_name)

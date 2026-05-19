@@ -16,8 +16,6 @@ AGENTS_DIR="$PROJECT_DIR/templates/claude/agents"
 echo "=== /vibecorp:review-loop 合議制 + C*O メタレビュー テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -29,8 +27,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: C*O メタレビュー層セクション ---
 
 echo "--- テスト2: C*O メタレビュー層セクション ---"
 
@@ -106,8 +102,6 @@ fi
 
 echo ""
 
-# --- テスト4: 領域別キーワード ---
-
 echo "--- テスト4: 領域別キーワード ---"
 
 BILLING_KEYS=("ANTHROPIC_API_KEY" "rate limit" "トークン消費")
@@ -138,8 +132,6 @@ for key in "${LEGAL_KEYS[@]}"; do
 done
 
 echo ""
-
-# --- テスト5: PR コメント upsert ---
 
 echo "--- テスト5: PR コメント upsert ---"
 
@@ -177,8 +169,6 @@ fi
 
 echo ""
 
-# --- テスト6: CodeRabbit との位置づけ ---
-
 echo "--- テスト6: CodeRabbit との位置づけ ---"
 
 if grep -q -e 'CodeRabbit' "$SKILL_FILE" || grep -q -e '/vibecorp:review' "$SKILL_FILE"; then
@@ -195,8 +185,6 @@ fi
 
 echo ""
 
-# --- テスト7: standard / minimal フォールバック ---
-
 echo "--- テスト7: standard / minimal フォールバック ---"
 
 if grep -q -e '既存挙動を維持' "$SKILL_FILE" || grep -q -e 'standard 以下' "$SKILL_FILE"; then
@@ -212,8 +200,6 @@ else
 fi
 
 echo ""
-
-# --- テスト8: 参照エージェント定義の存在 ---
 
 echo "--- テスト8: 参照エージェント定義の存在 ---"
 

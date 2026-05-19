@@ -77,11 +77,9 @@ echo "=== guide-gate.sh ==="
 
 # --- デフォルトスコープ内のテスト ---
 
-# 1. スタンプなしで .claude/hooks/ 配下を Edit → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/hooks/my-hook.sh"}}' | "$HOOK")
 assert_blocked "スタンプなしで .claude/hooks/ 配下を Edit → deny" "$OUTPUT"
 
-# 2. スタンプありで .claude/hooks/ 配下を Edit → allow
 touch "$STAMP_FILE"
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/hooks/my-hook.sh"}}' | "$HOOK")
 assert_allowed "スタンプありで .claude/hooks/ 配下を Edit → allow" "$OUTPUT"
@@ -93,37 +91,29 @@ else
   fail "スタンプが消費される (ファイルが残っている)"
 fi
 
-# 4. .claude/skills/ 配下 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/skills/ship/SKILL.md"}}' | "$HOOK")
 assert_blocked ".claude/skills/ 配下 → deny" "$OUTPUT"
 
-# 5. .claude/agents/ 配下 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/agents/cto.md"}}' | "$HOOK")
 assert_blocked ".claude/agents/ 配下 → deny" "$OUTPUT"
 
-# 6. .claude/rules/ 配下 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/rules/testing.md"}}' | "$HOOK")
 assert_blocked ".claude/rules/ 配下 → deny" "$OUTPUT"
 
-# 7. .claude/settings.json → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/settings.json"}}' | "$HOOK")
 assert_blocked ".claude/settings.json → deny" "$OUTPUT"
 
-# 8. *.mcp.json → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"project.mcp.json"}}' | "$HOOK")
 assert_blocked "*.mcp.json → deny" "$OUTPUT"
 
 # --- スコープ外のテスト ---
 
-# 9. src/ 配下 → allow（スコープ外）
 OUTPUT=$(echo '{"tool_input":{"file_path":"src/main.ts"}}' | "$HOOK")
 assert_allowed "src/ 配下 → allow（スコープ外）" "$OUTPUT"
 
-# 10. docs/ 配下 → allow（スコープ外）
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | "$HOOK")
 assert_allowed "docs/ 配下 → allow（スコープ外）" "$OUTPUT"
 
-# 11. README.md → allow（スコープ外）
 OUTPUT=$(echo '{"tool_input":{"file_path":"README.md"}}' | "$HOOK")
 assert_allowed "README.md → allow（スコープ外）" "$OUTPUT"
 
@@ -133,11 +123,9 @@ assert_allowed ".claude/knowledge/ 配下 → allow（スコープ外）" "$OUTP
 
 # --- 絶対パスでのテスト ---
 
-# 13. 絶対パスで .claude/hooks/ 配下 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"/home/user/project/.claude/hooks/test.sh"}}' | "$HOOK")
 assert_blocked "絶対パスで .claude/hooks/ 配下 → deny" "$OUTPUT"
 
-# 14. 絶対パスで .claude/settings.json → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"/Users/me/repo/.claude/settings.json"}}' | "$HOOK")
 assert_blocked "絶対パスで .claude/settings.json → deny" "$OUTPUT"
 
@@ -162,7 +150,6 @@ assert_blocked "extra_paths の templates/claude/ 配下 → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"install.sh"}}' | "$HOOK")
 assert_blocked "extra_paths の install.sh → deny" "$OUTPUT"
 
-# 18. 絶対パスで extra_paths 配下 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"/home/user/project/templates/claude/settings.json"}}' | "$HOOK")
 assert_blocked "絶対パスで extra_paths 配下 → deny" "$OUTPUT"
 
@@ -194,7 +181,6 @@ assert_allowed "vibecorp.yml 不在で extra_paths なし → allow" "$OUTPUT"
 
 # --- file_path 空のテスト ---
 
-# 21. file_path が空 → allow
 OUTPUT=$(echo '{"tool_input":{"command":"echo hello"}}' | "$HOOK")
 assert_allowed "file_path が空 → allow" "$OUTPUT"
 

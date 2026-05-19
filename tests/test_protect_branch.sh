@@ -105,11 +105,9 @@ setup_project_dir
 write_vibecorp_yml
 switch_to_branch main
 
-# 1. main ブランチで Edit → deny
 OUTPUT=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' | run_hook)
 assert_blocked "main ブランチで Edit → deny" "$OUTPUT"
 
-# 2. main ブランチで Write → deny
 OUTPUT=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/app.ts","content":"hello"}}' | run_hook)
 assert_blocked "main ブランチで Write → deny" "$OUTPUT"
 
@@ -117,15 +115,12 @@ assert_blocked "main ブランチで Write → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "main ブランチで git commit → deny" "$OUTPUT"
 
-# 4. main ブランチで git commit --amend → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit --amend"}}' | run_hook)
 assert_blocked "main ブランチで git commit --amend → deny" "$OUTPUT"
 
-# 5. main ブランチで git add && git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git add . && git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "main ブランチで git add && git commit → deny" "$OUTPUT"
 
-# 6. main ブランチで git add → allow
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git add ."}}' | run_hook)
 assert_allowed "main ブランチで git add → allow" "$OUTPUT"
 
@@ -137,16 +132,13 @@ assert_allowed "main ブランチで git push → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git checkout -b feature/new"}}' | run_hook)
 assert_allowed "main ブランチで git checkout -b → allow" "$OUTPUT"
 
-# 9. フィーチャーブランチで Edit → allow
 switch_to_branch "dev/123_feature"
 OUTPUT=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' | run_hook)
 assert_allowed "フィーチャーブランチで Edit → allow" "$OUTPUT"
 
-# 10. フィーチャーブランチで git commit → allow
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"テスト\""}}' | run_hook)
 assert_allowed "フィーチャーブランチで git commit → allow" "$OUTPUT"
 
-# 11. detached HEAD で Edit → allow
 switch_to_branch main
 detach_head
 OUTPUT=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' | run_hook)
@@ -155,7 +147,6 @@ assert_allowed "detached HEAD で Edit → allow" "$OUTPUT"
 # main に戻す
 switch_to_branch main
 
-# 12. vibecorp.yml なし → main をデフォルトとして deny
 mv "${TMPDIR_ROOT}/.claude/vibecorp.yml" "${TMPDIR_ROOT}/.claude/vibecorp.yml.bak"
 OUTPUT=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' | run_hook)
 assert_blocked "vibecorp.yml なし → main をデフォルトとして deny" "$OUTPUT"
@@ -179,11 +170,9 @@ assert_allowed "base_branch=develop で main ブランチ → allow" "$OUTPUT"
 write_vibecorp_yml
 switch_to_branch main
 
-# 14. 環境変数プレフィックス付き git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"GIT_AUTHOR_NAME=test git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "環境変数プレフィックス付き git commit → deny" "$OUTPUT"
 
-# 15. 絶対パス /usr/bin/git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"/usr/bin/git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "絶対パス /usr/bin/git commit → deny" "$OUTPUT"
 
@@ -199,23 +188,18 @@ else
   fail "deny 出力の JSON 構造検証 (hookEventName/permissionDecision/permissionDecisionReason が不足)"
 fi
 
-# 17. command が空 → allow
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":""}}' | run_hook)
 assert_allowed "command が空 → allow" "$OUTPUT"
 
-# 18. tool_name が空 → allow
 OUTPUT=$(echo '{"tool_name":"","tool_input":{"file_path":"src/app.ts"}}' | run_hook)
 assert_allowed "tool_name が空 → allow" "$OUTPUT"
 
-# 19. セミコロン区切り git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git add .; git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "セミコロン区切り git commit → deny" "$OUTPUT"
 
-# 20. env ラッパー付き git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"env git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "env ラッパー付き git commit → deny" "$OUTPUT"
 
-# 21. command ラッパー付き git commit → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"command git commit -m \"テスト\""}}' | run_hook)
 assert_blocked "command ラッパー付き git commit → deny" "$OUTPUT"
 

@@ -47,7 +47,6 @@ INTENT_LABELS=(
 echo "=== 既存 open Issue intent ラベル遡及付与 ==="
 echo ""
 
-# intent/* が付いていない open Issue を列挙
 issues_json=$(gh issue list --state open --limit 500 --json number,title,labels)
 target_count=$(echo "$issues_json" | jq '[.[] | select([.labels[].name | startswith("intent/")] | any | not)] | length')
 
@@ -66,10 +65,8 @@ if [[ "$DRY_RUN" == "true" ]]; then
   exit 0
 fi
 
-# 1 件ずつ処理
-# プロセス置換 < <(...) を使うことで while ループが pipe の subshell ではなく現シェルで走る。
-# pipe で while を回すと内部の `read -r choice` が pipe の次行（次の Issue データ）を奪ってしまい、
-# 対話入力にならないため必ずプロセス置換を使う。
+# pipe で while を回すと内部の `read -r choice` が次行（次の Issue データ）を奪い対話入力が壊れるため、
+# プロセス置換 < <(...) で現シェル実行に固定する
 while IFS= read -r issue; do
   num=$(echo "$issue" | jq -r '.number')
   title=$(echo "$issue" | jq -r '.title')
@@ -78,8 +75,8 @@ while IFS= read -r issue; do
   echo "タイトル: ${title}"
   echo ""
   echo "本文:"
-  # head -20 を使うと set -o pipefail 下で gh が SIGPIPE で exit 141 になりスクリプト全体が落ちる
-  # sed -n '1,20p' は標準入力を最後まで読み切るので SIGPIPE が発生しない
+  # head -20 だと set -o pipefail 下で gh が SIGPIPE で exit 141 になりスクリプト全体が落ちるため、
+  # 入力を最後まで読み切る sed -n '1,20p' を使う
   gh issue view "$num" --json body --jq '.body' | sed -n '1,20p'
   echo ""
   echo "intent ラベル候補:"
@@ -89,7 +86,7 @@ while IFS= read -r issue; do
   echo "  s) スキップ"
   echo "  q) 終了"
   printf "選択: "
-  # /dev/tty から直接読み取り。pipe / プロセス置換が stdin を奪っても確実にユーザー入力を読む
+  # pipe / プロセス置換が stdin を奪っても /dev/tty 直読みで確実にユーザー入力を取る
   read -r choice < /dev/tty
 
   case "$choice" in

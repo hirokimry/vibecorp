@@ -35,7 +35,7 @@ fi
 MARKETPLACE_PATH=".claude-plugin/marketplace.json"
 PLUGIN_PATH=".claude-plugin/plugin.json"
 
-# git show で base / head の各ファイル中身を取得する。存在しない場合は空文字を返す。
+# ref に当該パスが存在しない場合は空文字を返す（base / head 片側不在を許容するため）
 git_show_or_empty() {
   local ref="$1"
   local path="$2"
@@ -49,13 +49,12 @@ git_show_or_empty() {
 base_marketplace=$(git_show_or_empty "$BASE_REF" "$MARKETPLACE_PATH")
 head_marketplace=$(git_show_or_empty "$HEAD_REF" "$MARKETPLACE_PATH")
 
-# どちらかに marketplace.json が無ければ graceful skip（plugin リポではない、または初期化前）
+# plugin リポではない / 初期化前は marketplace.json が片側に無いため graceful skip する
 if [[ -z "$base_marketplace" || -z "$head_marketplace" ]]; then
   echo "✅ marketplace.json が base / head のいずれかに存在しないため、チェックをスキップします"
   exit 0
 fi
 
-# plugins[0].skills を JSON 完全一致で比較
 base_skills=$(echo "$base_marketplace" | jq -c '.plugins[0].skills // []')
 head_skills=$(echo "$head_marketplace" | jq -c '.plugins[0].skills // []')
 
@@ -64,7 +63,6 @@ if [[ "$base_skills" == "$head_skills" ]]; then
   exit 0
 fi
 
-# skills が変化している → plugin.json の version を比較
 base_plugin=$(git_show_or_empty "$BASE_REF" "$PLUGIN_PATH")
 head_plugin=$(git_show_or_empty "$HEAD_REF" "$PLUGIN_PATH")
 
@@ -86,7 +84,6 @@ if [[ "$base_version" != "$head_version" ]]; then
   exit 0
 fi
 
-# skills 変更あり + version 不変 → 警告
 {
   echo "⚠️ marketplace.json の plugins[0].skills が変更されているが、plugin.json の version (${base_version}) が bump されていません。"
   echo "   利用者は新しいスキルを取得するために version bump を必要とします。"

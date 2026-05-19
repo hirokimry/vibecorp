@@ -16,8 +16,6 @@ SKILL_FILE="$TEMPLATE_FILE"
 echo "=== /vibecorp:harvest-all スキル テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -32,8 +30,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: frontmatter の検証 ---
 
 echo "--- テスト2: frontmatter の検証 ---"
 
@@ -59,8 +55,6 @@ else
 fi
 
 echo ""
-
-# --- テスト3: 必須セクションの存在 ---
 
 echo "--- テスト3: 必須セクションの存在 ---"
 
@@ -89,8 +83,6 @@ else
 fi
 
 echo ""
-
-# --- テスト4: ワークフローステップの網羅性 ---
 
 echo "--- テスト4: ワークフローステップの網羅性 ---"
 
@@ -144,8 +136,6 @@ fi
 
 echo ""
 
-# --- テスト5: 3観点の分析カテゴリ ---
-
 echo "--- テスト5: 3観点の分析カテゴリ ---"
 
 if grep -q 'docs/ 向け' "$SKILL_FILE"; then
@@ -167,8 +157,6 @@ else
 fi
 
 echo ""
-
-# --- テスト6: オプションの記載 ---
 
 echo "--- テスト6: オプションの記載 ---"
 
@@ -204,8 +192,6 @@ fi
 
 echo ""
 
-# --- テスト8: session-harvest との補完関係 ---
-
 echo "--- テスト8: session-harvest との補完関係 ---"
 
 if grep -q 'session-harvest' "$SKILL_FILE"; then
@@ -235,8 +221,6 @@ fi
 
 echo ""
 
-# --- テスト10: コードブロックの言語指定 ---
-
 echo "--- テスト10: コードブロックの言語指定 ---"
 
 BARE_OPEN_COUNT=$(awk '
@@ -257,8 +241,6 @@ else
 fi
 
 echo ""
-
-# --- テスト11: 制約の検証 ---
 
 echo "--- テスト11: 制約の検証 ---"
 
@@ -282,8 +264,6 @@ fi
 
 echo ""
 
-# --- テスト12: ユーザー確認ステップの存在 ---
-
 echo "--- テスト12: ユーザー確認ステップの存在 ---"
 
 if grep -q '反映しますか' "$SKILL_FILE"; then
@@ -293,8 +273,6 @@ else
 fi
 
 echo ""
-
-# --- テスト13: デフォルト即反映の設計 ---
 
 echo "--- テスト13: デフォルト即反映の設計 ---"
 

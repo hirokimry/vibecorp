@@ -114,7 +114,6 @@ tag_in() {
 echo "=== Issue #625: release-publish.sh の挙動テスト ==="
 echo ""
 
-# --- ケース 1: タグなし + chore のみ → リリーススキップ ---
 echo "--- ケース 1: タグなし + chore のみ → リリーススキップ ---"
 read -r repo stub < <(setup_sandbox | xargs)
 commit_in "$repo" "chore: initial"
@@ -139,7 +138,6 @@ else
 fi
 cleanup
 
-# --- ケース 3: v1.0.0 タグあり + fix → v1.0.1 ---
 echo "--- ケース 3: v1.0.0 タグあり + fix → v1.0.1 ---"
 read -r repo stub < <(setup_sandbox | xargs)
 commit_in "$repo" "feat: initial"
@@ -153,7 +151,6 @@ else
 fi
 cleanup
 
-# --- ケース 4: v1.0.0 タグあり + feat → v1.1.0 ---
 echo "--- ケース 4: v1.0.0 タグあり + feat → v1.1.0 ---"
 read -r repo stub < <(setup_sandbox | xargs)
 commit_in "$repo" "feat: initial"

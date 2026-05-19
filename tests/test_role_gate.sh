@@ -175,7 +175,6 @@ echo "--- SM ロール ---"
 
 write_role_file "sm"
 
-# 14. SM が docs/ai-organization.md を編集 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/ai-organization.md"}}' | run_hook role-gate.sh)
 assert_allowed "SM が docs/ai-organization.md を編集 → 許可" "$OUTPUT"
 
@@ -195,13 +194,11 @@ assert_allowed "CPO が knowledge/ 配下を編集 → 許可" "$OUTPUT"
 
 write_role_file "cto"
 
-# 16. CTO が knowledge/ 配下を編集 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/cto/tech-principles.md"}}' | run_hook role-gate.sh)
 assert_allowed "CTO が knowledge/ 配下を編集 → 許可" "$OUTPUT"
 
 write_role_file "sm"
 
-# 17. SM が knowledge/ 配下を編集 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/sm/notes.md"}}' | run_hook role-gate.sh)
 assert_allowed "SM が knowledge/ 配下を編集 → 許可" "$OUTPUT"
 
@@ -235,7 +232,6 @@ echo "--- ロールファイル空 ---"
 
 echo "" > "$ROLE_FILE"
 
-# 21. ロールファイルが空 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/SECURITY.md"}}' | run_hook role-gate.sh)
 assert_allowed "ロールファイルが空 → 許可" "$OUTPUT"
 
@@ -245,15 +241,12 @@ echo "--- 未知のロール ---"
 
 write_role_file "unknown_role"
 
-# 22. 未知のロール → docs/ 配下はブロック
 OUTPUT=$(echo '{"tool_input":{"file_path":"docs/specification.md"}}' | run_hook role-gate.sh)
 assert_blocked "未知のロール → docs/ 配下はブロック" "$OUTPUT"
 
-# 23. 未知のロール → knowledge/ 配下は許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"knowledge/test.md"}}' | run_hook role-gate.sh)
 assert_allowed "未知のロール → knowledge/ 配下は許可" "$OUTPUT"
 
-# 24. 未知のロール → docs/ 外は許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"install.sh"}}' | run_hook role-gate.sh)
 assert_allowed "未知のロール → docs/ 外は許可" "$OUTPUT"
 
@@ -277,11 +270,9 @@ echo "--- file_path 異常値 ---"
 
 write_role_file "cpo"
 
-# 27. file_path が空 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":""}}' | run_hook role-gate.sh)
 assert_allowed "file_path が空 → 許可" "$OUTPUT"
 
-# 28. file_path キー欠落 → 許可
 OUTPUT=$(echo '{"tool_input":{"other_key":"value"}}' | run_hook role-gate.sh)
 assert_allowed "file_path キー欠落 → 許可" "$OUTPUT"
 

@@ -31,8 +31,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-# 保存先: ~/.cache/vibecorp/state/<repo-id>/review-metrics/
-# repo-id は vibecorp_repo_id ヘルパーと同じロジックで生成
+# 揮発データのため git / knowledge に含めず ~/.cache/vibecorp/state/<repo-id>/ 配下に保存する
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/.claude/lib/common.sh"
@@ -47,19 +46,15 @@ fi
 
 echo "=== PR #${PR_NUMBER} のレビュー比較メトリクス収集 ==="
 
-# 1. 全レビューコメントを取得
-# gh api --paginate は複数ページがある場合に複数の JSON 配列を連結して出力するため、
-# jq -s 'add' で全配列を 1 つの配列に統合する（100件以上のコメントでも正確にカウント）
+# gh api --paginate は複数ページを別々の JSON 配列で吐くため、jq -s 'add' で 1 配列に統合する
+# （100 件超のコメントでも正確にカウントするための前処理）
 all_review_comments=$(gh api "repos/$(gh repo view --json nameWithOwner --jq '.nameWithOwner')/pulls/${PR_NUMBER}/comments" --paginate | jq -s 'add')
 
-# 2. CodeRabbit / claude-action それぞれの bot ユーザーで分類
-# CodeRabbit の bot user: coderabbitai[bot]
-# claude-action の bot user: github-actions[bot]（または anthropic 系）
+# CodeRabbit は coderabbitai[bot]、claude-action は github-actions[bot] / claude[bot] / anthropic[bot] のいずれかでコメントする
 coderabbit_count=$(echo "$all_review_comments" | jq '[.[] | select(.user.login == "coderabbitai[bot]")] | length')
 claude_count=$(echo "$all_review_comments" | jq '[.[] | select(.user.login == "github-actions[bot]" or .user.login == "claude[bot]" or .user.login == "anthropic[bot]")] | length')
 
-# 3. severity 分布（コメント本文から CodeRabbit 形式の severity マーカーを抽出）
-# CodeRabbit のフォーマット: "🔴 Critical" / "🟠 Major" / "🟡 Minor" / "🔵 Trivial" / "⚪ Info"
+# CodeRabbit のフォーマット "🔴 Critical" / "🟠 Major" / "🟡 Minor" / "🔵 Trivial" / "⚪ Info" の文字列で分類する
 get_severity_count() {
   local user="$1"
   local pattern="$2"
@@ -73,8 +68,7 @@ cr_minor=$(get_severity_count "coderabbitai[bot]" "Minor")
 cr_trivial=$(get_severity_count "coderabbitai[bot]" "Trivial")
 cr_info=$(get_severity_count "coderabbitai[bot]" "Info")
 
-# 4. 重複判定（同じファイル内で共通キーワード）
-# 簡易実装: 両ツールが同じファイルにコメントしているケースを「重複候補」としてカウント
+# embedding 類似度はコスト高（Issue #474 確定 5）のため、両ツールが同じファイルにコメントした件数を重複候補として簡易計上する
 cr_paths=$(echo "$all_review_comments" | jq -r '[.[] | select(.user.login == "coderabbitai[bot]") | .path] | unique[]' 2>/dev/null || echo "")
 claude_paths=$(echo "$all_review_comments" | jq -r '[.[] | select(.user.login == "github-actions[bot]" or .user.login == "claude[bot]" or .user.login == "anthropic[bot]") | .path] | unique[]' 2>/dev/null || echo "")
 
@@ -82,7 +76,6 @@ duplicate_paths=$(comm -12 <(echo "$cr_paths" | sort) <(echo "$claude_paths" | s
 cr_only_paths=$(comm -23 <(echo "$cr_paths" | sort) <(echo "$claude_paths" | sort) 2>/dev/null | wc -l | tr -d ' ')
 claude_only_paths=$(comm -13 <(echo "$cr_paths" | sort) <(echo "$claude_paths" | sort) 2>/dev/null | wc -l | tr -d ' ')
 
-# 5. メトリクス JSON 出力
 collected_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 out_file="${METRICS_DIR}/pr_${PR_NUMBER}.json"
 jq -n \

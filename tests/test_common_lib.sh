@@ -23,31 +23,24 @@ echo "=== normalize_command ==="
 RESULT=$(normalize_command "git push origin main")
 assert_eq "通常のコマンド → そのまま" "git push origin main" "$RESULT"
 
-# 2. 先頭空白除去
 RESULT=$(normalize_command "  git push origin main")
 assert_eq "先頭空白除去" "git push origin main" "$RESULT"
 
-# 3. 環境変数プレフィックス除去（単一）
 RESULT=$(normalize_command "GIT_SSH_COMMAND=ssh git push origin main")
 assert_eq "環境変数プレフィックス除去（単一）" "git push origin main" "$RESULT"
 
-# 4. 環境変数プレフィックス除去（複数）
 RESULT=$(normalize_command "FOO=bar BAZ=qux git push origin main")
 assert_eq "環境変数プレフィックス除去（複数）" "git push origin main" "$RESULT"
 
-# 5. env ラッパー除去
 RESULT=$(normalize_command "env git push origin main")
 assert_eq "env ラッパー除去" "git push origin main" "$RESULT"
 
-# 6. command ラッパー除去
 RESULT=$(normalize_command "command gh pr merge")
 assert_eq "command ラッパー除去" "gh pr merge" "$RESULT"
 
-# 7. 絶対パスの basename 正規化
 RESULT=$(normalize_command "/usr/bin/git push origin main")
 assert_eq "絶対パスの basename 正規化" "git push origin main" "$RESULT"
 
-# 8. 相対パスの basename 正規化
 RESULT=$(normalize_command "./bin/gh pr merge")
 assert_eq "相対パスの basename 正規化" "gh pr merge" "$RESULT"
 
@@ -59,11 +52,9 @@ assert_eq "複合（環境変数+env+絶対パス）" "gh pr merge --squash" "$R
 RESULT=$(normalize_command "  GH_TOKEN=xxx command gh pr merge")
 assert_eq "複合（空白+環境変数+command）" "gh pr merge" "$RESULT"
 
-# 11. 引数のないコマンド
 RESULT=$(normalize_command "git")
 assert_eq "引数のないコマンド" "git" "$RESULT"
 
-# 12. 空文字列
 RESULT=$(normalize_command "")
 assert_eq "空文字列" "" "$RESULT"
 
