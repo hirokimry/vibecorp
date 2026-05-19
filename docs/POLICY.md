@@ -80,6 +80,9 @@ CEO（人間）の明示承認なしには自動実行されない。
 CEO への対話応答・Issue 本文・PR 本文・コミットメッセージ・監査レポートは規約に従う。
 📍 細則: [`communication.md`](../.claude/rules/communication.md)
 
+GitHub 上で投稿するコメント（Issue / PR コメント・レビューコメント・Bot 通知コメント）は別ルールが SoT となる。
+📍 細則（GitHub コメント）: [`comment-writing.md`](../.claude/rules/comment-writing.md)
+
 - **動作主語で語る**
   - 「このソフトウェア／このフック／このスキルが〜になった」を使う
   - 関数名・ファイルパス・diff で語らない
