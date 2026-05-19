@@ -54,7 +54,12 @@ assert_file_exists "templates/claude/rules/code-comments.md が存在する" "$T
 echo "=== frontmatter で paths が指定されている ==="
 # ============================================
 
-assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$CC_RULE" "^---$"
+FIRST_LINE=$(sed -n '1p' "$CC_RULE")
+if [[ "$FIRST_LINE" == "---" ]]; then
+  pass "ファイル先頭が --- で始まる frontmatter（1 行目厳密一致）"
+else
+  fail "ファイル先頭が --- で始まる frontmatter（1 行目: '${FIRST_LINE}'）"
+fi
 assert_file_contains "description キーが存在" "$CC_RULE" "^description:"
 assert_file_contains "paths キーが存在" "$CC_RULE" "^paths:"
 

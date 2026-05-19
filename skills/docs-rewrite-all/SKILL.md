@@ -208,4 +208,4 @@ CEO に以下の選択肢を提示する。
 - 配置・言語ルール: `.claude/rules/documentation.md`
 - 自律実行不可領域（人間承認必須）: `.claude/rules/autonomous-restrictions.md`
 - 類似多段動線スキル: `skills/sync-check/SKILL.md` / `skills/sync-edit/SKILL.md`
-- 関連スキル: `/prompts-rewrite-all`（プロンプト系 `.md` を扱う） / `/comments-rewrite-all`（コード内コメントを扱う）
+- 関連スキル: `/vibecorp:prompts-rewrite-all`（プロンプト系 `.md` を扱う） / `/vibecorp:comments-rewrite-all`（コード内コメントを扱う）

@@ -35,7 +35,12 @@ fi
 echo "=== frontmatter で description と paths が指定されている ==="
 # ============================================
 
-assert_file_contains "ファイル先頭が --- で始まる frontmatter" "$CW_RULE" "^---$"
+FIRST_LINE=$(sed -n '1p' "$CW_RULE")
+if [[ "$FIRST_LINE" == "---" ]]; then
+  pass "ファイル先頭が --- で始まる frontmatter（1 行目厳密一致）"
+else
+  fail "ファイル先頭が --- で始まる frontmatter（1 行目: '${FIRST_LINE}'）"
+fi
 assert_file_contains "description キーが存在（vibecorp 慣習）" "$CW_RULE" "^description:"
 assert_file_contains "paths キーが存在" "$CW_RULE" "^paths:"
 
@@ -132,7 +137,7 @@ assert_file_contains "document-writing.md への参照（兄弟ルール）" "$C
 assert_file_contains "prompt-writing.md への参照（兄弟ルール）" "$CW_RULE" "prompt-writing\.md"
 assert_file_contains "review-handling.md への参照（レビュー判定）" "$CW_RULE" "review-handling\.md"
 assert_file_contains "severity/coderabbit.md への参照（severity SoT）" "$CW_RULE" "severity/coderabbit\.md"
-assert_file_contains "対象外として comments.md / code-comments.md への参照" "$CW_RULE" "comments\.md"
+assert_file_contains "対象外として code-comments.md への参照" "$CW_RULE" "code-comments\.md"
 assert_file_contains "markdown.md への参照（フェンス言語指定）" "$CW_RULE" "markdown\.md"
 
 # ============================================
