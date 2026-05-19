@@ -8,12 +8,16 @@ description: >
 
 # 🎯 エピック化スキル
 
-CEO が「このテーマをエピック化して」と依頼した時に、plan mode で子タスクへの分解を提示し、承認後に親 Issue（エピック）と子 Issue 群を一括起票する。子 Issue は GitHub 公式の sub-issue API で親に紐付ける。
-**結果のみを簡潔に返すこと。途中経過は不要。**
+> [!IMPORTANT]
+> **full プリセット専用**。CEO が指定したテーマを子タスクに分解し、親 Issue（エピック）+ 子 Issue 群を一括起票して GitHub 公式 sub-issue API で親子関係を構築する。
+> コード変更は一切行わない（起票と紐付けのみ）。子 Issue 実装は `/vibecorp:ship` で別途実行する。
+> 結果のみを簡潔に返す。途中経過は出力しない。
+
+CEO が「このテーマをエピック化して」と依頼した時、plan mode で子タスク分解を提示し、承認後に親 Issue + 子 Issue 群を一括起票する。子 Issue は GitHub 公式 sub-issue API で親に紐付ける。
 
 ## 📝 本文の書き方
 
-親 Issue・子 Issue のタイトル・本文は CEO が読むため `.claude/rules/communication.md` に従って**動作主語**で書く（「〜になった／〜できるようになった」）。関数名・ファイルパスを並べるのではなく、ソフトウェアのふるまいの変化を 30 秒で掴める形にする。
+親 Issue・子 Issue のタイトル・本文は CEO が読むため `.claude/rules/communication.md` に従って **動作主語** で書く（「〜になった／〜できるようになった」）。関数名・ファイルパスを並べるのではなく、ソフトウェアのふるまいの変化を 30 秒で掴める形にする。
 
 ## 🛠️ 使用方法
 
@@ -46,7 +50,7 @@ awk '/^preset:/ { print $2 }' "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml"
 
 ### 2. テーマのヒアリング
 
-引数でテーマが渡されていない場合は CEO に確認する:
+引数でテーマが渡されていない場合は CEO に確認する。
 
 - **テーマ**: エピックとして括る上位の目的（例: 「Issue 親子関係導入」「課金構造の総点検」）
 - **背景**: なぜこのエピックが必要か（任意）
@@ -54,14 +58,14 @@ awk '/^preset:/ { print $2 }' "$CLAUDE_PROJECT_DIR/.claude/vibecorp.yml"
 
 ### 3. plan mode で子タスクへの分解を提示
 
-`EnterPlanMode` でプラン mode に入り、テーマを以下の観点で子タスクへ分解する:
+`EnterPlanMode` でプラン mode に入り、テーマを以下の観点で子タスクへ分解する。
 
 - **独立性**: 子タスクは可能な限り並行実装できる粒度に分ける
 - **テスト込み**: 各子タスクにテスト方針を含める
 - **段階性**: 基盤 → 実装 → 統合 の流れを意識する
 - **スコープ**: 1 子タスクは 1 PR で完結するサイズに収める
 
-分解結果を以下のフォーマットで CEO に提示する:
+分解結果を以下のフォーマットで CEO に提示する。
 
 ```markdown
 ## 🎯 エピック: <テーマ>
@@ -147,7 +151,7 @@ git push -u origin "feature/epic-<親番号>_<要約>"
 
 ステップ 3 で分解した子タスクを 1 件ずつ `/vibecorp:issue` スキル経由で起票する。
 
-子タスクの本文末尾に親エピックへの参照として **`Refs #<親番号>`** を必ず含める。`Closes` ではなく `Refs` を使うことで、子 PR がマージされても親エピックは auto-close されず、`/vibecorp:release-epic` のリリース PR で最終的に close される。
+子タスクの本文末尾に親エピックへの参照として **`Refs #<親番号>`** を必ず含める。`Closes` ではなく `Refs` を使うことで、子 PR がマージされても親エピックは auto-close されず、`/vibecorp:release-epic` のリリース PR で最終的に close される（`Refs #<親エピック番号>` 形式も等価）。
 
 ```text
 /vibecorp:issue を使って以下の子 Issue を起票してください:
@@ -215,7 +219,7 @@ gh issue edit <親番号> --body "<更新後の本文>"
 
 ## 🚦 介入ポイント
 
-以下の状況では CEO に報告して判断を委ねる:
+以下の状況では CEO に報告して判断を委ねる（自動でスキップしない）。
 
 | 状況 | タイミング |
 |------|-----------|
@@ -227,7 +231,7 @@ gh issue edit <親番号> --body "<更新後の本文>"
 
 ## 🪶 --dry-run モード
 
-`--dry-run` が指定された場合は以下のみ実行する:
+`--dry-run` が指定された場合は以下のみ実行する。
 
 1. プリセット確認
 2. テーマヒアリング
@@ -238,16 +242,22 @@ gh issue edit <親番号> --body "<更新後の本文>"
 
 ## ⚠️ 制約
 
-- **コード変更は一切行わない** — Issue 起票と sub-issue 紐付けのみ
-- 子 Issue 実装は CEO が `/vibecorp:ship` で別途起動する（本スキルでは ship を呼ばない）
-- `--force`、`--hard`、`--no-verify` は使用しない
-- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
-- 介入ポイントでは CEO の指示を待つ（自動でスキップしない）
-- 親 Issue 自体は不可領域変更を直接含まないため 3 者承認ゲートを通さない（メタ情報）。子 Issue 側で個別に走る `/vibecorp:issue` のゲートに依存する
+- **コード変更は一切行わない** — Issue 起票と sub-issue 紐付けのみ。
+- 子 Issue 実装は CEO が `/vibecorp:ship` で別途起動する（本スキルでは ship を呼ばない）。
+- `--force` / `--hard` / `--no-verify` は使用しない。
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈されパースエラーを引き起こす。必ず `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null` / `|| echo` / `; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）。
+- 介入ポイントでは CEO の指示を待つ（自動でスキップしない）。
+- 親 Issue 自体は不可領域変更を直接含まないため 3 者承認ゲートを通さない（メタ情報）。子 Issue 側で個別に走る `/vibecorp:issue` のゲートに依存する。
 
 ## 🔗 関連
 
-- 設計判断: `.claude/knowledge/cpo/decisions/2026-Q2.md` 2026-04-18 「Issue 親子関係: 条件付き Go」
-- GitHub sub-issue API: https://docs.github.com/en/rest/issues/sub-issues
-- 自律実行不可領域: `.claude/rules/autonomous-restrictions.md`
+| 種別 | 参照先 |
+|------|--------|
+| 設計判断 | `.claude/knowledge/cpo/decisions/2026-Q2.md` 2026-04-18 「Issue 親子関係: 条件付き Go」 |
+| GitHub sub-issue API | https://docs.github.com/en/rest/issues/sub-issues |
+| 自律実行不可領域 | `.claude/rules/autonomous-restrictions.md` |
+| CEO 向け文面規約 | `.claude/rules/communication.md` |
+| プロンプト作成基準 | `.claude/rules/prompt-writing.md` |
+| マークダウン規約 | `.claude/rules/markdown.md` |
+| 関連スキル | `/vibecorp:issue`（子 Issue 起票）/ `/vibecorp:ship`（子 Issue 実装）/ `/vibecorp:release-epic`（親エピック close） |
