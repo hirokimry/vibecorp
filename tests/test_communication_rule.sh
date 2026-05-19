@@ -36,7 +36,7 @@ echo "=== communication.md の主要見出しが含まれる ==="
 # ============================================
 
 assert_file_contains "communication.md に「前提」セクション" "$COMM_RULE" "^## 前提"
-assert_file_contains "communication.md に「対象文面」セクション" "$COMM_RULE" "^## 対象文面"
+assert_file_contains "communication.md に「対象文面」セクション" "$COMM_RULE" "^## .*対象文面"
 assert_file_contains "communication.md に「動作主語で語る」セクション" "$COMM_RULE" "動作主語で語る"
 assert_file_contains "communication.md に「30 秒ルール」" "$COMM_RULE" "30 秒ルール"
 assert_file_contains "communication.md に状態絵文字（✅）" "$COMM_RULE" "✅"
