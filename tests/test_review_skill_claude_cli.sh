@@ -64,7 +64,6 @@ else
   fail "SKILL.md が frontmatter で始まらない"
 fi
 
-# frontmatter に name キーが存在する
 assert_file_contains "frontmatter に name キーが存在する" "$SKILL_FILE" '^name: '
 
 # bash コードブロックを抽出

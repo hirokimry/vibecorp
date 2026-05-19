@@ -21,8 +21,7 @@ set -euo pipefail
 : "${ISSUE_NUMBER:?ISSUE_NUMBER が未設定です}"
 : "${REPO:?REPO が未設定です}"
 
-# intent/* ラベルの全体数と許可ラベル 7 種のカウントを別々に取得
-# 全体数 != 許可数 → 未知の intent/* (intent/unknown 等) が混在 → fail
+# intent/* 全体数と許可 7 種のカウントを別々に取り、差分があれば未知 intent（intent/unknown 等）混入として fail させる
 allowed='["intent/feature","intent/bugfix","intent/performance","intent/security","intent/refactor","intent/infra","intent/docs"]'
 counts=$(gh api --paginate "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
   | jq --argjson allowed "$allowed" '{

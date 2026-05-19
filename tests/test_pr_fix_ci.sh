@@ -15,8 +15,6 @@ SKILL_FILE="$PROJECT_DIR/skills/pr-fix/SKILL.md"
 echo "=== /vibecorp:pr-fix CI 失敗検知仕様ガード テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -51,8 +49,6 @@ else
 fi
 
 echo ""
-
-# --- テスト3: CI 状態分類 ---
 
 echo "--- テスト3: CI 状態分類 ---"
 
@@ -106,8 +102,6 @@ done
 
 echo ""
 
-# --- テスト5: エスカレーション ---
-
 echo "--- テスト5: エスカレーション ---"
 
 if grep -q -e '外部要因' "$SKILL_FILE"; then
@@ -131,8 +125,6 @@ fi
 
 echo ""
 
-# --- テスト7: 結果報告に CI 修正件数 ---
-
 echo "--- テスト7: 結果報告に CI 修正件数 ---"
 
 if grep -q -e 'CI 修正' "$SKILL_FILE"; then
@@ -148,8 +140,6 @@ else
 fi
 
 echo ""
-
-# --- テスト8: コードブロック言語指定 ---
 
 echo "--- テスト8: コードブロック言語指定 ---"
 

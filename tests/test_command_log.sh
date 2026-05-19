@@ -49,7 +49,6 @@ echo ""
 echo "=== A. command-log.sh 基本テスト ==="
 # ============================================
 
-# --- A1. Bash コマンドがログに記録される ---
 echo "--- A1. Bash コマンドがログに記録される ---"
 setup_project_dir
 
@@ -93,7 +92,6 @@ else
   fail "A1b: 旧パス .claude/state/command-log に書き込まれている（退行）"
 fi
 
-# --- A2. タイムスタンプ形式の確認 ---
 echo "--- A2. タイムスタンプ形式の確認 ---"
 if grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}' "$LOG_FILE"; then
   pass "A2: タイムスタンプがISO形式で記録されている"
@@ -101,7 +99,6 @@ else
   fail "A2: タイムスタンプ形式が不正"
 fi
 
-# --- A3. Bash 以外のツールでは記録されない ---
 echo "--- A3. Bash 以外のツールでは記録されない ---"
 cleanup
 setup_project_dir
@@ -116,7 +113,6 @@ else
   pass "A3: Bash 以外ではログファイルが作成されない"
 fi
 
-# --- A4. 複数コマンドが順番に追記される ---
 echo "--- A4. 複数コマンドが順番に追記される ---"
 cleanup
 setup_project_dir
@@ -134,7 +130,6 @@ LAST_CMD=$(tail -1 "$LOG_FILE" | cut -f2-)
 assert_eq "A4: 最初のコマンド" "echo hello" "$FIRST_CMD"
 assert_eq "A4: 最後のコマンド" "npm test" "$LAST_CMD"
 
-# --- A5. 空コマンドは記録されない ---
 echo "--- A5. 空コマンドは記録されない ---"
 cleanup
 setup_project_dir

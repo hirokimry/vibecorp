@@ -68,11 +68,9 @@ rm -f "$STAMP_FILE"
 echo "=== sync-gate.sh ==="
 # ============================================
 
-# 1. スタンプなしで push → deny
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | "$HOOK")
 assert_blocked "スタンプなしで push → deny" "$OUTPUT"
 
-# 2. スタンプありで push → allow
 touch "$STAMP_FILE"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | "$HOOK")
 assert_allowed "スタンプありで push → allow" "$OUTPUT"
@@ -96,7 +94,6 @@ assert_blocked "git push --force → deny" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"git push -u origin feature"}}' | "$HOOK")
 assert_blocked "git push -u → deny" "$OUTPUT"
 
-# 7. git pull → allow
 OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | "$HOOK")
 assert_allowed "git pull → allow" "$OUTPUT"
 
@@ -108,15 +105,12 @@ assert_allowed "git push --delete → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin -d dev/old-branch"}}' | "$HOOK")
 assert_allowed "git push -d → allow" "$OUTPUT"
 
-# 10. 環境変数プレフィックス付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"GIT_SSH_COMMAND=ssh git push origin main"}}' | "$HOOK")
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
-# 11. 絶対パス付き (/usr/bin/git push) → deny
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/git push origin main"}}' | "$HOOK")
 assert_blocked "絶対パス付き (/usr/bin/git push) → deny" "$OUTPUT"
 
-# 12. env ラッパー付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | "$HOOK")
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 

@@ -254,8 +254,6 @@ assert_eq "複数 team 跨ぎで2件のゾンビが検出される" "$expected" 
 rm -rf "${TEAMS_DIR}/team-multi-a" "${TEAMS_DIR}/team-multi-b"
 echo ""
 
-# --- テスト9: _extract_worktree_path の単体動作 ---
-
 echo "--- テスト9: _extract_worktree_path の単体動作 ---"
 
 actual=$(_extract_worktree_path $'前置きテキスト\n- worktree パス: /tmp/foo\n- ベースブランチ: main')

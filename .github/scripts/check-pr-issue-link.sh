@@ -21,8 +21,7 @@ set -euo pipefail
 : "${PR_NUMBER:?PR_NUMBER が未設定です}"
 : "${REPO:?REPO が未設定です}"
 
-# PR 本文を取得し、Issue 参照キーワード（GitHub の auto-close keywords + Refs）を grep
-# close / closes / closed / fix / fixes / fixed / resolve / resolves / resolved / Refs (大小文字区別なし) + #数字
+# GitHub の auto-close keywords（close/fix/resolve 形）と Refs を許容形式として認識する（大小文字区別なし）
 body=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq '.body')
 if echo "$body" | grep -qiE '(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+#[0-9]+|(close[sd]?|fix(es|ed)?|resolve[sd]?|refs?)[[:space:]]+https?://[^[:space:]]+/issues/[0-9]+'; then
   echo "PR 本文に Issue 参照が見つかりました"
