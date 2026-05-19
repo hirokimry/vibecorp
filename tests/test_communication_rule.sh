@@ -56,7 +56,8 @@ echo "=== .claude/rules/roles.md の CEO セクションに communication.md 参
 
 assert_file_exists ".claude/rules/roles.md が存在する" "$ROLES"
 # CEO セクションから他ロールまでの範囲を抽出し、communication.md 参照の有無を確認
-CEO_SECTION=$(awk '/^## CEO/{flag=1; next} /^## /{flag=0} flag' "$ROLES")
+# 見出し装飾（絵文字プレフィックス）はオプショナル: `^## CEO` も `^## 👑 CEO` も拾う
+CEO_SECTION=$(awk '/^## .*CEO/{flag=1; next} /^## /{flag=0} flag' "$ROLES")
 if echo "$CEO_SECTION" | grep -q -e "communication.md"; then
   pass "roles.md の CEO セクションに communication.md 参照"
 else
