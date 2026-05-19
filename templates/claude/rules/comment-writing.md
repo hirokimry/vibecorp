@@ -12,15 +12,12 @@ paths:
   - ".claude/vibecorp-base/skills/**/SKILL.md"
 ---
 
-> [!IMPORTANT]
-> **GitHub コメントは CEO への報告窓口**。
-> 動作主語と 30 秒ルールを守る。
-> マークダウンと状態絵文字でスキャン性を上げる。
-> 機械生成 Bot 通知は別節の例外規定に従う。
-> 対象はあくまで **GitHub 上のコメント**。
-> コード内コメントは `code-comments.md`（旧: `comments.md`）が担う。
-
 # 💬 GitHub コメント作成基準
+
+> [!IMPORTANT]
+> **GitHub コメントは CEO への報告窓口**。動作主語と 30 秒ルールを守る。
+> マークダウンと状態絵文字でスキャン性を上げる。
+> 機械生成 Bot 通知は別節の例外規定に従う。コード内コメントは `code-comments.md` が担う。
 
 GitHub 上で投稿するコメント 3 種の書き方を定める。
 
@@ -300,7 +297,7 @@ severity も結論もなく、議論が拡散する。
 
 何が完了したか・成功か失敗かが示されていない。
 
-## 🔗 関連
+## 🔗 関連ルール
 
 - 動作主語ルール（土台）: `communication.md`
 - ドキュメント作成基準（兄弟ルール）: `document-writing.md`
