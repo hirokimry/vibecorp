@@ -101,8 +101,6 @@ assert_allowed "スタンプなしで vibecorp.yml 編集 → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/MVV.md"}}' | bash "$HOOK")
 assert_allowed "スタンプなしで MVV.md 編集 → allow" "$OUTPUT"
 
-# --- スタンプあり（diagnose 実行中）---
-
 echo "--- スタンプあり（diagnose 実行中）---"
 touch "$STAMP_FILE"
 
@@ -138,7 +136,6 @@ assert_allowed "diagnose 実行中でも通常ファイル編集 → allow" "$OU
 OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/docs/architecture.md"}}' | bash "$HOOK")
 assert_allowed "diagnose 実行中でも docs/ 配下は → allow" "$OUTPUT"
 
-# 12. file_path が空 → allow
 OUTPUT=$(echo '{"tool_input":{}}' | bash "$HOOK")
 assert_allowed "file_path が空 → allow" "$OUTPUT"
 
@@ -224,8 +221,6 @@ OUTPUT=$(echo '{"tool_input":{"file_path":"/path/to/.claude/hooks/protect-files.
 assert_allowed "別の CLAUDE_PROJECT_DIR の state は影響しない → allow" "$OUTPUT"
 rm -rf "$ALT_DIR"
 rm -rf "$(dirname "$ALT_STAMP_FILE")" || true
-
-# --- デフォルト forbidden_targets テスト ---
 
 echo "--- デフォルト forbidden_targets テスト ---"
 

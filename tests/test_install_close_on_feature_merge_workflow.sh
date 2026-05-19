@@ -72,7 +72,6 @@ else
   pass "抽出パターンに refs/related が含まれていない (暴発防止)"
 fi
 
-# gh issue close 呼び出し
 assert_file_contains "gh issue close 呼び出し" "$TEMPLATE" "gh issue close"
 
 # 冪等性: 既に close 済みの Issue はスキップ

@@ -17,8 +17,6 @@ AGENT_PROMPT_FILE="$PROJECT_DIR/skills/ship-parallel/prompts/agent-call-child-ag
 echo "=== 並列 ship オーケストレーションスキル テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -46,8 +44,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: frontmatter の検証 ---
 
 echo "--- テスト2: frontmatter の検証 ---"
 
@@ -85,8 +81,6 @@ fi
 
 echo ""
 
-# --- テスト3: 必須セクションの存在 ---
-
 echo "--- テスト3: 必須セクションの存在 ---"
 
 if grep -q '## ワークフロー' "$SKILL_FILE"; then
@@ -114,8 +108,6 @@ else
 fi
 
 echo ""
-
-# --- テスト4: ワークフローステップの網羅性 ---
 
 echo "--- テスト4: ワークフローステップの網羅性 ---"
 
@@ -151,8 +143,6 @@ fi
 
 echo ""
 
-# --- テスト5: 制約の検証 ---
-
 echo "--- テスト5: 制約の検証 ---"
 
 if grep -q 'jq.*string interpolation' "$SKILL_FILE"; then
@@ -168,8 +158,6 @@ else
 fi
 
 echo ""
-
-# --- テスト6: コードブロックの言語指定 ---
 
 echo "--- テスト6: コードブロックの言語指定 ---"
 
@@ -225,8 +213,6 @@ else
 fi
 
 echo ""
-
-# --- テスト8: Agent プロンプトの方式I 対応 ---
 
 echo "--- テスト8: Agent プロンプトの方式I 対応 ---"
 
@@ -307,8 +293,6 @@ fi
 
 echo ""
 
-# --- テスト10: 介入ポイントの検証 ---
-
 echo "--- テスト10: 介入ポイントの検証 ---"
 
 # 10-1: worktree 作成失敗は介入ポイントに含まれていない（自動スキップのため）
@@ -326,8 +310,6 @@ else
 fi
 
 echo ""
-
-# --- テスト11: 制約セクションの検証 ---
 
 echo "--- テスト11: 制約セクションの検証 ---"
 
@@ -347,8 +329,6 @@ fi
 
 echo ""
 
-# --- テスト12: 互換スタブの廃止確認 ---
-
 echo "--- テスト12: 互換スタブの廃止確認 ---"
 
 if [ -d "$PROJECT_DIR/.claude/skills/ship-parallel" ]; then
@@ -358,8 +338,6 @@ else
 fi
 
 echo ""
-
-# --- テスト13: rsync 除外リストの検証 ---
 
 echo "--- テスト13: rsync 除外リストの検証 ---"
 

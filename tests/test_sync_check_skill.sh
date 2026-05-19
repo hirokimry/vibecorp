@@ -60,18 +60,15 @@ else
   exit 1
 fi
 
-# 2. description に README.md が含まれる
 assert_contains "description に README.md が含まれる" "README.md"
 
 # 3. 対象外判定に README.md が含まれる
 assert_contains "対象外判定に docs/ や knowledge/ や README.md が含まれる" \
   "docs/.*knowledge/.*README.md.*のみの変更"
 
-# 4. CPO 管轄テーブルに README.md が含まれる
 assert_contains "CPO 管轄テーブルに README.md が含まれる" \
   "| CPO.*README.md"
 
-# 5. CTO 管轄テーブルに README.md が含まれない
 assert_not_contains "CTO 管轄テーブルに README.md が含まれない" \
   "| CTO.*README.md"
 
@@ -79,12 +76,10 @@ assert_not_contains "CTO 管轄テーブルに README.md が含まれない" \
 assert_contains "CPO 起動条件に README 関連の変更が含まれる" \
   "| CPO.*README 関連の変更"
 
-# 7. チェック観点に README 乖離（CPO）が含まれる
 # 切り出し済プロンプト（prompts/agent-call-cxo-sync-check.md）にも記載があるため SKILL_ALL を検査対象にする
 assert_contains "チェック観点に README 乖離（CPO）が含まれる" \
   "README 乖離（CPO）.*実装と README の記載に乖離がないか" "$SKILL_ALL"
 
-# 8. チェック観点に README 未反映（CPO）が含まれる
 assert_contains "チェック観点に README 未反映（CPO）が含まれる" \
   "README 未反映（CPO）.*スキル・フック・エージェントが追加されたのに README に未反映" "$SKILL_ALL"
 

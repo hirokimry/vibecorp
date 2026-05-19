@@ -4,10 +4,9 @@
 # 環境変数: GH_TOKEN（gh CLI 用、workflow 側から secrets.GITHUB_TOKEN を渡す）
 set -euo pipefail
 
-# ── 直前のタグを取得 ──────────────────────────
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -z "$LATEST_TAG" ]; then
-  # タグが一つもない場合は全コミットを対象にする
+  # 初回リリース判定: タグが無いので全コミットを対象にし、起点バージョンを v0.1.0 とする
   COMMITS=$(git log --pretty=format:'%s%x1f%H%x1f%h%x1e' HEAD)
   CURRENT_MAJOR=0
   CURRENT_MINOR=1
@@ -15,7 +14,6 @@ if [ -z "$LATEST_TAG" ]; then
   FIRST_RELEASE=true
 else
   COMMITS=$(git log --pretty=format:'%s%x1f%H%x1f%h%x1e' "${LATEST_TAG}..HEAD")
-  # タグからバージョン番号をパース
   VERSION_STR="${LATEST_TAG#v}"
   CURRENT_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
   CURRENT_MINOR=$(echo "$VERSION_STR" | cut -d. -f2)
@@ -24,7 +22,7 @@ else
 fi
 
 if [ -z "$COMMITS" ]; then
-  # 復旧パス: タグはあるが GitHub Release が無い場合（前回 release create 失敗等）は補完する
+  # 復旧パス: 前回の release create 失敗で GitHub Release のみ欠落しているケースを補完する
   if [ -n "$LATEST_TAG" ] && ! gh release view "${LATEST_TAG}" > /dev/null 2>&1; then
     echo "新しいコミットはありませんが、${LATEST_TAG} の GitHub Release が無いため作成します"
     gh release create "${LATEST_TAG}" \
@@ -37,11 +35,9 @@ if [ -z "$COMMITS" ]; then
   exit 0
 fi
 
-# ── Conventional Commits 解析 ─────────────────
-# バンプ種別: 0=none, 1=patch, 2=minor, 3=major
+# BUMP_LEVEL は semver の段階: 0=none, 1=patch, 2=minor, 3=major（数値の大小で「採用すべき bump」を最大化）
 BUMP_LEVEL=0
 
-# カテゴリ別コミットメッセージ収集
 FEAT_COMMITS=""
 FIX_COMMITS=""
 REFACTOR_COMMITS=""
@@ -52,20 +48,17 @@ OTHER_COMMITS=""
 while IFS=$'\x1f' read -r -d $'\x1e' subject full_hash short_hash; do
   [ -z "$subject" ] && continue
 
-  # コミット本文に BREAKING CHANGE: があるか確認
   BODY=$(git log -1 --pretty=format:"%b" "$full_hash" 2>/dev/null || echo "")
   IS_BREAKING=false
   if echo "$subject" | grep -qE '^[^:]*!:' || echo "$BODY" | grep -q "BREAKING CHANGE:"; then
     IS_BREAKING=true
   fi
 
-  # 絵文字プレフィックスを除去してタイプを判定
+  # 絵文字プレフィックスが付いた CC タイトルでも type を抽出できるよう先頭の非英字を除去する
   CLEAN_SUBJECT=$(echo "$subject" | sed 's/^[^a-zA-Z]* *//')
 
-  # Conventional Commit のタイプを抽出
   TYPE=$(echo "$CLEAN_SUBJECT" | sed -n 's/^\([a-zA-Z]*\)\(([^)]*)\)\{0,1\}[!]\{0,1\}:.*/\1/p')
 
-  # スコープを除いた説明部分を取得
   DESC=$(echo "$subject" | sed 's/^[^:]*: *//')
 
   if [ "$IS_BREAKING" = true ]; then
@@ -91,29 +84,27 @@ while IFS=$'\x1f' read -r -d $'\x1e' subject full_hash short_hash; do
       DOCS_COMMITS="${DOCS_COMMITS}- ${DESC} (${short_hash})\n"
       ;;
     chore|ci|test)
-      # リリース対象外
+      # chore / ci / test は BUMP_LEVEL を上げずに OTHER に蓄積（リリースノートの「その他」枠用）
       OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
       ;;
     *)
-      # 認識できない形式のコミットは patch 扱い
       if [ -n "$TYPE" ]; then
+        # 未知の type は patch 扱いに倒す（取りこぼしを避けるための安全側）
         [ "$BUMP_LEVEL" -lt 1 ] && BUMP_LEVEL=1
         OTHER_COMMITS="${OTHER_COMMITS}- ${DESC} (${short_hash})\n"
       else
-        # Conventional Commits 形式でないコミットは無視
+        # CC 形式でないコミットはバージョン bump 対象に含めない
         OTHER_COMMITS="${OTHER_COMMITS}- ${subject} (${short_hash})\n"
       fi
       ;;
   esac
 done < <(printf '%s' "$COMMITS")
 
-# リリース対象のコミットがない場合はスキップ
 if [ "$BUMP_LEVEL" -eq 0 ]; then
   echo "リリース対象のコミットがないためスキップ（chore/ci/test のみ）"
   exit 0
 fi
 
-# ── バージョン番号を計算 ──────────────────────
 if [ "$FIRST_RELEASE" = true ]; then
   NEW_VERSION="0.1.0"
 else
@@ -136,7 +127,6 @@ fi
 NEW_TAG="v${NEW_VERSION}"
 echo "リリースバージョン: ${NEW_TAG}"
 
-# ── リリースノートを生成 ─────────────────────
 RELEASE_NOTES=""
 
 if [ -n "$BREAKING_COMMITS" ]; then
@@ -160,7 +150,6 @@ if [ -n "$DOCS_COMMITS" ]; then
   RELEASE_NOTES="${RELEASE_NOTES}$(printf '%b' "$DOCS_COMMITS")"$'\n'
 fi
 
-# ── タグが既に存在する場合はスキップ ────────────
 # 完全一致判定: -x で行全体マッチを要求し、v1.2.3 が v1.2.30 等に部分一致するのを防ぐ
 if git tag -l | grep -qxF "${NEW_TAG}"; then
   echo "タグ ${NEW_TAG} は既に存在します"
@@ -176,11 +165,9 @@ if git tag -l | grep -qxF "${NEW_TAG}"; then
   exit 0
 fi
 
-# ── タグ作成・push ──────────────────────────
 git tag -a "${NEW_TAG}" -m "リリース v${NEW_VERSION}"
 git push origin "${NEW_TAG}"
 
-# ── GitHub Release 作成 ──────────────────────
 gh release create "${NEW_TAG}" \
   --title "v${NEW_VERSION}" \
   --notes "$RELEASE_NOTES"

@@ -38,12 +38,10 @@ run_aggregate() {
   echo "$exit_code"
 }
 
-# --- ケース 1: 全 success → pass ---
 echo "--- ケース 1: 全 success → pass ---"
 rc=$(run_aggregate "success" "success" "success")
 assert_exit_code "全 success は exit 0" "0" "$rc"
 
-# --- ケース 2: PR シナリオ（macOS skipped） → pass ---
 echo "--- ケース 2: PR シナリオ（macOS skipped） → pass ---"
 rc=$(run_aggregate "success" "success" "skipped")
 assert_exit_code "macOS skipped は pass" "0" "$rc"
@@ -53,17 +51,14 @@ echo "--- ケース 3: 全 skipped 含む組み合わせも pass ---"
 rc=$(run_aggregate "skipped" "success" "skipped")
 assert_exit_code "skipped は success 同等として pass" "0" "$rc"
 
-# --- ケース 4: shellcheck failure → fail ---
 echo "--- ケース 4: shellcheck failure → fail ---"
 rc=$(run_aggregate "failure" "success" "skipped")
 assert_exit_code "shellcheck failure で exit 1" "1" "$rc"
 
-# --- ケース 5: ubuntu failure → fail ---
 echo "--- ケース 5: ubuntu failure → fail ---"
 rc=$(run_aggregate "success" "failure" "skipped")
 assert_exit_code "ubuntu failure で exit 1" "1" "$rc"
 
-# --- ケース 6: macos failure → fail ---
 echo "--- ケース 6: macos failure → fail ---"
 rc=$(run_aggregate "success" "success" "failure")
 assert_exit_code "macos failure で exit 1" "1" "$rc"
@@ -73,7 +68,6 @@ echo "--- ケース 7: cancelled → fail ---"
 rc=$(run_aggregate "success" "cancelled" "skipped")
 assert_exit_code "cancelled は fail 扱い" "1" "$rc"
 
-# --- ケース 8: 未知の result → fail ---
 echo "--- ケース 8: 未知の result → fail ---"
 rc=$(run_aggregate "success" "neutral" "skipped")
 assert_exit_code "未知の result（neutral）は fail" "1" "$rc"

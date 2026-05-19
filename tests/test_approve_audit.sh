@@ -15,8 +15,6 @@ SKILL_FILE="$PROJECT_DIR/skills/approve-audit/SKILL.md"
 echo "=== approve-audit スキル テスト ==="
 echo ""
 
-# --- テスト1: テンプレート SKILL.md の存在 ---
-
 echo "--- テスト1: テンプレート SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -31,8 +29,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: frontmatter の検証 ---
 
 echo "--- テスト2: frontmatter の検証 ---"
 
@@ -70,8 +66,6 @@ fi
 
 echo ""
 
-# --- テスト3: テンプレートファイルの存在確認 ---
-
 echo "--- テスト3: テンプレートファイルの存在確認 ---"
 
 if [ -s "$SKILL_FILE" ]; then
@@ -81,8 +75,6 @@ else
 fi
 
 echo ""
-
-# --- テスト4: 制約セクションの検証 ---
 
 echo "--- テスト4: 制約セクションの検証 ---"
 
@@ -114,8 +106,6 @@ else
 fi
 
 echo ""
-
-# --- テスト5: 必須セクションの存在 ---
 
 echo "--- テスト5: 必須セクションの存在 ---"
 
@@ -163,8 +153,6 @@ fi
 
 echo ""
 
-# --- テスト6: コードブロックの言語指定 ---
-
 echo "--- テスト6: コードブロックの言語指定 ---"
 
 BARE_OPEN_COUNT=$(awk '
@@ -185,8 +173,6 @@ else
 fi
 
 echo ""
-
-# --- テスト7: worktree モード対応 ---
 
 echo "--- テスト7: worktree モード対応 ---"
 

@@ -15,8 +15,6 @@ SKILL_FILE="$PROJECT_DIR/skills/ship/SKILL.md"
 echo "=== /vibecorp:ship スキル テスト ==="
 echo ""
 
-# --- テスト1: SKILL.md の存在 ---
-
 echo "--- テスト1: SKILL.md の存在 ---"
 
 if [ -f "$SKILL_FILE" ]; then
@@ -31,8 +29,6 @@ else
 fi
 
 echo ""
-
-# --- テスト2: frontmatter の検証 ---
 
 echo "--- テスト2: frontmatter の検証 ---"
 
@@ -58,8 +54,6 @@ else
 fi
 
 echo ""
-
-# --- テスト3: 必須セクションの存在 ---
 
 echo "--- テスト3: 必須セクションの存在 ---"
 
@@ -107,8 +101,6 @@ fi
 
 echo ""
 
-# --- テスト5: worktree モードの動作ルール ---
-
 echo "--- テスト5: worktree モードの動作ルール ---"
 
 # 5-1: Bash での cd <path> && command ルール
@@ -140,8 +132,6 @@ else
 fi
 
 echo ""
-
-# --- テスト6: サブスキル伝播 ---
 
 echo "--- テスト6: サブスキル伝播 ---"
 
@@ -175,8 +165,6 @@ fi
 
 echo ""
 
-# --- テスト7: worktree モードでのステップ記載 ---
-
 echo "--- テスト7: worktree モードでのステップ記載 ---"
 
 # 7-1: worktree モードでのブランチリネーム
@@ -203,8 +191,6 @@ fi
 
 echo ""
 
-# --- テスト8: コードブロックの言語指定 ---
-
 echo "--- テスト8: コードブロックの言語指定 ---"
 
 BARE_OPEN_COUNT=$(awk '
@@ -225,8 +211,6 @@ else
 fi
 
 echo ""
-
-# --- テスト9: 制約の検証 ---
 
 echo "--- テスト9: 制約の検証 ---"
 
@@ -257,8 +241,6 @@ else
 fi
 
 echo ""
-
-# --- テスト10: sub-issue ベースブランチ検知 ---
 
 echo "--- テスト10: sub-issue ベースブランチ検知 ---"
 
@@ -345,8 +327,6 @@ else
 fi
 
 echo ""
-
-# --- テスト11: 互換スタブの廃止確認 ---
 
 echo "--- テスト11: 互換スタブの廃止確認 ---"
 

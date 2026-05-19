@@ -23,7 +23,6 @@ if [ -z "${GH_TOKEN:-}" ]; then
 fi
 export GH_TOKEN
 
-# 全 open PR の番号を取得（ページネーション対応）
 PR_NUMBERS=$(gh api --paginate "repos/${REPO}/pulls?state=open&base=main" --jq '.[].number')
 
 if [ -z "$PR_NUMBERS" ]; then
@@ -39,15 +38,14 @@ CONFLICT_PRS=""
 
 for PR in $PR_NUMBERS; do
   echo "--- PR #${PR} を更新中 ---"
-  # 現在の head SHA を取得（失敗時は致命的エラー）
   if ! HEAD_SHA=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.head.sha' 2>&1); then
     echo "PR #${PR}: SHA 取得失敗（想定外エラー）"
     echo "${HEAD_SHA}"
     exit 1
   fi
 
-  # ブランチ更新（HTTP status code で分岐: 202=accepted, 204=already up to date, 422=conflict）
-  # -i オプションで HTTP ヘッダを含めて取得し、status 行を抽出する
+  # update-branch エンドポイントは HTTP status で結果を返すため、-i でヘッダ取得 → 1 行目から status code を抽出する
+  # 202=accepted, 204=already up to date, 422=conflict
   RESPONSE=$(gh api -i "repos/${REPO}/pulls/${PR}/update-branch" \
     --method PUT \
     --field expected_head_sha="${HEAD_SHA}" 2>&1) || true
@@ -63,7 +61,6 @@ for PR in $PR_NUMBERS; do
       SKIPPED=$((SKIPPED + 1))
       ;;
     422)
-      # 422 はコンフリクト想定だが、body に "Merge conflict" 等のメッセージが含まれることを念のため確認
       echo "PR #${PR}: コンフリクトのためスキップ"
       CONFLICT=$((CONFLICT + 1))
       CONFLICT_PRS="${CONFLICT_PRS} #${PR}"

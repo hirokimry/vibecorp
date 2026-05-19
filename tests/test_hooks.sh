@@ -81,31 +81,24 @@ run_hook() {
   bash "$HOOKS_DIR/$1"
 }
 
-# 1. 保護ファイル(MVV.md)への編集 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh)
 assert_blocked "保護ファイル(MVV.md)への編集 → deny" "$OUTPUT"
 
-# 2. 深いパスでの末尾一致 → deny
 OUTPUT=$(echo '{"tool_input":{"file_path":"/some/deep/path/MVV.md"}}' | run_hook protect-files.sh)
 assert_blocked "深いパスでの末尾一致 → deny" "$OUTPUT"
 
-# 3. 保護対象外(README.md) → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"README.md"}}' | run_hook protect-files.sh)
 assert_allowed "保護対象外(README.md) → 許可" "$OUTPUT"
 
-# 4. 部分不一致(MVV.md.bak) → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md.bak"}}' | run_hook protect-files.sh)
 assert_allowed "部分不一致(MVV.md.bak) → 許可" "$OUTPUT"
 
-# 5. file_path が空 → 許可
 OUTPUT=$(echo '{"tool_input":{"file_path":""}}' | run_hook protect-files.sh)
 assert_allowed "file_path が空 → 許可" "$OUTPUT"
 
-# 6. file_path キー欠落 → 許可
 OUTPUT=$(echo '{"tool_input":{"other_key":"value"}}' | run_hook protect-files.sh)
 assert_allowed "file_path キー欠落 → 許可" "$OUTPUT"
 
-# 7. vibecorp.yml がない場合 → 許可
 SAVED_YML="${TMPDIR_ROOT}/.claude/vibecorp.yml"
 mv "$SAVED_YML" "${SAVED_YML}.bak"
 OUTPUT=$(echo '{"tool_input":{"file_path":"MVV.md"}}' | run_hook protect-files.sh)
@@ -199,78 +192,62 @@ echo "=== sync-gate.sh ==="
 
 write_vibecorp_yml
 
-# 1. スタンプなしで git push → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "スタンプなしで git push → deny" "$OUTPUT"
 
-# 2. スタンプありで git push → 許可
 touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "スタンプありで git push → 許可" "$OUTPUT"
 
-# 3. 許可後にスタンプ削除確認
 assert_file_not_exists "許可後にスタンプ削除確認" "${STAMP_SYNC}"
 
-# 4. git push（引数なし） → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push"}}' | run_hook sync-gate.sh)
 assert_blocked "git push（引数なし） → deny" "$OUTPUT"
 
-# 5. git push --delete → スタンプなしでも許可
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push --delete origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push --delete → スタンプなしでも許可" "$OUTPUT"
 
-# 6. git push -d → スタンプなしでも許可
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push -d origin feature-branch"}}' | run_hook sync-gate.sh)
 assert_allowed "git push -d → スタンプなしでも許可" "$OUTPUT"
 
-# 7. 先頭スペース付き push → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"  git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "先頭スペース付き push → deny" "$OUTPUT"
 
-# 8. 環境変数プレフィックス付き → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"GIT_SSH_COMMAND=ssh git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
-# 9. 複数環境変数プレフィックス → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"FOO=bar BAZ=qux git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "複数環境変数プレフィックス → deny" "$OUTPUT"
 
-# 10. env ラッパー付き → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"env git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
-# 11. command ラッパー付き → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"command git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 
-# 12. 絶対パス(/usr/bin/git) → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "絶対パス(/usr/bin/git) → deny" "$OUTPUT"
 
-# 13. 相対パス(./bin/git) → deny
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"./bin/git push origin main"}}' | run_hook sync-gate.sh)
 assert_blocked "相対パス(./bin/git) → deny" "$OUTPUT"
 
-# 14. 対象外コマンド(gh pr merge) → 許可
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge 80 --squash"}}' | run_hook sync-gate.sh)
 assert_allowed "対象外コマンド(gh pr merge) → 許可" "$OUTPUT"
 
-# 15. 対象外コマンド(git commit) → 許可
 OUTPUT=$(echo '{"tool_input":{"command":"git commit -m \"test\""}}' | run_hook sync-gate.sh)
 assert_allowed "対象外コマンド(git commit) → 許可" "$OUTPUT"
 
-# 16. 対象外コマンド(git pull) → 許可
 OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "対象外コマンド(git pull) → 許可" "$OUTPUT"
 
@@ -313,11 +290,9 @@ echo ""
 echo "=== block-api-bypass.sh ==="
 # ============================================
 
-# 1. gh api による直接マージ → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/pulls/123/merge -X PUT -f merge_method=squash"}}' | run_hook block-api-bypass.sh)
 assert_blocked "gh api による直接マージ → deny" "$OUTPUT"
 
-# 2. 通常の gh pr merge → 許可
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 123 --squash --delete-branch"}}' | run_hook block-api-bypass.sh)
 assert_allowed "通常の gh pr merge → 許可" "$OUTPUT"
 
@@ -325,7 +300,6 @@ assert_allowed "通常の gh pr merge → 許可" "$OUTPUT"
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/pulls/123/reviews --paginate"}}' | run_hook block-api-bypass.sh)
 assert_allowed "gh api（マージ以外） → 許可" "$OUTPUT"
 
-# 4. 環境変数プレフィックス付き直接マージ → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=abc gh api repos/owner/repo/pulls/99/merge -X PUT"}}' | run_hook block-api-bypass.sh)
 assert_blocked "環境変数プレフィックス付き直接マージ → deny" "$OUTPUT"
 
@@ -333,7 +307,6 @@ assert_blocked "環境変数プレフィックス付き直接マージ → deny"
 OUTPUT=$(echo '{"tool_name":"Read","tool_input":{"command":"gh api repos/owner/repo/pulls/123/merge"}}' | run_hook block-api-bypass.sh)
 assert_allowed "Bash 以外のツール → 許可" "$OUTPUT"
 
-# 6. command が空 → 許可
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":""}}' | run_hook block-api-bypass.sh)
 assert_allowed "command が空 → 許可" "$OUTPUT"
 
@@ -349,15 +322,12 @@ else
   fail "deny 出力の JSON 構造検証 (構造が不正)"
 fi
 
-# 8. @coderabbitai approve の投稿 → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/123/comments -X POST -f body=\"@coderabbitai approve\""}}' | run_hook block-api-bypass.sh)
 assert_blocked "@coderabbitai approve の投稿 → deny" "$OUTPUT"
 
-# 9. @coderabbitai approve（大文字混在） → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"gh api repos/owner/repo/issues/45/comments -X POST -f body=\"@CodeRabbitAI approve\""}}' | run_hook block-api-bypass.sh)
 assert_blocked "@coderabbitai approve（大文字混在） → deny" "$OUTPUT"
 
-# 10. 環境変数プレフィックス付き approve → deny
 OUTPUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"GH_TOKEN=abc gh api repos/owner/repo/issues/10/comments -X POST -f body=\"@coderabbitai approve\""}}' | run_hook block-api-bypass.sh)
 assert_blocked "環境変数プレフィックス付き approve → deny" "$OUTPUT"
 

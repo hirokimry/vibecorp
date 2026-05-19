@@ -67,11 +67,9 @@ rm -f "$STAMP_FILE"
 echo "=== review-gate.sh ==="
 # ============================================
 
-# 1. スタンプなしで gh pr create → deny
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title test --body test"}}' | "$HOOK")
 assert_blocked "スタンプなしで gh pr create → deny" "$OUTPUT"
 
-# 2. スタンプありで gh pr create → allow
 touch "$STAMP_FILE"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr create --title test --body test"}}' | "$HOOK")
 assert_allowed "スタンプありで gh pr create → allow" "$OUTPUT"
@@ -95,19 +93,15 @@ assert_allowed "gh pr view → allow" "$OUTPUT"
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr merge --squash --auto"}}' | "$HOOK")
 assert_allowed "gh pr merge → allow" "$OUTPUT"
 
-# 7. 環境変数プレフィックス付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"GH_TOKEN=xxx gh pr create --title test"}}' | "$HOOK")
 assert_blocked "環境変数プレフィックス付き → deny" "$OUTPUT"
 
-# 8. 絶対パス付き (/usr/bin/gh pr create) → deny
 OUTPUT=$(echo '{"tool_input":{"command":"/usr/bin/gh pr create --title test"}}' | "$HOOK")
 assert_blocked "絶対パス付き (/usr/bin/gh pr create) → deny" "$OUTPUT"
 
-# 9. env ラッパー付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"env gh pr create --title test"}}' | "$HOOK")
 assert_blocked "env ラッパー付き → deny" "$OUTPUT"
 
-# 10. gh pr list → allow
 OUTPUT=$(echo '{"tool_input":{"command":"gh pr list"}}' | "$HOOK")
 assert_allowed "gh pr list → allow" "$OUTPUT"
 
@@ -120,7 +114,6 @@ else
   fail "STAMP_FILE が新パスに配置される (スタンプが見つからない: ${STAMP_FILE})"
 fi
 
-# 12. command ラッパー付き → deny
 OUTPUT=$(echo '{"tool_input":{"command":"command gh pr create --title test"}}' | "$HOOK")
 assert_blocked "command ラッパー付き → deny" "$OUTPUT"
 

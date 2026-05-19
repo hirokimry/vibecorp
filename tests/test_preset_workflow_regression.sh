@@ -20,8 +20,6 @@ SHIP_SKILL="$PROJECT_DIR/skills/ship/SKILL.md"
 echo "=== プリセット横断 ワークフロー回帰テスト ==="
 echo ""
 
-# --- テスト1: 前提ファイル存在 ---
-
 echo "--- テスト1: 前提ファイル存在 ---"
 
 for f in "$INSTALL_SCRIPT" "$AUTOPILOT_SKILL" "$SHIP_SKILL"; do
