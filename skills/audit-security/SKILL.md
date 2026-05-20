@@ -6,19 +6,24 @@ description: >
   「/vibecorp:audit-security」「セキュリティ監査」と言った時に使用。
 ---
 
-**ultrathink**
+# 🔒 月次セキュリティ監査
 
-# /vibecorp:audit-security: 月次セキュリティ監査
+> [!IMPORTANT]
+> このスキルは CISO エージェントを呼び出し、直近 1 ヶ月の変更から **脆弱性・認証変更を分析** する。
+> 監査レポートは `knowledge/buffer` worktree 経由で main に反映する（作業ブランチ直書きは `protect-knowledge-direct-writes.sh` フックで deny）。
+> **full プリセット専用**。Critical / Major 検出時は `/vibecorp:issue` で Issue を起票する。
 
-CISO エージェントによる月次セキュリティ監査を自動化する。直近1ヶ月の変更から脆弱性・認証変更を分析し、監査レポートを `knowledge/security/` に保存する。脆弱性検出時は Issue を起票する。
+CISO エージェントによる月次セキュリティ監査を自動化する。監査レポートは `knowledge/security/` に保存する。脆弱性検出時は Issue を起票する。
 
-## 前提条件
+## 📋 前提条件
 
-- **full プリセット専用**（CISO エージェントが必要）
-- CISO エージェント定義（`.claude/agents/ciso.md`）が配置済み
-- `knowledge/security/security-audit-template.md` が存在
+| 項目 | 条件 |
+|---|---|
+| プリセット | **full プリセット専用**（CISO エージェントが必要） |
+| エージェント | CISO エージェント定義（`.claude/agents/ciso.md`）が配置済み |
+| テンプレ | `knowledge/security/security-audit-template.md` が存在 |
 
-## ワークフロー
+## 🔄 ワークフロー
 
 ### 1. プリセット確認
 
@@ -42,14 +47,17 @@ BUFFER_DIR="$(knowledge_buffer_worktree_dir)"
 
 ### 2. 監査範囲取得
 
-直近30日間の変更を取得する:
+直近 30 日間の変更を取得する。
 
 ```bash
 git log --since="30 days ago" --oneline
+```
+
+```bash
 git diff "@{30 days ago}"..HEAD --stat
 ```
 
-コミット数が0件の場合は「監査対象期間に変更なし」とレポートし、空の監査ファイルを生成して終了する。
+コミット数が 0 件の場合は「監査対象期間に変更なし」とレポートし、空の監査ファイルを生成して終了する。
 
 ### 3. CISO エージェント起動
 
@@ -130,11 +138,13 @@ fi
 
 ### 5. 脆弱性検出時の Issue 起票
 
-Critical または Major 指摘がある場合、`/vibecorp:issue` スキルで Issue を起票する:
+Critical または Major 指摘がある場合、`/vibecorp:issue` スキルで Issue を起票する。
 
-- ラベル: `audit`, `security`
-- タイトルプレフィックス: `[audit-security]`
-- 本文: 監査レポートのサマリ + レポートファイルへのリンク
+| 項目 | 値 |
+|---|---|
+| ラベル | `audit`, `security` |
+| タイトルプレフィックス | `[audit-security]` |
+| 本文 | 監査レポートのサマリ + レポートファイルへのリンク |
 
 Minor のみの場合は起票しない（レポート保存のみ）。
 
@@ -171,20 +181,28 @@ Minor のみの場合は起票しない（レポート保存のみ）。
 → docs/migration-knowledge-buffer.md の手順で手動反映してください
 ```
 
-## 定期実行
+## ⏰ 定期実行
 
-`/schedule` または cron で月次実行:
+`/schedule` または cron で月次実行する。
 
 ```bash
 # 毎月1日 09:00 JST に実行
 /schedule monthly "0 0 1 * *" /vibecorp:audit-security
 ```
 
-## 制約
+## ⚠️ 制約
 
-- **コード変更は一切行わない** — 監査レポートと Issue 起票のみ
-- `git add` / `git commit` / `git push` は `knowledge_buffer_*` ヘルパー経由でのみ実行する（buffer worktree 内に限定）
-- 作業ブランチには直書きしない（`protect-knowledge-direct-writes.sh` フックで deny される）
-- `--force`、`--hard`、`--no-verify` は使用しない
-- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない
+- **コード変更は一切行わない** — 監査レポートと Issue 起票のみ。
+- `git add` / `git commit` / `git push` は `knowledge_buffer_*` ヘルパー経由でのみ実行する（buffer worktree 内に限定）。
+- 作業ブランチには直書きしない（`protect-knowledge-direct-writes.sh` フックで deny される）。
+- `--force`、`--hard`、`--no-verify` は使用しない。
+- **jq では string interpolation `\(...)` を使わない** — 必ず `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない。
+
+## 🔗 関連ルール
+
+- 自律実行不可領域: `.claude/rules/autonomous-restrictions.md`
+- レビュー観点（intent 別）: `.claude/rules/review-observations.md`
+- プロンプト作成基準: `.claude/rules/prompt-writing.md`
+- マークダウン規約: `.claude/rules/markdown.md`
+- シェル規約: `.claude/rules/shell.md`
