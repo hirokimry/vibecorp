@@ -28,7 +28,15 @@ Issue 本文から他の Issue / PR を参照する場合は `Refs #N` 形式で
 
 PR 本文での `Closes #N` / `Refs #N` 運用は `.claude/rules/workflow.md`「PR 本文の Issue リンク（auto-close キーワード）」を参照する。
 
-## 📋 ワークフロー
+## 使用方法
+
+```bash
+/vibecorp:issue                  # CEO に 1 ターンでバッチヒアリングして起票
+```
+
+ヒアリング項目は **タイトル / 本文 / 完了条件 / 関連ファイル** の 4 項目（ステップ 2 参照）。CEO が一度に全項目を提供した場合はそのまま使用する。
+
+## ワークフロー
 
 ### 1. 🔍 リポジトリ情報の取得
 
@@ -233,7 +241,7 @@ gh issue create --title "<emoji> <CC prefix>: <subject>" --body "<本文>" --ass
 
 起票した Issue の URL を返す。`full` プリセットで SM 自動判定が動作した場合は判定結果も併記する。
 
-## ⚠️ 制約
+## 制約
 
 - **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
 - **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）

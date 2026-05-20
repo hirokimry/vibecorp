@@ -23,7 +23,7 @@ description: "diagnose→ship の自律改善ループを1回実行する。Issu
 /loop 12h /vibecorp:autopilot    # 12時間ごとに定期実行（確認あり）
 ```
 
-## 🧱 前提条件
+## 前提条件
 
 | 項目 | 内容 |
 |---|---|

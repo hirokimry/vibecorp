@@ -33,7 +33,7 @@ description: >
 - **full プリセット専用**（CTO / CPO / CISO / SM エージェントがフィルタリングに必要）
 - **3者承認ゲート**: CISO + CPO + SM の 3 者フィルタで自律実行不可領域（認証 / 暗号 / 課金構造 / ガードレール / MVV / CI エージェント）を自動除外する（`rules/autonomous-restrictions.md` 準拠）
 
-## 🔄 ワークフロー
+## ワークフロー
 
 ### 1. プリセット確認
 
@@ -285,7 +285,7 @@ rm -f "$(vibecorp_state_path diagnose-active)"
 | ユーザーが起票を承認しない | ステップ 8 |
 | gh CLI が利用できない | ステップ 9 |
 
-## ⚠️ 制約
+## 制約
 
 - **コード変更は一切行わない** — Issue 起票のみ
 - **`forbidden_targets` に含まれるファイルの変更を提案しない**
