@@ -27,7 +27,7 @@ description: >
 
 ## 🚫 ヘッドレス Claude 起動禁止（MUST）
 
-本スキルおよび配下スクリプトは **ヘッドレス Claude（`claude -p` / `npx ` / `bunx ` 経由の LLM 呼び出し）を一切伴わない**。
+本スキルおよび配下スクリプトは **ヘッドレス Claude（`claude -p` / `npx` / `bunx` 経由の LLM 呼び出し）を一切伴わない**。
 
 - 根拠: `.claude/rules/autonomous-restrictions.md` 第 3 項（課金構造）。計測自体が課金を発生させると本末転倒。
 - データ取得は `gh` API（PR timeline / check runs）と Claude Code セッション JSONL の静的読み取りのみ。

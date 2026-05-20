@@ -9,7 +9,7 @@ description: >
 # 🔒 月次セキュリティ監査
 
 > [!IMPORTANT]
-> このスキルは CISO エージェントを呼び出し、直近 1 ヶ月の変更から **脆弱性・認証変更を分析** する。
+> このスキルは CISO エージェントを呼び出し、直近 30 日の変更から **脆弱性・認証変更を分析** する。
 > 監査レポートは `knowledge/buffer` worktree 経由で main に反映する（作業ブランチ直書きは `protect-knowledge-direct-writes.sh` フックで deny）。
 > **full プリセット専用**。Critical / Major 検出時は `/vibecorp:issue` で Issue を起票する。
 
@@ -85,9 +85,26 @@ if [ ! -f "$audit_file" ]; then
 fi
 
 # index がなければ templates から初期化
+# 既存導入先（.claude/）を優先し、無ければ配布元（templates/）から複製する。
+# `2>/dev/null || cp ...` のフォールバックは docs/design-philosophy.md のフォールバック
+# 禁止ルール違反のため、明示的な存在チェックで分岐する。
 if [ ! -f "$index_file" ]; then
-  cp .claude/knowledge/security/audit-log/audit-log-index.md "$index_file" 2>/dev/null \
-    || cp templates/claude/knowledge/security/audit-log/audit-log-index.md "$index_file"
+  installed_index=".claude/knowledge/security/audit-log/audit-log-index.md"
+  template_index="templates/claude/knowledge/security/audit-log/audit-log-index.md"
+  if [ -f "$installed_index" ]; then
+    if ! cp "$installed_index" "$index_file"; then
+      echo "[audit-security] index 初期化失敗: ${installed_index} → ${index_file}（権限・容量等を確認）" >&2
+      exit 4
+    fi
+  elif [ -f "$template_index" ]; then
+    if ! cp "$template_index" "$index_file"; then
+      echo "[audit-security] index 初期化失敗: ${template_index} → ${index_file}（権限・容量等を確認）" >&2
+      exit 4
+    fi
+  else
+    echo "[audit-security] audit-log-index.md テンプレートが見つかりません。導入先と配布元の両方を確認してください: ${installed_index} / ${template_index}" >&2
+    exit 4
+  fi
 fi
 ```
 
