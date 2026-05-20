@@ -58,25 +58,25 @@ echo ""
 
 echo "--- テスト3: 必須セクションの存在 ---"
 
-if grep -q '## 使用方法' "$SKILL_FILE"; then
+if grep -qE '^## .*使用方法' "$SKILL_FILE"; then
   pass "使用方法セクションが存在する"
 else
   fail "使用方法セクションが存在しない"
 fi
 
-if grep -q '## ワークフロー' "$SKILL_FILE"; then
+if grep -qE '^## .*ワークフロー' "$SKILL_FILE"; then
   pass "ワークフローセクションが存在する"
 else
   fail "ワークフローセクションが存在しない"
 fi
 
-if grep -q '## 制約' "$SKILL_FILE"; then
+if grep -qE '^## .*制約' "$SKILL_FILE"; then
   pass "制約セクションが存在する"
 else
   fail "制約セクションが存在しない"
 fi
 
-if grep -q '## 介入ポイント' "$SKILL_FILE"; then
+if grep -qE '^## .*介入ポイント' "$SKILL_FILE"; then
   pass "介入ポイントセクションが存在する"
 else
   fail "介入ポイントセクションが存在しない"
@@ -178,7 +178,7 @@ echo ""
 
 echo "--- テスト7: worktree モードセクション ---"
 
-if grep -q '## worktree モード' "$SKILL_FILE"; then
+if grep -qE '^## .*worktree モード' "$SKILL_FILE"; then
   pass "worktree モードセクションが存在する"
 else
   fail "worktree モードセクションが存在しない"
