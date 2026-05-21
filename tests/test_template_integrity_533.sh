@@ -148,15 +148,24 @@ assert_file_not_contains \
   '^- \`rules/autonomous-restrictions\.md\`'
 
 # ============================================
-echo "=== Minor #9: autonomous-restrictions.md の例外条項に claude_action.enabled: true 前提 ==="
+echo "=== Minor #9: autonomous-restrictions.md の例外条項が存在する ==="
 # ============================================
+# 注: PR #694 で「claude_action.enabled: true 前提」明記アサーションを削除した。
+# CR 指摘 #10「整形 PR スコープ超え」に従い、autonomous-restrictions.md の例外条項を
+# main 版に近い形（条件付け削除）に戻したため、claude_action.enabled の明記は失われた。
+# CISO 承認済の id-token: write 例外条項自体は維持されているため、ここでは
+# 例外セクション見出しの存在のみを確認する（条件付き再導入は別 Issue で扱う）。
 
 AUTO_REST="${ROOT}/templates/claude/rules/autonomous-restrictions.md"
 assert_file_exists "autonomous-restrictions.md が存在する" "$AUTO_REST"
 assert_file_contains \
-  "autonomous-restrictions.md の例外条項に claude_action.enabled: true 前提が明記" \
+  "autonomous-restrictions.md の例外条項見出しが存在する" \
   "$AUTO_REST" \
-  'claude_action\.enabled: true'
+  '例外: claude-code-action の動作要件として CISO 承認済の permissions'
+assert_file_contains \
+  "autonomous-restrictions.md の例外条項に id-token: write が明記" \
+  "$AUTO_REST" \
+  'id-token: write'
 
 # ============================================
 echo "=== Minor #10: severity/claude-action.md の REVIEW.md 前提が条件付き ==="
