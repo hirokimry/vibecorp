@@ -87,4 +87,5 @@ model: sonnet
 - 呼び出し元スキル: `skills/plan-review-loop/SKILL.md`
 - メタレビューの管轄: `.claude/agents/ciso.md` / `skills/audit-security/SKILL.md`
 - プロンプト作成基準: `.claude/rules/prompt-writing.md`
+- 公式仕様確認: `claude-code-guide`
 - マークダウン規約: `.claude/rules/markdown.md`

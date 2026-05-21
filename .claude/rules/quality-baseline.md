@@ -6,11 +6,11 @@ paths: ["**/*"]
 # 🎯 品質基準: 参照元を超える
 
 > [!IMPORTANT]
-> vibecorp が生成するテンプレート（hooks / skills / agents / rules 等）は、参照元プロジェクト（`T-00分析: .claude/plans/T-00_analysis.md`）の実装を **全て網羅した上で、品質・汎用性・堅牢性で上回る**。
-> 「たぶんこうだろう」で実装しない。実装前に必ず参照元の対応ファイルを読む。
-> 参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する（未設定時はスキップ可）。
+> 参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する。**本ルールは `VIBECORP_REFERENCE_DIR` が設定されている場合にのみ MUST として作用する。未設定時はルール全体をスキップする**。
+> 設定時は: vibecorp が生成するテンプレート（hooks / skills / agents / rules 等）は、参照元プロジェクト（`T-00分析: .claude/plans/T-00_analysis.md`）の実装を **全て網羅した上で、品質・汎用性・堅牢性で上回る**。
+> 「たぶんこうだろう」で実装しない。設定時は実装前に必ず参照元の対応ファイルを読む。
 
-本ルールは参照元プロジェクトの実装に劣るアウトプットを禁じる。網羅 → 改善 → 汎用化 → テスト の 4 段で常に品質を底上げする。
+本ルールは `VIBECORP_REFERENCE_DIR` が設定されている場合に、参照元プロジェクトの実装に劣るアウトプットを禁じる。網羅 → 改善 → 汎用化 → テスト の 4 段で常に品質を底上げする。`VIBECORP_REFERENCE_DIR` 未設定時は本ルール全体がスキップされる。
 
 ## 🎯 対象範囲
 
@@ -23,9 +23,9 @@ paths: ["**/*"]
 | `.claude/knowledge/` の新規 / 改修 | ✅ 適用する |
 | `.claude/settings.json` の改修 | ✅ 適用する |
 
-## ✅ 指針（MUST）
+## ✅ 指針（MUST、`VIBECORP_REFERENCE_DIR` 設定時）
 
-実装時のチェックリスト 4 段を必ず通す。
+`VIBECORP_REFERENCE_DIR` が設定されている場合、実装時のチェックリスト 4 段を必ず通す（未設定時は本セクション全体をスキップする）。
 
 | # | 項目 | 内容 |
 |---|------|------|
@@ -41,9 +41,9 @@ paths: ["**/*"]
 - ❌ 参照元のエッジケース未対応・ハードコードをそのまま引き継ぐ
 - ❌ 参照元にテストがあるのに、新規実装でテストを書かない
 
-## 📁 参照元の確認方法
+## 📁 参照元の確認方法（`VIBECORP_REFERENCE_DIR` 設定時）
 
-参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する。未設定時はスキップ可。
+参照元プロジェクトのパスは環境変数 `VIBECORP_REFERENCE_DIR` で指定する。設定されている場合のみ以下を適用する（未設定時は本セクション全体をスキップする）。
 
 | 種別 | 参照パス |
 |------|---------|
@@ -54,7 +54,7 @@ paths: ["**/*"]
 | knowledge | `${VIBECORP_REFERENCE_DIR}/.claude/knowledge/` |
 | settings | `${VIBECORP_REFERENCE_DIR}/.claude/settings.json` |
 
-実装前に必ず参照元の対応ファイルを読む。
+`VIBECORP_REFERENCE_DIR` が設定されている場合は、実装前に必ず参照元の対応ファイルを読む（未設定時はスキップ）。
 
 ## 🔗 関連ルール
 
