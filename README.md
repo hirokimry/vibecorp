@@ -136,12 +136,13 @@ export VIBECORP_ISOLATION=1
 ```
 
 永続化したい場合は `~/.zshrc` / `~/.bashrc` に上記 2 行を追記する。
-Linux では `bwrap` (bubblewrap) による実隔離が稼働中。
-Phase 2 `#310` で実装済み。
+
+🧪 Linux では `bwrap` (bubblewrap) による実隔離が **実験的サポート (experimental)** として稼働中（Phase 2 `#310` 実装済み、2026-05-23 `#698` で実験的サポートに格下げ）。
+正式サポート OS は macOS のみ。Linux 実機での動作検証は利用者環境での opt-in 運用となる。
 
 SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加する。
 これにより `~/.ssh` が read-only でマウントされる。
-Windows ネイティブは非対応（WSL2 を使用）。
+Windows ネイティブは非対応（WSL2 を使用、WSL2 も実験的サポート）。
 詳細は [`docs/design-philosophy.md`](docs/design-philosophy.md)。
 
 ---

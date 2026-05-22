@@ -83,7 +83,7 @@ vibecorp が想定する 3 段階の脅威と防御を定義する。
 - 脅威 #1・#2 の一次防御: [knowledge ガードレール（多層防御）](#knowledge-guardrails)
 - 脅威 #2・#3 の二次防御: [エージェント隔離レイヤ（sandbox-exec）](#agent-isolation-layer)
 
-OS サポート方針（macOS / Linux / WSL2 first-class、Windows ネイティブ非対応）の根拠は
+OS サポート方針（macOS のみ first-class、Linux / WSL2 は実験的サポート (experimental)、Windows ネイティブ非対応、2026-05-23 #698 で実験的サポート格下げ）の根拠は
 [`docs/design-philosophy.md#os-support`](design-philosophy.md#os-support) を参照。
 
 <a id="agent-isolation-layer"></a>
@@ -256,7 +256,7 @@ Phase 1 で実装済みの境界検証防御を以下に示す。
 
 | 制約 | 内容 |
 |------|------|
-| `.claude.json.tmp.<pid>.<ms>` 動的サイドカー bind 不可 | bwrap は regex 許可をサポートしないため、起動時点で存在しない動的ファイルは bind できない。CISO メタレビュー（2026-04-17 #329 / 2026-05-16 #310 マージ承認）では「rename 失敗時の挙動次第で攻撃面は既存と同等以下」と評価。Phase 2.1（#578）として実機検証手順を後述セクションに明文化済み |
+| `.claude.json.tmp.<pid>.<ms>` 動的サイドカー bind 不可 | bwrap は regex 許可をサポートしないため、起動時点で存在しない動的ファイルは bind できない。CISO メタレビュー（2026-04-17 #329 / 2026-05-16 #310 マージ承認）では「rename 失敗時の挙動次第で攻撃面は既存と同等以下」と評価。Phase 2.1（#578）として実機検証手順を後述セクションに明文化したが、2026-05-23 の Linux 実験的サポート格下げ（#698）により本検証要件は撤廃され、後述セクションは参考資料として凍結された |
 | bind 内 symlink エスケープ | `--bind` 対象ディレクトリ内に攻撃者制御 symlink が存在する場合、コンテナ内から bind 境界外を参照できる可能性がある。Phase 1 の CR-001（WORKTREE ⊇ HOME 拒否）を bwrap 実装でも継承することで HOME 配下を意図せず bind する経路は遮断済み |
 | `bwrap-args.sh` の TOCTOU | スクリプトが起動時点の `~/.claude.json*` を `--bind-try` で参照する設計のため、スクリプト実行から bwrap 起動の間にファイル差し替えされる TOCTOU リスクが残る |
 | `kernel.unprivileged_userns_clone=0` 環境では起動失敗 | bwrap は user namespace に依存する。一部 distro / 一部の hardened CI ランナーで無効化されている場合、`vibecorp-sandbox` は exit 1 で停止する（fail-closed） |
@@ -264,10 +264,16 @@ Phase 1 で実装済みの境界検証防御を以下に示す。
 
 #### Linux Phase 2.1 — `.claude.json.tmp.<pid>.<ms>` 動的サイドカー実機検証手順
 
+> [!NOTE]
+> **凍結通知 (2026-05-23, #698)**: Linux 実験的サポート格下げ宣言により、本検証要件は **撤廃** された。本セクションは Linux 環境で実機検証を希望する利用者向けの **参考資料として凍結** する (CPO + CISO 2026-05-23 判定)。
+>
+> - 凍結根拠: Linux bwrap は実験的サポート (experimental) に位置づけ直された。正式サポート OS は macOS のみで、Linux 利用時の OAuth rename 失敗時挙動は利用者の自己責任となる
+> - 残存リスク開示: 本セクションの手順は実機検証希望者が辿れるよう保持。撤廃されたのは vibecorp 側の検証実施義務のみ
+
 CISO メタレビュー（2026-05-16）で Phase 2 マージ承認とともに
 「rename 失敗時の Claude Code 挙動は実機検証で確定する」と判定された。
 未確認領域を埋めるための再現手順を以下に示す。
-CEO ローカルまたは自前ホストランナーで Phase 2.1（#578）として順次実施する。
+CEO ローカルまたは自前ホストランナーで Phase 2.1（#578）として順次実施する **参考手順** として凍結する（2026-05-23 #698 以降、本手順の実施は vibecorp 側の義務ではない）。
 
 **検証目的**: Claude Code が OAuth トークン更新時に
 `~/.claude.json.tmp.<pid>.<ms>` への write → rename を試みた際、
