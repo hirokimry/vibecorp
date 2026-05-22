@@ -7,35 +7,56 @@
 
 ## 初期投資（Fixed Costs）
 
-初年度に必要な固定費の一覧を記載する。
+vibecorp 運用に必要な定額サブスクリプションを列挙する。`ANTHROPIC_API_KEY` を併用する場合は本表に含めず、後述「変動費 > API 利用コスト」および「実行モード別の課金モデル」を参照する。
 
 | 項目 | 月額 | 年額 | 備考 |
 |---|---|---|---|
-| （項目名） | （金額） | （金額） | （備考） |
+| Claude Code Max 20 プラン | $200 | $2,400 | `ANTHROPIC_API_KEY` 未設定時の定額運用基準 |
+| CodeRabbit Free | $0 | $0 | 3 reviews/hour 制限。詳細は [CodeRabbit Pricing](https://www.coderabbit.ai/pricing) を参照 |
+| CodeRabbit Pro（任意） | 公式ページ参照 | 公式ページ参照 | Free 枠を超える Bot レビュー量が必要な場合の選択肢 |
+| GitHub（Public リポジトリ） | $0 | $0 | Actions minutes 課金なし、Storage 無料枠内 |
+| GitHub Team（Private 運用時、任意） | 公式ページ参照 | 公式ページ参照 | Private で Actions minutes 拡張が必要な場合。詳細は [GitHub Pricing](https://github.com/pricing) を参照 |
+
+Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/accounting/cost-principles.md) §固定費
 
 ## 変動費
 
-ユーザーあたり・処理あたりの変動費構造を整理する。
+`ANTHROPIC_API_KEY` を設定した場合のみ発生する Anthropic API 従量課金と、GitHub 上のリソース消費が変動費の主成分である。Claude Max 定額環境（`ANTHROPIC_API_KEY` 未設定）では本節の API 費用は発生しない（cost-principles.md L23 と同期）。
 
 ### 💸 API 利用コスト
 
 | サービス | 単価 | 想定月間量 | 月額見積 |
 |---|---|---|---|
-| （サービス名） | （単価） | （想定量） | （見積額） |
+| Claude Opus 4.6 | 入力 $15 / 出力 $75 per 1M token | `/vibecorp:diagnose` 用、24h cadence で約 18M/月（固定費 600K/サイクル × 30 サイクル/月） | 約 $450/月（cycle 単価 $15 × 30 サイクル、cost-principles.md L43） |
+| Claude Sonnet 4.6 | 入力 $3 / 出力 $15 per 1M token | `/vibecorp:ship` 系・合議制分析員用（メイン消費）、24h cadence 満枠で約 60M/月（cost-principles.md L91 の総量 90M から Opus 分 18M を差し引いた残り） | 約 $400/月（cycle 単価: ship $9.80 + issue ゲート $3.15 + harvest $0.40 = $13.35 × 30 サイクル、cost-principles.md L44-46） |
+| Claude Haiku 4.5 | 入力 $1 / 出力 $5 per 1M token | 定型・軽量タスク用（現状ほぼ未割当、将来エージェント拡張用） | 約 $0/月（現状） |
+
+月額総計の目安: **24h cadence 満枠時 約 $840/月**（cost-principles.md L47-49 丸めルール: cycle 単価 約 $28 × 30 サイクル = 約 $840）。cost-principles.md L121 警告閾値 $1,200 の手前、後述「自律実行の上限ガードレール」の試算表も参照する。
+
+Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/accounting/cost-principles.md) §変動費
 
 ### 🏗️ インフラコスト
 
-スケーラブルなインフラ費用の構造を記載する。
+vibecorp は独自サーバ・DB・CDN を運用しないメタツールであり、インフラ費は **GitHub 上のリソース消費のみ** が発生する。
+
+- **GitHub Actions minutes**: Public リポジトリは課金なし。Private は月 2,000 minutes 無料枠 + 超過分は [GitHub Actions billing](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions) を参照。確認手順は後述「GitHub Actions minutes の手動確認方法」を参照する
+- **リポジトリストレージ**: 通常運用では無料枠内に収まる
+- **独自サーバ・DB・CDN**: なし
 
 ## スケール時のコスト予測
 
-Phase 別のコスト見積もりを記載する。
+利用者規模に応じた月額コストの想定を以下に示す。cost-principles.md L100-108 の token 線形モデル（1 Issue 増加あたり約 340K token）から導出した。
 
 | Phase | ユーザー数 | 月間処理量 | 月額コスト | 備考 |
 |---|---|---|---|---|
-| Phase 1 | （想定数） | （想定量） | （見積額） | （備考） |
-| Phase 2 | （想定数） | （想定量） | （見積額） | （備考） |
-| Phase 3 | （想定数） | （想定量） | （見積額） | （備考） |
+| Phase 1（個人 OSS 開発者運用） | 1 名 | `/autopilot` 週 1〜24h cadence、22-90M token | $200 | Claude Max 1 契約のみ、レート余裕大。`ANTHROPIC_API_KEY` 不要 |
+| Phase 2（小規模チーム運用） | 3-5 名 | 24h cadence 満枠 90M + チーム PR レビュー追加 30-60M | $200〜$540 | Claude Max 1 + 必要時 `ANTHROPIC_API_KEY` フォールバック（線形モデルで追加 30-60M ≒ Sonnet 換算 約 $170-340。導出: cost-principles.md L100-108 で 1 Issue = 340K = Sonnet $1.85 → 30-60M = 88-176 Issue 相当） |
+| Phase 3（チーム本格運用） | 10+ 名 | 24h cadence 満枠 + Bot 専用 Max 別契約、180M+ | $840〜$1,680 | 24h cadence 満枠 $840（後述「autopilot 試算表」）/ 12h cadence 満枠 $1,680。$1,200 超過は cost-principles.md L121 警告閾値、CFO 承認必要 |
+
+Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/accounting/cost-principles.md) §スケール時の閾値（後述「自律実行の上限ガードレール」の試算表も参照）
+
+> [!NOTE]
+> Claude Max 定額環境では金銭限界費用ゼロ、**レート制限（5 時間あたりの token 上限）が制約軸** となる（cost-principles.md L20）。Phase 3 規模では Bot 専用 Max 別契約を推奨（後述「Bot 経由 Claude Max OAuth のレート枯渇リスク」を参照）。
 
 ## コスト管理ポリシー
 
@@ -43,6 +64,23 @@ Phase 別のコスト見積もりを記載する。
 
 - ✅ MUST: 月間予算の 80% 到達時にアラートを発火すること。
 - ✅ MUST: 月間予算の 100% 到達時に自動停止または承認フローを発動すること。
+
+#### 具体的な閾値テーブル
+
+CFO による事後監査（`/vibecorp:audit-cost`）が判断基準として参照する具体的な閾値を以下に示す。
+
+| 指標 | 注意閾値 | 警告閾値 |
+|---|---|---|
+| 月間 token 消費（24h cadence） | 70M | 90M |
+| 月間 token 消費（12h cadence） | 140M | 180M |
+| cycle 単価（per_run=7 基準） | $30 | $35 |
+| `/vibecorp:issue` ゲートコスト/回 | $0.60 | $0.90 |
+| 月額 API 換算（従量課金モード） | $800 | $1,200 |
+
+Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/accounting/cost-principles.md) §コスト指標の要注意・警告閾値
+
+- 本テーブルは `.claude/knowledge/accounting/cost-principles.md` と数値同期する。値変更時は両方同時更新する（後述「変更時のルール」と同じ運用）
+- 監査閾値の運用詳細（「100% 到達時」の解釈・手動停止フロー）は後述「monthly cost cap 運用方針」を参照する
 
 ### 🗃️ キャッシュ制御
 
