@@ -28,7 +28,7 @@ Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/a
 | Claude Sonnet 4.6 | 入力 $3 / 出力 $15 per 1M token | `/vibecorp:ship` 系・合議制分析員用（メイン消費）、24h cadence 満枠で約 60M/月（cost-principles.md L91 の総量 90M から Opus 分 18M を差し引いた残り） | 約 $400/月（cycle 単価: ship $9.80 + issue ゲート $3.15 + harvest $0.40 = $13.35 × 30 サイクル、cost-principles.md L44-46） |
 | Claude Haiku 4.5 | 入力 $1 / 出力 $5 per 1M token | 定型・軽量タスク用（現状ほぼ未割当、将来エージェント拡張用） | 約 $0/月（現状） |
 
-月額総計の目安: **24h cadence 満枠時 約 $840/月**（Opus $450 + Sonnet $400 ≈ $850 を丸めた値。cost-principles.md L121 警告閾値 $1,200 の手前、後述「自律実行の上限ガードレール」の試算表も参照）。
+月額総計の目安: **24h cadence 満枠時 約 $840/月**（cost-principles.md L47-49 丸めルール: cycle 単価 約 $28 × 30 サイクル = 約 $840。サブ単価別の参考内訳は Opus $15/cycle + Sonnet ship $9.80/cycle + issue ゲート $3.15/cycle + harvest $0.40/cycle ≈ $28.35/cycle）。cost-principles.md L121 警告閾値 $1,200 の手前、後述「自律実行の上限ガードレール」の試算表も参照。
 
 Source: [.claude/knowledge/accounting/cost-principles.md](../.claude/knowledge/accounting/cost-principles.md) §変動費
 
