@@ -3,20 +3,24 @@ name: sync-check
 description: >
   コード変更に対する docs/, knowledge/, README.md の整合性チェック（読み取り専用）。
   各職種エージェントを立ち上げ、管轄ファイルのみをチェックさせる。
-  push前に必ず実行される。「/sync-check」と言った時に使用。
+  push 前に必ず実行される。「/vibecorp:sync-check」「整合性チェック」と言った時に使用。
 ---
 
-# sync-check: 整合性チェック（読み取り専用）
+# 🔍 sync-check: 整合性チェック（読み取り専用）
 
-コード変更に対して `docs/`、`knowledge/`、`README.md` が整合しているかを、**各職種エージェントに委任して** 確認する。
-このスキルは **チェックのみ** 行い、ファイルの編集は一切しない。
+> [!IMPORTANT]
+> コード変更と `docs/` / `knowledge/` / `README.md` の整合性を **読み取り専用** で確認する。
+> 各職種エージェントに **管轄ファイルのみ** をチェックさせる（編集は一切しない）。
+> 総合判定 ✅ のときだけスタンプを発行する。⚠️ / ❌ は `/vibecorp:sync-edit` に橋渡しする。
 
-## ワークフロー
+コード変更に対して `docs/` / `knowledge/` / `README.md` が整合しているかを、各職種エージェントに委任して確認する。本スキルはチェックのみ行い、ファイルの編集は一切しない。
+
+## 🔄 ワークフロー
 
 ### 1. 変更内容の把握
 
 ```bash
-# ベースブランチとの差分（PRスコープ）
+# ベースブランチとの差分（PR スコープ）
 git diff main...HEAD --name-only
 
 # 未コミットの変更も含める
@@ -26,19 +30,18 @@ git diff --name-only
 
 ### 2. 対象外の判定
 
-以下のケースは整合性チェック不要。エージェント起動をスキップしてステップ6のスタンプ発行に進む:
+以下のケースは整合性チェック不要。エージェント起動をスキップしてステップ 6 のスタンプ発行に進む。
 
 - `docs/` や `knowledge/` や `README.md` のみの変更（コードとの整合問題が発生しない）
 - `.gitignore` 等の軽微な変更のみ
 
 ### 3. 担当エージェントの起動
 
-変更内容に基づき、関連する職種のエージェントを **Agent ツールで並列起動** する。
-各エージェントは **自分の管轄ファイルだけ** を読み取りチェックする。
+変更内容に基づき、関連する職種のエージェントを **Agent ツールで並列起動** する。各エージェントは **自分の管轄ファイルだけ** を読み取りチェックする。
 
 #### プリセット検出
 
-`.claude/vibecorp.yml` から `preset` を取得する:
+`.claude/vibecorp.yml` から `preset` を取得する。
 
 ```bash
 awk '/^preset:/ { sub(/^preset:[[:space:]]*/, ""); print; exit }' .claude/vibecorp.yml
@@ -73,17 +76,17 @@ CTO / CPO は常時起動する。
 git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY|rate limit|従量|トークン消費|npx|bunx'
 ```
 
-該当した領域のみ起動する（複数ヒット時は該当全 C*O を並列）。`standard` / `minimal` プリセットでは C*O の自動起動は行わない（既存挙動維持）。
+該当した領域のみ起動する（複数ヒット時は該当全 C*O を並列）。`standard` / `minimal` プリセットでは C*O の自動起動は行わない（既存挙動を維持）。
 
 #### 起動方法
 
-各エージェントは `name` を指定した永続 teammate として起動する（結果返却後も idle で残るため、ステップ5で必ず shutdown する）。起動した `name` はステップ5で参照するため全て保持しておく。
+各エージェントは `name` を指定した永続 teammate として起動する。結果返却後も idle で残るため、ステップ 5 で必ず shutdown する。起動した `name` はステップ 5 で参照するため全て保持する。
 
 各エージェントに以下を渡して Agent ツールで起動する。プロンプトは `skills/sync-check/prompts/agent-call-cxo-sync-check.md` を参照する。
 
 ### 4. 結果の統合・レポート出力
 
-全エージェントの結果を統合し、以下のフォーマットで出力する:
+全エージェントの結果を統合し、以下のフォーマットで出力する。
 
 ```text
 ## sync-check 結果
@@ -114,8 +117,7 @@ git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY
 
 ### 5. 起動エージェントの shutdown
 
-ステップ3で起動した全エージェントへ `shutdown_request` を SendMessage で送信し、チームを解散する。
-`name` 付きで起動された teammate は結果を返却した後も idle 状態でペインを占有し続けるため、**総合判定（✅ / ⚠️ / ❌）にかかわらず必ず送信する**。
+ステップ 3 で起動した全エージェントへ `shutdown_request` を SendMessage で送信し、チームを解散する。`name` 付きで起動された teammate は結果を返却した後も idle 状態でペインを占有し続けるため、**総合判定（✅ / ⚠️ / ❌）にかかわらず必ず送信する**。
 
 ```json
 {"to": "<エージェント名>", "message": {"type": "shutdown_request", "reason": "sync-check 完了"}}
@@ -123,11 +125,11 @@ git diff main...HEAD -U0 | grep -iE 'API call|model:|claude -p|ANTHROPIC_API_KEY
 
 - 起動した全エージェントに対して 1 件ずつ送信する（同一メッセージで並列送信して構わない）
 - teammate 側は `shutdown_response` を返した時点で terminate されるため、メイン側での応答待ちコードは不要
-- ステップ2で整合性チェックをスキップした場合（エージェント未起動）は、本ステップをスキップしてステップ6へ進む
+- ステップ 2 で整合性チェックをスキップした場合（エージェント未起動）は、本ステップをスキップしてステップ 6 へ進む
 
 ### 6. スタンプ発行
 
-**総合判定が ✅ の場合のみ** スタンプを発行する。スタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に作成され、`.claude/` 配下への書込確認プロンプトを回避する:
+**総合判定が ✅ の場合のみ** スタンプを発行する。スタンプは `~/.cache/vibecorp/state/<repo-id>/` 配下に作成され、`.claude/` 配下への書込確認プロンプトを回避する。
 
 ```bash
 . "$CLAUDE_PROJECT_DIR/.claude/lib/common.sh"
@@ -135,15 +137,15 @@ STAMP_DIR="$(vibecorp_stamp_mkdir)"
 touch "${STAMP_DIR}/sync-ok"
 ```
 
-⚠️ または ❌ がある場合はスタンプを発行しない。`/vibecorp:sync-edit` による修正後、再度 `/vibecorp:sync-check` を実行すること。
+⚠️ または ❌ がある場合はスタンプを発行しない。`/vibecorp:sync-edit` による修正後、再度 `/vibecorp:sync-check` を実行する。
 
-## 判定基準
+## 🧭 判定基準
 
-- **❌ 矛盾**: コードとドキュメントが明確に食い違っている
-- **⚠️ 要更新**: コード変更がドキュメントに反映されていない
-- **✅ OK**: 整合性に問題なし
+- **❌ 矛盾**: コードとドキュメントが明確に食い違っている。
+- **⚠️ 要更新**: コード変更がドキュメントに反映されていない。
+- **✅ OK**: 整合性に問題なし。
 
-## 制約
+## 🚧 制約
 
-- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）
+- **jq では string interpolation `\(...)` を使わない** — Bash 上で `\` がエスケープ文字、`()` がサブシェルとして解釈され、意図しない展開やパースエラーを引き起こすため。必ず `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo`、`; echo` 等のリダイレクトやフォールバックを付加しない（[根拠](docs/design-philosophy.md#コマンドリダイレクトフォールバックの禁止)）。

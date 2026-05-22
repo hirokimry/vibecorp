@@ -3,24 +3,29 @@ name: knowledge-pr
 description: "knowledge/buffer ブランチの差分を Issue 起票 → PR 作成 → auto-merge で main に反映する。/vibecorp:review-harvest / /vibecorp:session-harvest が蓄積した差分を定期的に本番化するためのスキル。「/vibecorp:knowledge-pr」「バッファをPR化して」と言った時に使用。"
 ---
 
-# knowledge/buffer → PR 化
+# 📤 knowledge/buffer → PR 化
 
-`knowledge/buffer` worktree に蓄積された knowledge/rules/docs 差分を、Issue 起票 → PR 作成 → `gh pr merge --squash --auto` の流れで main に反映する。
+> [!IMPORTANT]
+> このスキルは `knowledge/buffer` worktree に蓄積された knowledge / rules / docs 差分を **Issue 起票 → PR 作成 → auto-merge** で main に反映する。
+> **main への直接 push は一切発生しない**。必ず auto-merge 経由（CI + CodeRabbit レビュー通過後）で反映する。
+> open 状態の knowledge-pr Issue があれば skip する（再開は既存 Issue の手動 close 後）。
 
-## 使用方法
+`knowledge/buffer` worktree に蓄積された knowledge / rules / docs 差分を、Issue 起票 → PR 作成 → `gh pr merge --squash --auto` の流れで main に反映する。
+
+## 📖 使用方法
 
 ```bash
 /vibecorp:knowledge-pr                    # 通常実行
 /vibecorp:knowledge-pr --worktree <path>  # worktree 内で実行（非推奨、通常は呼出元プロジェクト直下で実行）
 ```
 
-## 前提
+## ⚙️ 前提
 
-- `/vibecorp:review-harvest` または `/vibecorp:session-harvest` が `knowledge/buffer` に commit を積んでいること
-- `gh` が認証済みであること
-- main への書込は **必ず** auto-merge 経由（CI + CodeRabbit レビュー通過後）。このスキルが直接 main を変更することは一切ない
+- `/vibecorp:review-harvest` または `/vibecorp:session-harvest` が `knowledge/buffer` に commit を積んでいる。
+- `gh` が認証済みである。
+- main への書込は **必ず** auto-merge 経由（CI + CodeRabbit レビュー通過後）。このスキルが直接 main を変更することは一切ない。
 
-## ワークフロー
+## 🔄 ワークフロー
 
 ### 1. buffer worktree の最新化
 
@@ -176,7 +181,7 @@ echo "[knowledge-pr] auto-merge を有効化" >&2
 - 後処理: CodeRabbit + CI 通過後に GitHub が main に反映
 ```
 
-## 介入ポイント
+## 🛟 介入ポイント
 
 以下の状況では人手介入が必要。次回実行では重複チェックで skip されるため、自動では復旧しない。
 
@@ -187,10 +192,19 @@ echo "[knowledge-pr] auto-merge を有効化" >&2
 | auto-merge 設定失敗 (exit 5) | `gh pr merge <PR番号> --squash` で手動マージ |
 | 既存 open Issue あり | 既存 Issue を確認し、不要なら close してから再実行 |
 
-## 制約
+## 🚧 制約
 
-- **main への直接 push は発生しない** — 必ず auto-merge 経由
-- knowledge/buffer ブランチは auto-merge 後もそのまま残す（次回 harvest の蓄積先）
-- **jq では string interpolation `\(...)` を使わない** — `+` で結合する
-- **コマンドをそのまま実行する** — `2>/dev/null`、`|| echo` 等のフォールバックを付加しない（明示的にリトライ・タイムアウトが必要な箇所を除く）
-- preset minimal では呼ばれない（install.sh の minimal 引き算で除外）
+- **main への直接 push は発生しない** — 必ず auto-merge 経由とする。
+- knowledge/buffer ブランチは auto-merge 後もそのまま残す（次回 harvest の蓄積先）。
+- **jq では string interpolation `\(...)` を使わない** — `+` で結合する。
+- **コマンドをそのまま実行する** — `2>/dev/null` / `|| echo` 等のフォールバックを付加しない（明示的にリトライ・タイムアウトが必要な箇所を除く）。
+- preset minimal では呼ばれない（install.sh の minimal 引き算で除外）。
+
+## 🔗 関連ルール
+
+- 動作主語ルール: `.claude/rules/communication.md`
+- プロンプト作成基準: `.claude/rules/prompt-writing.md`
+- マークダウン規約: `.claude/rules/markdown.md`
+- シェル規約: `.claude/rules/shell.md`
+- 上流スキル（PR レビュー指摘収集）: `/vibecorp:review-harvest`
+- 上流スキル（セッション知見吸い上げ）: `/vibecorp:session-harvest`
