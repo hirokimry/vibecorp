@@ -83,7 +83,7 @@ vibecorp が想定する 3 段階の脅威と防御を定義する。
 - 脅威 #1・#2 の一次防御: [knowledge ガードレール（多層防御）](#knowledge-guardrails)
 - 脅威 #2・#3 の二次防御: [エージェント隔離レイヤ（sandbox-exec）](#agent-isolation-layer)
 
-OS サポート方針（macOS / Linux / WSL2 first-class、Windows ネイティブ非対応）の根拠は
+OS サポート方針（macOS のみ first-class、Linux / WSL2 は実験的サポート (experimental)、Windows ネイティブ非対応、2026-05-23 #698 で実験的サポート格下げ）の根拠は
 [`docs/design-philosophy.md#os-support`](design-philosophy.md#os-support) を参照。
 
 <a id="agent-isolation-layer"></a>

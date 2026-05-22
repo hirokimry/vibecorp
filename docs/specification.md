@@ -503,8 +503,9 @@ path/to/vibecorp/install.sh --name my-project --no-migrate
 
 full プリセットでは、OS ごとに隔離レイヤの提供状況が異なる。
 
-- macOS: 実隔離稼働
-- Linux: `bwrap` 検出と導入ガイダンスまで
+- macOS: 実隔離稼働 (正式サポート)
+- 🧪 Linux: `bwrap` (bubblewrap) 実隔離が **実験的サポート (experimental)** として稼働。実機検証は CEO 環境での opt-in 運用、vibecorp 側は動作保証義務を持たない (Phase 2 #310 実装、2026-05-23 #698 で experimental に格下げ)
+- 🧪 WSL2: Linux 同等 (実験的サポート)
 - Windows ネイティブ: 非対応で中断
 
 誤操作・プロンプトインジェクション経由の破壊操作・認証情報窃取に対する防御層として機能する。
