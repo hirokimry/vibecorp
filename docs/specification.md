@@ -57,9 +57,9 @@ vibecorp は sandbox を **強く推奨するだけで、強制はしない**。
   - 課金リスクを伴う大規模並列実行のため、誤爆リスクを抑える目的で minimal / standard では物理的に配置しない
   - 親プロセスの認証が `ANTHROPIC_API_KEY` の場合は API 従量課金に到達しうる
   - 課金モデル詳細は [`docs/cost-analysis.md`](./cost-analysis.md) を参照
-- 🍎 macOS の `sandbox-exec` による隔離レイヤは **full + macOS 環境** のとき `install.sh` が `.claude/bin/` と `.claude/sandbox/` を自動配置する
-  - Linux（bwrap）対応は Phase 2（#310）で実装済み
-  - Windows ネイティブは非対応（WSL2 を使用）
+- 🍎 macOS の `sandbox-exec` による隔離レイヤは **full + macOS 環境** のとき `install.sh` が `.claude/bin/` と `.claude/sandbox/` を自動配置する（正式サポート）
+  - 🧪 Linux（bwrap）対応は Phase 2（#310）で実装済みだが **実験的サポート (experimental)** として位置づける（2026-05-23 #698）。実機検証は利用者環境での opt-in 運用となり、vibecorp 側は検証実施義務を持たない
+  - Windows ネイティブは非対応（WSL2 を使用、WSL2 も実験的サポート）
 
 ### 🪟 Agent Teams 動作環境
 
@@ -518,7 +518,7 @@ full プリセットでは、OS ごとに隔離レイヤの提供状況が異な
 | 🪄 **minimal** | なし | OS 標準のユーザー権限のみ。`protect-files.sh` フックで設定ファイル誤編集を防ぐ |
 | 🛡️ **standard** | なし | minimal と同じ |
 | 🍎 **full / macOS** | `sandbox-exec` ベース | `.claude/bin/claude` shim 経由で `.claude/sandbox/claude.sb` プロファイルを適用。`~/Library/Application Support/Claude` / `~/.claude` 等を read-only 化 |
-| 🐧 **full / Linux** | `bwrap` (bubblewrap) 実隔離（Phase 2 #310 実装済み） | `bwrap` 不在時は distro 別手順（`apt-get install bubblewrap` / `dnf install bubblewrap` / `apk add bubblewrap`）を表示して中断。<br>`bwrap` 存在時は `.claude/bin/claude` shim で名前空間隔離が稼働。<br>SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる（デフォルト: `false`）。 |
+| 🐧 **full / Linux**（🧪 experimental） | `bwrap` (bubblewrap) 実隔離（Phase 2 #310 実装済み、2026-05-23 #698 で **実験的サポート** に格下げ） | `bwrap` 不在時は distro 別手順（`apt-get install bubblewrap` / `dnf install bubblewrap` / `apk add bubblewrap`）を表示して中断。<br>`bwrap` 存在時は `.claude/bin/claude` shim で名前空間隔離が稼働。<br>SSH push 利用者は `vibecorp.yml` に `isolation.allow_ssh: true` を追加すると `~/.ssh` が read-only でマウントされる（デフォルト: `false`）。<br>**実験的サポート位置づけ**: 実機検証は CEO 環境での opt-in 運用、vibecorp 側は Linux 実機での動作保証義務を持たない。Phase 2.1 OAuth 動的サイドカー検証（#578）は撤廃済み。 |
 | 🪟 **full / Windows ネイティブ** | 非対応 | `install.sh` が exit 2 で中断。WSL2 (Ubuntu 22.04+) 経由で Linux 環境を使用する |
 
 #### ⚠️ 制約
