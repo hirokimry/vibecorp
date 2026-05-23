@@ -16,8 +16,8 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-LIB="${SCRIPT_DIR}/templates/claude/lib/knowledge_buffer.sh"
-COMMON_LIB="${SCRIPT_DIR}/templates/claude/lib/common.sh"
+LIB="${SCRIPT_DIR}/lib/knowledge_buffer.sh"
+COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
 if [ ! -f "$LIB" ]; then
   fail "knowledge_buffer.sh が存在しない: $LIB"
