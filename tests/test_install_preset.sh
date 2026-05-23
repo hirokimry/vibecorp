@@ -38,8 +38,8 @@ EXPECTED_VERSION=$(git -C "$(dirname "$INSTALL_SH")" describe --tags --abbrev=0 
 EXPECTED_VERSION="${EXPECTED_VERSION#v}"
 assert_file_contains "vibecorp.lock に version" "$R/.claude/vibecorp.lock" "version: ${EXPECTED_VERSION}"
 
-# E7. vibecorp.lock にマニフェスト（hooks は plugin native 移行で空リスト）
-assert_file_contains "vibecorp.lock に hooks 空リスト" "$R/.claude/vibecorp.lock" "hooks: \[\]"
+# E7. vibecorp.lock にマニフェスト (#722 で v2 形式: hooks: / lib: セクション廃止 + format_version: 2)
+assert_file_contains "vibecorp.lock が v2 形式 (format_version: 2)" "$R/.claude/vibecorp.lock" "format_version: 2"
 assert_file_contains "vibecorp.lock に skills マニフェスト" "$R/.claude/vibecorp.lock" "review"
 assert_file_contains "vibecorp.lock に rules マニフェスト" "$R/.claude/vibecorp.lock" "code-comments.md"
 

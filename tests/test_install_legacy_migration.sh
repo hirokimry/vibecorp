@@ -255,14 +255,15 @@ echo "=== Test 6: 旧 .claude/hooks/ / .claude/lib/ の vibecorp 配布物が物
 TMPDIR_TEST="$(mktemp -d)"
 mkdir -p "${TMPDIR_TEST}/.claude/hooks"
 mkdir -p "${TMPDIR_TEST}/.claude/lib"
-echo "old protect-files" > "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
-echo "old command-log" > "${TMPDIR_TEST}/.claude/hooks/command-log.sh"
-echo "old common" > "${TMPDIR_TEST}/.claude/lib/common.sh"
+cp "$SCRIPT_DIR/hooks/protect-files.sh" "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
+cp "$SCRIPT_DIR/hooks/command-log.sh" "${TMPDIR_TEST}/.claude/hooks/command-log.sh"
+cp "$SCRIPT_DIR/lib/common.sh" "${TMPDIR_TEST}/.claude/lib/common.sh"
 echo "user custom hook" > "${TMPDIR_TEST}/.claude/hooks/my-custom-hook.sh"
 echo "user custom lib" > "${TMPDIR_TEST}/.claude/lib/my-custom.sh"
 
 bash -c "
   REPO_ROOT='$TMPDIR_TEST'
+  SCRIPT_DIR='$SCRIPT_DIR'
   UPDATE_MODE=true
   log_info() { :; }
   $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
@@ -305,11 +306,12 @@ TMPDIR_TEST=""
 TMPDIR_TEST="$(mktemp -d)"
 mkdir -p "${TMPDIR_TEST}/.claude/hooks"
 mkdir -p "${TMPDIR_TEST}/.claude/lib"
-echo "old" > "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
-echo "old" > "${TMPDIR_TEST}/.claude/lib/common.sh"
+cp "$SCRIPT_DIR/hooks/protect-files.sh" "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
+cp "$SCRIPT_DIR/lib/common.sh" "${TMPDIR_TEST}/.claude/lib/common.sh"
 
 bash -c "
   REPO_ROOT='$TMPDIR_TEST'
+  SCRIPT_DIR='$SCRIPT_DIR'
   UPDATE_MODE=true
   log_info() { :; }
   $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
