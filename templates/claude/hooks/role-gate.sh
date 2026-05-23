@@ -10,6 +10,9 @@ HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "${HOOK_DIR}/../lib/common.sh"
 
+# yml で hooks.role-gate: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "role-gate" && exit 0
+
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 

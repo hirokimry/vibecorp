@@ -7,6 +7,10 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
+# Issue #704: hook が ${HOOK_DIR}/../lib/ で lib を解決するようになり、templates/claude/hooks/ から実行する経路では templates/claude/lib/ に lib が必要になる（plugin native 配布後の runtime 配置と同じ構造を再現する）
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/hook_fixtures.sh"
+sync_lib_for_hook_tests
 
 HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
 

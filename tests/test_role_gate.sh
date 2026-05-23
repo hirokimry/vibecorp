@@ -326,6 +326,14 @@ fi
 ALT_DIR=$(mktemp -d)
 mkdir -p "${ALT_DIR}/.claude/lib"
 cp "${LIB_DIR}/common.sh" "${ALT_DIR}/.claude/lib/common.sh"
+# preset: full の vibecorp.yml を配置（role-gate は full preset 限定。
+# 未配置だと hook_skip_if_disabled が preset=standard と判定して skip する）
+cat > "${ALT_DIR}/.claude/vibecorp.yml" <<'YAML'
+name: test-project
+preset: full
+language: ja
+base_branch: main
+YAML
 ( cd "$ALT_DIR" && git init -q . && git config user.email t@example.com && git config user.name t )
 ORIG_DIR="$CLAUDE_PROJECT_DIR"
 export CLAUDE_PROJECT_DIR="$ALT_DIR"

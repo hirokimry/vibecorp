@@ -23,6 +23,9 @@ source "${HOOK_DIR}/../lib/knowledge_buffer.sh"
 # shellcheck source=../lib/path_normalize.sh
 source "${HOOK_DIR}/../lib/path_normalize.sh"
 
+# yml で hooks.protect-knowledge-bash-writes: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "protect-knowledge-bash-writes" && exit 0
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
