@@ -228,6 +228,28 @@ JSON
 fi
 
 echo ""
+echo "=== Test 5: 新規 lock は v2 形式で hooks: / lib: セクションを書かない (#722) ==="
+
+# generate_lock_file 関数の hooks: 出力削除を直接検証
+if grep -q '_lock_list_section "hooks"' "$INSTALL_SH"; then
+  fail "generate_lock_file が依然として hooks: セクションを出力している（v2 形式違反）"
+else
+  pass "generate_lock_file が hooks: セクションを出力しなくなった"
+fi
+
+if grep -q '_lock_list_section "lib"' "$INSTALL_SH"; then
+  fail "generate_lock_file が lib: セクションを出力している（v2 形式違反）"
+else
+  pass "generate_lock_file が lib: セクションを出力しない（v2 形式準拠）"
+fi
+
+if grep -q "^format_version: 2$" "$INSTALL_SH" || grep -q 'format_version: 2' "$INSTALL_SH"; then
+  pass "lock ヘッダに format_version: 2 が追加された"
+else
+  fail "lock ヘッダに format_version: 2 が追加されていない"
+fi
+
+echo ""
 echo "==========================="
 echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
 echo "==========================="

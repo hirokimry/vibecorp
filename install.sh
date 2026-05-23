@@ -1862,8 +1862,9 @@ generate_vibecorp_lock() {
 
   local files_block=""
   # $() は末尾改行を除去するため、各セクション連結時に明示的に改行を補う
-  # hooks セクションは plugin native 配布 (#716) 後も後方互換のため空リストを維持
-  files_block+="$(_lock_list_section "hooks" "")"$'\n'
+  # v2 形式 (#722): hooks: / lib: セクションは plugin native 配布 (#716) で plugin/hooks/hooks.json に
+  # 一元化されたため、新規 lock では一切書き込まない。read_lock_list は v1 形式の hooks: / lib: も
+  # 引き続き読めるため後方互換は維持される（test_install_legacy_migration.sh で検証済）。
   files_block+="$(_lock_list_section "skills" "$skills_list")"$'\n'
   files_block+="$(_lock_list_section "agents" "$agents_list")"$'\n'
   files_block+="$(_lock_list_section "rules" "$rules_list")"$'\n'
@@ -1874,6 +1875,8 @@ generate_vibecorp_lock() {
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
+# format_version: 2 は hooks: / lib: セクション廃止後の lock 形式 (#722)
+format_version: 2
 version: ${VIBECORP_VERSION}
 installed_at: ${installed_at}
 preset: ${PRESET}
