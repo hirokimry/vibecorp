@@ -640,7 +640,25 @@ migrate_legacy_layout() {
     rmdir "${REPO_ROOT}/.claude/vibecorp-base" 2>/dev/null || true
   fi
 
-  [[ $removed -eq 0 ]] || log_info "Issue #708: plugin native 移行に伴う旧レイアウト migration 完了"
+  # 機能: 既存 .claude/settings.json から hooks ブロックを物理除去（Issue #721）
+  # plugin native 配布 (#716) 後は plugin/hooks/hooks.json が唯一の登録元。settings.json 側に
+  # 古い hooks ブロックが残っていると hook が二重発火する可能性があるため migration する。
+  local settings_json="${REPO_ROOT}/.claude/settings.json"
+  if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
+    if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
+      local tmp_settings
+      tmp_settings="$(mktemp "$(dirname "$settings_json")/.settings.json.XXXXXX")"
+      if jq 'del(.hooks)' "$settings_json" > "$tmp_settings"; then
+        mv "$tmp_settings" "$settings_json"
+        log_info "migration: 既存 .claude/settings.json から hooks ブロックを除去（plugin native 配布に統一）"
+        removed=1
+      else
+        rm -f "$tmp_settings"
+      fi
+    fi
+  fi
+
+  [[ $removed -eq 0 ]] || log_info "Issue #708 / #721: plugin native 移行に伴う旧レイアウト migration 完了"
 }
 
 remove_managed_files() {

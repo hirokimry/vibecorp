@@ -136,6 +136,98 @@ rm -rf "$TMPDIR_TEST"
 TMPDIR_TEST=""
 
 echo ""
+echo "=== Test 4: 既存 settings.json から hooks ブロックが除去される (#721) ==="
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "  SKIP: jq が利用不可な環境のため migration テストをスキップ"
+else
+  TMPDIR_TEST="$(mktemp -d)"
+  mkdir -p "${TMPDIR_TEST}/.claude"
+  SETTINGS_BEFORE="${TMPDIR_TEST}/.claude/settings.json"
+  cat > "$SETTINGS_BEFORE" <<'JSON'
+{
+  "permissions": {
+    "allow": ["Read(*)", "Bash(git status:*)"],
+    "ask": ["WebFetch(*)"]
+  },
+  "enabledPlugins": {
+    "vibecorp@vibecorp": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/protect-files.sh" }
+        ]
+      }
+    ]
+  }
+}
+JSON
+
+  bash -c "
+    REPO_ROOT='$TMPDIR_TEST'
+    UPDATE_MODE=true
+    log_info() { :; }
+    $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
+    migrate_legacy_layout
+  "
+
+  if jq -e '.hooks' "$SETTINGS_BEFORE" >/dev/null 2>&1; then
+    fail "settings.json から hooks ブロックが除去されていない"
+  else
+    pass "settings.json から hooks ブロックが除去された"
+  fi
+
+  if jq -e '.permissions.allow' "$SETTINGS_BEFORE" >/dev/null 2>&1; then
+    pass "permissions ブロックが保持されている"
+  else
+    fail "permissions ブロックが消失した（migration 過剰）"
+  fi
+
+  if jq -e '.enabledPlugins' "$SETTINGS_BEFORE" >/dev/null 2>&1; then
+    pass "enabledPlugins ブロックが保持されている"
+  else
+    fail "enabledPlugins ブロックが消失した（migration 過剰）"
+  fi
+
+  rm -rf "$TMPDIR_TEST"
+  TMPDIR_TEST=""
+
+  # hooks ブロック不在時は冪等
+  TMPDIR_TEST="$(mktemp -d)"
+  mkdir -p "${TMPDIR_TEST}/.claude"
+  SETTINGS_CLEAN="${TMPDIR_TEST}/.claude/settings.json"
+  cat > "$SETTINGS_CLEAN" <<'JSON'
+{
+  "permissions": {
+    "allow": ["Read(*)"]
+  }
+}
+JSON
+  CHECKSUM_BEFORE="$(shasum "$SETTINGS_CLEAN" | awk '{print $1}')"
+
+  bash -c "
+    REPO_ROOT='$TMPDIR_TEST'
+    UPDATE_MODE=true
+    log_info() { :; }
+    $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
+    migrate_legacy_layout
+  "
+
+  CHECKSUM_AFTER="$(shasum "$SETTINGS_CLEAN" | awk '{print $1}')"
+  if [[ "$CHECKSUM_BEFORE" == "$CHECKSUM_AFTER" ]]; then
+    pass "hooks ブロック不在時は settings.json を変更しない（冪等性）"
+  else
+    fail "hooks ブロック不在時に settings.json が変更された（冪等性違反）"
+  fi
+
+  rm -rf "$TMPDIR_TEST"
+  TMPDIR_TEST=""
+fi
+
+echo ""
 echo "==========================="
 echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
 echo "==========================="
