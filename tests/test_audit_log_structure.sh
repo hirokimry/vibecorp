@@ -117,7 +117,7 @@ fi
 echo ""
 echo "--- テスト7: hook deny パターン ---"
 
-HOOK_FILE="${PROJECT_DIR}/templates/claude/hooks/protect-knowledge-direct-writes.sh"
+HOOK_FILE="${PROJECT_DIR}/hooks/protect-knowledge-direct-writes.sh"
 assert_file_contains "hook に audit-log/ deny パターンがある" "$HOOK_FILE" 'audit-log/\*.md'
 
 # --- テスト8: 分析員エージェント定義の audit-log 参照 ---

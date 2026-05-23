@@ -13,15 +13,15 @@ source "${TESTS_DIR}/lib/hook_fixtures.sh"
 sync_lib_for_hook_tests
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HOOKS_DIR="${SCRIPT_DIR}/templates/claude/hooks"
-TEMPLATES_LIB_DIR="${SCRIPT_DIR}/templates/claude/lib"
+HOOKS_DIR="${SCRIPT_DIR}/hooks"
+PLUGIN_LIB_DIR="${SCRIPT_DIR}/lib"
 
 if [[ ! -d "$HOOKS_DIR" ]]; then
-  fail "前提ディレクトリ templates/claude/hooks/ が存在しない"
+  fail "前提ディレクトリ hooks/ が存在しない"
   exit 1
 fi
-if [[ ! -f "${TEMPLATES_LIB_DIR}/common.sh" ]]; then
-  fail "前提ファイル templates/claude/lib/common.sh が存在しない（sync_lib_for_hook_tests 失敗）"
+if [[ ! -f "${PLUGIN_LIB_DIR}/common.sh" ]]; then
+  fail "前提ファイル lib/common.sh が存在しない（Issue #707 後の plugin ルート lib/）"
   exit 1
 fi
 
@@ -96,7 +96,7 @@ hook_input_for() {
       printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"docs/SECURITY.md"}}'
       ;;
     diagnose-guard)
-      printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"templates/claude/hooks/protect-files.sh"}}'
+      printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"hooks/protect-files.sh"}}'
       ;;
     protect-knowledge-direct-writes)
       printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":".claude/knowledge/cpo/decisions/foo.md"}}'
@@ -247,7 +247,7 @@ else
   fail "standard preset で role-gate hook が exit 1 で異常終了した"
 fi
 
-if output=$(run_hook_with_skip_check "diagnose-guard" '{"tool_input":{"file_path":"templates/claude/hooks/protect-files.sh"}}' 2>&1); then
+if output=$(run_hook_with_skip_check "diagnose-guard" '{"tool_input":{"file_path":"hooks/protect-files.sh"}}' 2>&1); then
   if [[ -z "$output" ]]; then
     pass "standard preset で diagnose-guard hook が出力なしで exit 0 する"
   else
@@ -262,10 +262,10 @@ echo ""
 echo "=== Test 5: CISO 条件 1: lib/common.sh source 失敗時に hook が fail-secure する ==="
 # ============================================
 
-# templates/claude/lib/common.sh を一時退避し、hook が source 失敗で異常終了することを確認
+# plugin ルート lib/common.sh を一時退避し、hook が source 失敗で異常終了することを確認
 # set -euo pipefail により hook 内の source 失敗が exit code に伝播する
-BROKEN_PATH="${TEMPLATES_LIB_DIR}/common.sh"
-BACKUP_PATH="${TEMPLATES_LIB_DIR}/common.sh.bak.test_hook_skip_runtime"
+BROKEN_PATH="${PLUGIN_LIB_DIR}/common.sh"
+BACKUP_PATH="${PLUGIN_LIB_DIR}/common.sh.bak.test_hook_skip_runtime"
 
 if [[ -f "$BROKEN_PATH" ]]; then
   mv "$BROKEN_PATH" "$BACKUP_PATH"
@@ -286,7 +286,7 @@ if [[ -f "$BROKEN_PATH" ]]; then
   # 復元
   mv "$BACKUP_PATH" "$BROKEN_PATH"
 else
-  fail "templates/claude/lib/common.sh が事前に存在しない（test fixtures の前提が崩れている）"
+  fail "lib/common.sh が事前に存在しない（test fixtures の前提が崩れている）"
 fi
 
 echo ""

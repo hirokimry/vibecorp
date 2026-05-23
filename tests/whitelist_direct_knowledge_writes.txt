@@ -18,7 +18,7 @@ tests/whitelist_direct_knowledge_writes.txt
 
 # 既存の knowledge ヘルパーは仕組み側のため対象外
 lib/knowledge_buffer.sh
-templates/claude/hooks/protect-knowledge-direct-writes.sh
+hooks/protect-knowledge-direct-writes.sh
 
 # migration ドキュメント自体に直書きパスの「説明」が入るのは想定内
 docs/migration-knowledge-buffer.md
