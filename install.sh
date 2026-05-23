@@ -669,17 +669,24 @@ migrate_legacy_layout() {
     zombie_agent.sh
   )
 
+  # content 一致確認: vibecorp 配布物と完全に同一内容のファイルだけを削除する。
+  # 同名でも内容が異なるファイル（= ユーザー独自フック / ユーザー改変フック）は保持する。
+  # これにより同名ユーザーフックを誤削除しない（regression 防止: PR #727 後の test 失敗修正）。
   if [[ -d "$legacy_hooks" ]]; then
     local removed_legacy_hook=0
-    local hook_basename
+    local hook_basename plugin_hook legacy_hook
     for hook_basename in "${vibecorp_hook_basenames[@]}"; do
-      if [[ -f "${legacy_hooks}/${hook_basename}" ]]; then
-        rm -f "${legacy_hooks}/${hook_basename}"
-        removed_legacy_hook=1
+      legacy_hook="${legacy_hooks}/${hook_basename}"
+      plugin_hook="${SCRIPT_DIR}/hooks/${hook_basename}"
+      if [[ -f "$legacy_hook" && -f "$plugin_hook" ]]; then
+        if cmp -s "$legacy_hook" "$plugin_hook"; then
+          rm -f "$legacy_hook"
+          removed_legacy_hook=1
+        fi
       fi
     done
     if [[ $removed_legacy_hook -eq 1 ]]; then
-      log_info "migration: 旧 .claude/hooks/ から vibecorp 配布フックを削除"
+      log_info "migration: 旧 .claude/hooks/ から vibecorp 配布フックを削除（content 一致のみ）"
       removed=1
     fi
     rmdir "$legacy_hooks" 2>/dev/null || true
@@ -687,15 +694,19 @@ migrate_legacy_layout() {
 
   if [[ -d "$legacy_lib" ]]; then
     local removed_legacy_lib=0
-    local lib_basename
+    local lib_basename plugin_lib legacy_lib_file
     for lib_basename in "${vibecorp_lib_basenames[@]}"; do
-      if [[ -f "${legacy_lib}/${lib_basename}" ]]; then
-        rm -f "${legacy_lib}/${lib_basename}"
-        removed_legacy_lib=1
+      legacy_lib_file="${legacy_lib}/${lib_basename}"
+      plugin_lib="${SCRIPT_DIR}/lib/${lib_basename}"
+      if [[ -f "$legacy_lib_file" && -f "$plugin_lib" ]]; then
+        if cmp -s "$legacy_lib_file" "$plugin_lib"; then
+          rm -f "$legacy_lib_file"
+          removed_legacy_lib=1
+        fi
       fi
     done
     if [[ $removed_legacy_lib -eq 1 ]]; then
-      log_info "migration: 旧 .claude/lib/ から vibecorp 配布 lib を削除"
+      log_info "migration: 旧 .claude/lib/ から vibecorp 配布 lib を削除（content 一致のみ）"
       removed=1
     fi
     rmdir "$legacy_lib" 2>/dev/null || true
