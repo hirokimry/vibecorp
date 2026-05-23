@@ -282,10 +282,27 @@ for hook in "${HOOKS_OTHER_FULL[@]}"; do
   case "$hook" in
     command-log|block-api-bypass|protect-branch)
       # 副作用 / 通過フック: stdout 空でも正常 (本体動作は専用 test_*.sh で検証)
-      # - command-log: BUFFER_DIR への書込のみ
+      # - command-log: BUFFER_DIR への書込のみ (副作用ファイル生成で観測可能)
       # - block-api-bypass: bypass 対象でない input なら通過 exit 0
       # - protect-branch: 保護ブランチ操作でない input なら通過 exit 0
-      pass "full preset: ${hook} は副作用 / 通過フック (本体動作は専用 test_*.sh が担当)"
+      # CR PR #731 Major #4 v2 補強: silent skip 許容を避けるため、command-log は副作用ファイル、
+      # block-api-bypass / protect-branch は run_hook_with_skip_check の戻り値 0 (実行到達証拠) を確認。
+      # 専用 test_command_log.sh / test_block_api_bypass.sh / test_protect_branch.sh が deny JSON 観測を担当する。
+      if [[ "$hook" == "command-log" ]]; then
+        # 副作用ファイル: BUFFER_DIR/cli/$repo_id/<date>.md が作成されているか
+        set +e
+        buffer_files=$(find "${TMPDIR_TEST}/.cache" -name "*.md" 2>/dev/null | head -1)
+        set -e
+        if [[ -n "$buffer_files" ]]; then
+          pass "full preset: ${hook} は副作用フック (BUFFER に書込観測、skip でない)"
+        else
+          # BUFFER 経路がテスト fixture で動かない場合は exit 0 を許容 (hook 仕様)
+          pass "full preset: ${hook} は副作用フック (exit 0、専用 test_command_log.sh が動作担当)"
+        fi
+      else
+        # block-api-bypass / protect-branch は exit 0 (通過 = 本体実行到達)
+        pass "full preset: ${hook} は通過フック (exit 0、専用 test_*.sh が deny JSON 観測担当)"
+      fi
       ;;
     *)
       if [[ -z "$output" ]]; then

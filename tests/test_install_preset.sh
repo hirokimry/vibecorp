@@ -1450,14 +1450,14 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset full --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# hooks は plugin native 配布に移行済のため、ここでは skills / agents の置換のみ検証する
-
-# plugin skills 内の全ファイルに vibecorp プレースホルダーが残っていないこと
-REMAINING=$(grep -rl '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$R/skills/" 2>/dev/null || true)
+# hooks は plugin native 配布に移行済のため、ここでは agents の置換のみ検証する。
+# CR PR #731 Minor 対応: skills/ は plugin native 化で install 時に作られないため、
+# 実在する .claude/agents/ に検証対象を切り替えて常時 pass を防ぐ。
+REMAINING=$(grep -rl '{{PROJECT_NAME}}\|{{PRESET}}\|{{LANGUAGE}}' "$R/.claude/agents/" 2>/dev/null || true)
 if [ -z "$REMAINING" ]; then
-  pass "AI1: plugin skills 内にプレースホルダーが残っていない"
+  pass "AI1: .claude/agents/ 内にプレースホルダーが残っていない"
 else
-  fail "AI1: plugin skills 内にプレースホルダーが残っている: $REMAINING"
+  fail "AI1: .claude/agents/ 内にプレースホルダーが残っている: $REMAINING"
 fi
 cleanup
 

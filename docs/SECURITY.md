@@ -524,9 +524,10 @@ fail-secure deny される。
 | Bash 層 | `protect-knowledge-bash-writes.sh`（Issue #448） | `Bash` | Bash redirect / コマンド経由の直書き |
 
 **配置 preset**: 両 hook は**全 preset（minimal / standard / full）で配置される**。
-`install.sh` は `templates/claude/hooks/*.sh` を preset でフィルタせず順次コピーするため、
-minimal でも knowledge ガードレールは有効になる。
-`vibecorp.yml` の `hooks:` セクションで個別に無効化することは可能（推奨しない）。
+plugin native 配布（`hooks/hooks.json` + `.claude-plugin/plugin.json:hooks`、#716/#720）で
+全 preset 共通に登録されるため、minimal でも knowledge ガードレールは有効になる。
+`vibecorp.yml` の `hooks:` セクションで個別に無効化することは可能（推奨しない、
+緊急一時措置として `protect-files` / `diagnose-guard` / `sync-gate` / `review-gate` のみ false 化可能）。
 
 ### Bash 層の検出対象パターン
 
