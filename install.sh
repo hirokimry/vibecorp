@@ -717,10 +717,11 @@ copy_managed_files() {
   mkdir -p "$hooks_dir"
 
   # lib: フック共通ユーティリティをコピー（常に最新で上書き）
+  # Issue #707 で lib/ は plugin ルートへ移動済。templates/claude/lib/ は廃止。
   local lib_dir="${REPO_ROOT}/.claude/lib"
-  if [[ -d "${SCRIPT_DIR}/templates/claude/lib" ]]; then
+  if [[ -d "${SCRIPT_DIR}/lib" ]]; then
     mkdir -p "$lib_dir"
-    for src in "${SCRIPT_DIR}/templates/claude/lib/"*.sh; do
+    for src in "${SCRIPT_DIR}/lib/"*.sh; do
       [[ -f "$src" ]] || continue
       cp "$src" "${lib_dir}/$(basename "$src")"
     done
