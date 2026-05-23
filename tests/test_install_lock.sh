@@ -344,14 +344,14 @@ R="$TMPDIR_ROOT"
 LOCK="$R/.claude/vibecorp.lock"
 
 if [ -f "$LOCK" ]; then
-  # 空リスト時は "hooks: []" のような表記であること（null ではない）
-  if grep -q 'hooks: \[\]' "$LOCK"; then
-    pass "AH1: 空リスト時に hooks: [] が出力される"
+  # v2 形式 (#722): hooks: セクションは廃止、skills: で空リスト表記を確認
+  if grep -q 'skills: \[\]' "$LOCK"; then
+    pass "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される（v2 形式は skills で検証）"
   else
-    fail "AH1: 空リスト時に hooks: [] が出力される"
+    fail "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される"
   fi
 else
-  fail "AH1: 空リスト時に hooks: [] が出力される (lock ファイルが存在しない)"
+  fail "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される (lock ファイルが存在しない)"
 fi
 
 # テンプレート復元
