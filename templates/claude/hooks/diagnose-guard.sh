@@ -13,6 +13,9 @@ source "${HOOK_DIR}/../lib/common.sh"
 # realpath 正規化を使い、シンボリックリンク経由の bypass（例: skillz -> skills）を塞ぐ
 source "${HOOK_DIR}/../lib/path_normalize.sh"
 
+# yml で hooks.diagnose-guard: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "diagnose-guard" && exit 0
+
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
