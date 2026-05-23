@@ -48,7 +48,12 @@ assert_all_hooks_exist() {
   if [ -z "$hooks" ]; then
     # plugin native (#720): settings.json.tpl は hooks ブロックを持たなくなった
     # （hooks 登録は ${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json 経由に一元化）
-    pass "$desc (plugin native 配布で hooks 参照ゼロ、#720 / #716)"
+    # CR PR #731 Minor #9 対応: .hooks キー自体が存在しないことを明示検証して退行を捕捉する
+    if jq -e '.hooks' "$settings_file" >/dev/null 2>&1; then
+      fail "$desc (.hooks キー残存だが参照抽出 0 件 = 構造不一致による誤検出の可能性)"
+    else
+      pass "$desc (plugin native 配布で .hooks キー不在、#720 / #716)"
+    fi
     return
   fi
 

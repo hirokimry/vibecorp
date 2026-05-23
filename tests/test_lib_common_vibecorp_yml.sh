@@ -131,15 +131,16 @@ name: test-project
 preset: full
 language: ja
 hooks:
-  guide-gate: false
+  sync-gate: false
   role-gate: true
 YAML
 
-# yml で明示的に false → skip すべき (return 0)
-if hook_skip_if_disabled guide-gate; then
-  pass "hooks: guide-gate: false → hook_skip_if_disabled が 0 を返す（skip）"
+# CR PR #731 Major #3 対応: 無効化可能 hook (sync-gate) のみ yml で false で skip 可能
+# guide-gate / role-gate 等の保護系・ガードレール系は yml false でも skip しない
+if hook_skip_if_disabled sync-gate; then
+  pass "hooks: sync-gate: false → hook_skip_if_disabled が 0 を返す（skip、無効化可能 hook）"
 else
-  fail "hooks: guide-gate: false → hook_skip_if_disabled が 0 を返すべき"
+  fail "hooks: sync-gate: false → hook_skip_if_disabled が 0 を返すべき"
 fi
 
 # yml で明示的に true（かつ preset 有効リスト内）→ continue (return 1)
@@ -186,7 +187,7 @@ preset: standard
 language: ja
 YAML
 
-for std_hook in sync-gate session-harvest-gate review-gate guide-gate; do
+for std_hook in sync-gate review-gate guide-gate; do
   if hook_skip_if_disabled "$std_hook"; then
     fail "standard preset: ${std_hook} は continue すべき"
   else
@@ -209,7 +210,7 @@ preset: full
 language: ja
 YAML
 
-for full_hook in sync-gate session-harvest-gate review-gate guide-gate role-gate diagnose-guard; do
+for full_hook in sync-gate review-gate guide-gate role-gate diagnose-guard; do
   if hook_skip_if_disabled "$full_hook"; then
     fail "full preset: ${full_hook} は continue すべき"
   else

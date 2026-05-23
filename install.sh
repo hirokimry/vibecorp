@@ -767,17 +767,6 @@ copy_managed_files() {
   local skills_dir="${REPO_ROOT}/.claude/skills"
   local agents_dir="${REPO_ROOT}/.claude/agents"
 
-  # lib: フック共通ユーティリティをコピー（常に最新で上書き）
-  # Issue #707 で lib/ は plugin ルートへ移動済。templates/claude/lib/ は廃止。
-  local lib_dir="${REPO_ROOT}/.claude/lib"
-  if [[ -d "${SCRIPT_DIR}/lib" ]]; then
-    mkdir -p "$lib_dir"
-    for src in "${SCRIPT_DIR}/lib/"*.sh; do
-      [[ -f "$src" ]] || continue
-      cp "$src" "${lib_dir}/$(basename "$src")"
-    done
-  fi
-
   # --update: plugin skills マイグレーション（プラグインキャッシュに移行済み）
   if [[ "$UPDATE_MODE" == true ]]; then
     local lock="${REPO_ROOT}/.claude/vibecorp.lock"

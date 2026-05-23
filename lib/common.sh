@@ -266,7 +266,7 @@ _vibecorp_preset_has_hook() {
     standard)
       # minimal で除外される hook のうち、role-gate / diagnose-guard 以外を追加
       case "$hook" in
-        sync-gate|session-harvest-gate|review-gate|guide-gate)
+        sync-gate|review-gate|guide-gate)
           return 0
           ;;
       esac
@@ -275,7 +275,7 @@ _vibecorp_preset_has_hook() {
     full)
       # full は全 hook 有効
       case "$hook" in
-        sync-gate|session-harvest-gate|review-gate|guide-gate|role-gate|diagnose-guard)
+        sync-gate|review-gate|guide-gate|role-gate|diagnose-guard)
           return 0
           ;;
       esac
@@ -284,7 +284,7 @@ _vibecorp_preset_has_hook() {
     *)
       # 未知の preset はフェイルセーフで standard 扱い
       case "$hook" in
-        sync-gate|session-harvest-gate|review-gate|guide-gate)
+        sync-gate|review-gate|guide-gate)
           return 0
           ;;
       esac
@@ -301,13 +301,30 @@ _vibecorp_preset_has_hook() {
 # 想定使用法: 各 hook の冒頭で
 #   source "$(dirname "$0")/../../lib/common.sh"
 #   hook_skip_if_disabled role-gate && exit 0
+# 機能: yml で skip させて良い hook かを判定する（CR PR #731 Major #3 対応）
+# 保護系・ログ系・API バイパス防止系・ガードレール系は CISO 要件により無効化不可。
+# 利用者の vibecorp.yml で hooks.<name>: false と書いてもこれらは skip されない。
+_vibecorp_hook_can_be_disabled_by_yaml() {
+  local hook="$1"
+  case "$hook" in
+    # 無効化可能: preset で on/off するオプトイン系
+    sync-gate|review-gate)
+      return 0
+      ;;
+    # 無効化不可: 保護系・ログ系・API バイパス防止系・ガードレール系
+    *)
+      return 1
+      ;;
+  esac
+}
+
 hook_skip_if_disabled() {
   local hook="$1"
 
-  # 1. yml で明示的に hooks: <name>: false → skip
+  # 1. yml で明示的に hooks: <name>: false → skip（無効化可能 hook のみ）
   local yml_val
   yml_val=$(vibecorp_yml_get hooks "$hook")
-  if [[ "$yml_val" == "false" ]]; then
+  if [[ "$yml_val" == "false" ]] && _vibecorp_hook_can_be_disabled_by_yaml "$hook"; then
     return 0
   fi
 

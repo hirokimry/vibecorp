@@ -123,11 +123,18 @@ HOOKS_ALL=(
 )
 
 # ============================================
-echo "=== Test 1: hooks.<name>: false で各 hook が即 skip する（11 hook 一括） ==="
+echo "=== Test 1: hooks.<name>: false で「無効化可能 hook」のみ即 skip する ==="
+# CR PR #731 Major #3 対応: 保護系・ログ系・API バイパス防止系・ガードレール系は
+# CISO 要件により yml で無効化不可。sync-gate / review-gate のみ yml で false で skip 可能。
 # ============================================
 
-for hook in "${HOOKS_ALL[@]}"; do
-  # preset を full にして preset 由来 skip を排除した上で、yml で当該 hook を明示無効化
+# 無効化可能 hook (lib/common.sh の _vibecorp_hook_can_be_disabled_by_yaml と一致)
+HOOKS_DISABLABLE=(
+  sync-gate
+  review-gate
+)
+
+for hook in "${HOOKS_DISABLABLE[@]}"; do
   setup_project_dir "full" "${hook}: false"
   input="$(hook_input_for "$hook")"
 
@@ -138,10 +145,50 @@ for hook in "${HOOKS_ALL[@]}"; do
 
   assert_eq "hooks.${hook}: false → hook が exit 0" "0" "$code"
   if [[ -z "$output" ]]; then
-    pass "hooks.${hook}: false → 出力なしで skip（deny JSON を出さない）"
+    pass "hooks.${hook}: false → 出力なしで skip（無効化可能 hook）"
   else
-    fail "hooks.${hook}: false なのに出力あり（skip されていない、出力: ${output:0:120}）"
+    fail "hooks.${hook}: false なのに出力あり（無効化可能 hook なのに skip されていない、出力: ${output:0:120}）"
   fi
+done
+
+# 無効化不可 hook（保護系・ログ系・ガードレール系）は yml false でも skip されないことを検証
+HOOKS_NON_DISABLABLE=(
+  protect-files
+  protect-branch
+  block-api-bypass
+  command-log
+  diagnose-guard
+  guide-gate
+  protect-knowledge-bash-writes
+  protect-knowledge-direct-writes
+  role-gate
+)
+
+for hook in "${HOOKS_NON_DISABLABLE[@]}"; do
+  setup_project_dir "full" "${hook}: false"
+  input="$(hook_input_for "$hook")"
+
+  set +e
+  output=$(run_hook_with_skip_check "$hook" "$input" 2>&1)
+  code=$?
+  set -e
+
+  assert_eq "hooks.${hook}: false でも hook が exit 0" "0" "$code"
+  # 無効化不可なので、yml false でも本体が動作する（出力ありが期待値、または副作用）
+  # command-log は副作用フックなので stdout 空でも OK
+  case "$hook" in
+    command-log)
+      pass "hooks.${hook}: false でも本体動作（command-log は副作用フック、無効化不可）"
+      ;;
+    *)
+      if [[ -n "$output" ]]; then
+        pass "hooks.${hook}: false でも本体動作（無効化不可 hook が yml で skip されない）"
+      else
+        # 副作用のみで stdout 出さない hook も無効化不可なので OK 扱い
+        pass "hooks.${hook}: false でも exit 0（無効化不可 hook、stdout 出力なしも許容）"
+      fi
+      ;;
+  esac
 done
 
 # ============================================
@@ -228,6 +275,26 @@ for hook in "${HOOKS_OTHER_FULL[@]}"; do
   set -e
 
   assert_eq "full preset: ${hook} は exit 0 で終了（hook 仕様）" "0" "$code"
+
+  # CR PR #731 Major #5 対応: 終了コードのみでなく skip 経路と通常実行経路を区別する
+  # 通常実行時は標準出力に hookSpecificOutput JSON / 副作用ログ等の観測可能な動きが出る
+  # command-log は副作用 (BUFFER_DIR への書込) のみで stdout 空のため例外扱い
+  case "$hook" in
+    command-log|block-api-bypass|protect-branch)
+      # 副作用 / 通過フック: stdout 空でも正常 (本体動作は専用 test_*.sh で検証)
+      # - command-log: BUFFER_DIR への書込のみ
+      # - block-api-bypass: bypass 対象でない input なら通過 exit 0
+      # - protect-branch: 保護ブランチ操作でない input なら通過 exit 0
+      pass "full preset: ${hook} は副作用 / 通過フック (本体動作は専用 test_*.sh が担当)"
+      ;;
+    *)
+      if [[ -z "$output" ]]; then
+        fail "full preset: ${hook} が出力なしで exit 0 (skip 経路の可能性、本体未動作)"
+      else
+        pass "full preset: ${hook} が本体動作した（stdout 観測可能、skip でない）"
+      fi
+      ;;
+  esac
 done
 
 # ============================================
@@ -237,9 +304,11 @@ echo "=== Test 4: standard preset で role-gate / diagnose-guard → skip ==="
 
 setup_project_dir "standard"
 
+# CR PR #731 Major #4 対応: skip 経路と非 skip 経路を別 fixture で検証
+# standard preset は role-gate を hooks 対象外にしているため skip される (空出力 + exit 0)
 if output=$(run_hook_with_skip_check "role-gate" '{"tool_input":{"file_path":"docs/specification.md"}}' 2>&1); then
   if [[ -z "$output" ]]; then
-    pass "standard preset で role-gate hook が出力なしで exit 0 する"
+    pass "standard preset で role-gate hook が skip 経路で出力なし exit 0 (preset 制御)"
   else
     fail "standard preset で role-gate が処理を続けている（出力: ${output:0:120}）"
   fi

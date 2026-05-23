@@ -87,13 +87,15 @@ for hook in "${HOOK_FILES[@]}"; do
     continue
   fi
 
-  if grep -qE 'CLAUDE_PROJECT_DIR|HOOK_DIR' "$HOOK_PATH"; then
-    pass "$hook は \$CLAUDE_PROJECT_DIR / \$HOOK_DIR で anchor を解決している"
+  # CR PR #731 Minor #7 対応: コメント行を除外して実コードのみで判定
+  # 行頭から空白とコメント # を除去した結果が anchor を含むかチェック
+  if grep -vE '^[[:space:]]*#' "$HOOK_PATH" | grep -qE 'CLAUDE_PROJECT_DIR|HOOK_DIR'; then
+    pass "$hook は \$CLAUDE_PROJECT_DIR / \$HOOK_DIR で anchor を解決している（実コードベース）"
   else
     # ファイルシステムにアクセスせず stdin のみ読み取るフックは anchor 不要
-    FILE_ACCESS=$(grep -cE '(open|source|readfile|\$\{?CLAUDE_PROJECT_DIR|\$\{?HOOK_DIR)' "$HOOK_PATH" || true)
+    FILE_ACCESS=$(grep -vE '^[[:space:]]*#' "$HOOK_PATH" | grep -cE '(open|source|readfile|\$\{?CLAUDE_PROJECT_DIR|\$\{?HOOK_DIR)' || true)
     if [[ "$FILE_ACCESS" -eq 0 ]]; then
-      pass "$hook は stdin のみ読み取るため anchor 不要"
+      pass "$hook は stdin のみ読み取るため anchor 不要（実コードベース）"
     else
       fail "$hook は \$CLAUDE_PROJECT_DIR / \$HOOK_DIR のいずれも使用していない"
     fi
