@@ -250,6 +250,82 @@ else
 fi
 
 echo ""
+echo "=== Test 6: 旧 .claude/hooks/ / .claude/lib/ の vibecorp 配布物が物理削除される (#708 完了条件 [1]) ==="
+
+TMPDIR_TEST="$(mktemp -d)"
+mkdir -p "${TMPDIR_TEST}/.claude/hooks"
+mkdir -p "${TMPDIR_TEST}/.claude/lib"
+echo "old protect-files" > "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
+echo "old command-log" > "${TMPDIR_TEST}/.claude/hooks/command-log.sh"
+echo "old common" > "${TMPDIR_TEST}/.claude/lib/common.sh"
+echo "user custom hook" > "${TMPDIR_TEST}/.claude/hooks/my-custom-hook.sh"
+echo "user custom lib" > "${TMPDIR_TEST}/.claude/lib/my-custom.sh"
+
+bash -c "
+  REPO_ROOT='$TMPDIR_TEST'
+  UPDATE_MODE=true
+  log_info() { :; }
+  $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
+  migrate_legacy_layout
+"
+
+if [[ ! -f "${TMPDIR_TEST}/.claude/hooks/protect-files.sh" ]]; then
+  pass "旧 .claude/hooks/protect-files.sh が削除された"
+else
+  fail "旧 .claude/hooks/protect-files.sh が残存している"
+fi
+
+if [[ ! -f "${TMPDIR_TEST}/.claude/hooks/command-log.sh" ]]; then
+  pass "旧 .claude/hooks/command-log.sh が削除された"
+else
+  fail "旧 .claude/hooks/command-log.sh が残存している"
+fi
+
+if [[ ! -f "${TMPDIR_TEST}/.claude/lib/common.sh" ]]; then
+  pass "旧 .claude/lib/common.sh が削除された"
+else
+  fail "旧 .claude/lib/common.sh が残存している"
+fi
+
+if [[ -f "${TMPDIR_TEST}/.claude/hooks/my-custom-hook.sh" ]]; then
+  pass "ユーザー独自フック .claude/hooks/my-custom-hook.sh が保持された（安全側）"
+else
+  fail "ユーザー独自フックが誤って削除された（migration 過剰）"
+fi
+
+if [[ -f "${TMPDIR_TEST}/.claude/lib/my-custom.sh" ]]; then
+  pass "ユーザー独自 lib .claude/lib/my-custom.sh が保持された（安全側）"
+else
+  fail "ユーザー独自 lib が誤って削除された（migration 過剰）"
+fi
+
+rm -rf "$TMPDIR_TEST"
+TMPDIR_TEST=""
+
+TMPDIR_TEST="$(mktemp -d)"
+mkdir -p "${TMPDIR_TEST}/.claude/hooks"
+mkdir -p "${TMPDIR_TEST}/.claude/lib"
+echo "old" > "${TMPDIR_TEST}/.claude/hooks/protect-files.sh"
+echo "old" > "${TMPDIR_TEST}/.claude/lib/common.sh"
+
+bash -c "
+  REPO_ROOT='$TMPDIR_TEST'
+  UPDATE_MODE=true
+  log_info() { :; }
+  $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
+  migrate_legacy_layout
+"
+
+if [[ ! -d "${TMPDIR_TEST}/.claude/hooks" ]]; then
+  pass "全 vibecorp フック削除後は .claude/hooks/ ディレクトリも削除される"
+else
+  fail ".claude/hooks/ が空にならない（migration 不完全）"
+fi
+
+rm -rf "$TMPDIR_TEST"
+TMPDIR_TEST=""
+
+echo ""
 echo "==========================="
 echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
 echo "==========================="

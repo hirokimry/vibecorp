@@ -623,6 +623,8 @@ migrate_legacy_layout() {
   local removed=0
   local base_hooks="${REPO_ROOT}/.claude/vibecorp-base/hooks"
   local base_lib="${REPO_ROOT}/.claude/vibecorp-base/lib"
+  local legacy_hooks="${REPO_ROOT}/.claude/hooks"
+  local legacy_lib="${REPO_ROOT}/.claude/lib"
 
   if [[ -d "$base_hooks" ]]; then
     rm -rf "$base_hooks"
@@ -638,6 +640,65 @@ migrate_legacy_layout() {
   # vibecorp-base/ 全体が空になったら ディレクトリも削除（rmdir は中身があれば失敗 = 安全）
   if [[ -d "${REPO_ROOT}/.claude/vibecorp-base" ]]; then
     rmdir "${REPO_ROOT}/.claude/vibecorp-base" 2>/dev/null || true
+  fi
+
+  # 機能: 旧 .claude/hooks/ / .claude/lib/ 配下の vibecorp 配布物を物理削除（Issue #708 完了条件 [1]）
+  # plugin native 配布 (#716) で hooks / lib は ${CLAUDE_PLUGIN_ROOT}/hooks/ + ${CLAUDE_PLUGIN_ROOT}/lib/
+  # に一元化されたため、.claude/hooks/ / .claude/lib/ 配下の vibecorp 配布物は不要。
+  # ユーザー独自フックは .claude/settings.local.json の hooks ブロックで追加する運用に統一する
+  # （CISO 必須対策③、docs/SECURITY.md 参照）。
+  # 安全側に倒すため、vibecorp 配布物として既知の basename のみを削除し、未知ファイルは保持する。
+  local vibecorp_hook_basenames=(
+    block-api-bypass.sh
+    command-log.sh
+    diagnose-guard.sh
+    guide-gate.sh
+    protect-branch.sh
+    protect-files.sh
+    protect-knowledge-bash-writes.sh
+    protect-knowledge-direct-writes.sh
+    review-gate.sh
+    role-gate.sh
+    sync-gate.sh
+    session-harvest-gate.sh
+  )
+  local vibecorp_lib_basenames=(
+    common.sh
+    knowledge_buffer.sh
+    path_normalize.sh
+    zombie_agent.sh
+  )
+
+  if [[ -d "$legacy_hooks" ]]; then
+    local removed_legacy_hook=0
+    local hook_basename
+    for hook_basename in "${vibecorp_hook_basenames[@]}"; do
+      if [[ -f "${legacy_hooks}/${hook_basename}" ]]; then
+        rm -f "${legacy_hooks}/${hook_basename}"
+        removed_legacy_hook=1
+      fi
+    done
+    if [[ $removed_legacy_hook -eq 1 ]]; then
+      log_info "migration: 旧 .claude/hooks/ から vibecorp 配布フックを削除"
+      removed=1
+    fi
+    rmdir "$legacy_hooks" 2>/dev/null || true
+  fi
+
+  if [[ -d "$legacy_lib" ]]; then
+    local removed_legacy_lib=0
+    local lib_basename
+    for lib_basename in "${vibecorp_lib_basenames[@]}"; do
+      if [[ -f "${legacy_lib}/${lib_basename}" ]]; then
+        rm -f "${legacy_lib}/${lib_basename}"
+        removed_legacy_lib=1
+      fi
+    done
+    if [[ $removed_legacy_lib -eq 1 ]]; then
+      log_info "migration: 旧 .claude/lib/ から vibecorp 配布 lib を削除"
+      removed=1
+    fi
+    rmdir "$legacy_lib" 2>/dev/null || true
   fi
 
   # 機能: 既存 .claude/settings.json から hooks ブロックを物理除去（Issue #721）
