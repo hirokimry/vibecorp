@@ -322,9 +322,16 @@ echo "=== AH. lock ファイル空リスト時のインデント ==="
 # AH1. 空リスト時に YAML の明示的空リスト表記 [] が使用される
 create_test_repo
 # テンプレートディレクトリを空にして空リストを再現
-# hooks/skills/agents テンプレートを退避
+# Issue #707 以降は hooks/ が plugin ルート、skills/agents は従来通り templates/claude/ 配下
 TEMPLATES_BAK=$(mktemp -d)
-for tpl_dir in hooks skills agents; do
+# hooks は plugin ルート直下
+if [ -d "$SCRIPT_DIR/hooks" ]; then
+  cp -r "$SCRIPT_DIR/hooks" "$TEMPLATES_BAK/hooks"
+  rm -rf "$SCRIPT_DIR/hooks"
+  mkdir -p "$SCRIPT_DIR/hooks"
+fi
+# skills / agents は templates/claude/ 配下
+for tpl_dir in skills agents; do
   if [ -d "$SCRIPT_DIR/templates/claude/$tpl_dir" ]; then
     cp -r "$SCRIPT_DIR/templates/claude/$tpl_dir" "$TEMPLATES_BAK/$tpl_dir"
     rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
@@ -348,7 +355,12 @@ else
 fi
 
 # テンプレート復元
-for tpl_dir in hooks skills agents; do
+# Issue #707 以降は hooks/ が plugin ルート、skills/agents は templates/claude/ 配下
+if [ -d "$TEMPLATES_BAK/hooks" ]; then
+  rm -rf "$SCRIPT_DIR/hooks"
+  mv "$TEMPLATES_BAK/hooks" "$SCRIPT_DIR/hooks"
+fi
+for tpl_dir in skills agents; do
   if [ -d "$TEMPLATES_BAK/$tpl_dir" ]; then
     rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
     mv "$TEMPLATES_BAK/$tpl_dir" "$SCRIPT_DIR/templates/claude/$tpl_dir"
