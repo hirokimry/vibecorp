@@ -330,11 +330,11 @@ get_disabled_hooks() {
 }
 
 get_orphan_hooks() {
-  # .claude/vibecorp.lock に記載されているが templates/claude/hooks/ に実体がない
+  # .claude/vibecorp.lock に記載されているが hooks/ に実体がない
   # hook 名（basename）を 1 行 1 件で stdout に出力する。
   # vibecorp 開発側で廃止された hook（例: team-auto-approve.sh）を検出するために使う。
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-  local templates_hooks_dir="${SCRIPT_DIR}/templates/claude/hooks"
+  local templates_hooks_dir="${SCRIPT_DIR}/hooks"
 
   [[ -f "$lock" ]] || return 0
 
@@ -727,7 +727,7 @@ copy_managed_files() {
   fi
 
   # hooks: --update 時は 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
-  for src in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
+  for src in "${SCRIPT_DIR}/hooks/"*.sh; do
     [[ -f "$src" ]] || continue
     local name
     name=$(basename "$src")
@@ -756,10 +756,10 @@ copy_managed_files() {
   # hooks/messages: hook が参照する CEO 向け通知文ファイルを配布（常に最新で上書き）
   # .claude/rules/notification-prompt-extraction.md に基づき hook から外部化された通知文。
   # protect-knowledge-direct-writes.sh / protect-knowledge-bash-writes.sh 等が cat で読み込む。
-  if [[ -d "${SCRIPT_DIR}/templates/claude/hooks/messages" ]]; then
+  if [[ -d "${SCRIPT_DIR}/hooks/messages" ]]; then
     local messages_dir="${hooks_dir}/messages"
     mkdir -p "$messages_dir"
-    for src in "${SCRIPT_DIR}/templates/claude/hooks/messages/"*.md; do
+    for src in "${SCRIPT_DIR}/hooks/messages/"*.md; do
       [[ -f "$src" ]] || continue
       cp "$src" "${messages_dir}/$(basename "$src")"
     done
@@ -1876,7 +1876,7 @@ generate_vibecorp_lock() {
   local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
-  for f in "${SCRIPT_DIR}/templates/claude/hooks/"*.sh; do
+  for f in "${SCRIPT_DIR}/hooks/"*.sh; do
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")

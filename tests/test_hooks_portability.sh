@@ -14,7 +14,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-HOOKS_DIR="$PROJECT_DIR/templates/claude/hooks"
+HOOKS_DIR="$PROJECT_DIR/hooks"
 
 echo "=== hooks 移植性テスト ==="
 

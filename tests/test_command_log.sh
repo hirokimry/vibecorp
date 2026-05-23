@@ -9,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HOOKS_DIR="${SCRIPT_DIR}/templates/claude/hooks"
+HOOKS_DIR="${SCRIPT_DIR}/hooks"
 LIB_DIR="${SCRIPT_DIR}/lib"
 
 TMPDIR_ROOT=""

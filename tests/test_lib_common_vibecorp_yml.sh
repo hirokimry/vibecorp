@@ -223,14 +223,14 @@ echo "=== preset 別 hook 有効リストが install.sh と一致 ==="
 # ============================================
 
 INSTALL_SH="${SCRIPT_DIR}/install.sh"
-HOOKS_DIR_TEMPLATE="${SCRIPT_DIR}/templates/claude/hooks"
+HOOKS_DIR_TEMPLATE="${SCRIPT_DIR}/hooks"
 
 if [[ ! -f "$INSTALL_SH" ]]; then
   fail "install.sh が存在しない（前提ファイル）"
   exit 1
 fi
 if [[ ! -d "$HOOKS_DIR_TEMPLATE" ]]; then
-  fail "templates/claude/hooks/ が存在しない（前提ディレクトリ）"
+  fail "hooks/ が存在しない（前提ディレクトリ）"
   exit 1
 fi
 

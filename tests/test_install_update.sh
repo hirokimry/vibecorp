@@ -402,7 +402,7 @@ ORIGINAL_CONTENT=$(cat "$R/.claude/hooks/protect-files.sh")
 echo "# ユーザー追加: カスタム処理" >> "$R/.claude/hooks/protect-files.sh"
 
 # テンプレートを変更（先頭にコメント追加）
-TEMPLATE_FILE="$SCRIPT_DIR/templates/claude/hooks/protect-files.sh"
+TEMPLATE_FILE="$SCRIPT_DIR/hooks/protect-files.sh"
 ORIGINAL_TEMPLATE=$(cat "$TEMPLATE_FILE")
 
 # ベーススナップショットを保持しつつ、テンプレートを変更

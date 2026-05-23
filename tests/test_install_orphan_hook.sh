@@ -8,7 +8,7 @@
 #
 # シナリオ:
 #   1) vibecorp 本体ツリーを一時ディレクトリへコピー（本体 templates を汚さない）
-#   2) コピー側 templates/claude/hooks/ に stub-hook-for-test.sh を追加
+#   2) コピー側 hooks/ に stub-hook-for-test.sh を追加
 #   3) ダミープロジェクトに --preset minimal で install（stub が配置される）
 #   4) コピー側 templates から stub を削除してから --update 実行
 #   5) .claude/hooks/stub-hook-for-test.sh が物理削除されていることを確認
@@ -97,7 +97,7 @@ if ! cp -R "$SCRIPT_DIR" "$VIBECORP_COPY"; then
 fi
 
 INSTALL_SH="${VIBECORP_COPY}/install.sh"
-STUB_TEMPLATE="${VIBECORP_COPY}/templates/claude/hooks/stub-hook-for-test.sh"
+STUB_TEMPLATE="${VIBECORP_COPY}/hooks/stub-hook-for-test.sh"
 
 if [ ! -f "$INSTALL_SH" ]; then
   fail "install.sh がコピー先に存在しない: $INSTALL_SH"

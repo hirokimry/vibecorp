@@ -15,7 +15,7 @@ source "${TESTS_DIR}/lib/hook_fixtures.sh"
 sync_lib_for_hook_tests
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="${SCRIPT_DIR}/templates/claude/hooks/review-gate.sh"
+HOOK="${SCRIPT_DIR}/hooks/review-gate.sh"
 
 assert_blocked() {
   local desc="$1"

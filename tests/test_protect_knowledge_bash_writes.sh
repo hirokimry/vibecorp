@@ -9,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
-HOOK_FILE="${PROJECT_DIR}/templates/claude/hooks/protect-knowledge-bash-writes.sh"
+HOOK_FILE="${PROJECT_DIR}/hooks/protect-knowledge-bash-writes.sh"
 
 TMPDIR_ROOT="$(mktemp -d)"
 cleanup() {

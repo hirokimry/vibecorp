@@ -13,7 +13,7 @@ source "${TESTS_DIR}/lib/hook_fixtures.sh"
 # を引けるよう、テスト中だけ templates/claude/lib/ に lib をコピーする
 sync_lib_for_hook_tests
 
-HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
+HOOKS_DIR="$(cd "$(dirname "$0")/../hooks" && pwd)"
 LIB_DIR="$(cd "$(dirname "$0")/../lib" && pwd)"
 TMPDIR_ROOT=""
 

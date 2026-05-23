@@ -15,7 +15,7 @@ source "${TESTS_DIR}/lib/hook_fixtures.sh"
 sync_lib_for_hook_tests
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="${SCRIPT_DIR}/templates/claude/hooks/guide-gate.sh"
+HOOK="${SCRIPT_DIR}/hooks/guide-gate.sh"
 
 if [[ -f "$HOOK" ]]; then
   pass "guide-gate.sh が存在する"
@@ -148,7 +148,8 @@ guide_gate:
 YAML
 
 # 16. extra_paths に含まれるパス → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/hooks/sync-gate.sh"}}' | "$HOOK")
+# extra_paths: templates/claude/ に該当するパスを与えて deny を期待する
+OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/agents/cto.md"}}' | "$HOOK")
 assert_blocked "extra_paths の templates/claude/ 配下 → deny" "$OUTPUT"
 
 # 17. extra_paths に含まれるファイル → deny
@@ -167,7 +168,7 @@ preset: standard
 language: ja
 YAML
 
-OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/hooks/sync-gate.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/agents/cto.md"}}' | "$HOOK")
 assert_allowed "YAML 未設定時、templates/ はスコープ外 → allow" "$OUTPUT"
 
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/hooks/test.sh"}}' | "$HOOK")
