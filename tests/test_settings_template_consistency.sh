@@ -81,14 +81,22 @@ else
 fi
 
 # hooks.PreToolUse の matcher / hook 集合一致検証
-# 順序不問で集合として比較する
-TPL_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$TPL")
-CLAUDE_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$CLAUDE_SETTINGS")
-
-if [[ "$TPL_HOOKS_SET" == "$CLAUDE_HOOKS_SET" ]]; then
-  pass "hooks.PreToolUse の matcher / hook 集合が両ファイルで一致"
+# plugin native 配布 (#716/#720) 以降、settings.json は hooks を持たない (hooks.json に一元化)。
+# 両ファイルとも hooks がなければ skip、両方あれば比較、片方だけにあれば fail。
+TPL_HAS_HOOKS=$(jq -e '.hooks' "$TPL" >/dev/null 2>&1 && echo yes || echo no)
+CLAUDE_HAS_HOOKS=$(jq -e '.hooks' "$CLAUDE_SETTINGS" >/dev/null 2>&1 && echo yes || echo no)
+if [ "$TPL_HAS_HOOKS" = "no" ] && [ "$CLAUDE_HAS_HOOKS" = "no" ]; then
+  pass "hooks ブロック不在で一致 (plugin native 配布、#720)"
+elif [ "$TPL_HAS_HOOKS" = "$CLAUDE_HAS_HOOKS" ]; then
+  TPL_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$TPL")
+  CLAUDE_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$CLAUDE_SETTINGS")
+  if [ "$TPL_HOOKS_SET" = "$CLAUDE_HOOKS_SET" ]; then
+    pass "hooks.PreToolUse の matcher / hook 集合が両ファイルで一致"
+  else
+    fail "hooks.PreToolUse の matcher / hook 集合が両ファイルで乖離している"
+  fi
 else
-  fail "hooks.PreToolUse の matcher / hook 集合が両ファイルで乖離している"
+  fail "hooks ブロック有無が両ファイルで乖離: tpl=$TPL_HAS_HOOKS / claude=$CLAUDE_HAS_HOOKS"
 fi
 
 echo ""
