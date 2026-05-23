@@ -148,7 +148,8 @@ guide_gate:
 YAML
 
 # 16. extra_paths に含まれるパス → deny
-OUTPUT=$(echo '{"tool_input":{"file_path":"hooks/sync-gate.sh"}}' | "$HOOK")
+# extra_paths: templates/claude/ に該当するパスを与えて deny を期待する
+OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/agents/cto.md"}}' | "$HOOK")
 assert_blocked "extra_paths の templates/claude/ 配下 → deny" "$OUTPUT"
 
 # 17. extra_paths に含まれるファイル → deny
@@ -167,7 +168,7 @@ preset: standard
 language: ja
 YAML
 
-OUTPUT=$(echo '{"tool_input":{"file_path":"hooks/sync-gate.sh"}}' | "$HOOK")
+OUTPUT=$(echo '{"tool_input":{"file_path":"templates/claude/agents/cto.md"}}' | "$HOOK")
 assert_allowed "YAML 未設定時、templates/ はスコープ外 → allow" "$OUTPUT"
 
 OUTPUT=$(echo '{"tool_input":{"file_path":".claude/hooks/test.sh"}}' | "$HOOK")

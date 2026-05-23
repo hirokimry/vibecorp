@@ -38,6 +38,74 @@ AI レビュー（claude-code-action）の OAuth 認証経路は
 - Forked PR では secrets が渡らない仕様
 - `CLAUDE_CODE_OAUTH_TOKEN` 空文字列による silent fail 防止 preflight（Issue #509）
 
+## 🔌 Plugin native hook 配布のセキュリティ要件
+
+> [!IMPORTANT]
+> hook は plugin marketplace.json 経由でのみ配布される。
+> 任意 path や第三者 fork からの install は許可しない（攻撃面の最小化）。
+> CISO 監査記録: `.claude/knowledge/ciso/decisions/2026-Q2.md`（2026-05-23 #705 条件付き承認）
+
+vibecorp の 11 hook は `hooks/hooks.json` と `.claude-plugin/plugin.json:hooks` を経由し、Claude Code 公式 plugin native 機構で配布される。本セクションは CISO 監査の必須 4 対策を明文化する。
+
+### 1️⃣ 配布経路の限定（marketplace.json 経由のみ）
+
+| 経路 | 許可 / 禁止 | 根拠 |
+|------|----------|------|
+| `.claude-plugin/marketplace.json` 経由 | ✅ 許可 | vibecorp 公式配布の唯一の経路 |
+| `gh repo clone hirokimry/vibecorp` で取得した hooks の手動配置 | ❌ 禁止 | 整合性検証経路が存在しない |
+| 第三者 fork からの plugin install | ❌ 禁止 | 改竄リスク（README で警告） |
+
+利用者は必ず `extraKnownMarketplaces.vibecorp.source.repo: hirokimry/vibecorp` で plugin を読み込む。fork から install すると plugin 経路で配布される hook 内容が改竄されている可能性がある。
+
+### 2️⃣ plugin cache 権限の推奨運用
+
+plugin cache（`${CLAUDE_PLUGIN_ROOT}` が指す OS 依存パス）への install 後、利用者は以下を推奨する。
+
+```bash
+chmod -R go-w "${CLAUDE_PLUGIN_ROOT}"
+```
+
+これにより同一 host 上の別ユーザーからの hook 改竄経路（TOCTOU）を物理的に塞ぐ。`${CLAUDE_PLUGIN_ROOT}` の実体は OS / Claude Code バージョンに依存するため絶対パスは書かない。
+
+### 3️⃣ fail-closed 起動
+
+| 状態 | 挙動 |
+|------|------|
+| `${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh` が存在 | hook が PreToolUse で実行される |
+| `${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh` が不在 | Claude Code が hook 実行不能 → tool 操作拒否 |
+| plugin cache 全体が消失 | plugin enable 状態で hook 実行不能 → 操作拒否 |
+
+ガードレールが消失した場合に「無防備で操作許可」されることはない（hook が定義されているのに実行できなければ Claude Code 側で fail する設計）。これは vibecorp 側の追加コードではなく Claude Code 公式の `plugin.json:hooks` 機構の挙動に依存する。
+
+### 4️⃣ `${CLAUDE_PLUGIN_ROOT}` の信頼境界
+
+| 性質 | 評価 |
+|------|------|
+| 注入元 | Claude Code プロセスが hook 起動時に環境変数として注入 |
+| 由来 | ユーザープロンプト / `tool_input` ではない |
+| 改ざん経路 | Claude Code 本体プロセス内のメモリ書換が必要（攻撃難易度が高い） |
+| 一次防御 | hook 内で `HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` で自己解決し、`${CLAUDE_PLUGIN_ROOT}` 不在時も動作する |
+
+`${CLAUDE_PLUGIN_ROOT}` は injection 経路にならない信頼可能な境界として扱える。
+
+### ⚠️ ユーザー独自フック追加経路
+
+vibecorp 公式 hook の上書きや独自 hook 追加は `.claude/settings.local.json` の `hooks` ブロックで行う。
+
+| 編集対象 | 用途 | plugin update での扱い |
+|---------|------|-------------------|
+| `${CLAUDE_PLUGIN_ROOT}/hooks/*.sh`（plugin 配布） | vibecorp 公式 hook | plugin update でディレクトリ全体が置き換わる |
+| `.claude/settings.local.json` の `hooks` ブロック | 利用者独自 hook | plugin update で消えない（利用者管理領域） |
+
+### 🚫 非推奨運用
+
+| 操作 | 理由 |
+|------|------|
+| `vibecorp.yml: hooks.protect-files: false` | ガードレール無効化により破壊操作の検知経路が消える |
+| `vibecorp.yml: hooks.diagnose-guard: false` | `/vibecorp:diagnose` 実行中の保護ファイル書込を許してしまう |
+
+これらの hook 無効化は緊急時の一時的措置に限定し、恒常的な disable は推奨しない（CISO 観点）。
+
 ## 🗄️ データ保護
 
 ### 機密情報の取り扱い
