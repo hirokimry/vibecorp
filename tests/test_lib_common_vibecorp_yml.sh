@@ -316,7 +316,12 @@ done
 # minimal / standard 両方で「残存対象→continue」を照合する（順方向「削除対象→skip」と対称）。
 echo "  install.sh が minimal で残す hook を逆方向照合..."
 removed_minimal=$(extract_removed_hooks "minimal")
+# plugin native (#720): install.sh が hook 削除行を持たなくなったため、逆方向照合は無意味
+if [[ -z "$removed_minimal" ]]; then
+  pass "minimal: install.sh が hooks を物理削除しなくなった (#720, plugin native 配布)"
+fi
 for existing in "${existing_hooks[@]}"; do
+  [[ -n "$removed_minimal" ]] || continue
   is_removed=0
   for r in $removed_minimal; do
     if [[ "$r" == "$existing" ]]; then
@@ -342,7 +347,12 @@ done
 # standard preset の残存対象: 実存 hook − standard 削除 hook
 echo "  install.sh が standard で残す hook を逆方向照合..."
 removed_standard=$(extract_removed_hooks "standard")
+# plugin native (#720): install.sh が hook 削除行を持たなくなったため、逆方向照合は無意味
+if [[ -z "$removed_standard" ]]; then
+  pass "standard: install.sh が hooks を物理削除しなくなった (#720, plugin native 配布)"
+fi
 for existing in "${existing_hooks[@]}"; do
+  [[ -n "$removed_standard" ]] || continue
   is_removed=0
   for r in $removed_standard; do
     if [[ "$r" == "$existing" ]]; then

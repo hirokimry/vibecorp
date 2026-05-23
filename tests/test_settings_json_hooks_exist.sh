@@ -46,7 +46,9 @@ assert_all_hooks_exist() {
   hooks=$(extract_hook_basenames "$settings_file")
 
   if [ -z "$hooks" ]; then
-    fail "$desc (hook 参照が1件も抽出できない: $settings_file)"
+    # plugin native (#720): settings.json.tpl は hooks ブロックを持たなくなった
+    # （hooks 登録は ${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json 経由に一元化）
+    pass "$desc (plugin native 配布で hooks 参照ゼロ、#720 / #716)"
     return
   fi
 
