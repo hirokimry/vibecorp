@@ -4,6 +4,7 @@
 関連する過去判断を特定したら `decisions/YYYY-QN.md` を追加で Read する。
 
 ## エントリ
+- 2026-05-23 — plugin native 配布化のセキュリティ最終審査（#705 / 親エピック #700）— 条件付き承認: 8 観点全評価完了、新規脆弱性なし、子 #707 実装の絶対条件として 4 必須対策（marketplace.json 限定 / plugin cache chmod 推奨 / ユーザー独自フックは settings.local.json / fail-closed 起動）を付記
 - 2026-05-16 — Issue #310 Linux bwrap 隔離レイヤ実装 メタレビュー #2 — 承認: symlink チェック修正確認済み、全件修正済みマージ可、新規脆弱性なし（CR-001 / Issue #311 と整合）
 - 2026-05-16 — Issue #310 Linux bwrap 隔離レイヤ実装 メタレビュー #1 — 差し戻し: 全会一致ルール適用（analyst #3 = High）。source 前の symlink チェック（-L）欠如による Link Following 脆弱性（任意シェルコード実行経路）を検出
 - 2026-05-10 — 不可領域チェック: ship が Issue チェックボックスをマージ後に自動検証し未完了項目を再帰実装するようになる（skills/ship/SKILL.md 拡張）— 条件付き OK（6分類非該当。再帰深度上限・安全弁・ヘッドレス呼び出し追加禁止の実装時条件 3 点を付記）
