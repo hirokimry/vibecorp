@@ -733,40 +733,59 @@ migrate_legacy_layout() {
   # 機能: 既存 .claude/settings.json から hooks ブロックを物理除去（Issue #721）
   # plugin native 配布 (#716) 後は plugin/hooks/hooks.json が唯一の登録元。settings.json 側に
   # 古い hooks ブロックが残っていると hook が二重発火する可能性があるため migration する。
-  # CR PR #731 Major #4 v2 対応: vibecorp 由来 hook のみ削除し、ユーザー独自 hook は保持する。
-  # 判定基準: command 文字列が ".claude/hooks/<vibecorp 既知 basename>" を含むエントリは vibecorp 由来。
-  # それ以外 (ユーザー独自パス, settings.local.json への移行推奨) は保持する。
+  # CR PR #731 Major #4 v2 / Major #6 v3 対応:
+  # 1) settings.json から vibecorp 由来 hooks のみ抽出して除去
+  # 2) custom hooks は settings.local.json の hooks へ移送 (CISO 責務分離要件、SECURITY.md 規定)
+  # 3) settings.json から hooks ブロックを完全削除 (plugin native 統一)
   local settings_json="${REPO_ROOT}/.claude/settings.json"
+  local settings_local_json="${REPO_ROOT}/.claude/settings.local.json"
   if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
-      # vibecorp 配布 hook basename を jq 配列として渡す
       local vibecorp_hooks_json
       vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
 
+      # custom hooks を抽出 (vibecorp 由来でない hook エントリのみ残した hooks サブツリー)
+      local custom_hooks
+      custom_hooks="$(jq --argjson vibehooks "$vibecorp_hooks_json" '
+        (.hooks // {}) | with_entries(
+          .value |= map(
+            .hooks |= map(
+              select((.command // "") as $cmd
+                | ($vibehooks | any(. as $h | $cmd | contains(".claude/hooks/" + $h))) | not)
+            )
+            | select((.hooks // []) | length > 0)
+          )
+          | select((.value | length) > 0)
+        )
+      ' "$settings_json")"
+
+      # custom hooks が存在すれば settings.local.json にマージ
+      if [[ "$(printf '%s' "$custom_hooks" | jq 'length')" -gt 0 ]]; then
+        local tmp_local
+        tmp_local="$(mktemp "$(dirname "$settings_json")/.settings.local.json.XXXXXX")"
+        if [[ -f "$settings_local_json" ]]; then
+          # 既存 settings.local.json の hooks に追記マージ (同名 event の hooks 配列を連結)
+          jq --argjson new "$custom_hooks" '
+            .hooks = ((.hooks // {}) as $old
+              | reduce ($new | to_entries[]) as $entry ($old;
+                  .[$entry.key] = ((.[$entry.key] // []) + $entry.value)
+                )
+            )
+          ' "$settings_local_json" > "$tmp_local" && mv "$tmp_local" "$settings_local_json"
+        else
+          # 新規作成
+          jq -n --argjson custom "$custom_hooks" '{hooks: $custom}' > "$tmp_local" && mv "$tmp_local" "$settings_local_json"
+        fi
+        log_info "migration: settings.json の custom hook を settings.local.json へ移送（CISO 責務分離）"
+      fi
+
+      # settings.json から hooks ブロックを完全削除
       local tmp_settings
       tmp_settings="$(mktemp "$(dirname "$settings_json")/.settings.json.XXXXXX")"
-
-      # 各 event の hooks 配列から vibecorp 由来エントリだけを除去。
-      # vibecorp_hook_basenames のどれかが command に含まれていれば vibecorp 由来と判定。
-      if jq --argjson vibehooks "$vibecorp_hooks_json" '
-        if .hooks then
-          .hooks |= with_entries(
-            .value |= map(
-              .hooks |= map(
-                select((.command // "") as $cmd
-                  | ($vibehooks | any(. as $h | $cmd | contains(".claude/hooks/" + $h))) | not)
-              )
-              | select((.hooks // []) | length > 0)
-            )
-            | select((.value | length) > 0)
-          )
-          | (if (.hooks | length) == 0 then del(.hooks) else . end)
-        else . end
-      ' "$settings_json" > "$tmp_settings"; then
-        # 差分があるときだけ書き換え (冪等性)
+      if jq 'del(.hooks)' "$settings_json" > "$tmp_settings"; then
         if ! cmp -s "$settings_json" "$tmp_settings"; then
           mv "$tmp_settings" "$settings_json"
-          log_info "migration: .claude/settings.json から vibecorp 由来 hooks を除去（ユーザー独自 hook は保持）"
+          log_info "migration: .claude/settings.json から hooks ブロックを完全削除（plugin native 統一）"
           removed=1
         else
           rm -f "$tmp_settings"
