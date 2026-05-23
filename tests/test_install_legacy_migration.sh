@@ -345,6 +345,8 @@ else
         "matcher": "Edit|Write",
         "hooks": [
           {"type": "command", "command": "bash .claude/hooks/protect-files.sh"},
+          {"type": "command", "command": "bash \".claude/hooks/diagnose-guard.sh\""},
+          {"type": "command", "command": "bash '.claude/hooks/role-gate.sh'"},
           {"type": "command", "command": "bash .claude/hooks/review-gate.sh-wrapper"},
           {"type": "command", "command": "bash .claude/hooks/my-custom-hook.sh"}
         ]
@@ -372,6 +374,19 @@ JSON
   # 同名衝突 (review-gate.sh-wrapper) と user hook (my-custom-hook.sh) は settings.local.json に移送されている
   LOCAL_T7="${TMPDIR_TEST}/.claude/settings.local.json"
   if [[ -f "$LOCAL_T7" ]]; then
+    # CR PR #731 Major #9 v6 対応: 引用符付き vibecorp hook (diagnose-guard, role-gate) も
+    # 引用符境界判定で削除される (custom hook と誤認しない)
+    if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("diagnose-guard.sh"))' "$LOCAL_T7" >/dev/null 2>&1; then
+      fail "T7-e: 引用符付き vibecorp diagnose-guard.sh が settings.local.json に誤移送された (引用符境界判定失敗)"
+    else
+      pass "T7-e: 引用符付き vibecorp diagnose-guard.sh が削除された (引用符境界判定で識別)"
+    fi
+    if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("role-gate.sh\""))' "$LOCAL_T7" >/dev/null 2>&1; then
+      fail "T7-f: シングル引用符付き vibecorp role-gate.sh が settings.local.json に誤移送された"
+    else
+      pass "T7-f: シングル引用符付き vibecorp role-gate.sh が削除された (引用符境界判定で識別)"
+    fi
+
     if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("review-gate.sh-wrapper"))' "$LOCAL_T7" >/dev/null 2>&1; then
       pass "T7-b: 同名衝突 review-gate.sh-wrapper が settings.local.json に移送された (境界判定で保護)"
     else

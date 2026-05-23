@@ -751,7 +751,7 @@ migrate_legacy_layout() {
       custom_hooks="$(jq --argjson vibehooks "$vibecorp_hooks_json" '
         def is_vibecorp_legacy_hook($cmd):
           $vibehooks | any(. as $h |
-            $cmd | test("(^|[[:space:]/])\\.claude/hooks/" + ($h | gsub("\\."; "\\.")) + "([[:space:]]|$)")
+            $cmd | test("(^|[[:space:]\"\u0027`(/])\\.claude/hooks/" + ($h | gsub("\\."; "\\.")) + "([[:space:]\"\u0027`)]|$)")
           );
         (.hooks // {}) | with_entries(
           .value |= map(
