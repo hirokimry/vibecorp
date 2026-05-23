@@ -12,3 +12,9 @@ Thumbs.db
 # ユーザー固有のため他マシン・他ユーザーと共有しない
 .claude/scheduled_tasks.json
 .claude/scheduled_tasks.lock
+
+# Issue #701: hook テスト fixture が templates/claude/lib/ にコピーする lib ファイル
+# tests/lib/hook_fixtures.sh が ${HOOK_DIR}/../lib/ パス互換のため作業ツリー上に
+# 復元する。エピック #700 完了後（子 Issue #708）に templates/claude/lib/ 自体が
+# 削除されるまでの暫定対応。
+templates/claude/lib/*.sh

@@ -8,6 +8,11 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/hook_fixtures.sh"
+# Issue #701: lib/ を plugin ルートに移動した後も hook テストが ${HOOK_DIR}/../lib/
+# を引けるよう、テスト中だけ templates/claude/lib/ に lib をコピーする
+sync_lib_for_hook_tests
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="${SCRIPT_DIR}/templates/claude/hooks/sync-gate.sh"
@@ -50,8 +55,8 @@ export CLAUDE_PROJECT_DIR="$TMPDIR_TEST"
 export XDG_CACHE_HOME="${TMPDIR_TEST}/cache"
 
 # 共通ヘルパーから新スタンプパスを動的に取得
-# shellcheck source=../templates/claude/lib/common.sh
-source "${SCRIPT_DIR}/templates/claude/lib/common.sh"
+# shellcheck source=../lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
 STAMP_FILE="$(vibecorp_stamp_path sync)"
 mkdir -p "$(dirname "$STAMP_FILE")"
 

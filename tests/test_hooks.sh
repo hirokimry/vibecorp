@@ -7,13 +7,18 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/hook_fixtures.sh"
+# Issue #701: lib/ を plugin ルートに移動した後も hook テストが ${HOOK_DIR}/../lib/
+# を引けるよう、テスト中だけ templates/claude/lib/ に lib をコピーする
+sync_lib_for_hook_tests
 
 HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
-LIB_DIR="$(cd "$(dirname "$0")/../templates/claude/lib" && pwd)"
+LIB_DIR="$(cd "$(dirname "$0")/../lib" && pwd)"
 TMPDIR_ROOT=""
 
 # 共通ヘルパーを source（vibecorp_stamp_path を使うため）
-# shellcheck source=../templates/claude/lib/common.sh
+# shellcheck source=../lib/common.sh
 source "${LIB_DIR}/common.sh"
 
 assert_blocked() {
