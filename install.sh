@@ -745,13 +745,19 @@ migrate_legacy_layout() {
       vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
 
       # custom hooks を抽出 (vibecorp 由来でない hook エントリのみ残した hooks サブツリー)
+      # CR PR #731 Major #8 v4 対応: contains() 部分一致は ".sh-wrapper" のような同名衝突を誤判定する。
+      # ファイル名境界 (前: 行頭|スペース|/、後: スペース|行末|引用符) を含む正規表現で厳密判定する。
       local custom_hooks
       custom_hooks="$(jq --argjson vibehooks "$vibecorp_hooks_json" '
+        def is_vibecorp_legacy_hook($cmd):
+          $vibehooks | any(. as $h |
+            $cmd | test("(^|[[:space:]/])\\.claude/hooks/" + ($h | gsub("\\."; "\\.")) + "([[:space:]]|$)")
+          );
         (.hooks // {}) | with_entries(
           .value |= map(
             .hooks |= map(
               select((.command // "") as $cmd
-                | ($vibehooks | any(. as $h | $cmd | contains(".claude/hooks/" + $h))) | not)
+                | (is_vibecorp_legacy_hook($cmd)) | not)
             )
             | select((.hooks // []) | length > 0)
           )

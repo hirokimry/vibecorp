@@ -328,6 +328,77 @@ rm -rf "$TMPDIR_TEST"
 TMPDIR_TEST=""
 
 echo ""
+echo "=== Test 7: settings.json migration が同名衝突 hook を境界判定で保護する (CR PR #731 Major #8 v4) ==="
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "  SKIP: jq 不在のためスキップ"
+else
+  TMPDIR_TEST="$(mktemp -d)"
+  mkdir -p "${TMPDIR_TEST}/.claude"
+  SETTINGS_T7="${TMPDIR_TEST}/.claude/settings.json"
+  cat > "$SETTINGS_T7" <<'JSON'
+{
+  "permissions": {"allow": ["Read(*)"]},
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": "bash .claude/hooks/protect-files.sh"},
+          {"type": "command", "command": "bash .claude/hooks/review-gate.sh-wrapper"},
+          {"type": "command", "command": "bash .claude/hooks/my-custom-hook.sh"}
+        ]
+      }
+    ]
+  }
+}
+JSON
+
+  bash -c "
+    REPO_ROOT='$TMPDIR_TEST'
+    UPDATE_MODE=true
+    log_info() { :; }
+    $(awk '/^migrate_legacy_layout\(\)/,/^}/' "$INSTALL_SH")
+    migrate_legacy_layout
+  "
+
+  # vibecorp hook (protect-files.sh) は settings.json から消えている
+  if ! jq -e '.hooks' "$SETTINGS_T7" >/dev/null 2>&1; then
+    pass "T7-a: settings.json から hooks ブロックが完全削除された"
+  else
+    fail "T7-a: settings.json に hooks ブロックが残存"
+  fi
+
+  # 同名衝突 (review-gate.sh-wrapper) と user hook (my-custom-hook.sh) は settings.local.json に移送されている
+  LOCAL_T7="${TMPDIR_TEST}/.claude/settings.local.json"
+  if [[ -f "$LOCAL_T7" ]]; then
+    if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("review-gate.sh-wrapper"))' "$LOCAL_T7" >/dev/null 2>&1; then
+      pass "T7-b: 同名衝突 review-gate.sh-wrapper が settings.local.json に移送された (境界判定で保護)"
+    else
+      fail "T7-b: 同名衝突 review-gate.sh-wrapper が誤って削除された (境界判定失敗)"
+    fi
+
+    if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("my-custom-hook.sh"))' "$LOCAL_T7" >/dev/null 2>&1; then
+      pass "T7-c: ユーザー独自 my-custom-hook.sh が settings.local.json に移送された"
+    else
+      fail "T7-c: ユーザー独自 my-custom-hook.sh が settings.local.json に無い"
+    fi
+
+    # vibecorp hook (protect-files.sh) は settings.local.json に混入していない
+    if jq -e '.hooks.PreToolUse[0].hooks | map(.command) | any(contains("protect-files.sh"))' "$LOCAL_T7" >/dev/null 2>&1; then
+      fail "T7-d: settings.local.json に vibecorp 由来 protect-files.sh が混入"
+    else
+      pass "T7-d: settings.local.json に vibecorp 由来 hook が混入していない"
+    fi
+  else
+    fail "T7-b/c/d: settings.local.json が作成されていない (custom hook 移送失敗)"
+  fi
+
+  rm -rf "$TMPDIR_TEST"
+  TMPDIR_TEST=""
+fi
+
+echo ""
 echo "==========================="
 echo "結果: ${PASSED}/${TOTAL} 成功, ${FAILED} 失敗"
 echo "==========================="
