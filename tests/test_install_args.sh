@@ -137,7 +137,7 @@ if [ -d "$R/skills" ]; then
 else
   pass "full: skills/ が作成されていない"
 fi
-assert_file_exists "full: sync-gate.sh 配置" "$R/.claude/hooks/sync-gate.sh"
+# hooks は plugin native 配布 (#716) に移行済のため、install.sh は .claude/hooks/ を配置しない
 # --update --preset full の冪等性確認
 EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → update 成功" "0" "$EXIT_CODE"

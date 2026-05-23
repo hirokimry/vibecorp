@@ -214,20 +214,22 @@ echo ""
 echo "=== P. --update での管理ファイル強制差し替え ==="
 # ============================================
 
-# P1. --update でカスタマイズ済みフックはテンプレート未変更ならスキップ（3-way マージ）
+# P1. hooks は plugin native 配布 (#716) に移行済のため、3-way マージは rules で検証する
+# ユーザー独自フックは install.sh が touch しないため残ることを併せて確認する
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# protect-files.sh をカスタム内容に変更
-echo "# ユーザーカスタム版" > "$R/.claude/hooks/protect-files.sh"
-# ユーザー独自フックも追加
+# rules をカスタム内容に変更
+echo "# ユーザーカスタム版" > "$R/.claude/rules/code-comments.md"
+# ユーザー独自フックも追加（install.sh は触らない）
+mkdir -p "$R/.claude/hooks"
 echo '#!/bin/bash' > "$R/.claude/hooks/my-guard.sh"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
 # テンプレート未変更のため、カスタム版が保持される
-assert_file_contains "--update でカスタム版フックが保持される" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム版"
+assert_file_contains "--update でカスタム版ルールが保持される" "$R/.claude/rules/code-comments.md" "ユーザーカスタム版"
 # ユーザー独自フックは残る
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
@@ -306,14 +308,15 @@ bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # ユーザーファイルを配置
+mkdir -p "$R/.claude/hooks"
 echo '#!/bin/bash' > "$R/.claude/hooks/custom.sh"
 mkdir -p "$R/.claude/skills/custom-skill"
 echo "# custom" > "$R/.claude/skills/custom-skill/SKILL.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# vibecorp 管理ファイルが存在
-assert_file_exists "--update 後に protect-files.sh 存在" "$R/.claude/hooks/protect-files.sh"
+# vibecorp 管理ファイルが存在（rules で確認、hooks は plugin native 配布化）
+assert_file_exists "--update 後に rules ファイルが存在" "$R/.claude/rules/code-comments.md"
 # skills/ は作成されない（プラグインキャッシュに移行済み）
 if [[ -d "$R/skills" ]]; then
   fail "--update 後に skills/ が作成されている（プラグインキャッシュに移行済み）"
@@ -334,6 +337,7 @@ echo "=== AB. 3-way マージ（コンフリクト解消） ==="
 # ============================================
 
 # AB1. 未カスタマイズファイルは --update で上書きされる
+# hooks は plugin native 配布 (#716) に移行済のため rules で検証する
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -341,43 +345,38 @@ R="$TMPDIR_ROOT"
 # ファイルを変更せずに --update
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_exists "AB1: hook ファイルが存在" "$R/.claude/hooks/protect-files.sh"
 assert_file_exists "AB1: rules ファイルが存在" "$R/.claude/rules/code-comments.md"
 cleanup
 
-# AB2. カスタマイズ済み & テンプレート未変更 → カスタム版を保持
+# AB2. カスタマイズ済み & テンプレート未変更 → カスタム版を保持（rules で検証）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# ユーザーがフックをカスタマイズ
-echo '#!/bin/bash' > "$R/.claude/hooks/protect-files.sh"
-echo '# ユーザーカスタム: 追加のチェック' >> "$R/.claude/hooks/protect-files.sh"
-echo 'echo "カスタム版"' >> "$R/.claude/hooks/protect-files.sh"
+# ユーザーがルールをカスタマイズ
+echo '# ユーザーカスタム: 追加のチェック' > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
 # テンプレートが変更されていないため、カスタム版が保持される
-assert_file_contains "AB2: カスタム版が保持される" "$R/.claude/hooks/protect-files.sh" "ユーザーカスタム: 追加のチェック"
+assert_file_contains "AB2: カスタム版が保持される" "$R/.claude/rules/code-comments.md" "ユーザーカスタム: 追加のチェック"
 cleanup
 
-# AB3. ベーススナップショットが保存される
+# AB3. ベーススナップショットが保存される（rules で確認、hooks は plugin native 配布化）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_dir_exists "AB3: vibecorp-base ディレクトリ存在" "$R/.claude/vibecorp-base"
-assert_file_exists "AB3: hooks のベーススナップショット" "$R/.claude/vibecorp-base/hooks/protect-files.sh"
 assert_file_exists "AB3: rules のベーススナップショット" "$R/.claude/vibecorp-base/rules/code-comments.md"
 cleanup
 
-# AB4. vibecorp.lock に base_hashes セクションが含まれる
+# AB4. vibecorp.lock に base_hashes セクションが含まれる（rules で確認）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_contains "AB4: lock に base_hashes セクション" "$R/.claude/vibecorp.lock" "base_hashes:"
-assert_file_contains "AB4: lock に hooks ハッシュ" "$R/.claude/vibecorp.lock" "hooks/protect-files.sh:"
 assert_file_contains "AB4: lock に rules ハッシュ" "$R/.claude/vibecorp.lock" "rules/code-comments.md:"
 cleanup
 
@@ -389,21 +388,17 @@ R="$TMPDIR_ROOT"
 assert_file_contains "AB5: .gitignore に vibecorp-base/" "$R/.claude/.gitignore" "vibecorp-base/"
 cleanup
 
-# AB6. 3-way マージ: 非コンフリクト自動解消
+# AB6. 3-way マージ: 非コンフリクト自動解消（rules で検証、hooks は plugin native 配布化）
 # テンプレートの先頭にベースから行を追加し、ユーザーが末尾に追加した場合
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 # ベーススナップショットを確認して取得
-ORIGINAL_CONTENT=$(cat "$R/.claude/hooks/protect-files.sh")
+ORIGINAL_CONTENT=$(cat "$R/.claude/rules/code-comments.md")
 
 # ユーザーが末尾に独自行を追加
-echo "# ユーザー追加: カスタム処理" >> "$R/.claude/hooks/protect-files.sh"
-
-# テンプレートを変更（先頭にコメント追加）
-TEMPLATE_FILE="$SCRIPT_DIR/hooks/protect-files.sh"
-ORIGINAL_TEMPLATE=$(cat "$TEMPLATE_FILE")
+echo "# ユーザー追加: カスタム処理" >> "$R/.claude/rules/code-comments.md"
 
 # ベーススナップショットを保持しつつ、テンプレートを変更
 # ベースを明示的に設定して 3-way マージをテスト
@@ -474,17 +469,17 @@ rm -f "$TMPBASE" "$TMPCUSTOM" "$TMPNEW"
 cleanup
 
 # AB8. 統合テスト: merge_or_overwrite がカスタム版を保持（テンプレート未変更時）
+# hooks は plugin native 配布 (#716) に移行済のため rules で検証する
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# sync-gate.sh をカスタマイズ
-echo '#!/bin/bash' > "$R/.claude/hooks/sync-gate.sh"
-echo '# カスタム sync-gate' >> "$R/.claude/hooks/sync-gate.sh"
+# code-comments.md をカスタマイズ
+echo '# カスタム code-comments' > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update --preset standard 2>/dev/null
 
-assert_file_contains "AB8: カスタム sync-gate が保持される" "$R/.claude/hooks/sync-gate.sh" "カスタム sync-gate"
+assert_file_contains "AB8: カスタム rule が保持される" "$R/.claude/rules/code-comments.md" "カスタム code-comments"
 cleanup
 
 # AB9. 統合テスト: --update で旧スタブ・旧コピーがマイグレーションされる
@@ -551,11 +546,11 @@ awk '/^  base_hashes:/{skip=1;next} skip && /^  [a-z]/{skip=0} skip{next} {print
 # ベーススナップショットも削除
 rm -rf "$R/.claude/vibecorp-base"
 
-echo "# 古いカスタム版" > "$R/.claude/hooks/protect-files.sh"
+echo "# 古いカスタム版" > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-assert_file_not_contains "AB11: ベースハッシュなしなら上書き" "$R/.claude/hooks/protect-files.sh" "古いカスタム版"
+assert_file_not_contains "AB11: ベースハッシュなしなら上書き" "$R/.claude/rules/code-comments.md" "古いカスタム版"
 cleanup
 
 # AB12. カスタムなし & テンプレート変更 → 新テンプレートで上書き
