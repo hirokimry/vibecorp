@@ -174,3 +174,150 @@ vibecorp_plans_mkdir() {
   chmod 700 "$dir" 2>/dev/null || true
   printf '%s' "$dir"
 }
+
+# --- vibecorp.yml 実行時読み取り API ----------------------------------------
+# 用途: plugin native 配布化（Issue #700 / #403）後に、hook 自身が起動時に
+#       vibecorp.yml を読んで自己 skip 判定するための汎用 API。
+# 実装方針: 純粋 bash + awk のみ（yq / jq に依存しない）、macOS bash 3.2 互換。
+# 関連: Issue #702。
+
+# _vibecorp_yml_path — 実行時参照する vibecorp.yml のフルパスを返す
+# CLAUDE_PROJECT_DIR を起点に `.claude/vibecorp.yml` を解決する
+# （install.sh の get_project_name と同じ規約）
+_vibecorp_yml_path() {
+  printf '%s/.claude/vibecorp.yml' "${CLAUDE_PROJECT_DIR:-.}"
+}
+
+# vibecorp_yml_get — vibecorp.yml の <section>.<key> の値を取得する
+# 引数: $1 = section 名（例: hooks, coderabbit）
+#       $2 = key 名（例: review-gate, enabled）
+# 出力: stdout に値。yml 不在 or キー未定義時は空文字
+# 値は前後の空白を除去して返す。引用符は剥がさない（呼出側で必要に応じて処理）
+vibecorp_yml_get() {
+  local section="$1"
+  local key="$2"
+  local yml
+  yml="$(_vibecorp_yml_path)"
+
+  [[ -f "$yml" ]] || return 0
+
+  # awk: トップレベル行で section を追跡し、2-space インデント直下の key:value のみ拾う
+  # （ネスト 3 階層以上は対象外、install.sh:97-105 の is_item_enabled と同じ規約）
+  awk -v section="$section" -v key="$key" '
+    /^[^ #]/ {
+      current_section = $0
+      gsub(/:.*/, "", current_section)
+    }
+    current_section == section && $0 ~ "^  " key ":" {
+      sub("^  " key ":[ \t]*", "")
+      sub(/[ \t]+$/, "")
+      print
+      exit
+    }
+  ' "$yml"
+}
+
+# vibecorp_yml_get_preset — 現在のプリセット名を返す
+# 出力: stdout に preset 名。未定義時は "standard"（デフォルト）
+vibecorp_yml_get_preset() {
+  local yml
+  yml="$(_vibecorp_yml_path)"
+
+  local val=""
+  if [[ -f "$yml" ]]; then
+    # トップレベル `preset:` 行のみ拾う（section 内の preset: ではない）
+    val=$(awk '/^preset:[[:space:]]*/ {
+      sub(/^preset:[[:space:]]*/, "")
+      sub(/[ \t]+$/, "")
+      print
+      exit
+    }' "$yml")
+  fi
+
+  if [[ -z "${val:-}" ]]; then
+    printf 'standard'
+  else
+    printf '%s' "$val"
+  fi
+}
+
+# _vibecorp_preset_has_hook — 指定 preset で hook が有効かを返す（0 = 有効、1 = 無効）
+# 引数: $1 = preset 名（minimal / standard / full）
+#       $2 = hook 名（拡張子なし、例: role-gate）
+# 有効リストは install.sh:868-936 のプリセット引き算定義から「足し算」に正規化したもの。
+# install.sh の rm -f リストと逆引きの関係になっているため、両者を同期させる必要がある。
+_vibecorp_preset_has_hook() {
+  local preset="$1"
+  local hook="$2"
+
+  # 全プリセット共通 hook（install.sh で除外対象外のもの）
+  case "$hook" in
+    block-api-bypass|command-log|protect-branch|protect-files|protect-knowledge-bash-writes|protect-knowledge-direct-writes)
+      return 0
+      ;;
+  esac
+
+  # preset 別の追加 hook
+  case "$preset" in
+    minimal)
+      # 全プリセット共通以外は無効
+      return 1
+      ;;
+    standard)
+      # minimal で除外される hook のうち、role-gate / diagnose-guard 以外を追加
+      case "$hook" in
+        sync-gate|session-harvest-gate|review-gate|guide-gate)
+          return 0
+          ;;
+      esac
+      return 1
+      ;;
+    full)
+      # full は全 hook 有効
+      case "$hook" in
+        sync-gate|session-harvest-gate|review-gate|guide-gate|role-gate|diagnose-guard)
+          return 0
+          ;;
+      esac
+      return 1
+      ;;
+    *)
+      # 未知の preset はフェイルセーフで standard 扱い
+      case "$hook" in
+        sync-gate|session-harvest-gate|review-gate|guide-gate)
+          return 0
+          ;;
+      esac
+      return 1
+      ;;
+  esac
+}
+
+# hook_skip_if_disabled — hook が skip すべきかを判定する
+# 引数: $1 = hook 名（拡張子 .sh は付けない、例: role-gate）
+# 戻り値:
+#   0 = skip すべき（yml で false / 現 preset の対象外）
+#   1 = continue（処理を続行する）
+# 想定使用法: 各 hook の冒頭で
+#   source "$(dirname "$0")/../../lib/common.sh"
+#   hook_skip_if_disabled role-gate && exit 0
+hook_skip_if_disabled() {
+  local hook="$1"
+
+  # 1. yml で明示的に hooks: <name>: false → skip
+  local yml_val
+  yml_val=$(vibecorp_yml_get hooks "$hook")
+  if [[ "$yml_val" == "false" ]]; then
+    return 0
+  fi
+
+  # 2. 現在 preset の対象外 → skip
+  local preset
+  preset=$(vibecorp_yml_get_preset)
+  if ! _vibecorp_preset_has_hook "$preset" "$hook"; then
+    return 0
+  fi
+
+  # 3. それ以外は continue
+  return 1
+}
