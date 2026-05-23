@@ -138,6 +138,12 @@ else
   pass "full: skills/ が作成されていない"
 fi
 # hooks は plugin native 配布 (#716) に移行済のため、install.sh は .claude/hooks/ を配置しない
+# CR PR #731 Minor #2 v2 対応: コメントだけでなく実際の非生成を明示アサート (退行検知)
+if [ -d "$R/.claude/hooks" ]; then
+  fail "full: .claude/hooks/ が作成されている（plugin native 移行に反する）"
+else
+  pass "full: .claude/hooks/ が作成されていない（plugin native 配布、#716）"
+fi
 # --update --preset full の冪等性確認
 EXIT_CODE=0; bash "$INSTALL_SH" --update --preset full 2>/dev/null || EXIT_CODE=$?
 assert_exit_code "full → update 成功" "0" "$EXIT_CODE"

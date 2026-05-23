@@ -307,8 +307,9 @@ _vibecorp_preset_has_hook() {
 _vibecorp_hook_can_be_disabled_by_yaml() {
   local hook="$1"
   case "$hook" in
-    # 無効化可能: preset で on/off するオプトイン系
-    sync-gate|review-gate)
+    # 無効化可能: preset で on/off するオプトイン系 + 緊急停止用 (SECURITY.md 規定の "緊急一時措置" 限定)
+    # CR PR #731 Major #3 v2 対応: protect-files / diagnose-guard は障害時の一時退避手段として yml で false 可
+    sync-gate|review-gate|protect-files|diagnose-guard)
       return 0
       ;;
     # 無効化不可: 保護系・ログ系・API バイパス防止系・ガードレール系

@@ -669,24 +669,38 @@ migrate_legacy_layout() {
     zombie_agent.sh
   )
 
-  # content 一致確認: vibecorp 配布物と完全に同一内容のファイルだけを削除する。
-  # 同名でも内容が異なるファイル（= ユーザー独自フック / ユーザー改変フック）は保持する。
-  # これにより同名ユーザーフックを誤削除しない（regression 防止: PR #727 後の test 失敗修正）。
+  # vibecorp 管理判定: 旧 lock (v1 形式 hooks: / lib: セクション) に basename が記載されていれば確定。
+  # 記載がない場合は content cmp で「現行配布と同一」のみ削除（同名ユーザーフック保護）。
+  # CR PR #731 Major #5 v2 対応: 旧 consumer が前バージョンの managed ファイルを持っていても
+  # lock 記載なら vibecorp 管理として削除する。
+  local lock_file="${REPO_ROOT}/.claude/vibecorp.lock"
+  local lock_hooks="" lock_libs=""
+  if [[ -f "$lock_file" ]]; then
+    lock_hooks="$(read_lock_list "$lock_file" hooks 2>/dev/null || true)"
+    lock_libs="$(read_lock_list "$lock_file" lib 2>/dev/null || true)"
+  fi
+
   if [[ -d "$legacy_hooks" ]]; then
     local removed_legacy_hook=0
     local hook_basename plugin_hook legacy_hook
     for hook_basename in "${vibecorp_hook_basenames[@]}"; do
       legacy_hook="${legacy_hooks}/${hook_basename}"
+      [[ -f "$legacy_hook" ]] || continue
+      # 判定 A: lock に記載があれば vibecorp 管理確定 → 削除
+      if [[ -n "$lock_hooks" ]] && printf '%s\n' "$lock_hooks" | grep -Fxq "$hook_basename"; then
+        rm -f "$legacy_hook"
+        removed_legacy_hook=1
+        continue
+      fi
+      # 判定 B: lock に記載なし → content 一致のみ削除（同名ユーザーフック保護）
       plugin_hook="${SCRIPT_DIR}/hooks/${hook_basename}"
-      if [[ -f "$legacy_hook" && -f "$plugin_hook" ]]; then
-        if cmp -s "$legacy_hook" "$plugin_hook"; then
-          rm -f "$legacy_hook"
-          removed_legacy_hook=1
-        fi
+      if [[ -f "$plugin_hook" ]] && cmp -s "$legacy_hook" "$plugin_hook"; then
+        rm -f "$legacy_hook"
+        removed_legacy_hook=1
       fi
     done
     if [[ $removed_legacy_hook -eq 1 ]]; then
-      log_info "migration: 旧 .claude/hooks/ から vibecorp 配布フックを削除（content 一致のみ）"
+      log_info "migration: 旧 .claude/hooks/ から vibecorp 配布フックを削除（lock + content 判定）"
       removed=1
     fi
     rmdir "$legacy_hooks" 2>/dev/null || true
@@ -697,16 +711,20 @@ migrate_legacy_layout() {
     local lib_basename plugin_lib legacy_lib_file
     for lib_basename in "${vibecorp_lib_basenames[@]}"; do
       legacy_lib_file="${legacy_lib}/${lib_basename}"
+      [[ -f "$legacy_lib_file" ]] || continue
+      if [[ -n "$lock_libs" ]] && printf '%s\n' "$lock_libs" | grep -Fxq "$lib_basename"; then
+        rm -f "$legacy_lib_file"
+        removed_legacy_lib=1
+        continue
+      fi
       plugin_lib="${SCRIPT_DIR}/lib/${lib_basename}"
-      if [[ -f "$legacy_lib_file" && -f "$plugin_lib" ]]; then
-        if cmp -s "$legacy_lib_file" "$plugin_lib"; then
-          rm -f "$legacy_lib_file"
-          removed_legacy_lib=1
-        fi
+      if [[ -f "$plugin_lib" ]] && cmp -s "$legacy_lib_file" "$plugin_lib"; then
+        rm -f "$legacy_lib_file"
+        removed_legacy_lib=1
       fi
     done
     if [[ $removed_legacy_lib -eq 1 ]]; then
-      log_info "migration: 旧 .claude/lib/ から vibecorp 配布 lib を削除（content 一致のみ）"
+      log_info "migration: 旧 .claude/lib/ から vibecorp 配布 lib を削除（lock + content 判定）"
       removed=1
     fi
     rmdir "$legacy_lib" 2>/dev/null || true
@@ -715,15 +733,44 @@ migrate_legacy_layout() {
   # 機能: 既存 .claude/settings.json から hooks ブロックを物理除去（Issue #721）
   # plugin native 配布 (#716) 後は plugin/hooks/hooks.json が唯一の登録元。settings.json 側に
   # 古い hooks ブロックが残っていると hook が二重発火する可能性があるため migration する。
+  # CR PR #731 Major #4 v2 対応: vibecorp 由来 hook のみ削除し、ユーザー独自 hook は保持する。
+  # 判定基準: command 文字列が ".claude/hooks/<vibecorp 既知 basename>" を含むエントリは vibecorp 由来。
+  # それ以外 (ユーザー独自パス, settings.local.json への移行推奨) は保持する。
   local settings_json="${REPO_ROOT}/.claude/settings.json"
   if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
+      # vibecorp 配布 hook basename を jq 配列として渡す
+      local vibecorp_hooks_json
+      vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
+
       local tmp_settings
       tmp_settings="$(mktemp "$(dirname "$settings_json")/.settings.json.XXXXXX")"
-      if jq 'del(.hooks)' "$settings_json" > "$tmp_settings"; then
-        mv "$tmp_settings" "$settings_json"
-        log_info "migration: 既存 .claude/settings.json から hooks ブロックを除去（plugin native 配布に統一）"
-        removed=1
+
+      # 各 event の hooks 配列から vibecorp 由来エントリだけを除去。
+      # vibecorp_hook_basenames のどれかが command に含まれていれば vibecorp 由来と判定。
+      if jq --argjson vibehooks "$vibecorp_hooks_json" '
+        if .hooks then
+          .hooks |= with_entries(
+            .value |= map(
+              .hooks |= map(
+                select((.command // "") as $cmd
+                  | ($vibehooks | any(. as $h | $cmd | contains(".claude/hooks/" + $h))) | not)
+              )
+              | select((.hooks // []) | length > 0)
+            )
+            | select((.value | length) > 0)
+          )
+          | (if (.hooks | length) == 0 then del(.hooks) else . end)
+        else . end
+      ' "$settings_json" > "$tmp_settings"; then
+        # 差分があるときだけ書き換え (冪等性)
+        if ! cmp -s "$settings_json" "$tmp_settings"; then
+          mv "$tmp_settings" "$settings_json"
+          log_info "migration: .claude/settings.json から vibecorp 由来 hooks を除去（ユーザー独自 hook は保持）"
+          removed=1
+        else
+          rm -f "$tmp_settings"
+        fi
       else
         rm -f "$tmp_settings"
       fi
