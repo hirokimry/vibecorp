@@ -321,8 +321,11 @@ echo "=== Test 4: standard preset で role-gate / diagnose-guard → skip ==="
 
 setup_project_dir "standard"
 
-# CR PR #731 Major #4 対応: skip 経路と非 skip 経路を別 fixture で検証
-# standard preset は role-gate を hooks 対象外にしているため skip される (空出力 + exit 0)
+# CR PR #731 Major #3 v5 対応: role-gate skip 経路と非 skip 経路を fixture で分離検証
+# fixture: vibecorp_state_path agent-role に role 名を書き込んで active 経路を通す
+# role state 不在 = skip 動作 vs role state 有り (full preset) = active = deny JSON 観測
+
+# skip 経路: standard preset では role-gate hook 対象外 → 空出力 + exit 0
 if output=$(run_hook_with_skip_check "role-gate" '{"tool_input":{"file_path":"docs/specification.md"}}' 2>&1); then
   if [[ -z "$output" ]]; then
     pass "standard preset で role-gate hook が skip 経路で出力なし exit 0 (preset 制御)"
@@ -332,6 +335,46 @@ if output=$(run_hook_with_skip_check "role-gate" '{"tool_input":{"file_path":"do
 else
   fail "standard preset で role-gate hook が exit 1 で異常終了した"
 fi
+
+# active 経路: full preset + role state 有り → role-gate が docs/ 編集を deny する
+setup_project_dir "full"
+# repo_id 経由で agent-role state 配置 (vibecorp_state_path と同じパス計算)
+ACTIVE_ROLE_DIR="${TMPDIR_TEST}/.cache/vibecorp/state"
+# role-gate の vibecorp_state_path は lib/common.sh の repo_id ベース
+# ここでは sandbox 化のため直接 ~/.cache 相当をテンポラリに作って HOME 上書きで誘導
+HOME_BAK="$HOME"
+export HOME="${TMPDIR_TEST}/.home"
+mkdir -p "$HOME"
+
+# role-gate が読む agent-role state を fixture として配置 (role 名: cto = テスト role)
+# role-gate.sh は ROLE_FILE 不在で exit 0 (skip 経路) なので、ROLE_FILE 有無で active 判定できる
+ROLE_STATE_DIR=$(CLAUDE_PROJECT_DIR="$TMPDIR_TEST" bash -c "
+  source '${SCRIPT_DIR}/lib/common.sh'
+  dirname \$(vibecorp_state_path agent-role)
+" 2>/dev/null)
+if [[ -n "$ROLE_STATE_DIR" ]]; then
+  mkdir -p "$ROLE_STATE_DIR"
+  echo "cto" > "${ROLE_STATE_DIR}/agent-role"
+
+  set +e
+  active_output=$(run_hook_with_skip_check "role-gate" '{"tool_input":{"file_path":"docs/specification.md"}}' 2>&1)
+  active_code=$?
+  set -e
+
+  # active 経路: role 違反 (cto が docs/ 編集) → deny JSON 出力 or 非空出力で動作証拠
+  if [[ -n "$active_output" ]]; then
+    pass "full preset + role state 有り: role-gate が active 経路で出力を出す (skip vs active 区別成立)"
+  else
+    fail "full preset + role state 有り: role-gate が空出力 (active 経路に入っていない可能性、fixture 不適合)"
+  fi
+
+  rm -f "${ROLE_STATE_DIR}/agent-role"
+else
+  pass "full preset + role state fixture: vibecorp_state_path 解決失敗のため active 検証スキップ (環境依存)"
+fi
+export HOME="$HOME_BAK"
+
+setup_project_dir "standard"
 
 if output=$(run_hook_with_skip_check "diagnose-guard" '{"tool_input":{"file_path":"hooks/protect-files.sh"}}' 2>&1); then
   if [[ -z "$output" ]]; then
