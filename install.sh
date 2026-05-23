@@ -113,11 +113,6 @@ is_skill_enabled() {
   is_item_enabled "skills" "$1"
 }
 
-is_hook_enabled() {
-  # vibecorp.yml の hooks セクションを参照し、有効かどうかを返す
-  is_item_enabled "hooks" "$1"
-}
-
 compute_hash() {
   # ファイルの SHA256 ハッシュを計算する（macOS/Linux 互換）
   local file="$1"
@@ -305,63 +300,6 @@ merge_or_overwrite() {
     return 1
   fi
   return 0
-}
-
-get_disabled_hooks() {
-  # vibecorp.yml の hooks セクションから無効化された hook 名の JSON 配列を返す
-  # settings.json の jq フィルタで使用する
-  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
-
-  if [[ ! -f "$yml" ]]; then
-    echo "[]"
-    return
-  fi
-
-  awk '
-    /^hooks:/ { in_hooks = 1; next }
-    in_hooks && /^[^ #]/ { exit }
-    in_hooks && $2 == "false" {
-      key = $1
-      gsub(/:$/, "", key)
-      gsub(/^[ \t]+/, "", key)
-      print key
-    }
-  ' "$yml" | jq -R -s 'split("\n") | map(select(length > 0))'
-}
-
-get_orphan_hooks() {
-  # .claude/vibecorp.lock に記載されているが hooks/ に実体がない
-  # hook 名（basename）を 1 行 1 件で stdout に出力する。
-  # vibecorp 開発側で廃止された hook（例: team-auto-approve.sh）を検出するために使う。
-  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-  local templates_hooks_dir="${SCRIPT_DIR}/hooks"
-
-  [[ -f "$lock" ]] || return 0
-
-  while IFS= read -r name; do
-    [[ -n "$name" ]] || continue
-    if [[ ! -f "${templates_hooks_dir}/${name}" ]]; then
-      echo "$name"
-    fi
-  done < <(read_lock_list "$lock" "hooks")
-}
-
-remove_orphan_hooks() {
-  # lock 記載かつ templates 実体なしの hook を .claude/hooks/ から物理削除する。
-  # --update モードでのみ呼ぶ前提。
-  # settings.json からのエントリ除去は generate_settings_json の既存マージロジックが担当する
-  # （lock 基準の managed_hooks_json で既存エントリを除去 → 新テンプレートと結合）。
-  local hooks_dir="${REPO_ROOT}/.claude/hooks"
-
-  while IFS= read -r name; do
-    [[ -n "$name" ]] || continue
-    # lock 改ざん時の防御: パス区切り文字を含む name は拒否（basename のみ許可）
-    [[ "$name" == */* ]] && continue
-    if [[ -f "${hooks_dir:?}/${name:?}" ]]; then
-      rm -f "${hooks_dir:?}/${name:?}"
-      log_info "hooks/${name} は廃止されたため削除"
-    fi
-  done < <(get_orphan_hooks)
 }
 
 # ── ステップ関数 ───────────────────────────────────────
@@ -707,9 +645,9 @@ migrate_legacy_layout() {
 
 remove_managed_files() {
   # lock に記載された vibecorp 管理ファイルを削除
-  # --update 時は hooks/skills を 3-way マージ対象として保持する
+  # --update 時は skills を 3-way マージ対象として保持する
+  # hooks は plugin native 配布 (#716) に移行済のため install.sh は配置・削除を行わない
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-  local hooks_dir="${REPO_ROOT}/.claude/hooks"
   local skills_dir="${REPO_ROOT}/.claude/skills"
   local agents_dir="${REPO_ROOT}/.claude/agents"
 
@@ -718,14 +656,10 @@ remove_managed_files() {
   if [[ "$UPDATE_MODE" != true ]]; then
     # 再インストール（--name）時は管理ファイルを削除して再配置
     while IFS= read -r name; do
-      [[ -n "$name" ]] && rm -f "${hooks_dir:?}/${name:?}"
-    done < <(read_lock_list "$lock" "hooks")
-
-    while IFS= read -r name; do
       [[ -n "$name" ]] && rm -rf "${skills_dir:?}/${name:?}"
     done < <(read_lock_list "$lock" "skills")
   fi
-  # --update 時は hooks/skills を削除しない（merge_or_overwrite で処理）
+  # --update 時は skills を削除しない（merge_or_overwrite で処理）
 
   # lock 記載の agents を削除（agents は 3-way マージ対象外）
   while IFS= read -r name; do
@@ -739,11 +673,9 @@ remove_managed_files() {
 
 copy_managed_files() {
   # テンプレートをコピー（既存ユーザーファイルはスキップ）
-  local hooks_dir="${REPO_ROOT}/.claude/hooks"
+  # hooks は plugin native 配布 (#716) に移行済のため install.sh は配置しない
   local skills_dir="${REPO_ROOT}/.claude/skills"
   local agents_dir="${REPO_ROOT}/.claude/agents"
-
-  mkdir -p "$hooks_dir"
 
   # lib: フック共通ユーティリティをコピー（常に最新で上書き）
   # Issue #707 で lib/ は plugin ルートへ移動済。templates/claude/lib/ は廃止。
@@ -754,50 +686,6 @@ copy_managed_files() {
       [[ -f "$src" ]] || continue
       cp "$src" "${lib_dir}/$(basename "$src")"
     done
-  fi
-
-  # hooks: --update 時は 3-way マージ、通常時は既存スキップ（yml で無効化されたものはスキップ）
-  for src in "${SCRIPT_DIR}/hooks/"*.sh; do
-    [[ -f "$src" ]] || continue
-    local name
-    name=$(basename "$src")
-    local hook_key="${name%.sh}"
-    if ! is_hook_enabled "$hook_key"; then
-      # --update 時は無効化されたフックを削除（lock に記載されている場合のみ）
-      if [[ "$UPDATE_MODE" == true ]]; then
-        local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-        if [[ -f "$lock" ]] && read_lock_list "$lock" "hooks" | grep -qxF "$name"; then
-          rm -f "${hooks_dir}/${name}"
-        fi
-      fi
-      log_skip "hooks/${name} は yml で無効化されているためスキップ"
-      continue
-    fi
-    if [[ "$UPDATE_MODE" == true ]]; then
-      merge_or_overwrite "$src" "${hooks_dir}/${name}" "hooks/${name}" || true
-    elif [[ -f "${hooks_dir}/${name}" ]]; then
-      log_skip "hooks/${name} は既存のためスキップ"
-    else
-      cp "$src" "${hooks_dir}/${name}"
-      save_base_snapshot "$src" "hooks/${name}"
-    fi
-  done
-
-  # hooks/messages: hook が参照する CEO 向け通知文ファイルを配布（常に最新で上書き）
-  # .claude/rules/notification-prompt-extraction.md に基づき hook から外部化された通知文。
-  # protect-knowledge-direct-writes.sh / protect-knowledge-bash-writes.sh 等が cat で読み込む。
-  if [[ -d "${SCRIPT_DIR}/hooks/messages" ]]; then
-    local messages_dir="${hooks_dir}/messages"
-    mkdir -p "$messages_dir"
-    for src in "${SCRIPT_DIR}/hooks/messages/"*.md; do
-      [[ -f "$src" ]] || continue
-      cp "$src" "${messages_dir}/$(basename "$src")"
-    done
-  fi
-
-  # --update: テンプレートから廃止された hook（lock 記載 + templates 不在）を削除
-  if [[ "$UPDATE_MODE" == true ]]; then
-    remove_orphan_hooks
   fi
 
   # --update: plugin skills マイグレーション（プラグインキャッシュに移行済み）
@@ -851,7 +739,7 @@ copy_managed_files() {
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
-  local target_dirs=("$hooks_dir")
+  local target_dirs=()
   [[ -d "$skills_dir" ]] && target_dirs+=("$skills_dir")
   [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
   local placeholder_errors=0
@@ -886,27 +774,16 @@ copy_managed_files() {
     return 1
   fi
 
-  # hooks に実行権限を付与
-  for f in "${hooks_dir}/"*.sh; do
-    [[ -f "$f" ]] && chmod +x "$f"
-  done
-
   # 全プリセット共通レガシー clean-up: 廃止済みスキル・フックを除去（#343 spike-loop 等）
   rm -rf "${skills_dir}/spike-loop"
 
   # プリセット別削除（引き算方式）
+  # hooks 自体は plugin native 配布 (#716) に移行済のため、ここでの hooks ファイル削除は不要
   case "$PRESET" in
     minimal)
-      # レガシー clean-up: 旧バージョンのインストールが残した古いフック/スキル
-      rm -f "${hooks_dir}/review-to-rules-gate.sh"
+      # レガシー clean-up: 旧バージョンのインストールが残した古いスキル
       rm -rf "${skills_dir}/review-to-rules"
-      # 現行: minimal プリセットから除外するフック/スキル
-      rm -f "${hooks_dir}/sync-gate.sh"
-      rm -f "${hooks_dir}/session-harvest-gate.sh"
-      rm -f "${hooks_dir}/review-gate.sh"
-      rm -f "${hooks_dir}/guide-gate.sh"
-      rm -f "${hooks_dir}/role-gate.sh"
-      rm -f "${hooks_dir}/diagnose-guard.sh"
+      # 現行: minimal プリセットから除外するスキル
       rm -rf "${skills_dir}/sync-check"
       rm -rf "${skills_dir}/sync-edit"
       rm -rf "${skills_dir}/session-harvest"
@@ -937,8 +814,6 @@ copy_managed_files() {
       rmdir "${REPO_ROOT}/.claude/sandbox" 2>/dev/null || true
       ;;
     standard)
-      rm -f "${hooks_dir}/role-gate.sh"
-      rm -f "${hooks_dir}/diagnose-guard.sh"
       rm -rf "${skills_dir}/diagnose"
       # ヘッドレス並列スキルは full プリセット専用（隔離レイヤが full でしか効かないため）
       rm -rf "${skills_dir}/ship-parallel"
@@ -1903,16 +1778,10 @@ generate_vibecorp_lock() {
   vibecorp_commit=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
-  local hooks_list="" skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
+  # hooks は plugin native 配布 (#716) に移行済のため lock では空リストを維持する（後方互換）
+  local skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
-  for f in "${SCRIPT_DIR}/hooks/"*.sh; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    # 実際に配置先に存在するもののみ記録（プリセット削除分を除外）
-    [[ -f "${REPO_ROOT}/.claude/hooks/${name}" ]] && hooks_list="${hooks_list}    - ${name}"$'\n'
-  done
   for d in "${SCRIPT_DIR}/skills/"*/; do
     [[ -d "$d" ]] || continue
     local name
@@ -1975,7 +1844,8 @@ generate_vibecorp_lock() {
 
   local files_block=""
   # $() は末尾改行を除去するため、各セクション連結時に明示的に改行を補う
-  files_block+="$(_lock_list_section "hooks" "$hooks_list")"$'\n'
+  # hooks セクションは plugin native 配布 (#716) 後も後方互換のため空リストを維持
+  files_block+="$(_lock_list_section "hooks" "")"$'\n'
   files_block+="$(_lock_list_section "skills" "$skills_list")"$'\n'
   files_block+="$(_lock_list_section "agents" "$agents_list")"$'\n'
   files_block+="$(_lock_list_section "rules" "$rules_list")"$'\n'
@@ -1997,65 +1867,20 @@ YAML
 }
 
 generate_settings_json() {
+  # hooks は plugin native 配布 (#716) に移行済のため settings.json には書き込まない。
+  # ここでは permissions / extraKnownMarketplaces / enabledPlugins のみを扱う。
   local settings="${REPO_ROOT}/.claude/settings.json"
   local template="${SCRIPT_DIR}/templates/settings.json.tpl"
-  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
 
-  # テンプレートにプリセットフィルタを適用
   local new_settings
   new_settings=$(cat "$template")
 
-  case "$PRESET" in
-    minimal)
-      new_settings=$(echo "$new_settings" | jq '
-        .hooks.PreToolUse |= [
-          .[]
-          | .hooks |= [.[] | select((.command | contains("review-to-rules-gate") | not) and (.command | contains("sync-gate") | not) and (.command | contains("session-harvest-gate") | not) and (.command | contains("review-gate") | not) and (.command | contains("guide-gate") | not) and (.command | contains("role-gate") | not) and (.command | contains("diagnose-guard") | not))]
-          | select((.hooks | length) > 0)
-        ]
-      ')
-      ;;
-    standard)
-      new_settings=$(echo "$new_settings" | jq '
-        .hooks.PreToolUse |= [
-          .[]
-          | .hooks |= [.[] | select((.command | contains("role-gate") | not) and (.command | contains("diagnose-guard") | not))]
-          | select((.hooks | length) > 0)
-        ]
-      ')
-      ;;
-  esac
-
-  # yml で無効化された hooks を settings.json からも除外
-  local disabled_hooks_json
-  disabled_hooks_json=$(get_disabled_hooks)
-  if [[ "$disabled_hooks_json" != "[]" ]]; then
-    new_settings=$(echo "$new_settings" | jq --argjson disabled "$disabled_hooks_json" '
-      .hooks.PreToolUse |= [
-        .[]
-        | .hooks |= [.[] | select(
-            (.command | split("/") | last | gsub("\\.sh$";"") | gsub("^\"";"";"g")) as $hook_name |
-            any($disabled[]; . == $hook_name) | not
-          )]
-        | select((.hooks | length) > 0)
-      ]
-    ')
-  fi
-
   if [[ ! -f "$settings" ]]; then
-    # 新規: フィルタ済みテンプレートをそのまま書き出し（permissions / hooks 両方）
+    # 新規: テンプレートをそのまま書き出し（permissions / marketplace / enabledPlugins）
     echo "$new_settings" | jq '.' > "$settings"
     log_info "settings.json を生成"
   else
-    # 既存: lock のフック名リストで vibecorp 管理判定（パス文字列判定をやめる）
-    local managed_hooks_json="[]"
-    if [[ -f "$lock" ]]; then
-      # lock 記載のフック名から jq フィルタ用の JSON 配列を生成
-      managed_hooks_json=$(read_lock_list "$lock" "hooks" | jq -R -s 'split("\n") | map(select(length > 0))')
-    fi
-
-    local new_hooks
-    new_hooks=$(echo "$new_settings" | jq '.hooks.PreToolUse')
+    # 既存: 既存ユーザー設定を保持しつつ permissions.allow / marketplace / enabledPlugins を併合する
     local new_permissions_allow
     new_permissions_allow=$(echo "$new_settings" | jq '.permissions.allow // []')
     local new_marketplaces
@@ -2063,27 +1888,14 @@ generate_settings_json() {
     local new_enabled_plugins
     new_enabled_plugins=$(echo "$new_settings" | jq '.enabledPlugins // {}')
 
-    jq --argjson new "$new_hooks" --argjson managed "$managed_hooks_json" \
-       --argjson new_allow "$new_permissions_allow" \
-       --argjson new_mkts "$new_marketplaces" --argjson new_plugins "$new_enabled_plugins" '
-      def is_managed_hook:
-        (.command | split("/") | last) as $basename |
-        any($managed[]; . == $basename);
-      def strip_managed_hooks:
-        .hooks |= map(select(is_managed_hook | not));
-      # 既存から vibecorp 管理フックを除去し、新規と結合後、同一 matcher をマージ
-      # 結合後に同一 command の重複を排除（lock 未登録フックとテンプレートの衝突防止）
-      .hooks.PreToolUse = (
-        [(.hooks.PreToolUse // [])[] | strip_managed_hooks | select((.hooks | length) > 0)]
-        + $new
-        | group_by(.matcher)
-        | map({matcher: .[0].matcher, hooks: ([.[].hooks[]] | unique_by(.command))})
-      )
-      | .permissions = ((.permissions // {}) | .allow = (((.allow // []) + $new_allow) | unique))
+    jq --argjson new_allow "$new_permissions_allow" \
+       --argjson new_mkts "$new_marketplaces" \
+       --argjson new_plugins "$new_enabled_plugins" '
+      .permissions = ((.permissions // {}) | .allow = (((.allow // []) + $new_allow) | unique))
       | .extraKnownMarketplaces = ((.extraKnownMarketplaces // {}) + $new_mkts)
       | .enabledPlugins = ((.enabledPlugins // {}) + $new_plugins)
     ' "$settings" > "${settings}.tmp" && mv "${settings}.tmp" "$settings"
-    log_info "settings.json をマージ（ユーザーフック・permissions・marketplace 保持）"
+    log_info "settings.json をマージ（permissions / marketplace / enabledPlugins）"
   fi
 }
 
