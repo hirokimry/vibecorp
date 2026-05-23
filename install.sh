@@ -676,6 +676,35 @@ read_lock_list() {
   ' "$lock_file"
 }
 
+# 機能: plugin native 配布以前の旧レイアウト残滓を --update 時に物理削除する（Issue #708）
+# - .claude/vibecorp-base/hooks/ と .claude/vibecorp-base/lib/ は #710 以前の 3-way マージ基準スナップショット
+#   plugin native 配布化後は不要だが、過去の利用者リポジトリには残り続けるため明示的に migration する
+migrate_legacy_layout() {
+  [[ "$UPDATE_MODE" == true ]] || return 0
+
+  local removed=0
+  local base_hooks="${REPO_ROOT}/.claude/vibecorp-base/hooks"
+  local base_lib="${REPO_ROOT}/.claude/vibecorp-base/lib"
+
+  if [[ -d "$base_hooks" ]]; then
+    rm -rf "$base_hooks"
+    log_info "migration: 旧 .claude/vibecorp-base/hooks/ を削除"
+    removed=1
+  fi
+  if [[ -d "$base_lib" ]]; then
+    rm -rf "$base_lib"
+    log_info "migration: 旧 .claude/vibecorp-base/lib/ を削除"
+    removed=1
+  fi
+
+  # vibecorp-base/ 全体が空になったら ディレクトリも削除（rmdir は中身があれば失敗 = 安全）
+  if [[ -d "${REPO_ROOT}/.claude/vibecorp-base" ]]; then
+    rmdir "${REPO_ROOT}/.claude/vibecorp-base" 2>/dev/null || true
+  fi
+
+  [[ $removed -eq 0 ]] || log_info "Issue #708: plugin native 移行に伴う旧レイアウト migration 完了"
+}
+
 remove_managed_files() {
   # lock に記載された vibecorp 管理ファイルを削除
   # --update 時は hooks/skills を 3-way マージ対象として保持する
@@ -2848,6 +2877,7 @@ main() {
   # full プリセット時は隔離レイヤの依存を確認（sandbox-exec 等）
   check_isolation_deps
 
+  migrate_legacy_layout
   remove_managed_files
   copy_managed_files
   setup_xdg_cache_dirs
