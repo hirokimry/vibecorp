@@ -186,7 +186,7 @@ preset: standard
 language: ja
 YAML
 
-for std_hook in sync-gate review-gate guide-gate; do
+for std_hook in sync-gate session-harvest-gate review-gate guide-gate; do
   if hook_skip_if_disabled "$std_hook"; then
     fail "standard preset: ${std_hook} は continue すべき"
   else
@@ -209,7 +209,7 @@ preset: full
 language: ja
 YAML
 
-for full_hook in sync-gate review-gate guide-gate role-gate diagnose-guard; do
+for full_hook in sync-gate session-harvest-gate review-gate guide-gate role-gate diagnose-guard; do
   if hook_skip_if_disabled "$full_hook"; then
     fail "full preset: ${full_hook} は continue すべき"
   else
@@ -313,8 +313,8 @@ EOF
 done
 
 # 逆方向: install.sh が削除しない（=有効として残す）hook が lib で continue 判定になるか
-# minimal で残る hook = 実存 hook − minimal 削除 hook
-echo "  install.sh が残す hook を逆方向照合..."
+# minimal / standard 両方で「残存対象→continue」を照合する（順方向「削除対象→skip」と対称）。
+echo "  install.sh が minimal で残す hook を逆方向照合..."
 removed_minimal=$(extract_removed_hooks "minimal")
 for existing in "${existing_hooks[@]}"; do
   is_removed=0
@@ -336,6 +336,32 @@ EOF
     fail "install.sh minimal で残る ${existing} が lib で skip 判定（不整合）"
   else
     pass "install.sh minimal で残る ${existing} は lib でも continue 判定"
+  fi
+done
+
+# standard preset の残存対象: 実存 hook − standard 削除 hook
+echo "  install.sh が standard で残す hook を逆方向照合..."
+removed_standard=$(extract_removed_hooks "standard")
+for existing in "${existing_hooks[@]}"; do
+  is_removed=0
+  for r in $removed_standard; do
+    if [[ "$r" == "$existing" ]]; then
+      is_removed=1
+      break
+    fi
+  done
+  [[ "$is_removed" == "0" ]] || continue
+
+  cat > "$YML" <<EOF
+name: test-project
+preset: standard
+language: ja
+EOF
+
+  if hook_skip_if_disabled "$existing"; then
+    fail "install.sh standard で残る ${existing} が lib で skip 判定（不整合）"
+  else
+    pass "install.sh standard で残る ${existing} は lib でも continue 判定"
   fi
 done
 

@@ -266,7 +266,7 @@ _vibecorp_preset_has_hook() {
     standard)
       # minimal で除外される hook のうち、role-gate / diagnose-guard 以外を追加
       case "$hook" in
-        sync-gate|review-gate|guide-gate)
+        sync-gate|session-harvest-gate|review-gate|guide-gate)
           return 0
           ;;
       esac
@@ -275,7 +275,7 @@ _vibecorp_preset_has_hook() {
     full)
       # full は全 hook 有効
       case "$hook" in
-        sync-gate|review-gate|guide-gate|role-gate|diagnose-guard)
+        sync-gate|session-harvest-gate|review-gate|guide-gate|role-gate|diagnose-guard)
           return 0
           ;;
       esac
@@ -284,7 +284,7 @@ _vibecorp_preset_has_hook() {
     *)
       # 未知の preset はフェイルセーフで standard 扱い
       case "$hook" in
-        sync-gate|review-gate|guide-gate)
+        sync-gate|session-harvest-gate|review-gate|guide-gate)
           return 0
           ;;
       esac
