@@ -10,7 +10,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-COMMON_SH="${SCRIPT_DIR}/templates/claude/lib/common.sh"
+COMMON_SH="${SCRIPT_DIR}/lib/common.sh"
 
 # --- テスト用ディレクトリを準備 ---
 

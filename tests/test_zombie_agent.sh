@@ -12,7 +12,7 @@ set -euo pipefail
 
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TESTS_DIR}/.." && pwd)"
-LIB_FILE="${REPO_ROOT}/templates/claude/lib/zombie_agent.sh"
+LIB_FILE="${REPO_ROOT}/lib/zombie_agent.sh"
 
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
