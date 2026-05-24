@@ -228,19 +228,25 @@ JSON
 fi
 
 echo ""
-echo "=== Test 5: 新規 lock は v2 形式で hooks: / lib: セクションを書かない (#722) ==="
+echo "=== Test 5: 新規 lock は v3 形式で hooks: / lib: / agents: セクションを書かない (#722 / #735) ==="
 
 # generate_lock_file 関数の hooks: 出力削除を直接検証
 if grep -q '_lock_list_section "hooks"' "$INSTALL_SH"; then
-  fail "generate_lock_file が依然として hooks: セクションを出力している（v2 形式違反）"
+  fail "generate_lock_file が依然として hooks: セクションを出力している（v3 形式違反）"
 else
   pass "generate_lock_file が hooks: セクションを出力しなくなった"
 fi
 
 if grep -q '_lock_list_section "lib"' "$INSTALL_SH"; then
-  fail "generate_lock_file が lib: セクションを出力している（v2 形式違反）"
+  fail "generate_lock_file が lib: セクションを出力している（v3 形式違反）"
 else
-  pass "generate_lock_file が lib: セクションを出力しない（v2 形式準拠）"
+  pass "generate_lock_file が lib: セクションを出力しない（v3 形式準拠）"
+fi
+
+if grep -q '_lock_list_section "agents"' "$INSTALL_SH"; then
+  fail "generate_lock_file が agents: セクションを出力している（v3 形式違反、#735）"
+else
+  pass "generate_lock_file が agents: セクションを出力しない（v3 形式準拠、#735）"
 fi
 
 if grep -q "^format_version: 3$" "$INSTALL_SH" || grep -q 'format_version: 3' "$INSTALL_SH"; then

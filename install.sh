@@ -802,33 +802,8 @@ migrate_legacy_layout() {
     fi
   fi
 
-  # 機能: 旧 .claude/agents/ 配下の vibecorp 配布物を物理削除（Issue #735 完了条件）
-  # plugin native 配布 (#737) で agents は ${CLAUDE_PLUGIN_ROOT}/agents/ に一元化されたため、
-  # .claude/agents/ 配下の vibecorp 配布物は不要。
-  # hooks migration (#716) と同じく lock 記載の basename のみ削除（同名ユーザー agent 保護）。
-  local legacy_agents="${REPO_ROOT}/.claude/agents"
-  if [[ -d "$legacy_agents" ]] && [[ -f "$lock_file" ]]; then
-    local lock_agents
-    lock_agents="$(read_lock_list "$lock_file" agents 2>/dev/null || true)"
-    if [[ -n "$lock_agents" ]]; then
-      local removed_legacy_agent=0
-      local agent_basename
-      while IFS= read -r agent_basename; do
-        [[ -n "$agent_basename" ]] || continue
-        local legacy_agent="${legacy_agents}/${agent_basename}"
-        if [[ -f "$legacy_agent" ]]; then
-          rm -f "$legacy_agent"
-          removed_legacy_agent=1
-        fi
-      done <<< "$lock_agents"
-      if [[ $removed_legacy_agent -eq 1 ]]; then
-        log_info "migration: 旧 .claude/agents/ から vibecorp 配布 agent を削除（lock 記載分のみ）"
-        removed=1
-      fi
-    fi
-    # agents/ が空になったら rmdir（中身があれば失敗 = ユーザー独自 agent は安全に保護される）
-    rmdir "$legacy_agents" 2>/dev/null || true
-  fi
+  # 旧 .claude/agents/ 配下の vibecorp 配布物清掃は remove_managed_files() に移動済み
+  # （Issue #735 完了条件: --update 限定ガードを外して --name 経路でも清掃される）
 
   [[ $removed -eq 0 ]] || log_info "Issue #708 / #721 / #735: plugin native 移行に伴う旧レイアウト migration 完了"
 }
@@ -837,9 +812,11 @@ remove_managed_files() {
   # lock に記載された vibecorp 管理ファイルを削除
   # --update 時は skills を 3-way マージ対象として保持する
   # hooks は plugin native 配布 (#716) に移行済のため install.sh は配置・削除を行わない
-  # agents は plugin native 配布 (#737 / #735) に移行済のため install.sh は配置・削除を行わない
+  # agents は plugin native 配布 (#737 / #735) に移行済のため install.sh は配置しないが、
+  # 旧バージョンが配置した .claude/agents/ を消し残さないため lock 記載分の削除は両経路で行う
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local skills_dir="${REPO_ROOT}/.claude/skills"
+  local agents_dir="${REPO_ROOT}/.claude/agents"
 
   [[ -f "$lock" ]] || return 0
 
@@ -850,6 +827,18 @@ remove_managed_files() {
     done < <(read_lock_list "$lock" "skills")
   fi
   # --update 時は skills を削除しない（merge_or_overwrite で処理）
+
+  # lock 記載の旧 vibecorp 配布 agents を物理削除（Issue #735 完了条件、両経路で実行）
+  # plugin native 配布 (#737) で agents は ${CLAUDE_PLUGIN_ROOT}/agents/ に一元化されたため、
+  # ユーザーリポジトリの .claude/agents/ 配下に残った旧版 vibecorp 配布 agent を清掃する。
+  # ユーザー独自 agent は lock 未記載のため保護される。
+  if [[ -d "$agents_dir" ]]; then
+    while IFS= read -r name; do
+      [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
+    done < <(read_lock_list "$lock" "agents")
+    # agents/ が空になったら rmdir（中身があれば失敗 = ユーザー独自 agent は安全に保護される）
+    rmdir "$agents_dir" 2>/dev/null || true
+  fi
 
   # knowledge は運用中にユーザーが蓄積するデータのため削除しない
 
