@@ -828,14 +828,36 @@ remove_managed_files() {
   fi
   # --update 時は skills を削除しない（merge_or_overwrite で処理）
 
-  # lock 記載の旧 vibecorp 配布 agents を物理削除（Issue #735 完了条件、両経路で実行）
+  # 旧 vibecorp 配布 agents を物理削除（Issue #735 完了条件、両経路で実行）
   # plugin native 配布 (#737) で agents は ${CLAUDE_PLUGIN_ROOT}/agents/ に一元化されたため、
   # ユーザーリポジトリの .claude/agents/ 配下に残った旧版 vibecorp 配布 agent を清掃する。
-  # ユーザー独自 agent は lock 未記載のため保護される。
+  # 判定 A: lock 記載があれば vibecorp 管理確定 → 削除（ユーザー独自 agent は lock 未記載のため保護される）
+  # 判定 B: lock が v3 形式（agents セクション無し）等で記載が無い場合は、
+  #         現行プラグイン配布物と content 一致する旧 managed agent のみ削除する
+  #         （hooks migration #716 と同じパターン、同名ユーザー agent 保護）
   if [[ -d "$agents_dir" ]]; then
+    local lock_agents_found=0
     while IFS= read -r name; do
-      [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
+      [[ -n "$name" ]] || continue
+      [[ "$name" =~ ^[A-Za-z0-9._-]+\.md$ ]] || continue
+      lock_agents_found=1
+      rm -f "${agents_dir}/${name}"
     done < <(read_lock_list "$lock" "agents")
+
+    # 判定 B フォールバック: v3 lock 等で agents セクション不在の場合、
+    # 現行プラグイン配布物と content 一致する旧 managed agent のみ削除する
+    if [[ "$lock_agents_found" -eq 0 ]]; then
+      local plugin_agent agent_basename legacy_agent
+      for plugin_agent in "${SCRIPT_DIR}/agents/"*.md; do
+        [[ -f "$plugin_agent" ]] || continue
+        agent_basename="$(basename "$plugin_agent")"
+        legacy_agent="${agents_dir}/${agent_basename}"
+        if [[ -f "$legacy_agent" ]] && cmp -s "$legacy_agent" "$plugin_agent"; then
+          rm -f "$legacy_agent"
+        fi
+      done
+    fi
+
     # agents/ が空になったら rmdir（中身があれば失敗 = ユーザー独自 agent は安全に保護される）
     rmdir "$agents_dir" 2>/dev/null || true
   fi
