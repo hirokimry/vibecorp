@@ -243,10 +243,10 @@ else
   pass "generate_lock_file が lib: セクションを出力しない（v2 形式準拠）"
 fi
 
-if grep -q "^format_version: 2$" "$INSTALL_SH" || grep -q 'format_version: 2' "$INSTALL_SH"; then
-  pass "lock ヘッダに format_version: 2 が追加された"
+if grep -q "^format_version: 3$" "$INSTALL_SH" || grep -q 'format_version: 3' "$INSTALL_SH"; then
+  pass "lock ヘッダに format_version: 3 が追加された（#735: agents セクション廃止）"
 else
-  fail "lock ヘッダに format_version: 2 が追加されていない"
+  fail "lock ヘッダに format_version: 3 が追加されていない"
 fi
 
 echo ""
