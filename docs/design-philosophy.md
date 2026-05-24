@@ -813,7 +813,7 @@ gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有
 
 | 例 |
 |---|
-| `templates/claude/rules/`, `templates/claude/hooks/`, `templates/claude/agents/` |
+| `templates/claude/rules/`, `templates/claude/hooks/`, `agents/` |
 | `templates/claude/.gitignore.tpl` |
 | `templates/claude/bin/activate.sh` |
 

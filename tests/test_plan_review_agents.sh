@@ -10,7 +10,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-AGENTS_DIR="$PROJECT_DIR/templates/claude/agents"
+AGENTS_DIR="$PROJECT_DIR/agents"
 SKILL_FILE="$PROJECT_DIR/skills/plan-review-loop/SKILL.md"
 INSTALL_SCRIPT="$PROJECT_DIR/install.sh"
 

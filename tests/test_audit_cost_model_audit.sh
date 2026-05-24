@@ -66,10 +66,10 @@ else
   fail "SKILL.md に「モデル指定」の記述がない"
 fi
 
-if grep -q "templates/claude/agents" "$SKILL_FILE"; then
-  pass "SKILL.md が templates/claude/agents 走査対象を指示している"
+if grep -qE "(^|[^/])agents/\*\.md" "$SKILL_FILE"; then
+  pass "SKILL.md が agents/ 走査対象を指示している"
 else
-  fail "SKILL.md が templates/claude/agents を指示していない"
+  fail "SKILL.md が agents/ を指示していない"
 fi
 
 if grep -q "\.claude/agents" "$SKILL_FILE"; then

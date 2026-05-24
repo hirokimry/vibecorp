@@ -125,7 +125,7 @@ echo ""
 echo "--- テスト8: 分析員エージェント定義 ---"
 
 for role in accounting security legal; do
-  agent_file="${PROJECT_DIR}/templates/claude/agents/${role}-analyst.md"
+  agent_file="${PROJECT_DIR}/agents/${role}-analyst.md"
   if [ -f "$agent_file" ]; then
     assert_file_contains "${role}-analyst に audit-log/YYYY-QN.md パスがある" \
       "$agent_file" "audit-log/YYYY-QN.md"

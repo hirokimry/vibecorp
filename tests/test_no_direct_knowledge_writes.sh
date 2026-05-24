@@ -83,10 +83,10 @@ fi
 
 # --- テスト3: エージェント定義の検査 ---
 echo ""
-echo "--- テスト3: templates/claude/agents/*.md の検査 ---"
+echo "--- テスト3: agents/*.md の検査 ---"
 
 violations=0
-for agent_file in "${PROJECT_DIR}"/templates/claude/agents/*.md; do
+for agent_file in "${PROJECT_DIR}"/agents/*.md; do
   if is_whitelisted "$agent_file"; then
     continue
   fi

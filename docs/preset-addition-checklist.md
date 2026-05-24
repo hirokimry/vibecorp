@@ -174,7 +174,7 @@ esac
 |---|---|
 | フック | `templates/claude/hooks/新しいフック.sh` |
 | スキル | `skills/新しいスキル/SKILL.md` |
-| エージェント | `templates/claude/agents/新しいエージェント.md` |
+| エージェント | `agents/新しいエージェント.md` |
 | knowledge | `templates/claude/knowledge/新しいロール/` |
 
 ## 📋 まとめ: 更新箇所の早見表
