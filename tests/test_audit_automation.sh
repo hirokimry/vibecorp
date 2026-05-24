@@ -241,7 +241,7 @@ echo ""
 echo "--- テスト12: 参照エージェントファイル ---"
 
 for agent in cfo ciso; do
-  agent_file="$PROJECT_DIR/templates/claude/agents/${agent}.md"
+  agent_file="$PROJECT_DIR/agents/${agent}.md"
   if [[ -f "$agent_file" ]]; then
     pass "${agent}.md が存在する"
   else
