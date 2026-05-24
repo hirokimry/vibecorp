@@ -7,13 +7,18 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/hook_fixtures.sh"
+# Issue #701: lib/ を plugin ルートに移動した後も hook テストが ${HOOK_DIR}/../lib/
+# を引けるよう、テスト中だけ lib/ に lib をコピーする
+sync_lib_for_hook_tests
 
-HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
-LIB_DIR="$(cd "$(dirname "$0")/../templates/claude/lib" && pwd)"
+HOOKS_DIR="$(cd "$(dirname "$0")/../hooks" && pwd)"
+LIB_DIR="$(cd "$(dirname "$0")/../lib" && pwd)"
 TMPDIR_ROOT=""
 
 # 共通ヘルパーを source（vibecorp_stamp_path を使うため）
-# shellcheck source=../templates/claude/lib/common.sh
+# shellcheck source=../lib/common.sh
 source "${LIB_DIR}/common.sh"
 
 assert_blocked() {
@@ -190,7 +195,19 @@ echo ""
 echo "=== sync-gate.sh ==="
 # ============================================
 
-write_vibecorp_yml
+# sync-gate は minimal preset では skip するため、ここから先は preset full に切り替える
+# （test_hooks.sh の write_vibecorp_yml は protect-files の minimal preset 想定で書かれている）
+write_vibecorp_yml_full() {
+  cat > "${TMPDIR_ROOT}/.claude/vibecorp.yml" <<'YAML'
+name: test-project
+preset: full
+language: ja
+base_branch: main
+protected_files:
+  - MVV.md
+YAML
+}
+write_vibecorp_yml_full
 
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
@@ -252,7 +269,7 @@ OUTPUT=$(echo '{"tool_input":{"command":"git pull origin main"}}' | run_hook syn
 assert_allowed "対象外コマンド(git pull) → 許可" "$OUTPUT"
 
 # 17. STAMP_FILE は $XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される
-write_vibecorp_yml
+write_vibecorp_yml_full
 touch "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 assert_allowed "STAMP_FILE が \$XDG_CACHE_HOME/vibecorp/state/<repo-id>/sync-ok に配置される" "$OUTPUT"
@@ -272,7 +289,7 @@ export CLAUDE_PROJECT_DIR="$ORIG_DIR"
 rm -rf "$ALT_DIR"
 
 # 20. deny 出力の JSON 構造検証
-write_vibecorp_yml
+write_vibecorp_yml_full
 rm -f "${STAMP_SYNC}"
 OUTPUT=$(echo '{"tool_input":{"command":"git push origin main"}}' | run_hook sync-gate.sh)
 VALID=true

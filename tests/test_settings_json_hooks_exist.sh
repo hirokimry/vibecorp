@@ -3,7 +3,7 @@
 #
 # 検証対象:
 #   - .claude/settings.json: 参照する全 hook が .claude/hooks/ に実在する
-#   - templates/settings.json.tpl: 参照する全 hook が templates/claude/hooks/ に実在する
+#   - templates/settings.json.tpl: 参照する全 hook が hooks/ に実在する
 #   - 回帰防止: settings.json から削除済み team-auto-approve.sh への参照が復活していないこと
 #
 # 目的:
@@ -35,7 +35,7 @@ extract_hook_basenames() {
 # 対象ファイルが参照する全 hook が指定ディレクトリに実在することを検証
 # fallback_dir が指定された場合、hooks_dir に無ければ fallback_dir も探す
 # （CI 環境では .claude/hooks/ に install.sh 配置前の hook が無いため
-#   templates/claude/hooks/ をフォールバックとして参照する）
+#   hooks/ をフォールバックとして参照する）
 assert_all_hooks_exist() {
   local desc="$1"
   local settings_file="$2"
@@ -46,7 +46,14 @@ assert_all_hooks_exist() {
   hooks=$(extract_hook_basenames "$settings_file")
 
   if [ -z "$hooks" ]; then
-    fail "$desc (hook 参照が1件も抽出できない: $settings_file)"
+    # plugin native (#720): settings.json.tpl は hooks ブロックを持たなくなった
+    # （hooks 登録は ${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json 経由に一元化）
+    # CR PR #731 Minor #9 対応: .hooks キー自体が存在しないことを明示検証して退行を捕捉する
+    if jq -e '.hooks' "$settings_file" >/dev/null 2>&1; then
+      fail "$desc (.hooks キー残存だが参照抽出 0 件 = 構造不一致による誤検出の可能性)"
+    else
+      pass "$desc (plugin native 配布で .hooks キー不在、#720 / #716)"
+    fi
     return
   fi
 
@@ -96,7 +103,7 @@ echo "=== settings.json hook 実在性検証 ==="
 SETTINGS_JSON="${SCRIPT_DIR}/.claude/settings.json"
 SETTINGS_TPL="${SCRIPT_DIR}/templates/settings.json.tpl"
 HOOKS_DIR="${SCRIPT_DIR}/.claude/hooks"
-TEMPLATE_HOOKS_DIR="${SCRIPT_DIR}/templates/claude/hooks"
+TEMPLATE_HOOKS_DIR="${SCRIPT_DIR}/hooks"
 
 # 前提ファイルの存在確認（不在なら後続テストが全て無意味なので即 exit 1）
 if [ ! -f "$SETTINGS_JSON" ]; then
@@ -137,11 +144,11 @@ if [ -f "$SETTINGS_TPL" ]; then
 
   if [ -d "$TEMPLATE_HOOKS_DIR" ]; then
     assert_all_hooks_exist \
-      "templates/settings.json.tpl が参照する全 hook が templates/claude/hooks/ に実在する" \
+      "templates/settings.json.tpl が参照する全 hook が hooks/ に実在する" \
       "$SETTINGS_TPL" \
       "$TEMPLATE_HOOKS_DIR"
   else
-    fail "templates/claude/hooks/ ディレクトリが存在しない"
+    fail "hooks/ ディレクトリが存在しない"
     exit 1
   fi
 

@@ -9,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
-HOOK_FILE="${PROJECT_DIR}/templates/claude/hooks/protect-knowledge-bash-writes.sh"
+HOOK_FILE="${PROJECT_DIR}/hooks/protect-knowledge-bash-writes.sh"
 
 TMPDIR_ROOT="$(mktemp -d)"
 cleanup() {
@@ -159,7 +159,7 @@ echo ""
 echo "--- テスト10: buffer 経由許可 ---"
 
 # 実 buffer worktree パスを取得
-real_buffer_dir="$(. "${PROJECT_DIR}/templates/claude/lib/common.sh" && . "${PROJECT_DIR}/templates/claude/lib/knowledge_buffer.sh" && knowledge_buffer_worktree_dir 2>/dev/null || echo "")"
+real_buffer_dir="$(. "${PROJECT_DIR}/lib/common.sh" && . "${PROJECT_DIR}/lib/knowledge_buffer.sh" && knowledge_buffer_worktree_dir 2>/dev/null || echo "")"
 
 if [ -n "$real_buffer_dir" ] && [ -d "$real_buffer_dir" ]; then
   mkdir -p "${real_buffer_dir}/.claude/knowledge/cfo/decisions"

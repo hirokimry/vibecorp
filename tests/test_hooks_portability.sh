@@ -14,7 +14,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-HOOKS_DIR="$PROJECT_DIR/templates/claude/hooks"
+HOOKS_DIR="$PROJECT_DIR/hooks"
 
 echo "=== hooks 移植性テスト ==="
 
@@ -71,10 +71,14 @@ for hook in "${HOOK_FILES[@]}"; do
   fi
 done
 
-# --- テスト4: $CLAUDE_PROJECT_DIR を使用していること ---
+# --- テスト4: 環境非依存な anchor（$CLAUDE_PROJECT_DIR または $HOOK_DIR）を使用していること ---
 
+# hook は実行環境に依存しない anchor で参照を解決する必要がある。
+# 1. $CLAUDE_PROJECT_DIR: 利用者リポジトリのルートを指す（install.sh 配置時の前提）。
+# 2. $HOOK_DIR: hook 自身の位置を起点にした相対解決（plugin native 配布化後の前提、Issue #703）。
+# どちらも HOME / 絶対パス非依存で hook を移植可能にするため等価に扱う。
 echo ""
-echo "--- テスト4: \$CLAUDE_PROJECT_DIR を使用していること ---"
+echo "--- テスト4: 環境非依存な anchor（\$CLAUDE_PROJECT_DIR または \$HOOK_DIR）を使用していること ---"
 
 for hook in "${HOOK_FILES[@]}"; do
   HOOK_PATH="$HOOKS_DIR/$hook"
@@ -83,15 +87,17 @@ for hook in "${HOOK_FILES[@]}"; do
     continue
   fi
 
-  if grep -q 'CLAUDE_PROJECT_DIR' "$HOOK_PATH"; then
-    pass "$hook は \$CLAUDE_PROJECT_DIR を使用している"
+  # CR PR #731 Minor #7 対応: コメント行を除外して実コードのみで判定
+  # 行頭から空白とコメント # を除去した結果が anchor を含むかチェック
+  if grep -vE '^[[:space:]]*#' "$HOOK_PATH" | grep -qE 'CLAUDE_PROJECT_DIR|HOOK_DIR'; then
+    pass "$hook は \$CLAUDE_PROJECT_DIR / \$HOOK_DIR で anchor を解決している（実コードベース）"
   else
-    # ファイルシステムにアクセスせず stdin のみ読み取るフックは CLAUDE_PROJECT_DIR 不要
-    FILE_ACCESS=$(grep -cE '(open|source|readfile|\$\{?CLAUDE_PROJECT_DIR)' "$HOOK_PATH" || true)
+    # ファイルシステムにアクセスせず stdin のみ読み取るフックは anchor 不要
+    FILE_ACCESS=$(grep -vE '^[[:space:]]*#' "$HOOK_PATH" | grep -cE '(open|source|readfile|\$\{?CLAUDE_PROJECT_DIR|\$\{?HOOK_DIR)' || true)
     if [[ "$FILE_ACCESS" -eq 0 ]]; then
-      pass "$hook は stdin のみ読み取るため \$CLAUDE_PROJECT_DIR 不要"
+      pass "$hook は stdin のみ読み取るため anchor 不要（実コードベース）"
     else
-      fail "$hook は \$CLAUDE_PROJECT_DIR を使用していない"
+      fail "$hook は \$CLAUDE_PROJECT_DIR / \$HOOK_DIR のいずれも使用していない"
     fi
   fi
 done

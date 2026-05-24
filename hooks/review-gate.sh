@@ -9,6 +9,9 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "${HOOK_DIR}/../lib/common.sh"
 
+# yml で hooks.review-gate: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "review-gate" && exit 0
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 

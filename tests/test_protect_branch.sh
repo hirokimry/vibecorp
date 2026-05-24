@@ -7,8 +7,13 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${TESTS_DIR}/lib/test_helpers.sh"
+# shellcheck disable=SC1091
+source "${TESTS_DIR}/lib/hook_fixtures.sh"
+# Issue #701: lib/ を plugin ルートに移動した後も hook テストが ${HOOK_DIR}/../lib/
+# を引けるよう、テスト中だけ lib/ に lib をコピーする
+sync_lib_for_hook_tests
 
-HOOKS_DIR="$(cd "$(dirname "$0")/../templates/claude/hooks" && pwd)"
+HOOKS_DIR="$(cd "$(dirname "$0")/../hooks" && pwd)"
 TMPDIR_ROOT=""
 
 assert_blocked() {
@@ -347,12 +352,12 @@ if [ -n "$SAVED_HOME" ]; then
   export HOME="$SAVED_HOME"
 fi
 
-# DIFF-1: .claude/hooks/ と templates/claude/hooks/ が同期されていること
+# DIFF-1: .claude/hooks/ と hooks/ が同期されていること
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-if diff -q "$REPO_ROOT/.claude/hooks/protect-branch.sh" "$REPO_ROOT/templates/claude/hooks/protect-branch.sh" >/dev/null 2>&1; then
-  pass "DIFF-1: .claude/hooks/ と templates/claude/hooks/ の protect-branch.sh が同期"
+if diff -q "$REPO_ROOT/.claude/hooks/protect-branch.sh" "$REPO_ROOT/hooks/protect-branch.sh" >/dev/null 2>&1; then
+  pass "DIFF-1: .claude/hooks/ と hooks/ の protect-branch.sh が同期"
 else
-  fail "DIFF-1: .claude/hooks/ と templates/claude/hooks/ の protect-branch.sh が差分あり"
+  fail "DIFF-1: .claude/hooks/ と hooks/ の protect-branch.sh が差分あり"
 fi
 
 # ============================================

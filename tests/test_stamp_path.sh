@@ -10,7 +10,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-LIB="${SCRIPT_DIR}/templates/claude/lib/common.sh"
+LIB="${SCRIPT_DIR}/lib/common.sh"
 
 assert_contains() {
   local desc="$1"
@@ -50,7 +50,7 @@ if [ ! -f "$LIB" ]; then
 fi
 
 # common.sh を source
-# shellcheck source=../templates/claude/lib/common.sh
+# shellcheck source=../lib/common.sh
 source "$LIB"
 
 # --- テスト用の git リポジトリを準備 ---

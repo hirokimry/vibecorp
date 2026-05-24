@@ -14,21 +14,20 @@ echo ""
 echo "=== M. lock ベース再インストール（管理ファイルのみ差し替え） ==="
 # ============================================
 
-# M1. vibecorp 管理フックは差し替えられる
+# M1. hooks は plugin native 配布 (#716) に移行済のため install.sh は管理しない
+# ユーザー独自フックは .claude/hooks/ に置かれた場合も install.sh が触らずに残ることを検証する
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# protect-files.sh の内容を変更（古いバージョンを模擬）
-echo "# 古いバージョン" > "$R/.claude/hooks/protect-files.sh"
 # ユーザー独自フックを追加
+mkdir -p "$R/.claude/hooks"
 echo '#!/bin/bash' > "$R/.claude/hooks/my-custom-gate.sh"
 echo 'echo "ユーザー独自カスタムゲート"' >> "$R/.claude/hooks/my-custom-gate.sh"
 
-# 再実行で管理ファイルは差し替え、ユーザーファイルは保持
+# 再実行でユーザーファイルは保持
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 
-assert_file_not_contains "管理フックが差し替え済み" "$R/.claude/hooks/protect-files.sh" "古いバージョン"
 assert_file_exists "ユーザー独自フック(my-custom-gate.sh)が残る" "$R/.claude/hooks/my-custom-gate.sh"
 assert_file_contains "ユーザー独自フックの内容が保持" "$R/.claude/hooks/my-custom-gate.sh" "ユーザー独自カスタムゲート"
 
@@ -51,7 +50,8 @@ echo ""
 echo "=== N. 同名ファイル初回移行（スキップ動作） ==="
 # ============================================
 
-# N1. 初回（lock なし）で同名フックが既存ならスキップ
+# N1. hooks は plugin native 配布 (#716) に移行済のため、install.sh は .claude/hooks/ を触らない
+# ユーザー独自フックは初回 install でもそのまま残る
 create_test_repo
 mkdir -p "$TMPDIR_ROOT/.claude/hooks"
 echo '#!/bin/bash' > "$TMPDIR_ROOT/.claude/hooks/protect-files.sh"
@@ -104,8 +104,8 @@ JSON
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
+# hooks は plugin native 配布化により install.sh が touch しないため、ユーザー独自参照はそのまま残る
 assert_file_contains "初回でもユーザー独自フック参照が保持" "$R/.claude/settings.json" "my-custom-gate.sh"
-assert_file_contains "vibecorp フックも追加" "$R/.claude/settings.json" "protect-files.sh"
 
 cleanup
 
@@ -322,9 +322,16 @@ echo "=== AH. lock ファイル空リスト時のインデント ==="
 # AH1. 空リスト時に YAML の明示的空リスト表記 [] が使用される
 create_test_repo
 # テンプレートディレクトリを空にして空リストを再現
-# hooks/skills/agents テンプレートを退避
+# Issue #707 以降は hooks/ が plugin ルート、skills/agents は従来通り templates/claude/ 配下
 TEMPLATES_BAK=$(mktemp -d)
-for tpl_dir in hooks skills agents; do
+# hooks は plugin ルート直下
+if [ -d "$SCRIPT_DIR/hooks" ]; then
+  cp -r "$SCRIPT_DIR/hooks" "$TEMPLATES_BAK/hooks"
+  rm -rf "$SCRIPT_DIR/hooks"
+  mkdir -p "$SCRIPT_DIR/hooks"
+fi
+# skills / agents は templates/claude/ 配下
+for tpl_dir in skills agents; do
   if [ -d "$SCRIPT_DIR/templates/claude/$tpl_dir" ]; then
     cp -r "$SCRIPT_DIR/templates/claude/$tpl_dir" "$TEMPLATES_BAK/$tpl_dir"
     rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
@@ -337,18 +344,23 @@ R="$TMPDIR_ROOT"
 LOCK="$R/.claude/vibecorp.lock"
 
 if [ -f "$LOCK" ]; then
-  # 空リスト時は "hooks: []" のような表記であること（null ではない）
-  if grep -q 'hooks: \[\]' "$LOCK"; then
-    pass "AH1: 空リスト時に hooks: [] が出力される"
+  # v2 形式 (#722): hooks: セクションは廃止、skills: で空リスト表記を確認
+  if grep -q 'skills: \[\]' "$LOCK"; then
+    pass "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される（v2 形式は skills で検証）"
   else
-    fail "AH1: 空リスト時に hooks: [] が出力される"
+    fail "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される"
   fi
 else
-  fail "AH1: 空リスト時に hooks: [] が出力される (lock ファイルが存在しない)"
+  fail "AH1: 空リスト時に YAML 明示的空リスト表記 [] が出力される (lock ファイルが存在しない)"
 fi
 
 # テンプレート復元
-for tpl_dir in hooks skills agents; do
+# Issue #707 以降は hooks/ が plugin ルート、skills/agents は templates/claude/ 配下
+if [ -d "$TEMPLATES_BAK/hooks" ]; then
+  rm -rf "$SCRIPT_DIR/hooks"
+  mv "$TEMPLATES_BAK/hooks" "$SCRIPT_DIR/hooks"
+fi
+for tpl_dir in skills agents; do
   if [ -d "$TEMPLATES_BAK/$tpl_dir" ]; then
     rm -rf "$SCRIPT_DIR/templates/claude/$tpl_dir"
     mv "$TEMPLATES_BAK/$tpl_dir" "$SCRIPT_DIR/templates/claude/$tpl_dir"

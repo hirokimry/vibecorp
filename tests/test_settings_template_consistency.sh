@@ -81,14 +81,53 @@ else
 fi
 
 # hooks.PreToolUse の matcher / hook 集合一致検証
-# 順序不問で集合として比較する
-TPL_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$TPL")
-CLAUDE_HOOKS_SET=$(jq -S '.hooks.PreToolUse | map({matcher, hooks: (.hooks | map(.command) | sort)}) | sort_by(.matcher)' "$CLAUDE_SETTINGS")
-
-if [[ "$TPL_HOOKS_SET" == "$CLAUDE_HOOKS_SET" ]]; then
-  pass "hooks.PreToolUse の matcher / hook 集合が両ファイルで一致"
+# plugin native 配布 (#716/#720) 以降、settings.json は hooks を持たない (hooks.json に一元化)。
+# 両ファイルとも hooks がなければ skip、両方あれば比較、片方だけにあれば fail。
+# CR PR #731 Major #1 v2 対応: plugin native 方針では hooks ブロック残存自体を NG とする
+# (両ファイル一致でも hooks 再混入は禁止、両ファイル共に hooks 不在のみ pass)
+TPL_HAS_HOOKS=$(jq -e '.hooks' "$TPL" >/dev/null 2>&1 && echo yes || echo no)
+CLAUDE_HAS_HOOKS=$(jq -e '.hooks' "$CLAUDE_SETTINGS" >/dev/null 2>&1 && echo yes || echo no)
+if [ "$TPL_HAS_HOOKS" = "no" ] && [ "$CLAUDE_HAS_HOOKS" = "no" ]; then
+  pass "hooks ブロック不在で一致 (plugin native 配布、#720)"
 else
-  fail "hooks.PreToolUse の matcher / hook 集合が両ファイルで乖離している"
+  fail "plugin native 方針に反して hooks ブロックが残存: tpl=$TPL_HAS_HOOKS / claude=$CLAUDE_HAS_HOOKS"
+fi
+
+# CR PR #731 Major #7 v3 対応: plugin native 配布の必須構造を退行検知する
+# Issue #700 系の中核要件: .claude-plugin/plugin.json の hooks 参照固定 + hooks/hooks.json の構造固定
+PLUGIN_JSON="${REPO_ROOT}/.claude-plugin/plugin.json"
+HOOKS_MANIFEST="${REPO_ROOT}/hooks/hooks.json"
+
+if [ -f "$PLUGIN_JSON" ]; then
+  if jq -e '.hooks == "./hooks/hooks.json"' "$PLUGIN_JSON" >/dev/null 2>&1; then
+    pass ".claude-plugin/plugin.json の hooks フィールドが \"./hooks/hooks.json\" を指す"
+  else
+    fail ".claude-plugin/plugin.json の hooks 参照が plugin native の標準パスから乖離"
+  fi
+else
+  fail ".claude-plugin/plugin.json が存在しない"
+fi
+
+if [ -f "$HOOKS_MANIFEST" ]; then
+  if jq -e '.hooks.PreToolUse | type == "array" and length > 0' "$HOOKS_MANIFEST" >/dev/null 2>&1; then
+    pass "hooks/hooks.json の PreToolUse が non-empty array (plugin native 構造)"
+  else
+    fail "hooks/hooks.json の PreToolUse が非配列または空 (plugin native 構造違反)"
+  fi
+
+  # 全 hook command が \${CLAUDE_PLUGIN_ROOT}/hooks/ で始まることを確認 (経路固定)
+  NON_PLUGIN_PATH_COUNT=$(jq -r '
+    [.hooks | to_entries[].value[] | .hooks[] | .command]
+    | map(select(startswith("${CLAUDE_PLUGIN_ROOT}/hooks/") | not))
+    | length
+  ' "$HOOKS_MANIFEST")
+  if [ "$NON_PLUGIN_PATH_COUNT" = "0" ]; then
+    pass "hooks/hooks.json の全 command が \${CLAUDE_PLUGIN_ROOT}/hooks/ 経路 (plugin native 規約)"
+  else
+    fail "hooks/hooks.json に \${CLAUDE_PLUGIN_ROOT}/hooks/ 以外の command が ${NON_PLUGIN_PATH_COUNT} 件 (規約違反)"
+  fi
+else
+  fail "hooks/hooks.json が存在しない"
 fi
 
 echo ""

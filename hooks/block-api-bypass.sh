@@ -4,6 +4,14 @@
 
 set -euo pipefail
 
+# HOOK_DIR 経由で lib を解決することで、plugin native 配布化後（hook が plugin cache 配下に置かれるケース）でも参照が壊れないようにする（Issue #703）
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/common.sh
+source "${HOOK_DIR}/../lib/common.sh"
+
+# yml で hooks.block-api-bypass: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "block-api-bypass" && exit 0
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 

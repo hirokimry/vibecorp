@@ -5,11 +5,16 @@
 
 set -euo pipefail
 
+# HOOK_DIR 経由で lib を解決することで、plugin native 配布化後（hook が plugin cache 配下に置かれるケース）でも参照が壊れないようにする（Issue #703）
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
-source "${CLAUDE_PROJECT_DIR:-.}/.claude/lib/common.sh"
+source "${HOOK_DIR}/../lib/common.sh"
 # shellcheck source=../lib/path_normalize.sh
 # realpath 正規化を使い、シンボリックリンク経由の bypass（例: skillz -> skills）を塞ぐ
-source "${CLAUDE_PROJECT_DIR:-.}/.claude/lib/path_normalize.sh"
+source "${HOOK_DIR}/../lib/path_normalize.sh"
+
+# yml で hooks.diagnose-guard: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "diagnose-guard" && exit 0
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')

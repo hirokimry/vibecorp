@@ -9,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
-HOOK_FILE="${PROJECT_DIR}/templates/claude/hooks/protect-knowledge-direct-writes.sh"
+HOOK_FILE="${PROJECT_DIR}/hooks/protect-knowledge-direct-writes.sh"
 
 TMPDIR_ROOT="$(mktemp -d)"
 # テスト中に作成されるスタンプファイルのトラッキング
@@ -82,7 +82,7 @@ echo ""
 echo "--- テスト3b: 正規 buffer 配下の decisions/ 許可 ---"
 
 # 実 buffer worktree パスを取得（vibecorp_cache_root ベース）
-. "${PROJECT_DIR}/templates/claude/lib/common.sh"
+. "${PROJECT_DIR}/lib/common.sh"
 buffer_root="$(vibecorp_cache_root)/vibecorp/buffer-worktree"
 mkdir -p "${buffer_root}/test-allow-positive/.claude/knowledge/cfo/decisions"
 positive_path="${buffer_root}/test-allow-positive/.claude/knowledge/cfo/decisions/2026-Q2.md"
@@ -91,7 +91,7 @@ positive_path="${buffer_root}/test-allow-positive/.claude/knowledge/cfo/decision
 # テストでは別の repo-id で擬似的に作るため、hook が「許可」するのは実際の buffer のみ。
 # よってこのケースは fake_buffer 的に「期待 prefix と一致する別パス」を許可するわけではない。
 # 代わりに、現在のリポジトリの buffer worktree ディレクトリパスを使う。
-real_buffer_dir="$(. "${PROJECT_DIR}/templates/claude/lib/knowledge_buffer.sh" && knowledge_buffer_worktree_dir)"
+real_buffer_dir="$(. "${PROJECT_DIR}/lib/knowledge_buffer.sh" && knowledge_buffer_worktree_dir)"
 mkdir -p "${real_buffer_dir}/.claude/knowledge/cfo/decisions"
 positive_in_real="${real_buffer_dir}/.claude/knowledge/cfo/decisions/2026-Q2.md"
 
@@ -181,7 +181,7 @@ echo ""
 echo "--- テスト8a: スタンプあり + 非 deny 対象 ---"
 
 # スタンプ作成（HARVEST_STAMP_FILE に記録して cleanup trap で削除）
-. "${PROJECT_DIR}/templates/claude/lib/common.sh"
+. "${PROJECT_DIR}/lib/common.sh"
 stamp_dir="$(vibecorp_state_mkdir)"
 HARVEST_STAMP_FILE="${stamp_dir}/harvest-all-active"
 touch "$HARVEST_STAMP_FILE"
@@ -235,7 +235,7 @@ fi
 echo ""
 echo "--- テスト10: Python フォールバック常時検証 ---"
 
-LIB_FILE="${PROJECT_DIR}/templates/claude/lib/path_normalize.sh"
+LIB_FILE="${PROJECT_DIR}/lib/path_normalize.sh"
 
 # realpath を PATH から外して Python フォールバック経路を強制実行
 # 「native が使える環境では未検証」という穴を塞ぐ

@@ -21,6 +21,9 @@ source "${HOOK_DIR}/../lib/knowledge_buffer.sh"
 # パス正規化ヘルパー _pkw_normalize_path を共通 lib から取得（Issue #448）
 source "${HOOK_DIR}/../lib/path_normalize.sh"
 
+# yml で hooks.protect-knowledge-direct-writes: false / preset 対象外なら即 exit（Issue #704）
+hook_skip_if_disabled "protect-knowledge-direct-writes" && exit 0
+
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
