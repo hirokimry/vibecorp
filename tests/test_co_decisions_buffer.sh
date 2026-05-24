@@ -8,7 +8,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/lib/test_helpers.sh"
 
 PROJECT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
-AGENTS_DIR="${PROJECT_DIR}/templates/claude/agents"
+AGENTS_DIR="${PROJECT_DIR}/agents"
 
 echo "=== Issue #439: C*O 決定記録 buffer 化テスト ==="
 

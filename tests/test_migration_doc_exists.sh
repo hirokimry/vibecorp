@@ -110,7 +110,7 @@ fi
 # 注: C*O 6 体は説明文中で「### 判断記録（記録先取得失敗）」を引用するスタイルのため
 # 部分一致（-qF）で検証する。分析員 3 体はフォールバック出力例として行頭で書いているが、
 # 一貫性のため 9 体すべて部分一致で検証する（-qxF だと C*O 6 体が fail する）
-agents_dir="${PROJECT_DIR}/templates/claude/agents"
+agents_dir="${PROJECT_DIR}/agents"
 expected_agents="cfo cto cpo ciso clo sm accounting-analyst security-analyst legal-analyst"
 agent_miss_count=0
 for agent in $expected_agents; do

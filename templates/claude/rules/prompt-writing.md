@@ -13,7 +13,7 @@ paths:
   - ".claude/vibecorp-base/MVV.md"
   - ".claude/vibecorp-base/rules/**/*.md"
   - ".claude/vibecorp-base/skills/**/SKILL.md"
-  - "templates/claude/agents/**/*.md"
+  - "agents/**/*.md"
   - "templates/claude/rules/**/*.md"
   - "templates/claude/knowledge/**/*.md"
 ---

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # C*O エージェント定義が decisions-index.md の 2 段構成に対応していることを検証する
-# 対象: templates/claude/agents/{ciso,cto,cpo,cfo,clo,sm}.md
+# 対象: agents/{ciso,cto,cpo,cfo,clo,sm}.md
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ assert_file_contains_pattern() {
 echo "=== C*O エージェント decisions-index.md 対応検証 ==="
 
 for agent in ciso cto cpo cfo clo sm; do
-  file="templates/claude/agents/${agent}.md"
+  file="agents/${agent}.md"
   echo ""
   echo "--- ${agent} ---"
 

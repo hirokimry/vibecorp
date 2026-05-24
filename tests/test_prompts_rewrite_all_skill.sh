@@ -162,7 +162,7 @@ echo "=== 配布版同期チェックが動線に含まれている ==="
 
 assert_file_contains "配布版同期セクション" "$SKILL_FILE" "配布版同期"
 assert_file_contains ".claude/vibecorp-base/skills への同期" "$SKILL_FILE" "\.claude/vibecorp-base/skills"
-assert_file_contains "templates/claude/agents への同期" "$SKILL_FILE" "templates/claude/agents"
+assert_file_contains "agents への同期" "$SKILL_FILE" "agents/\*\.md"
 assert_file_contains "templates/claude/rules への同期" "$SKILL_FILE" "templates/claude/rules"
 
 # ============================================

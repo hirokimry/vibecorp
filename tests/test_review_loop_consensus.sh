@@ -11,7 +11,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/review-loop/SKILL.md"
-AGENTS_DIR="$PROJECT_DIR/templates/claude/agents"
+AGENTS_DIR="$PROJECT_DIR/agents"
 
 echo "=== /vibecorp:review-loop 合議制 + C*O メタレビュー テスト ==="
 echo ""

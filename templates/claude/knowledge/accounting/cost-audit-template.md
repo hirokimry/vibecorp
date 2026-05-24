@@ -43,11 +43,11 @@ YYYY-MM-DD（実施者: CFO エージェント / スキル: `/audit-cost`）
 
 ## モデル指定監査
 
-各エージェント定義（`templates/claude/agents/*.md` および `.claude/agents/*.md`）の `model:` 指定が役割に対して妥当かを審査する。判定は `docs/cost-analysis.md` の「モデル単価」表と「プリセット別の想定運用モード」を根拠とする。
+各エージェント定義（`agents/*.md` および `.claude/agents/*.md`）の `model:` 指定が役割に対して妥当かを審査する。判定は `docs/cost-analysis.md` の「モデル単価」表と「プリセット別の想定運用モード」を根拠とする。
 
 ### 走査対象
 
-- 配布元: `templates/claude/agents/*.md`（N 件）
+- 配布元: `agents/*.md`（N 件）
 - 導入先: `.claude/agents/*.md`（N 件）
 
 ### 役割別判定
@@ -76,10 +76,10 @@ YYYY-MM-DD（実施者: CFO エージェント / スキル: `/audit-cost`）
 
 ### 直近7日間の Diff
 
-`templates/claude/agents/*.md` および `.claude/agents/*.md` の `model:` 行に変更があれば記載する。
+`agents/*.md` および `.claude/agents/*.md` の `model:` 行に変更があれば記載する。
 
 ```text
-（git log --since="7 days ago" -p -- 'templates/claude/agents/*.md' '.claude/agents/*.md' | grep -E '^[+-]model:|^diff --git' の出力）
+（git log --since="7 days ago" -p -- 'agents/*.md' '.claude/agents/*.md' | grep -E '^[+-]model:|^diff --git' の出力）
 ```
 
 ### 警告サマリ

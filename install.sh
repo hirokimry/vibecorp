@@ -867,9 +867,9 @@ copy_managed_files() {
   fi
 
   # agents: 同名ファイルが既存ならスキップ
-  if [[ -d "${SCRIPT_DIR}/templates/claude/agents" ]]; then
+  if [[ -d "${SCRIPT_DIR}/agents" ]]; then
     mkdir -p "$agents_dir"
-    for src in "${SCRIPT_DIR}/templates/claude/agents/"*.md; do
+    for src in "${SCRIPT_DIR}/agents/"*.md; do
       [[ -f "$src" ]] || continue
       local name
       name=$(basename "$src")
@@ -1939,7 +1939,7 @@ generate_vibecorp_lock() {
     name=$(basename "$d")
     [[ -d "${REPO_ROOT}/.claude/skills/${name}" ]] && skills_list="${skills_list}    - ${name}"$'\n'
   done
-  for f in "${SCRIPT_DIR}/templates/claude/agents/"*.md; do
+  for f in "${SCRIPT_DIR}/agents/"*.md; do
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")

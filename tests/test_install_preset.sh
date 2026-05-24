@@ -749,7 +749,7 @@ assert_file_not_contains "minimal の lock に cto.md なし" "$R/.claude/vibeco
 cleanup
 
 # W4. テンプレートにエージェントファイルが存在する
-AGENTS_TPL="${SCRIPT_DIR}/templates/claude/agents"
+AGENTS_TPL="${SCRIPT_DIR}/agents"
 assert_file_exists "テンプレートに cto.md 存在" "$AGENTS_TPL/cto.md"
 assert_file_contains "cto.md に name: cto" "$AGENTS_TPL/cto.md" "name: cto"
 assert_file_exists "テンプレートに cpo.md 存在" "$AGENTS_TPL/cpo.md"
