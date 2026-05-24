@@ -802,16 +802,44 @@ migrate_legacy_layout() {
     fi
   fi
 
-  [[ $removed -eq 0 ]] || log_info "Issue #708 / #721: plugin native 移行に伴う旧レイアウト migration 完了"
+  # 機能: 旧 .claude/agents/ 配下の vibecorp 配布物を物理削除（Issue #735 完了条件）
+  # plugin native 配布 (#737) で agents は ${CLAUDE_PLUGIN_ROOT}/agents/ に一元化されたため、
+  # .claude/agents/ 配下の vibecorp 配布物は不要。
+  # hooks migration (#716) と同じく lock 記載の basename のみ削除（同名ユーザー agent 保護）。
+  local legacy_agents="${REPO_ROOT}/.claude/agents"
+  if [[ -d "$legacy_agents" ]] && [[ -f "$lock_file" ]]; then
+    local lock_agents
+    lock_agents="$(read_lock_list "$lock_file" agents 2>/dev/null || true)"
+    if [[ -n "$lock_agents" ]]; then
+      local removed_legacy_agent=0
+      local agent_basename
+      while IFS= read -r agent_basename; do
+        [[ -n "$agent_basename" ]] || continue
+        local legacy_agent="${legacy_agents}/${agent_basename}"
+        if [[ -f "$legacy_agent" ]]; then
+          rm -f "$legacy_agent"
+          removed_legacy_agent=1
+        fi
+      done <<< "$lock_agents"
+      if [[ $removed_legacy_agent -eq 1 ]]; then
+        log_info "migration: 旧 .claude/agents/ から vibecorp 配布 agent を削除（lock 記載分のみ）"
+        removed=1
+      fi
+    fi
+    # agents/ が空になったら rmdir（中身があれば失敗 = ユーザー独自 agent は安全に保護される）
+    rmdir "$legacy_agents" 2>/dev/null || true
+  fi
+
+  [[ $removed -eq 0 ]] || log_info "Issue #708 / #721 / #735: plugin native 移行に伴う旧レイアウト migration 完了"
 }
 
 remove_managed_files() {
   # lock に記載された vibecorp 管理ファイルを削除
   # --update 時は skills を 3-way マージ対象として保持する
   # hooks は plugin native 配布 (#716) に移行済のため install.sh は配置・削除を行わない
+  # agents は plugin native 配布 (#737 / #735) に移行済のため install.sh は配置・削除を行わない
   local lock="${REPO_ROOT}/.claude/vibecorp.lock"
   local skills_dir="${REPO_ROOT}/.claude/skills"
-  local agents_dir="${REPO_ROOT}/.claude/agents"
 
   [[ -f "$lock" ]] || return 0
 
@@ -823,11 +851,6 @@ remove_managed_files() {
   fi
   # --update 時は skills を削除しない（merge_or_overwrite で処理）
 
-  # lock 記載の agents を削除（agents は 3-way マージ対象外）
-  while IFS= read -r name; do
-    [[ -n "$name" ]] && rm -f "${agents_dir}/${name}"
-  done < <(read_lock_list "$lock" "agents")
-
   # knowledge は運用中にユーザーが蓄積するデータのため削除しない
 
   log_info "管理ファイルを整理（lock ベース）"
@@ -836,8 +859,12 @@ remove_managed_files() {
 copy_managed_files() {
   # テンプレートをコピー（既存ユーザーファイルはスキップ）
   # hooks は plugin native 配布 (#716) に移行済のため install.sh は配置しない
+  # agents は plugin native 配布 (#737 / #735) に移行済のため install.sh は配置しない
+  # .claude/ ディレクトリ自体は他の生成処理（vibecorp.yml / settings.json / lock 等）の前提として
+  # 必ず作成する。以前は agents/skills の mkdir が暗黙に作成していたが、両者の plugin native 移行で
+  # 明示的な mkdir が必要になった。
+  mkdir -p "${REPO_ROOT}/.claude"
   local skills_dir="${REPO_ROOT}/.claude/skills"
-  local agents_dir="${REPO_ROOT}/.claude/agents"
 
   # --update: plugin skills マイグレーション（プラグインキャッシュに移行済み）
   if [[ "$UPDATE_MODE" == true ]]; then
@@ -866,20 +893,8 @@ copy_managed_files() {
     fi
   fi
 
-  # agents: 同名ファイルが既存ならスキップ
-  if [[ -d "${SCRIPT_DIR}/agents" ]]; then
-    mkdir -p "$agents_dir"
-    for src in "${SCRIPT_DIR}/agents/"*.md; do
-      [[ -f "$src" ]] || continue
-      local name
-      name=$(basename "$src")
-      if [[ -f "${agents_dir}/${name}" ]]; then
-        log_skip "agents/${name} は既存のためスキップ"
-      else
-        cp "$src" "${agents_dir}/${name}"
-      fi
-    done
-  fi
+  # agents は plugin native 配布 (#737 / #735) で plugin/agents/ に一元化されたため、
+  # install.sh は配置しない。利用先プロジェクトの Claude Code が plugin cache 経由で自動検出する。
 
   # .claude-plugin/plugin.json: vibecorp 自身の .claude-plugin/plugin.json が
   # 唯一の Source-of-Truth。templates/ 経由の二重管理は drift の原因になるため廃止 (Issue #540)
@@ -890,11 +905,12 @@ copy_managed_files() {
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
+  # bash 3.2 + set -u: ${arr[@]} は空配列で「unbound variable」となるため、
+  # ${arr[@]+"${arr[@]}"} 形式で安全に展開する。
   local target_dirs=()
   [[ -d "$skills_dir" ]] && target_dirs+=("$skills_dir")
-  [[ -d "$agents_dir" ]] && target_dirs+=("$agents_dir")
   local placeholder_errors=0
-  for dir in "${target_dirs[@]}"; do
+  for dir in ${target_dirs[@]+"${target_dirs[@]}"}; do
     while IFS= read -r f; do
       # vibecorp が管理する 3 つのプレースホルダーのみを対象にする
       # （docker inspect の {{.State.Status}} 等、テンプレート構文を含む正当なコンテンツを誤検知しないため）
@@ -950,7 +966,9 @@ copy_managed_files() {
       rm -rf "${skills_dir}/plan-epic"
       # エピックリリーススキルは full プリセット専用（エピック運用は full でのみ整備）
       rm -rf "${skills_dir}/release-epic"
-      rm -rf "${agents_dir}"
+      # agents は plugin native 配布 (#737 / #735) のため install.sh は削除しない。
+      # minimal/standard プリセットでの agent 呼出ゲートは vibecorp.yml の
+      # plan.review_agents 設定で行われており、plugin cache に存在しても呼ばれない。
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
       rm -f "${REPO_ROOT}/.claude/bin/claude"
@@ -973,9 +991,9 @@ copy_managed_files() {
       rm -rf "${skills_dir}/plan-epic"
       # エピックリリーススキルは full プリセット専用（エピック運用は full でのみ整備）
       rm -rf "${skills_dir}/release-epic"
-      # plan-cost / plan-legal は full プリセット限定
-      rm -f "${agents_dir}/plan-cost.md"
-      rm -f "${agents_dir}/plan-legal.md"
+      # plan-cost / plan-legal は full プリセット限定だが、agents は plugin native 配布 (#737 / #735)
+      # に移行済のため install.sh は削除しない。呼出ゲートは vibecorp.yml の plan.review_agents が
+      # standard デフォルト [architect, security, testing] で plan-cost / plan-legal を呼ばないことで担保される。
       # 隔離レイヤは full 専用。vibecorp が配置した既知ファイルのみ削除し、
       # ディレクトリが空になったら rmdir（ユーザー独自配置は rmdir 失敗で保持される）
       rm -f "${REPO_ROOT}/.claude/bin/claude"
@@ -1930,7 +1948,8 @@ generate_vibecorp_lock() {
 
   # vibecorp が管理するファイルのマニフェストを生成（テンプレート由来のみ）
   # hooks は plugin native 配布 (#716) に移行済のため lock では空リストを維持する（後方互換）
-  local skills_list="" agents_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
+  # agents は plugin native 配布 (#737 / #735) に移行済のため lock では agents セクション自体を書かない
+  local skills_list="" rules_list="" issue_templates_list="" docs_list="" knowledge_list=""
 
   # テンプレートに存在し、プリセット削除後も残っているファイルを記録
   for d in "${SCRIPT_DIR}/skills/"*/; do
@@ -1938,12 +1957,6 @@ generate_vibecorp_lock() {
     local name
     name=$(basename "$d")
     [[ -d "${REPO_ROOT}/.claude/skills/${name}" ]] && skills_list="${skills_list}    - ${name}"$'\n'
-  done
-  for f in "${SCRIPT_DIR}/agents/"*.md; do
-    [[ -f "$f" ]] || continue
-    local name
-    name=$(basename "$f")
-    [[ -f "${REPO_ROOT}/.claude/agents/${name}" ]] && agents_list="${agents_list}    - ${name}"$'\n'
   done
   # コピー済みファイルリストから lock に記録（ユーザー既存ファイルを誤登録しない）
   while IFS= read -r name; do
@@ -1998,8 +2011,10 @@ generate_vibecorp_lock() {
   # v2 形式 (#722): hooks: / lib: セクションは plugin native 配布 (#716) で plugin/hooks/hooks.json に
   # 一元化されたため、新規 lock では一切書き込まない。read_lock_list は v1 形式の hooks: / lib: も
   # 引き続き読めるため後方互換は維持される（test_install_legacy_migration.sh で検証済）。
+  # v3 形式 (#735): agents: セクションは plugin native 配布 (#737) で plugin/agents/ に一元化された
+  # ため、新規 lock では一切書き込まない。read_lock_list は v1/v2 形式の agents: も引き続き
+  # 読めるため migration 経路（migrate_legacy_layout）で旧 lock 記載の agent を物理削除できる。
   files_block+="$(_lock_list_section "skills" "$skills_list")"$'\n'
-  files_block+="$(_lock_list_section "agents" "$agents_list")"$'\n'
   files_block+="$(_lock_list_section "rules" "$rules_list")"$'\n'
   files_block+="$(_lock_list_section "issue_templates" "$issue_templates_list")"$'\n'
   files_block+="$(_lock_list_section "docs" "$docs_list")"$'\n'
@@ -2008,8 +2023,9 @@ generate_vibecorp_lock() {
 
   cat > "$lock" <<YAML
 # vibecorp.lock — 自動生成、手動編集禁止
-# format_version: 2 は hooks: / lib: セクション廃止後の lock 形式 (#722)
-format_version: 2
+# format_version 3 は agents セクション廃止後の lock 形式 (#735)
+# 履歴: v1 (hooks / lib あり) → v2 (#722: hooks/lib 廃止) → v3 (#735: agents 廃止)
+format_version: 3
 version: ${VIBECORP_VERSION}
 installed_at: ${installed_at}
 preset: ${PRESET}

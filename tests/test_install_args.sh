@@ -130,7 +130,12 @@ EXIT_CODE=0; bash "$INSTALL_SH" --name test-proj --preset full 2>/dev/null || EX
 assert_exit_code "full → 成功" "0" "$EXIT_CODE"
 R="$TMPDIR_ROOT"
 assert_file_contains "full: vibecorp.yml に preset: full" "$R/.claude/vibecorp.yml" "preset: full"
-assert_dir_exists "full: agents ディレクトリ存在" "$R/.claude/agents"
+# agents は plugin native 配布 (#737 / #735) に移行済のため、install.sh は .claude/agents/ を作成しない
+if [ -d "$R/.claude/agents" ]; then
+  fail "full: .claude/agents/ が作成されている（plugin native 配布に移行済み）"
+else
+  pass "full: .claude/agents/ が作成されていない（plugin native 配布）"
+fi
 # skills/ は作成されない（プラグインキャッシュに移行済み）
 if [ -d "$R/skills" ]; then
   fail "full: skills/ が作成されている（プラグインキャッシュに移行済み）"
