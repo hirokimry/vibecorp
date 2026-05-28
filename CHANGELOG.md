@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+### 削除
+
+- `VIBECORP_REFERENCE_DIR` 前提のデッドルールを除去した。([Issue #745](https://github.com/hirokimry/vibecorp/issues/745))
+  - 同環境変数を設定する箇所が存在せず常時スキップ状態だった品質基準ルールを削除した。
+  - 未設定環境（=全運用環境）では削除前後で挙動が変わらない。
+
 ### 修正
 
 - 旧構造で作られた知見バッファが新構造へ自動移行されるようになった。([Issue #543](https://github.com/hirokimry/vibecorp/issues/543))
