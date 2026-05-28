@@ -1,5 +1,5 @@
 ---
-description: LLM 向けプロンプト（CLAUDE.md / rules / agents / SKILL.md / knowledge / MVV / 配布版 / templates 配布元）に追加適用する作成基準。claude-code-guide サブエージェントで Claude Code 公式仕様を確認することを MUST 化する
+description: LLM 向けプロンプト（CLAUDE.md / rules / agents / SKILL.md / knowledge / MVV / 配布版 / プラグインルート rules SSOT / templates 配布元）に追加適用する作成基準。claude-code-guide サブエージェントで Claude Code 公式仕様を確認することを MUST 化する
 paths:
   - "CLAUDE.md"
   - "CLAUDE.local.md"
@@ -14,7 +14,7 @@ paths:
   - ".claude/vibecorp-base/rules/**/*.md"
   - ".claude/vibecorp-base/skills/**/SKILL.md"
   - "agents/**/*.md"
-  - "templates/claude/rules/**/*.md"
+  - "rules/**/*.md"
   - "templates/claude/knowledge/**/*.md"
 ---
 

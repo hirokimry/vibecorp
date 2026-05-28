@@ -2237,7 +2237,10 @@ create_labels() {
 }
 
 copy_rules() {
-  local src="${SCRIPT_DIR}/templates/claude/rules"
+  # 配布元はプラグインルート rules/ が SSOT（Issue #747）。
+  # vibecorp 本体では .claude/rules/ は rules/ への symlink で dogfooding するが、
+  # 配布先には実体ファイルをコピーする（symlink は配布しない）。
+  local src="${SCRIPT_DIR}/rules"
   local dest="${REPO_ROOT}/.claude/rules"
   mkdir -p "$dest"
 

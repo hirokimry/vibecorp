@@ -156,7 +156,7 @@ echo "=== Minor #9: autonomous-restrictions.md の例外条項が存在する ==
 # CISO 承認済の id-token: write 例外条項自体は維持されているため、ここでは
 # 例外セクション見出しの存在のみを確認する（条件付き再導入は別 Issue で扱う）。
 
-AUTO_REST="${ROOT}/templates/claude/rules/autonomous-restrictions.md"
+AUTO_REST="${ROOT}/rules/autonomous-restrictions.md"
 assert_file_exists "autonomous-restrictions.md が存在する" "$AUTO_REST"
 assert_file_contains \
   "autonomous-restrictions.md の例外条項見出しが存在する" \
@@ -171,7 +171,7 @@ assert_file_contains \
 echo "=== Minor #10: severity/claude-action.md の REVIEW.md 前提が条件付き ==="
 # ============================================
 
-SEV_CA="${ROOT}/templates/claude/rules/severity/claude-action.md"
+SEV_CA="${ROOT}/rules/severity/claude-action.md"
 assert_file_exists "severity/claude-action.md が存在する" "$SEV_CA"
 assert_file_contains \
   "severity/claude-action.md が claude_action.enabled: true 前提を明記" \

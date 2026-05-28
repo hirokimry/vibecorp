@@ -10,7 +10,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-RULES_FILE="$PROJECT_DIR/templates/claude/rules/autonomous-restrictions.md"
+RULES_FILE="$PROJECT_DIR/rules/autonomous-restrictions.md"
 DIAGNOSE_FILE="$PROJECT_DIR/skills/diagnose/SKILL.md"
 AUTOPILOT_FILE="$PROJECT_DIR/skills/autopilot/SKILL.md"
 ISSUE_FILE="$PROJECT_DIR/skills/issue/SKILL.md"
