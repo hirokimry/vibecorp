@@ -813,7 +813,7 @@ gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有
 
 | 例 |
 |---|
-| `rules/`（プラグインルート SSOT、`.claude/rules/` は symlink で dogfooding）, `templates/claude/hooks/`, `agents/` |
+| `rules/`（プラグインルート SSOT、`.claude/rules/` は symlink で dogfooding）, `templates/claude/hooks/` |
 | `templates/claude/.gitignore.tpl` |
 | `templates/claude/bin/activate.sh` |
 
