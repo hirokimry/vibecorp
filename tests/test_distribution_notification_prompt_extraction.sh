@@ -15,9 +15,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RULE="notification-prompt-extraction.md"
 
 # 配置先 3 か所
+# Issue #747: SSOT はプラグインルート rules/。.claude/rules/ は rules/ への symlink で dogfooding する。
 SRC_DIR="${SCRIPT_DIR}/.claude/rules"
 BASE_DIR="${SCRIPT_DIR}/.claude/vibecorp-base/rules"
-TEMPLATE_DIR="${SCRIPT_DIR}/templates/claude/rules"
+SSOT_DIR="${SCRIPT_DIR}/rules"
 
 # ============================================
 echo "=== 本体 .claude/rules/ にファイルが存在する ==="
@@ -34,19 +35,24 @@ if [[ ! -f "${SRC_DIR}/${RULE}" ]]; then
 fi
 
 # ============================================
-echo "=== 配布元 templates/claude/rules/ にファイルが存在する（git 管理対象） ==="
+echo "=== SSOT rules/ にファイルが存在する（git 管理対象） ==="
 # ============================================
 
-assert_file_exists "配布元 templates/claude/rules/${RULE} が存在する" "${TEMPLATE_DIR}/${RULE}"
+assert_file_exists "SSOT rules/${RULE} が存在する" "${SSOT_DIR}/${RULE}"
 
 # ============================================
-echo "=== 本体 ↔ 配布元（templates）が完全一致する ==="
+echo "=== .claude/rules/ が SSOT rules/ に解決される（symlink dogfooding） ==="
 # ============================================
 
-if cmp -s "${SRC_DIR}/${RULE}" "${TEMPLATE_DIR}/${RULE}"; then
-  pass "本体 ↔ 配布元 templates の ${RULE} が完全一致"
+if [[ -L "${SRC_DIR}/${RULE}" ]]; then
+  pass ".claude/rules/${RULE} が symlink である"
 else
-  fail "本体 ↔ 配布元 templates の ${RULE} が一致しない（同期されていない）"
+  fail ".claude/rules/${RULE} が symlink でない（SSOT 化未完了）"
+fi
+if cmp -s "${SRC_DIR}/${RULE}" "${SSOT_DIR}/${RULE}"; then
+  pass ".claude/rules/${RULE} が SSOT rules/${RULE} に解決される"
+else
+  fail ".claude/rules/${RULE} が SSOT rules/${RULE} に解決されない"
 fi
 
 # ============================================
@@ -73,24 +79,24 @@ fi
 echo "=== install.sh の copy_rules() が新規ファイルを配布対象として列挙する ==="
 # ============================================
 
-# copy_rules() は find -maxdepth 2 -type f -name "*.md" で自動列挙する
-FOUND_RULES=$(find "${TEMPLATE_DIR}" -maxdepth 2 -type f -name "*.md")
-if echo "$FOUND_RULES" | grep -q -e "${TEMPLATE_DIR}/${RULE}"; then
+# copy_rules() は find -maxdepth 2 -type f -name "*.md" で SSOT rules/ を自動列挙する
+FOUND_RULES=$(find "${SSOT_DIR}" -maxdepth 2 -type f -name "*.md")
+if echo "$FOUND_RULES" | grep -q -e "${SSOT_DIR}/${RULE}"; then
   pass "install.sh の copy_rules() が ${RULE} を列挙する"
 else
   fail "install.sh の copy_rules() が ${RULE} を列挙しない"
 fi
 
 # ============================================
-echo "=== 配布版 templates が本体と同じ frontmatter (paths) を保持する ==="
+echo "=== SSOT rules/ が正しい frontmatter (paths) を保持する ==="
 # ============================================
 
-# 切り出しルールは workflow / hook / SKILL.md を対象に作動する。配布版でも paths が同期しないと利用先で発動しない。
-assert_file_contains "配布元 templates に paths キー" "${TEMPLATE_DIR}/${RULE}" "^paths:"
-assert_file_contains "配布元 templates に .github/workflows/**/*.yml" "${TEMPLATE_DIR}/${RULE}" '"\.github/workflows/\*\*/\*\.yml"'
-assert_file_contains "配布元 templates に .github/workflows/**/*.yaml" "${TEMPLATE_DIR}/${RULE}" '"\.github/workflows/\*\*/\*\.yaml"'
-assert_file_contains "配布元 templates に hooks/**/*.sh" "${TEMPLATE_DIR}/${RULE}" '"hooks/\*\*/\*\.sh"'
-assert_file_contains "配布元 templates に skills/**/SKILL.md" "${TEMPLATE_DIR}/${RULE}" '"skills/\*\*/SKILL\.md"'
+# 切り出しルールは workflow / hook / SKILL.md を対象に作動する。SSOT で paths が欠けると利用先で発動しない。
+assert_file_contains "SSOT rules に paths キー" "${SSOT_DIR}/${RULE}" "^paths:"
+assert_file_contains "SSOT rules に .github/workflows/**/*.yml" "${SSOT_DIR}/${RULE}" '"\.github/workflows/\*\*/\*\.yml"'
+assert_file_contains "SSOT rules に .github/workflows/**/*.yaml" "${SSOT_DIR}/${RULE}" '"\.github/workflows/\*\*/\*\.yaml"'
+assert_file_contains "SSOT rules に hooks/**/*.sh" "${SSOT_DIR}/${RULE}" '"hooks/\*\*/\*\.sh"'
+assert_file_contains "SSOT rules に skills/**/SKILL.md" "${SSOT_DIR}/${RULE}" '"skills/\*\*/SKILL\.md"'
 
 # ============================================
 echo ""

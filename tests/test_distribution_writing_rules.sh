@@ -22,9 +22,10 @@ RULES=(
 )
 
 # 配置先 3 か所
+# Issue #747: SSOT はプラグインルート rules/。.claude/rules/ は rules/ への symlink で dogfooding する。
 SRC_DIR="${SCRIPT_DIR}/.claude/rules"
 BASE_DIR="${SCRIPT_DIR}/.claude/vibecorp-base/rules"
-TEMPLATE_DIR="${SCRIPT_DIR}/templates/claude/rules"
+SSOT_DIR="${SCRIPT_DIR}/rules"
 
 # ============================================
 echo "=== 本体 .claude/rules/ に 6 ファイルが存在する ==="
@@ -45,22 +46,27 @@ for f in "${RULES[@]}"; do
 done
 
 # ============================================
-echo "=== 配布元 templates/claude/rules/ に 6 ファイルが存在する（git 管理対象） ==="
+echo "=== SSOT rules/ に 6 ファイルが存在する（git 管理対象） ==="
 # ============================================
 
 for f in "${RULES[@]}"; do
-  assert_file_exists "配布元 templates/claude/rules/${f} が存在する" "${TEMPLATE_DIR}/${f}"
+  assert_file_exists "SSOT rules/${f} が存在する" "${SSOT_DIR}/${f}"
 done
 
 # ============================================
-echo "=== 本体 ↔ 配布元（templates） が完全一致する ==="
+echo "=== .claude/rules/ が SSOT rules/ に解決される（symlink dogfooding） ==="
 # ============================================
 
 for f in "${RULES[@]}"; do
-  if cmp -s "${SRC_DIR}/${f}" "${TEMPLATE_DIR}/${f}"; then
-    pass "本体 ↔ 配布元 templates の ${f} が完全一致"
+  if [[ -L "${SRC_DIR}/${f}" ]]; then
+    pass ".claude/rules/${f} が symlink である"
   else
-    fail "本体 ↔ 配布元 templates の ${f} が一致しない（同期されていない）"
+    fail ".claude/rules/${f} が symlink でない（SSOT 化未完了）"
+  fi
+  if cmp -s "${SRC_DIR}/${f}" "${SSOT_DIR}/${f}"; then
+    pass ".claude/rules/${f} が SSOT rules/${f} に解決される"
+  else
+    fail ".claude/rules/${f} が SSOT rules/${f} に解決されない"
   fi
 done
 
@@ -94,15 +100,15 @@ FALLBACK_HEADING="### 利用先プロジェクトでのフォールバック"
 
 assert_file_contains "本体 prompt-writing.md に「利用先プロジェクトでのフォールバック」節" \
   "${SRC_DIR}/prompt-writing.md" "${FALLBACK_HEADING}"
-assert_file_contains "配布元 templates prompt-writing.md に「利用先プロジェクトでのフォールバック」節" \
-  "${TEMPLATE_DIR}/prompt-writing.md" "${FALLBACK_HEADING}"
+assert_file_contains "SSOT rules prompt-writing.md に「利用先プロジェクトでのフォールバック」節" \
+  "${SSOT_DIR}/prompt-writing.md" "${FALLBACK_HEADING}"
 if [[ -f "${BASE_DIR}/prompt-writing.md" ]]; then
   assert_file_contains "配布版1 vibecorp-base prompt-writing.md に「利用先プロジェクトでのフォールバック」節" \
     "${BASE_DIR}/prompt-writing.md" "${FALLBACK_HEADING}"
 fi
 
 # フォールバック節の中核キーワード（本体 + 配布元 templates は必須、配布版1 は存在時のみ）
-for path_label in "本体:${SRC_DIR}" "配布元 templates:${TEMPLATE_DIR}"; do
+for path_label in "本体:${SRC_DIR}" "SSOT rules:${SSOT_DIR}"; do
   label="${path_label%%:*}"
   dir="${path_label#*:}"
   assert_file_contains "${label} prompt-writing.md フォールバック節に minimal/standard 言及" \
@@ -126,10 +132,10 @@ fi
 echo "=== install.sh が 6 ファイルを配布対象として列挙する ==="
 # ============================================
 
-# copy_rules() は find -maxdepth 2 -type f -name "*.md" で自動列挙する
-FOUND_RULES=$(find "${TEMPLATE_DIR}" -maxdepth 2 -type f -name "*.md")
+# copy_rules() は find -maxdepth 2 -type f -name "*.md" で SSOT rules/ を自動列挙する
+FOUND_RULES=$(find "${SSOT_DIR}" -maxdepth 2 -type f -name "*.md")
 for f in "${RULES[@]}"; do
-  if echo "$FOUND_RULES" | grep -q -e "${TEMPLATE_DIR}/${f}"; then
+  if echo "$FOUND_RULES" | grep -q -e "${SSOT_DIR}/${f}"; then
     pass "install.sh の copy_rules() が ${f} を列挙する"
   else
     fail "install.sh の copy_rules() が ${f} を列挙しない"

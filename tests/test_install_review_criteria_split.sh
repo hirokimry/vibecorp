@@ -43,11 +43,11 @@ assert_file_not_exists "vibecorp 本体 旧ファイル不在" "${SCRIPT_DIR}/.c
 # 2. 新 4 ファイルが両方に存在
 # ============================================
 echo ""
-echo "--- 2. 新 4 ファイル（templates 側） ---"
-assert_file_exists "severity/coderabbit.md" "${SCRIPT_DIR}/templates/claude/rules/severity/coderabbit.md"
-assert_file_exists "severity/claude-action.md" "${SCRIPT_DIR}/templates/claude/rules/severity/claude-action.md"
-assert_file_exists "review-handling.md" "${SCRIPT_DIR}/templates/claude/rules/review-handling.md"
-assert_file_exists "review-observations.md" "${SCRIPT_DIR}/templates/claude/rules/review-observations.md"
+echo "--- 2. 新 4 ファイル（SSOT rules/ 側） ---"
+assert_file_exists "severity/coderabbit.md" "${SCRIPT_DIR}/rules/severity/coderabbit.md"
+assert_file_exists "severity/claude-action.md" "${SCRIPT_DIR}/rules/severity/claude-action.md"
+assert_file_exists "review-handling.md" "${SCRIPT_DIR}/rules/review-handling.md"
+assert_file_exists "review-observations.md" "${SCRIPT_DIR}/rules/review-observations.md"
 
 echo "--- 2b. 新 4 ファイル（vibecorp 本体側） ---"
 assert_file_exists "severity/coderabbit.md" "${SCRIPT_DIR}/.claude/rules/severity/coderabbit.md"

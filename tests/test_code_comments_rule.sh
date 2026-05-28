@@ -40,15 +40,15 @@ else
   fail "旧 .claude/rules/comments.md がまだ残っている（リネーム未完了）"
 fi
 
-# templates 側も削除されているか
-TEMPLATE_OLD="${SCRIPT_DIR}/templates/claude/rules/comments.md"
-TEMPLATE_NEW="${SCRIPT_DIR}/templates/claude/rules/code-comments.md"
-if [[ ! -f "$TEMPLATE_OLD" ]]; then
-  pass "旧 templates/claude/rules/comments.md が削除されている"
+# SSOT rules/ 側も旧ファイル不在・新ファイル存在を確認（Issue #747 で templates/claude/rules/ は廃止、rules/ が SSOT）
+SSOT_OLD="${SCRIPT_DIR}/rules/comments.md"
+SSOT_NEW="${SCRIPT_DIR}/rules/code-comments.md"
+if [[ ! -f "$SSOT_OLD" ]]; then
+  pass "旧 rules/comments.md が存在しない"
 else
-  fail "旧 templates/claude/rules/comments.md がまだ残っている"
+  fail "旧 rules/comments.md がまだ残っている"
 fi
-assert_file_exists "templates/claude/rules/code-comments.md が存在する" "$TEMPLATE_NEW"
+assert_file_exists "rules/code-comments.md が存在する" "$SSOT_NEW"
 
 # ============================================
 echo "=== frontmatter で paths が指定されている ==="
@@ -158,13 +158,13 @@ assert_file_exists "prompt-writing.md が実在する" "$PROMPT_WRITING"
 assert_file_exists "communication.md が実在する" "$COMM_RULE"
 
 # ============================================
-echo "=== 本体 ↔ 配布元 templates が完全一致する ==="
+echo "=== .claude/rules/ が SSOT rules/ に解決される（symlink dogfooding） ==="
 # ============================================
 
-if cmp -s "$CC_RULE" "$TEMPLATE_NEW"; then
-  pass "本体 ↔ 配布元 templates の code-comments.md が完全一致"
+if cmp -s "$CC_RULE" "$SSOT_NEW"; then
+  pass ".claude/rules/code-comments.md が SSOT rules/code-comments.md に解決される"
 else
-  fail "本体 ↔ 配布元 templates の code-comments.md が一致しない（同期されていない）"
+  fail ".claude/rules/code-comments.md が SSOT rules/code-comments.md に解決されない"
 fi
 
 # ============================================
