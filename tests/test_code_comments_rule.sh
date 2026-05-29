@@ -161,10 +161,10 @@ assert_file_exists "communication.md が実在する" "$COMM_RULE"
 echo "=== .claude/rules/ が SSOT rules/ に解決される（symlink dogfooding） ==="
 # ============================================
 
-if cmp -s "$CC_RULE" "$SSOT_NEW"; then
-  pass ".claude/rules/code-comments.md が SSOT rules/code-comments.md に解決される"
+if [[ -L "$CC_RULE" ]] && cmp -s "$CC_RULE" "$SSOT_NEW"; then
+  pass ".claude/rules/code-comments.md が symlink で SSOT rules/code-comments.md に解決される"
 else
-  fail ".claude/rules/code-comments.md が SSOT rules/code-comments.md に解決されない"
+  fail ".claude/rules/code-comments.md が symlink で SSOT rules/code-comments.md に解決されない"
 fi
 
 # ============================================
