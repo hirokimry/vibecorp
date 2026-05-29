@@ -93,6 +93,41 @@ self_sev_target=$(readlink "${self_dest}/severity/coderabbit.md")
 assert_eq "self-install: severity/coderabbit.md の相対ターゲット" \
   "../../../rules/severity/coderabbit.md" "$self_sev_target"
 
+# 機能: rel_path から .claude/rules 起点の期待相対ターゲットを独立計算する。
+# install.sh の _relpath_to_rules をそのまま使うと検証が同義反復になるため、
+# 同じ仕様（.claude/rules の 2 段 + サブディレクトリ深さ分だけ遡り rules/<rel>）をテスト側で再実装する。
+expected_rel_target() {
+  local rel="$1"
+  local slash_count
+  slash_count=$(printf '%s' "$rel" | tr -cd '/' | wc -c | tr -d ' ')
+  local up_levels=$((2 + slash_count))
+  local prefix=""
+  local i
+  for ((i = 0; i < up_levels; i++)); do
+    prefix="${prefix}../"
+  done
+  printf '%s' "${prefix}rules/${rel}"
+}
+
+# 全件: 各 rule が symlink であり、相対ターゲットが期待値と一致し、解決先が実 SSOT と内容一致することを検証する。
+# 代表ファイルのみの検証だと「件数は合うが個別のリンク先が誤り」を取りこぼすため（Issue #749 全量保証）。
+while IFS= read -r src_file; do
+  rel="${src_file#"${self_root}/rules/"}"
+  dst="${self_dest}/${rel}"
+  if [[ ! -L "$dst" ]]; then
+    fail "self-install: ${rel} が symlink でない"
+    continue
+  fi
+  expected_target="$(expected_rel_target "$rel")"
+  actual_target=$(readlink "$dst")
+  assert_eq "self-install: ${rel} の相対ターゲット" "$expected_target" "$actual_target"
+  if cmp -s "$dst" "$src_file"; then
+    pass "self-install: ${rel} が実 SSOT に解決され内容一致"
+  else
+    fail "self-install: ${rel} の解決先内容が実 SSOT と一致しない"
+  fi
+done < <(find "${self_root}/rules" -maxdepth 2 -type f -name "*.md")
+
 # dangling symlink が 0 個（symlink 経由で実 SSOT に解決される）
 self_dangling=0
 while IFS= read -r link; do
@@ -113,6 +148,12 @@ plugin_root="${TMPDIR_ROOT}/plugin"
 clone_ssot "$plugin_root"
 user_root="${TMPDIR_ROOT}/user"
 mkdir -p "$user_root"
+
+# 既存配布対象ファイルを stale 内容で先置きし、「上書き（3-way マージなし）」を検証する（Issue #748 / #749）。
+# install 後に SSOT と完全一致すれば、旧内容を温存せず最新で上書きしたことが保証される。
+mkdir -p "${user_root}/.claude/rules/severity"
+printf 'stale-content\n' > "${user_root}/.claude/rules/markdown.md"
+printf 'stale-content\n' > "${user_root}/.claude/rules/severity/coderabbit.md"
 
 # user-install は SCRIPT_DIR != REPO_ROOT
 SCRIPT_DIR="$plugin_root" REPO_ROOT="$user_root" UPDATE_MODE=false COPIED_RULES="" copy_rules >/dev/null 2>&1
@@ -158,6 +199,23 @@ if cmp -s "${user_dest}/severity/coderabbit.md" "${plugin_root}/rules/severity/c
 else
   fail "user-install: severity/coderabbit.md の内容が実 SSOT と一致しない"
 fi
+
+# 全件: 各 rule が実体ファイル（非 symlink）かつ実 SSOT と内容一致することを検証する。
+# 先置きした stale ファイル（markdown.md / severity/coderabbit.md）も含めて完全一致なら、
+# 「上書き（3-way マージなし）」が全量で担保される（Issue #748 / #749）。
+while IFS= read -r src_file; do
+  rel="${src_file#"${plugin_root}/rules/"}"
+  dst="${user_dest}/${rel}"
+  if [[ ! -f "$dst" || -L "$dst" ]]; then
+    fail "user-install: ${rel} が実体ファイルでない"
+    continue
+  fi
+  if cmp -s "$dst" "$src_file"; then
+    pass "user-install: ${rel} の内容が実 SSOT と一致（stale 上書き済み）"
+  else
+    fail "user-install: ${rel} の内容が実 SSOT と一致しない"
+  fi
+done < <(find "${plugin_root}/rules" -maxdepth 2 -type f -name "*.md")
 
 # ============================================
 echo "=== 3. user 固有 rule（配布対象外）が両モードで保持される ==="
