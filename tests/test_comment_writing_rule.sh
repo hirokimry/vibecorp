@@ -166,18 +166,23 @@ else
 fi
 
 # ============================================
-echo "=== 本体 ↔ 配布元 templates が完全一致する ==="
+echo "=== .claude/rules/ が SSOT rules/ に解決される（symlink dogfooding） ==="
 # ============================================
 
-# `.claude/rules/comment-writing.md`（本体）と `templates/claude/rules/comment-writing.md`
-# （配布元）の同期ドリフトを検知する。片方の更新漏れがあると `install.sh --update`
-# で利用先プロジェクトに不整合が配布されるため、CI で必ず byte 一致を強制する。
-CW_TEMPLATE="${SCRIPT_DIR}/templates/claude/rules/comment-writing.md"
-assert_file_exists "templates/claude/rules/comment-writing.md が存在する" "$CW_TEMPLATE"
-if cmp -s "$CW_RULE" "$CW_TEMPLATE"; then
-  pass "本体 ↔ 配布元 templates の comment-writing.md が完全一致"
+# Issue #747: SSOT はプラグインルート rules/。.claude/rules/comment-writing.md は
+# rules/comment-writing.md への symlink。両者の乖離は symlink により構造的に起こり得ないため、
+# CI では symlink が SSOT 実体へ解決されることを確認する（cmp は symlink を解決する）。
+CW_SSOT="${SCRIPT_DIR}/rules/comment-writing.md"
+assert_file_exists "SSOT rules/comment-writing.md が存在する" "$CW_SSOT"
+if [[ -L "$CW_RULE" ]]; then
+  pass ".claude/rules/comment-writing.md が symlink である"
 else
-  fail "本体 ↔ 配布元 templates の comment-writing.md が一致しない（同期されていない）"
+  fail ".claude/rules/comment-writing.md が symlink でない（SSOT 化未完了）"
+fi
+if cmp -s "$CW_RULE" "$CW_SSOT"; then
+  pass ".claude/rules/comment-writing.md が SSOT rules/comment-writing.md に解決される"
+else
+  fail ".claude/rules/comment-writing.md が SSOT rules/comment-writing.md に解決されない"
 fi
 
 # ============================================

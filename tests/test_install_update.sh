@@ -214,7 +214,7 @@ echo ""
 echo "=== P. --update での管理ファイル強制差し替え ==="
 # ============================================
 
-# P1. hooks は plugin native 配布 (#716) に移行済のため、3-way マージは rules で検証する
+# P1. user-install では rule は 3-way マージせず常に最新で上書きする（Issue #748）
 # ユーザー独自フックは install.sh が touch しないため残ることを併せて確認する
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
@@ -228,8 +228,8 @@ echo '#!/bin/bash' > "$R/.claude/hooks/my-guard.sh"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# テンプレート未変更のため、カスタム版が保持される
-assert_file_contains "--update でカスタム版ルールが保持される" "$R/.claude/rules/code-comments.md" "ユーザーカスタム版"
+# user-install のため rule のカスタム版は保持されず最新テンプレートで上書きされる
+assert_file_not_contains "--update でカスタム版ルールが上書きされる（マージしない）" "$R/.claude/rules/code-comments.md" "ユーザーカスタム版"
 # ユーザー独自フックは残る
 assert_file_exists "--update でユーザー独自フックは保持" "$R/.claude/hooks/my-guard.sh"
 cleanup
@@ -271,7 +271,7 @@ fi
 assert_file_exists "--update でユーザー独自スキルは保持" "$R/.claude/skills/my-deploy/SKILL.md"
 cleanup
 
-# P3. --update でカスタマイズ済みルールはテンプレート未変更ならスキップ（3-way マージ）
+# P3. user-install ではカスタマイズ済みルールも常に最新で上書きする（Issue #748、3-way マージ廃止）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -280,8 +280,8 @@ echo "# 古いルール" > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# テンプレートが変更されていないため、カスタム版が保持される
-assert_file_contains "--update でカスタム済みルールがテンプレート未変更なら保持" "$R/.claude/rules/code-comments.md" "古いルール"
+# 3-way マージを廃止したため、カスタム版は保持されず上書きされる
+assert_file_not_contains "--update でカスタム済みルールが上書きされる（マージしない）" "$R/.claude/rules/code-comments.md" "古いルール"
 cleanup
 
 # ============================================
@@ -348,7 +348,7 @@ bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_exists "AB1: rules ファイルが存在" "$R/.claude/rules/code-comments.md"
 cleanup
 
-# AB2. カスタマイズ済み & テンプレート未変更 → カスタム版を保持（rules で検証）
+# AB2. user-install では rule のカスタマイズ版も常に最新で上書きする（Issue #748）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -358,26 +358,27 @@ echo '# ユーザーカスタム: 追加のチェック' > "$R/.claude/rules/cod
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# テンプレートが変更されていないため、カスタム版が保持される
-assert_file_contains "AB2: カスタム版が保持される" "$R/.claude/rules/code-comments.md" "ユーザーカスタム: 追加のチェック"
+# 3-way マージを廃止したため、カスタム版は保持されず上書きされる
+assert_file_not_contains "AB2: カスタム版が上書きされる（マージしない）" "$R/.claude/rules/code-comments.md" "ユーザーカスタム: 追加のチェック"
 cleanup
 
-# AB3. ベーススナップショットが保存される（rules で確認、hooks は plugin native 配布化）
+# AB3. rules は 3-way マージ廃止によりベーススナップショットを作らない（Issue #748）
+# vibecorp-base ディレクトリ自体は他テンプレート（.gitignore 等）の snapshot 用に存在しうる
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-assert_dir_exists "AB3: vibecorp-base ディレクトリ存在" "$R/.claude/vibecorp-base"
-assert_file_exists "AB3: rules のベーススナップショット" "$R/.claude/vibecorp-base/rules/code-comments.md"
+assert_file_not_exists "AB3: rules のベーススナップショットは作られない（マージ廃止）" "$R/.claude/vibecorp-base/rules/code-comments.md"
 cleanup
 
-# AB4. vibecorp.lock に base_hashes セクションが含まれる（rules で確認）
+# AB4. vibecorp.lock に base_hashes セクションが含まれる（.gitignore 等の snapshot 由来）
+# rules は 3-way マージ廃止により base_hash を持たない（Issue #748）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
 assert_file_contains "AB4: lock に base_hashes セクション" "$R/.claude/vibecorp.lock" "base_hashes:"
-assert_file_contains "AB4: lock に rules ハッシュ" "$R/.claude/vibecorp.lock" "rules/code-comments.md:"
+assert_file_not_contains "AB4: lock に rules ハッシュは無い（マージ廃止）" "$R/.claude/vibecorp.lock" "rules/code-comments.md:"
 cleanup
 
 # AB5. .claude/.gitignore に vibecorp-base/ が含まれる
@@ -468,8 +469,7 @@ fi
 rm -f "$TMPBASE" "$TMPCUSTOM" "$TMPNEW"
 cleanup
 
-# AB8. 統合テスト: merge_or_overwrite がカスタム版を保持（テンプレート未変更時）
-# hooks は plugin native 配布 (#716) に移行済のため rules で検証する
+# AB8. 統合テスト: user-install では --update で rule のカスタム版を常に上書きする（Issue #748）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset standard 2>/dev/null
 R="$TMPDIR_ROOT"
@@ -479,7 +479,7 @@ echo '# カスタム code-comments' > "$R/.claude/rules/code-comments.md"
 
 bash "$INSTALL_SH" --update --preset standard 2>/dev/null
 
-assert_file_contains "AB8: カスタム rule が保持される" "$R/.claude/rules/code-comments.md" "カスタム code-comments"
+assert_file_not_contains "AB8: カスタム rule が上書きされる（マージしない）" "$R/.claude/rules/code-comments.md" "カスタム code-comments"
 cleanup
 
 # AB9. 統合テスト: --update で旧スタブ・旧コピーがマイグレーションされる
@@ -513,26 +513,24 @@ else
 fi
 cleanup
 
-# AB10. コンフリクト発生時に stderr に警告メッセージが出力される
+# AB10. rules は 3-way マージ廃止により、古いベーススナップショットが残っていても
+# マージを試みず常に最新で上書きする（Issue #748）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# ベーススナップショットとは異なる内容で上書き（カスタマイズ模擬）
+# カスタマイズ模擬
 echo "# カスタム版コメントルール" > "$R/.claude/rules/code-comments.md"
 
-# テンプレートも変更（ベースと異なる新しい内容にする）
-# ベーススナップショットを直接変更して強制的にマージをトリガー
+# 古いベーススナップショットを直接配置（旧仕様ならマージをトリガーした状況を模擬）
+mkdir -p "$R/.claude/vibecorp-base/rules"
 echo "# 改変されたベース" > "$R/.claude/vibecorp-base/rules/code-comments.md"
 
-STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+bash "$INSTALL_SH" --update 2>/dev/null
 
-# マージまたはスキップのログが出力されることを確認
-if echo "$STDERR_OUTPUT" | grep -q "マージ\|スキップ\|MERGE\|SKIP\|CONFLICT"; then
-  pass "AB10: マージ関連ログが出力される"
-else
-  fail "AB10: マージ関連ログが出力される (ログなし)"
-fi
+# マージせず上書きされるため、カスタム版は残らずコンフリクトマーカーも生じない
+assert_file_not_contains "AB10: カスタム版は上書きされる（マージしない）" "$R/.claude/rules/code-comments.md" "カスタム版コメントルール"
+assert_file_not_contains "AB10: コンフリクトマーカーが生じない" "$R/.claude/rules/code-comments.md" "<<<<<<<"
 cleanup
 
 # AB11. ベースハッシュなし（旧バージョン移行）の場合は上書きされる
@@ -558,71 +556,35 @@ create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# ファイルは変更しないが、ベーススナップショットを差し替えて「テンプレート変更」を模擬
-echo "# 古いベース" > "$R/.claude/vibecorp-base/rules/code-comments.md"
-# lock のハッシュもベースに合わせる
-OLD_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/code-comments.md" | awk '{print $1}')
-CURRENT_HASH=$(shasum -a 256 "$R/.claude/rules/code-comments.md" | awk '{print $1}')
-# lock のハッシュを現在のファイルのハッシュに設定（= カスタムなし状態を作る）
-awk -v path="rules/code-comments.md" -v newhash="$CURRENT_HASH" '
-  /^  base_hashes:/ { in_hashes = 1; print; next }
-  in_hashes && /^  [a-z]/ { in_hashes = 0 }
-  in_hashes && /^[^ ]/ { in_hashes = 0 }
-  in_hashes {
-    gsub(/^[ \t]+/, "", $0)
-    split($0, parts, ": ")
-    if (parts[1] == path) {
-      print "    " path ": " newhash
-      next
-    }
-  }
-  { print }
-' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
+# rules は base snapshot / base_hash を持たないため、--update でも単純に最新で上書きされる。
+# 元の SSOT 内容を控え、--update 後も SSOT と一致することを確認する。
+SRC_CONTENT=$(cat "$SCRIPT_DIR/rules/code-comments.md")
 
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# テンプレート版（=元々のテンプレート）で上書きされているはず
 assert_file_exists "AB12: rules ファイルが存在" "$R/.claude/rules/code-comments.md"
+DEST_CONTENT=$(cat "$R/.claude/rules/code-comments.md")
+assert_eq "AB12: --update 後 rule が SSOT 最新と一致（上書き）" "$SRC_CONTENT" "$DEST_CONTENT"
 cleanup
 
-# AB13. --update 後のコンフリクト警告表示テスト
-# ベースと現在とテンプレートが全て異なる場合にコンフリクトが報告される
+# AB13. rules は 3-way マージ廃止により、ベース・現在・テンプレートが全て異なっても
+# コンフリクトを起こさず最新テンプレートで上書きする（Issue #748）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
 
-# ベーススナップショットを置き換え（独立した3つの内容を作る）
+# ベーススナップショットを独立した内容で配置（旧仕様なら 3-way コンフリクトを起こした状況を模擬）
+mkdir -p "$R/.claude/vibecorp-base/rules"
 echo "ベース版の内容" > "$R/.claude/vibecorp-base/rules/code-comments.md"
-BASE_HASH=$(shasum -a 256 "$R/.claude/vibecorp-base/rules/code-comments.md" | awk '{print $1}')
-
-# lock のハッシュをベースに合わせる
-awk -v path="rules/code-comments.md" -v newhash="$BASE_HASH" '
-  /^  base_hashes:/ { in_hashes = 1; print; next }
-  in_hashes && /^  [a-z]/ { in_hashes = 0 }
-  in_hashes && /^[^ ]/ { in_hashes = 0 }
-  in_hashes {
-    gsub(/^[ \t]+/, "", $0)
-    split($0, parts, ": ")
-    if (parts[1] == path) {
-      print "    " path ": " newhash
-      next
-    }
-  }
-  { print }
-' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
 
 # カスタム版に書き換え
 echo "カスタム版の内容" > "$R/.claude/rules/code-comments.md"
 
-# --update 実行（テンプレートはベースと異なる → 3-way マージ発生）
-STDERR_OUTPUT=$(bash "$INSTALL_SH" --update 2>&1 >/dev/null) || true
+bash "$INSTALL_SH" --update 2>/dev/null
 
-# MERGE または CONFLICT のログが出力される
-if echo "$STDERR_OUTPUT" | grep -q "MERGE\|CONFLICT\|マージ\|コンフリクト"; then
-  pass "AB13: コンフリクト/マージログが表示される"
-else
-  fail "AB13: コンフリクト/マージログが表示される (ログなし)"
-fi
+# マージせず上書きされるため、コンフリクトマーカーもカスタム版も残らない
+assert_file_not_contains "AB13: コンフリクトマーカーが生じない（マージ廃止）" "$R/.claude/rules/code-comments.md" "<<<<<<<"
+assert_file_not_contains "AB13: カスタム版は上書きされる" "$R/.claude/rules/code-comments.md" "カスタム版の内容"
 cleanup
 
 # ============================================

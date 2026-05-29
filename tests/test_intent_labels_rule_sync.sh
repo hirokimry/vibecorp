@@ -1,8 +1,9 @@
 #!/bin/bash
 # test_intent_labels_rule_sync.sh
 # ─────────────────────────────────────────────
-# Issue #575: .claude/rules/intent-labels.md と templates/claude/rules/intent-labels.md の
-# サイレント乖離を防ぐ。配布版（テンプレート）と本体版を完全一致させる。
+# Issue #575: intent-labels.md の本体版と配布版のサイレント乖離を防ぐ。
+# Issue #747: SSOT をプラグインルート rules/ に一元化し、.claude/rules/ は rules/ への symlink にした。
+# 乖離は symlink により構造的に起こり得ないため、本テストは「.claude/rules/ が SSOT rules/ に解決される」ことを検証する。
 
 set -euo pipefail
 
@@ -11,20 +12,26 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 source "${SCRIPT_DIR}/tests/lib/install_test_helpers.sh"
 
 echo ""
-echo "=== Issue #575 intent-labels.md の本体版とテンプレート版の同期検証 ==="
+echo "=== Issue #747 intent-labels.md の SSOT 整合検証（symlink dogfooding） ==="
 
-SOURCE="${SCRIPT_DIR}/.claude/rules/intent-labels.md"
-TEMPLATE="${SCRIPT_DIR}/templates/claude/rules/intent-labels.md"
+# .claude/rules/ は dogfooding 用の symlink、rules/ が SSOT 実体。
+SYMLINK="${SCRIPT_DIR}/.claude/rules/intent-labels.md"
+SSOT="${SCRIPT_DIR}/rules/intent-labels.md"
 
-assert_file_exists "本体版 intent-labels.md" "$SOURCE"
-assert_file_exists "テンプレート版 intent-labels.md" "$TEMPLATE"
+assert_file_exists "SSOT rules/intent-labels.md" "$SSOT"
+assert_file_exists ".claude/rules/intent-labels.md（symlink 経由で解決）" "$SYMLINK"
 
-if diff -q "$SOURCE" "$TEMPLATE" >/dev/null; then
-  pass "本体版とテンプレート版が完全一致している"
+if [[ -L "$SYMLINK" ]]; then
+  pass ".claude/rules/intent-labels.md が symlink である"
 else
-  fail "本体版とテンプレート版に差分あり（サイレント乖離リスク）"
-  echo "差分:"
-  diff "$SOURCE" "$TEMPLATE" || true
+  fail ".claude/rules/intent-labels.md が symlink でない（SSOT 化未完了）"
+fi
+
+# symlink 経由の読込内容が SSOT 実体と一致することを確認する（cmp は symlink を解決する）。
+if cmp -s "$SYMLINK" "$SSOT"; then
+  pass ".claude/rules/intent-labels.md が SSOT rules/intent-labels.md に解決される"
+else
+  fail ".claude/rules/intent-labels.md が SSOT rules/intent-labels.md に解決されない"
 fi
 
 print_test_summary

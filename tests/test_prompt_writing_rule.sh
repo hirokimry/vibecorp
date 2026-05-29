@@ -48,9 +48,9 @@ assert_file_contains "paths に skills/**/SKILL.md が含まれる" "$PW_RULE" '
 assert_file_contains "paths に .claude/vibecorp-base/CLAUDE.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/CLAUDE\.md"'
 assert_file_contains "paths に .claude/vibecorp-base/rules/**/*.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/rules/\*\*/\*\.md"'
 assert_file_contains "paths に .claude/vibecorp-base/skills/**/SKILL.md が含まれる" "$PW_RULE" '"\.claude/vibecorp-base/skills/\*\*/SKILL\.md"'
-# 配布元 templates
+# プラグインルート SSOT（Issue #747 で rules も agents 同様にルート SSOT 化）+ 配布元 templates
 assert_file_contains "paths に agents/**/*.md が含まれる" "$PW_RULE" '"agents/\*\*/\*\.md"'
-assert_file_contains "paths に templates/claude/rules/**/*.md が含まれる" "$PW_RULE" '"templates/claude/rules/\*\*/\*\.md"'
+assert_file_contains "paths に rules/**/*.md が含まれる" "$PW_RULE" '"rules/\*\*/\*\.md"'
 assert_file_contains "paths に templates/claude/knowledge/**/*.md が含まれる" "$PW_RULE" '"templates/claude/knowledge/\*\*/\*\.md"'
 
 # ============================================

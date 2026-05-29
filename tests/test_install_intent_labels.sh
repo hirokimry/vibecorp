@@ -57,17 +57,17 @@ done
 # 3. .claude/rules/intent-labels.md が配布される
 # ============================================
 echo ""
-echo "--- 3. intent-labels.md が rules テンプレートとして存在する ---"
-assert_file_exists "templates/claude/rules/intent-labels.md" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md"
+echo "--- 3. intent-labels.md が SSOT rules/ に存在する ---"
+assert_file_exists "rules/intent-labels.md" "${SCRIPT_DIR}/rules/intent-labels.md"
 
 # 主要記述の存在
-assert_file_contains "主従関係の明記"           "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "主従関係"
-assert_file_contains "1 Issue / 1 PR / 1 intent" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "1 つだけ"
-assert_file_contains "判定主体: COO"            "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "COO"
+assert_file_contains "主従関係の明記"           "${SCRIPT_DIR}/rules/intent-labels.md" "主従関係"
+assert_file_contains "1 Issue / 1 PR / 1 intent" "${SCRIPT_DIR}/rules/intent-labels.md" "1 つだけ"
+assert_file_contains "判定主体: COO"            "${SCRIPT_DIR}/rules/intent-labels.md" "COO"
 
 # テンプレート内に 7 種すべてが含まれることを確認
 for intent in intent/feature intent/bugfix intent/performance intent/security intent/refactor intent/infra intent/docs; do
-  assert_file_contains "テンプレートに $intent が含まれる" "${SCRIPT_DIR}/templates/claude/rules/intent-labels.md" "$intent"
+  assert_file_contains "テンプレートに $intent が含まれる" "${SCRIPT_DIR}/rules/intent-labels.md" "$intent"
 done
 
 # ============================================
