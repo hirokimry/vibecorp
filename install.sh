@@ -2236,16 +2236,50 @@ create_labels() {
   done
 }
 
+# 機能: .claude/rules/<rel> から SSOT rules/<rel> への相対 symlink ターゲット文字列を返す。
+# self-install（dogfooding）でファイル単位 symlink を貼り直す際に使う。
+# .claude/rules の 2 階層 + rel のサブディレクトリ深さ分だけ ".." を遡り、rules/<rel> を付ける。
+# 例: markdown.md → ../../rules/markdown.md / severity/coderabbit.md → ../../../rules/severity/coderabbit.md
+_relpath_to_rules() {
+  local rel="$1"
+  # rel に含まれる "/" の個数がサブディレクトリ深さ（トップ直下は 0）
+  local slash_count
+  slash_count=$(printf '%s' "$rel" | tr -cd '/' | wc -c | tr -d ' ')
+  # .claude/rules/ から見た遡り段数 = 2（.claude/rules）+ サブディレクトリ深さ
+  local up_levels=$((2 + slash_count))
+  local prefix=""
+  local i
+  for ((i = 0; i < up_levels; i++)); do
+    prefix="${prefix}../"
+  done
+  printf '%s' "${prefix}rules/${rel}"
+}
+
+# 機能: ディレクトリパスを symlink 解決済みの絶対パスに正規化する（realpath 非依存）。
+# realpath は古い macOS に不在で shell.md の BSD/GNU 互換要件に反するため pwd -P を使う。
+_canonical_dir() {
+  ( cd "$1" 2>/dev/null && pwd -P )
+}
+
 copy_rules() {
   # 配布元はプラグインルート rules/ が SSOT（Issue #747）。
-  # vibecorp 本体では .claude/rules/ は rules/ への symlink で dogfooding するが、
-  # 配布先には実体ファイルをコピーする（symlink は配布しない）。
+  # SCRIPT_DIR（plugin root）と REPO_ROOT が同一ディレクトリなら vibecorp 自身への
+  # install（self-install）と判定し、.claude/rules/ を rules/ への symlink で再生成する
+  # （dogfooding の symlink を破壊しない）。異なる場合は配布先への install（user-install）
+  # と判定し、実体ファイルを物理コピーで上書きする（symlink は配布しない、Issue #748）。
   local src="${SCRIPT_DIR}/rules"
   local dest="${REPO_ROOT}/.claude/rules"
   mkdir -p "$dest"
 
-  # トップレベル *.md と 1 階層下のサブディレクトリ（severity/ 等）の *.md を対象とする
-  # find -maxdepth 2 でサブディレクトリ 1 階層まで対応（深いネストは想定外）
+  local self_install=false
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    self_install=true
+  fi
+
+  # トップレベル *.md と 1 階層下のサブディレクトリ（severity/ 等）の *.md を対象とする。
+  # find -maxdepth 2 でサブディレクトリ 1 階層まで対応（深いネストは想定外）。
+  # 配布物だけを列挙するため、dest 側にある配布対象外ファイル（user 固有 rule）は
+  # 両モードで一切触れられず保持される。
   while IFS= read -r rule; do
     [[ -f "$rule" ]] || continue
     local rel_path="${rule#"${src}"/}"  # 例: severity/coderabbit.md
@@ -2254,17 +2288,14 @@ copy_rules() {
     if [[ "$rel_dir" != "." ]]; then
       mkdir -p "${dest}/${rel_dir}"
     fi
-    if [[ "$UPDATE_MODE" == true ]]; then
-      merge_or_overwrite "$rule" "${dest}/${rel_path}" "rules/${rel_path}" || true
-      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
-    elif [[ -f "${dest}/${rel_path}" ]]; then
-      log_skip "rules/${rel_path} は既存のためスキップ"
+    if [[ "$self_install" == true ]]; then
+      # self-install: ファイル単位 symlink を貼り直す（既存 symlink / 実体は上書き）
+      ln -sfn "$(_relpath_to_rules "$rel_path")" "${dest}/${rel_path}"
     else
-      cp "$rule" "${dest}/${rel_path}"
-      save_base_snapshot "$rule" "rules/${rel_path}"
-      COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
-      log_info "rules/${rel_path} をコピー"
+      # user-install: 3-way マージは行わず常に最新で上書きする（Issue #748）
+      cp -f "$rule" "${dest}/${rel_path}"
     fi
+    COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
   done < <(find "$src" -maxdepth 2 -type f -name "*.md" 2>/dev/null)
 }
 
