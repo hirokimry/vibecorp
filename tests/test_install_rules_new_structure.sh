@@ -28,7 +28,7 @@ source "${ROOT}/install.sh"
 
 # 実 SSOT のファイル数を動的取得する。ハードコード（23）に依存せず、SSOT 増減で陳腐化しない。
 SSOT_SRC="${ROOT}/rules"
-EXPECTED_TOTAL=$(find "$SSOT_SRC" -type f -name "*.md" | wc -l | tr -d ' ')
+EXPECTED_TOTAL=$(find "$SSOT_SRC" -maxdepth 2 -type f -name "*.md" | wc -l | tr -d ' ')
 
 # 実 SSOT が存在しないと後続テストは全て無意味なので即終了する（testing.md）。
 if [[ "$EXPECTED_TOTAL" -ge 1 ]]; then
@@ -244,6 +244,49 @@ SCRIPT_DIR="$keep_self_root" REPO_ROOT="$keep_self_root" UPDATE_MODE=false COPIE
 
 assert_file_exists "self-install: 配布対象外 my-custom.md が保持される" \
   "${keep_self_root}/.claude/rules/my-custom.md"
+
+# ============================================
+echo "=== 4. user-install: 既存 symlink を実体で置換し、リンク先実体を書き換えない ==="
+# ============================================
+
+# 配布対象 rule のパスに symlink が先置きされている場合、コピー前に symlink を除去して
+# 実体ファイルを作る。symlink 経由でリンク先実体を書き換えてはならない（PR #755 指摘対応）。
+symlink_user_root="${TMPDIR_ROOT}/symlink_user"
+clone_ssot "$symlink_user_root"
+mkdir -p "${symlink_user_root}/.claude/rules"
+
+# リンク先実体を sentinel 内容で作り、配布対象 markdown.md をその symlink にする。
+sentinel_target="${symlink_user_root}/external-target.md"
+printf 'sentinel-must-not-change\n' > "$sentinel_target"
+ln -sfn "$sentinel_target" "${symlink_user_root}/.claude/rules/markdown.md"
+
+symlink_plugin_root="${TMPDIR_ROOT}/symlink_plugin"
+clone_ssot "$symlink_plugin_root"
+
+SCRIPT_DIR="$symlink_plugin_root" REPO_ROOT="$symlink_user_root" UPDATE_MODE=false COPIED_RULES="" copy_rules >/dev/null 2>&1
+
+symlink_dest="${symlink_user_root}/.claude/rules/markdown.md"
+
+# markdown.md は実体ファイル（非 symlink）に置換される
+if [[ -f "$symlink_dest" && ! -L "$symlink_dest" ]]; then
+  pass "user-install: 既存 symlink が実体ファイルに置換される"
+else
+  fail "user-install: markdown.md が実体ファイルに置換されていない（symlink のまま）"
+fi
+
+# 置換後の markdown.md は実 SSOT と一致する
+if cmp -s "$symlink_dest" "${symlink_plugin_root}/rules/markdown.md"; then
+  pass "user-install: 置換後 markdown.md の内容が実 SSOT と一致"
+else
+  fail "user-install: 置換後 markdown.md の内容が実 SSOT と一致しない"
+fi
+
+# リンク先実体（sentinel）は書き換えられていない
+if cmp -s "$sentinel_target" <(printf 'sentinel-must-not-change\n'); then
+  pass "user-install: symlink リンク先実体が書き換えられていない"
+else
+  fail "user-install: symlink リンク先実体が書き換えられた（cp -f が symlink を貫通した）"
+fi
 
 # ============================================
 print_test_summary

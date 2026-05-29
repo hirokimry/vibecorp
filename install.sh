@@ -2293,6 +2293,10 @@ copy_rules() {
       ln -sfn "$(_relpath_to_rules "$rel_path")" "${dest}/${rel_path}"
     else
       # user-install: 3-way マージは行わず常に最新で上書きする（Issue #748）
+      # symlink 経由でリンク先実体を書き換えないよう、コピー前に symlink を除去する
+      if [[ -L "${dest}/${rel_path}" ]]; then
+        rm -f "${dest}/${rel_path}"
+      fi
       cp -f "$rule" "${dest}/${rel_path}"
     fi
     COPIED_RULES="${COPIED_RULES}${rel_path}"$'\n'
