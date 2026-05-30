@@ -1075,10 +1075,13 @@ copy_isolation_templates() {
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
-  # sandbox/ 配下は OS 別ファイル名（darwin=claude.sb / linux=bwrap-args.sh）で配置する。
-  # sandbox/ も汎用機構で成長しないため bin/ と同型で symlink SSOT 化する (Issue #761)。
-  # self-install は OS 該当ファイルを templates/claude/sandbox/ への symlink で直結し、
-  # user-install は OS 該当ファイルを実体コピーする（逆クロス OS 配置はそもそも選択しない）。
+  # sandbox/ 配下は OS 別ファイル名（darwin=claude.sb / linux=bwrap-args.sh）で配置する (Issue #761)。
+  # symlink SSOT 化できるかは「ファイルがどう使われるか」で決まる:
+  #   - claude.sb（macOS）  : sandbox-exec が -f で読むだけのデータ → self-install で symlink SSOT 化できる
+  #   - bwrap-args.sh（Linux）: vibecorp-sandbox が source 実行するコード → symlink にすると
+  #       任意コード実行経路になり、vibecorp-sandbox の Link Following 拒否ガード（#310）が
+  #       fail-closed で隔離起動を拒否する。よって self-install でも必ず実体コピーで配置する。
+  # user-install は OS 該当ファイルを常に実体コピーする（symlink は配布しない、#748 と同型）。
   local sandbox_file=""
   case "$OS" in
     darwin) sandbox_file="claude.sb" ;;
@@ -1087,11 +1090,12 @@ copy_isolation_templates() {
 
   local sandbox_src="${SCRIPT_DIR}/templates/claude/sandbox/${sandbox_file}"
   if [[ -f "$sandbox_src" && ! -L "$sandbox_src" ]]; then
-    if [[ "$isolation_self_install" == true ]]; then
-      # self-install: .claude/sandbox/<file> → ../../templates/claude/sandbox/<file> の相対 symlink
+    if [[ "$isolation_self_install" == true && "$OS" == "darwin" ]]; then
+      # self-install + macOS: 読むだけのプロファイル claude.sb を SSOT への相対 symlink で直結
       ln -sfn "../../templates/claude/sandbox/${sandbox_file}" "${sandbox_dir}/${sandbox_file}"
     else
-      # user-install: symlink 経由でリンク先実体を書き換えないよう除去してから実体コピー（#748）
+      # user-install、または source 実行される bwrap-args.sh（Linux self-install 含む）: 実体コピー。
+      # symlink 経由でリンク先実体を書き換えないよう、コピー前に既存 symlink を除去する（#748）。
       if [[ -L "${sandbox_dir}/${sandbox_file}" ]]; then
         rm -f "${sandbox_dir}/${sandbox_file}"
       fi

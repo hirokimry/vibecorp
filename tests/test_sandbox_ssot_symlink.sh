@@ -92,4 +92,26 @@ assert_file_contains "bin/sandbox 共有の self/user 判定を持つ" \
   "${ROOT}/install.sh" 'isolation_self_install=true'
 
 # ============================================
+echo ""
+echo "=== 5. bwrap-args.sh は symlink 化しない（source 実行 → Link Following ガード #310 と整合） ==="
+# ============================================
+
+# claude.sb（macOS）は読むだけのデータなので symlink 可だが、bwrap-args.sh（Linux）は
+# vibecorp-sandbox が source 実行するため、symlink SSOT 化すると Link Following 拒否ガードと
+# 衝突する。symlink 分岐が darwin にゲートされていることを検証する。
+assert_file_contains "sandbox symlink 分岐が macOS(claude.sb) にゲートされている" \
+  "${ROOT}/install.sh" 'isolation_self_install" == true && "$OS" == "darwin"'
+
+# vibecorp-sandbox が bwrap-args.sh の symlink を fail-closed 拒否する（前提ガードの存在確認）
+assert_file_contains "vibecorp-sandbox が bwrap-args.sh の symlink を拒否する" \
+  "${ROOT}/templates/claude/bin/vibecorp-sandbox" '-L "$BWRAP_ARGS_FILE"'
+
+# vibecorp 自身（macOS dev）の .claude/sandbox/ に bwrap-args.sh の symlink を持ち込まない
+if [[ -L "${DOGFOOD_DIR}/bwrap-args.sh" ]]; then
+  fail ".claude/sandbox/bwrap-args.sh が symlink（source 実行されるため実体であるべき）"
+else
+  pass ".claude/sandbox/bwrap-args.sh は symlink でない（未配置 or 実体）"
+fi
+
+# ============================================
 print_test_summary
