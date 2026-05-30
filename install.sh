@@ -1041,17 +1041,33 @@ copy_isolation_templates() {
   local sandbox_dir="${REPO_ROOT}/.claude/sandbox"
   mkdir -p "$bin_dir" "$sandbox_dir"
 
-  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）
+  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）。
+  # bin/ は汎用機構で vibecorp 固有に成長しないため symlink SSOT 化する (Issue #760)。
+  # self-install（dogfooding）は templates/claude/bin/ へのファイル単位 symlink で SSOT を直結し、
+  # user-install（配布先）は実体コピーで上書きする（symlink は配布しない、#748 と同型）。
+  # claude-real（マシン固有 symlink）は setup_claude_real_symlink が別途実体配置するため本ループ対象外。
+  local bin_self_install=false
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    bin_self_install=true
+  fi
+
   local src
   for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
     # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
     [[ -f "$src" && ! -L "$src" ]] || continue
     local name
     name=$(basename "$src")
-    cp "$src" "${bin_dir}/${name}"
-    chmod +x "${bin_dir}/${name}"
-    # ベーススナップショットを記録し、--update 時の 3-way マージ判定を有効化する
-    save_base_snapshot "$src" "bin/${name}"
+    if [[ "$bin_self_install" == true ]]; then
+      # self-install: .claude/bin/<name> → ../../templates/claude/bin/<name> の相対 symlink を貼り直す
+      ln -sfn "../../templates/claude/bin/${name}" "${bin_dir}/${name}"
+    else
+      # user-install: symlink 経由でリンク先実体を書き換えないよう除去してから実体コピー（#748）
+      if [[ -L "${bin_dir}/${name}" ]]; then
+        rm -f "${bin_dir}/${name}"
+      fi
+      cp "$src" "${bin_dir}/${name}"
+      chmod +x "${bin_dir}/${name}"
+    fi
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
