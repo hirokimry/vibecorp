@@ -2577,7 +2577,9 @@ copy_claude_gitignore() {
 
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
-  local src_template="${SCRIPT_DIR}/templates/CLAUDE.md.tpl"
+  # 配布先 .claude/CLAUDE.md の階層をミラーする templates/claude/ 配下が SSOT (Issue #763)。
+  # placeholder ({{PROJECT_NAME}}/{{LANGUAGE}}) を持つため symlink せず .tpl render 配布を維持する。
+  local src_template="${SCRIPT_DIR}/templates/claude/CLAUDE.md.tpl"
   local rel_path="CLAUDE.md"
 
   local lang_display

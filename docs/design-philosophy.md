@@ -829,7 +829,7 @@ gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有
 
 | 例 |
 |---|
-| `templates/CLAUDE.md.tpl`, `templates/MVV.md.tpl`, `templates/docs/*.tpl` |
+| `templates/claude/CLAUDE.md.tpl`, `templates/MVV.md.tpl`, `templates/docs/*.tpl` |
 
 #### ✅ 利点
 
