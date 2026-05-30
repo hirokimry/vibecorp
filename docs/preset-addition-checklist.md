@@ -63,36 +63,20 @@ esac
   - 隔離レイヤが full でしか効かないため。
   - minimal / standard で誤爆させないため。
 
-### 2️⃣ install.sh — settings.json フィルタ（jq）
+### 2️⃣ プリセット別のフック挙動（plugin native）
 
-📍 ファイル: `install.sh` L1007–1026 付近。
+> [!NOTE]
+> 旧来の「`install.sh` が `settings.json` の `hooks.PreToolUse` を jq でプリセット別フィルタする」フローは廃止された（plugin native 化 #716 / #720、単一 SSOT 化 #759）。フックは `hooks/hooks.json` 経由で**全プリセットに配布**され、`settings.json` には登録しない。
 
-```bash
-case "$PRESET" in
-  minimal)
-    # 既存の除外条件に and で新しいフックを追加する
-    new_settings=$(echo "$new_settings" | jq '
-      .hooks.PreToolUse |= [
-        .[]
-        | .hooks |= [.[] | select(
-            (.command | contains("既存フック1") | not)
-            and (.command | contains("既存フック2") | not)
-            and (.command | contains("新しいフック") | not)
-          )]
-        | select((.hooks | length) > 0)
-      ]
-    ')
-    ;;
-  standard)
-    # standard で不要なら同様に and で追加
-    ;;
-esac
-```
+プリセット別にフック挙動を変えたい場合の制御点は以下。
+
+- ✅ `vibecorp.yml` の `hooks:` トグルで個別フックを無効化する（各フックが自己 skip する）。
+- ✅ minimal / standard で完全に外すなら Step 1 の `install.sh` 物理削除（`rm`）と整合させる。
 
 #### 🎯 判断基準
 
-- ➡️ ステップ 1 と同じプリセット区分に合わせる。
-- ➡️ hooks/hooks.json にフックを登録した場合は必須。
+- ➡️ 新しいフックは `hooks/hooks.json` に登録すれば全プリセットで配布される（Step 4）。
+- ➡️ プリセット別に挙動を変える場合のみ `vibecorp.yml` トグル / Step 1 の rm で制御する。
 
 ### 3️⃣ install.sh — knowledge コピー制御
 
