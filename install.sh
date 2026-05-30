@@ -1058,7 +1058,10 @@ copy_isolation_templates() {
     local name
     name=$(basename "$src")
     if [[ "$bin_self_install" == true ]]; then
-      # self-install: .claude/bin/<name> → ../../templates/claude/bin/<name> の相対 symlink を貼り直す
+      # self-install: .claude/bin/<name> → ../../templates/claude/bin/<name> の相対 symlink を貼り直す。
+      # ラッパー（claude / vibecorp-sandbox）は自己位置を cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
+      # （readlink -f を使わない）で解決するため、symlink 経由でも SCRIPT_DIR は .claude/bin に解決され、
+      # 隣接の vibecorp-sandbox や ../sandbox/claude.sb を正しく辿る（挙動不変の前提）。
       ln -sfn "../../templates/claude/bin/${name}" "${bin_dir}/${name}"
     else
       # user-install: symlink 経由でリンク先実体を書き換えないよう除去してから実体コピー（#748）
