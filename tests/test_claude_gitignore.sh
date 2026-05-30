@@ -3,7 +3,7 @@
 #
 # 検証対象:
 #   - .claude/.gitignore: install.sh デプロイファイルの ignore エントリが存在する
-#   - templates/claude/.gitignore.tpl: 同上（Source of Truth）
+#   - templates/claude/.gitignore: 同上（Source of Truth、#762 で .gitignore.tpl からリネーム）
 #   - 回帰防止: PR #370 で削除された hooks/ skills/ agents/ 等が復活していること
 #
 # 目的:
@@ -19,7 +19,8 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 GITIGNORE="${SCRIPT_DIR}/.claude/.gitignore"
-TEMPLATE="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+TEMPLATE="${SCRIPT_DIR}/templates/claude/.gitignore"
+OLD_TEMPLATE="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
 
 assert_entry_exists() {
   local desc="$1"
@@ -50,16 +51,32 @@ if [[ ! -f "$GITIGNORE" ]]; then
 fi
 
 # ============================================
-echo "=== templates/claude/.gitignore.tpl が存在する ==="
+echo "=== templates/claude/.gitignore（単一 SSOT、#762 リネーム）が存在する ==="
 # ============================================
 
-assert_file_exists "templates/claude/.gitignore.tpl が存在する" "$TEMPLATE"
+assert_file_exists "templates/claude/.gitignore が存在する" "$TEMPLATE"
 
 if [[ ! -f "$TEMPLATE" ]]; then
   echo ""
   echo "=== 結果: ${PASSED}/${TOTAL} passed, ${FAILED} failed ==="
-  echo "templates/claude/.gitignore.tpl が存在しないため後続テストを中止します"
+  echo "templates/claude/.gitignore が存在しないため後続テストを中止します"
   exit 1
+fi
+
+# 旧 .gitignore.tpl が廃止されている（命名規約 .tpl⟺placeholder、#762 でリネーム）
+if [[ -e "$OLD_TEMPLATE" ]]; then
+  fail "廃止済みの templates/claude/.gitignore.tpl が復活している（#762 で .gitignore にリネーム済み）"
+else
+  pass "templates/claude/.gitignore.tpl が廃止されている（.gitignore にリネーム）"
+fi
+
+# .claude/.gitignore は symlink ではなく実体ファイルであること（#762）。
+# git は symlink 化した .gitignore を追従せず ignore ルールが無効になるため、
+# symlink SSOT 化は見送り、実体ファイル + consistency 検証で同期を担保する。
+if [[ -L "$GITIGNORE" ]]; then
+  fail ".claude/.gitignore が symlink（git が ignore を読まなくなる。実体ファイルであるべき、#762）"
+else
+  pass ".claude/.gitignore は実体ファイル（symlink でない、git が ignore を読める）"
 fi
 
 # ============================================
@@ -82,11 +99,11 @@ for entry in "${REQUIRED_ENTRIES[@]}"; do
 done
 
 # ============================================
-echo "=== templates/claude/.gitignore.tpl に必須エントリが含まれる ==="
+echo "=== templates/claude/.gitignore に必須エントリが含まれる ==="
 # ============================================
 
 for entry in "${REQUIRED_ENTRIES[@]}"; do
-  assert_entry_exists ".gitignore.tpl に ${entry}" "$TEMPLATE" "$entry"
+  assert_entry_exists ".gitignore に ${entry}" "$TEMPLATE" "$entry"
 done
 
 # ============================================
@@ -106,7 +123,7 @@ else
   fail "テンプレートと installed copy のエントリが不一致"
   echo "    --- .claude/.gitignore ---"
   echo "$GITIGNORE_ENTRIES" | while IFS= read -r line; do echo "    ${line}"; done
-  echo "    --- templates/claude/.gitignore.tpl ---"
+  echo "    --- templates/claude/.gitignore ---"
   echo "$TEMPLATE_ENTRIES" | while IFS= read -r line; do echo "    ${line}"; done
 fi
 

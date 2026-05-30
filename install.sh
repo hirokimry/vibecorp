@@ -2435,7 +2435,7 @@ _ensure_trailing_newline() {
   fi
 }
 
-# `.gitignore.tpl` の `# ---- machine-specific artifacts ----` セクション配下から
+# `.gitignore` の `# ---- machine-specific artifacts ----` セクション配下から
 # 相対パス行のみを stdout に出力する純粋関数。テストから source して直接呼び出せる。
 _extract_gitignore_artifacts() {
   local tpl="$1"
@@ -2451,8 +2451,8 @@ _extract_gitignore_artifacts() {
 
 migrate_tracked_artifacts() {
   # 旧バージョン install で誤って tracked 化された machine-specific artifact を untrack する
-  # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
-  # マーカー配下の相対パスから自動抽出する（DRY: .gitignore.tpl が Source of Truth）。
+  # untrack 対象は templates/claude/.gitignore の `# ---- machine-specific artifacts ----`
+  # マーカー配下の相対パスから自動抽出する（DRY: .gitignore が Source of Truth）。
   #
   # --no-migrate は --name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ。
   # 新規 --name モードでも legacy artifact を tracked 化した consumer には影響するため、
@@ -2468,7 +2468,7 @@ migrate_tracked_artifacts() {
     return 0
   fi
 
-  local tpl="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  local tpl="${SCRIPT_DIR}/templates/claude/.gitignore"
   if [[ ! -f "$tpl" ]]; then
     log_skip "${tpl} が見つからないため migrate をスキップ"
     return 0
@@ -2506,8 +2506,8 @@ migrate_tracked_artifacts() {
 }
 
 copy_claude_gitignore() {
-  # .claude/.gitignore を templates/ から配布する（Source of Truth: templates/claude/.gitignore.tpl）
-  local src="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  # .claude/.gitignore を templates/ から配布する（Source of Truth: templates/claude/.gitignore）
+  local src="${SCRIPT_DIR}/templates/claude/.gitignore"
   local dest="${REPO_ROOT}/.claude/.gitignore"
   mkdir -p "$(dirname "$dest")"
 

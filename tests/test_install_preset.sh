@@ -1052,20 +1052,20 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== AJ. 配布テンプレート化: .gitignore.tpl / activate.sh ==="
+echo "=== AJ. 配布テンプレート化: .gitignore / activate.sh ==="
 # ============================================
 
-# AJ1. templates/claude/.gitignore.tpl が Source of Truth として存在する
-assert_file_exists "templates/claude/.gitignore.tpl が存在する" "${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+# AJ1. templates/claude/.gitignore が Source of Truth として存在する（#762 で .gitignore.tpl からリネーム）
+assert_file_exists "templates/claude/.gitignore が存在する" "${SCRIPT_DIR}/templates/claude/.gitignore"
 
 # AJ2. 新規 install 後の .claude/.gitignore が templates と同一内容
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-if diff -q "${SCRIPT_DIR}/templates/claude/.gitignore.tpl" "$R/.claude/.gitignore" >/dev/null 2>&1; then
-  pass "AJ2: .gitignore が templates/claude/.gitignore.tpl と同一内容"
+if diff -q "${SCRIPT_DIR}/templates/claude/.gitignore" "$R/.claude/.gitignore" >/dev/null 2>&1; then
+  pass "AJ2: .gitignore が templates/claude/.gitignore と同一内容"
 else
-  fail "AJ2: .gitignore が templates/claude/.gitignore.tpl と同一内容"
+  fail "AJ2: .gitignore が templates/claude/.gitignore と同一内容"
 fi
 # vibecorp.lock の base_hashes に .gitignore のハッシュが記録される
 assert_file_contains "AJ2: vibecorp.lock の base_hashes に .gitignore" "$R/.claude/vibecorp.lock" "\.gitignore:"
