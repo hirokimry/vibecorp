@@ -739,7 +739,11 @@ migrate_legacy_layout() {
   # 3) settings.json から hooks ブロックを完全削除 (plugin native 統一)
   local settings_json="${REPO_ROOT}/.claude/settings.json"
   local settings_local_json="${REPO_ROOT}/.claude/settings.local.json"
-  if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
+  # self-install で settings.json が SSOT (templates/claude/settings.json) への symlink の場合は
+  # migration を行わない (Issue #759)。SSOT は plugin native 配布で hooks ブロックを持たず、
+  # symlink 経由で del(.hooks) すると mv が symlink を実体に detach し SSOT 接続が切れるため、
+  # symlink を明示除外して暗黙依存を防御に格上げする（#748 の symlink 先書き換え防止と同型）。
+  if [[ ! -L "$settings_json" ]] && [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
       local vibecorp_hooks_json
       vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
@@ -2084,11 +2088,28 @@ YAML
 generate_settings_json() {
   # hooks は plugin native 配布 (#716) に移行済のため settings.json には書き込まない。
   # ここでは permissions / extraKnownMarketplaces / enabledPlugins のみを扱う。
+  # 配布元は単一 SSOT templates/claude/settings.json (Issue #759、settings.json.tpl は廃止)。
   local settings="${REPO_ROOT}/.claude/settings.json"
-  local template="${SCRIPT_DIR}/templates/settings.json.tpl"
+  local template="${SCRIPT_DIR}/templates/claude/settings.json"
+
+  # self-install（dogfooding）は .claude/settings.json を SSOT への symlink で直結する (Issue #759)。
+  # 利用者設定を保全する必要がないため merge は行わない（symlink 経由で SSOT を書き換えないよう
+  # 既存実体/symlink を除去してから貼り直す）。user-install は実体コピー + merge（下記）で
+  # 既存 permissions を保全する（#748 と異なり settings は成長しうるため上書きせず併合）。
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    rm -f "$settings"
+    ln -sfn "../templates/claude/settings.json" "$settings"
+    log_info "settings.json を symlink SSOT 化（self-install）"
+    return 0
+  fi
 
   local new_settings
   new_settings=$(cat "$template")
+
+  # user-install: symlink が残っていると merge が SSOT を書き換える恐れがあるため除去する
+  if [[ -L "$settings" ]]; then
+    rm -f "$settings"
+  fi
 
   if [[ ! -f "$settings" ]]; then
     # 新規: テンプレートをそのまま書き出し（permissions / marketplace / enabledPlugins）

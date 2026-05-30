@@ -352,12 +352,18 @@ if [ -n "$SAVED_HOME" ]; then
   export HOME="$SAVED_HOME"
 fi
 
-# DIFF-1: .claude/hooks/ と hooks/ が同期されていること
+# DIFF-1: protect-branch.sh は plugin の hooks/ が単一 SoT（#759 で .claude/hooks/ の置き忘れ重複を削除）
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-if diff -q "$REPO_ROOT/.claude/hooks/protect-branch.sh" "$REPO_ROOT/hooks/protect-branch.sh" >/dev/null 2>&1; then
-  pass "DIFF-1: .claude/hooks/ と hooks/ の protect-branch.sh が同期"
+if [[ -f "$REPO_ROOT/hooks/protect-branch.sh" ]]; then
+  pass "DIFF-1: hooks/protect-branch.sh が単一 SoT として存在する"
 else
-  fail "DIFF-1: .claude/hooks/ と hooks/ の protect-branch.sh が差分あり"
+  fail "DIFF-1: hooks/protect-branch.sh（単一 SoT）が存在しない"
+fi
+# 置き忘れ重複 .claude/hooks/protect-branch.sh が復活していないこと（#759）
+if [[ -e "$REPO_ROOT/.claude/hooks/protect-branch.sh" ]]; then
+  fail "DIFF-1b: 置き忘れ重複 .claude/hooks/protect-branch.sh が復活している（#759 で削除済みのはず）"
+else
+  pass "DIFF-1b: .claude/hooks/protect-branch.sh の置き忘れ重複が存在しない（plugin native 一元化）"
 fi
 
 # ============================================

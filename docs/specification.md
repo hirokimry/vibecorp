@@ -257,11 +257,11 @@ touch "${STAMP_DIR}/guide-ok"
 
 複数ファイルを編集する場合は編集ごとにスタンプを再発行する必要がある。
 
-### フック登録構造（settings.json）
+### settings.json の構造
 
-フックは `settings.json` の `hooks.PreToolUse` に登録される。
+`settings.json`（単一 SSOT: `templates/claude/settings.json`）は `permissions.allow` / `extraKnownMarketplaces` / `enabledPlugins` を配布する。
 
-`permissions.allow` も同ファイルから配布される。
+フックは `settings.json` には登録しない。plugin native 配布（#716 / #720 / #759）により `hooks/hooks.json` が唯一の登録元となり、`${CLAUDE_PLUGIN_ROOT}/hooks/*.sh` 経由で発火する。
 
 ```json
 {
@@ -277,34 +277,16 @@ touch "${STAMP_DIR}/guide-ok"
       "Edit(.claude/skills/**)"
     ]
   },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diagnose-guard.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/role-gate.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guide-gate.sh" }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/command-log.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-api-bypass.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-branch.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/review-gate.sh" }
-        ]
-      }
-    ]
+  "extraKnownMarketplaces": {
+    "vibecorp": { "source": { "source": "github", "repo": "hirokimry/vibecorp" } }
+  },
+  "enabledPlugins": {
+    "vibecorp@vibecorp": true
   }
 }
 ```
 
-上記は `settings.json.tpl` の主要な内容。
+上記は単一 SSOT `templates/claude/settings.json` の主要な内容（hooks ブロックは持たない）。フック登録は `hooks/hooks.json` を参照。
 
 | 観点 | 内容 |
 |---|---|

@@ -15,7 +15,7 @@ OLD_SKILL_DIR="${SCRIPT_DIR}/skills/review-to-rules"
 OLD_HOOK="${SCRIPT_DIR}/hooks/review-to-rules-gate.sh"
 OLD_TEST="${SCRIPT_DIR}/tests/test_review_to_rules_gate.sh"
 SETTINGS="${SCRIPT_DIR}/templates/claude/settings.json"
-SETTINGS_TPL="${SCRIPT_DIR}/templates/settings.json.tpl"
+# settings.json.tpl は #759 で廃止（単一 SSOT 化）。SETTINGS のみ検証する。
 
 assert_contains() {
   local desc="$1"
@@ -96,7 +96,6 @@ echo "=== settings.json エントリ削除 ==="
 # ============================================
 
 assert_not_contains "settings.json から review-to-rules-gate エントリ削除" 'review-to-rules-gate' "$SETTINGS"
-assert_not_contains "settings.json.tpl から review-to-rules-gate エントリ削除" 'review-to-rules-gate' "$SETTINGS_TPL"
 
 # ============================================
 print_test_summary
