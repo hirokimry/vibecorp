@@ -739,7 +739,11 @@ migrate_legacy_layout() {
   # 3) settings.json から hooks ブロックを完全削除 (plugin native 統一)
   local settings_json="${REPO_ROOT}/.claude/settings.json"
   local settings_local_json="${REPO_ROOT}/.claude/settings.local.json"
-  if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
+  # self-install で settings.json が SSOT (templates/claude/settings.json) への symlink の場合は
+  # migration を行わない (Issue #759)。SSOT は plugin native 配布で hooks ブロックを持たず、
+  # symlink 経由で del(.hooks) すると mv が symlink を実体に detach し SSOT 接続が切れるため、
+  # symlink を明示除外して暗黙依存を防御に格上げする（#748 の symlink 先書き換え防止と同型）。
+  if [[ ! -L "$settings_json" ]] && [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
       local vibecorp_hooks_json
       vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
