@@ -58,8 +58,9 @@ else
   pass "install 後 skills/ が作成されていない"
 fi
 
-# B3. .claude-plugin/plugin.json がコピーされている
-assert_file_exists "install 後 .claude-plugin/plugin.json" "${R}/.claude-plugin/plugin.json"
+# B3. .claude-plugin/plugin.json は利用者 repo にコピーされない (Issue #764)
+# プラグイン消費側は ~/.claude/plugins/cache/ から読むため利用者 repo にマニフェストは不要。
+assert_file_not_exists "install 後 .claude-plugin/plugin.json が配置されない" "${R}/.claude-plugin/plugin.json"
 
 # B4. .claude/skills/ 互換スタブが生成されない（Phase 3 で廃止）
 if [[ -d "${R}/.claude/skills" ]]; then
