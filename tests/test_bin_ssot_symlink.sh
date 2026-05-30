@@ -112,7 +112,7 @@ assert_file_contains "copy_isolation_templates() が bin の self-install symlin
   "${ROOT}/install.sh" 'ln -sfn "../../templates/claude/bin/'
 
 assert_file_contains "copy_isolation_templates() が self/user 判定を持つ" \
-  "${ROOT}/install.sh" 'bin_self_install=true'
+  "${ROOT}/install.sh" 'isolation_self_install=true'
 
 # ============================================
 print_test_summary
