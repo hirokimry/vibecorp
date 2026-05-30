@@ -187,7 +187,7 @@ hooks:
 
 | 配信内容 | 配信元 |
 |---|---|
-| `permissions.allow` の事前登録（`.claude/knowledge/**` 等） | `settings.json.tpl` |
+| `permissions.allow` の事前登録（`.claude/knowledge/**` 等） | `templates/claude/settings.json` |
 | プリセット別フックエントリ | プリセットに応じて `install.sh` がフィルタ |
 
 詳細な `settings.json` 構造とフック登録例は [`docs/specification.md#フック登録構造-settingsjson`](specification.md#フック登録構造-settingsjson) を参照。

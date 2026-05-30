@@ -2084,11 +2084,28 @@ YAML
 generate_settings_json() {
   # hooks は plugin native 配布 (#716) に移行済のため settings.json には書き込まない。
   # ここでは permissions / extraKnownMarketplaces / enabledPlugins のみを扱う。
+  # 配布元は単一 SSOT templates/claude/settings.json (Issue #759、settings.json.tpl は廃止)。
   local settings="${REPO_ROOT}/.claude/settings.json"
-  local template="${SCRIPT_DIR}/templates/settings.json.tpl"
+  local template="${SCRIPT_DIR}/templates/claude/settings.json"
+
+  # self-install（dogfooding）は .claude/settings.json を SSOT への symlink で直結する (Issue #759)。
+  # 利用者設定を保全する必要がないため merge は行わない（symlink 経由で SSOT を書き換えないよう
+  # 既存実体/symlink を除去してから貼り直す）。user-install は実体コピー + merge（下記）で
+  # 既存 permissions を保全する（#748 と異なり settings は成長しうるため上書きせず併合）。
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    rm -f "$settings"
+    ln -sfn "../templates/claude/settings.json" "$settings"
+    log_info "settings.json を symlink SSOT 化（self-install）"
+    return 0
+  fi
 
   local new_settings
   new_settings=$(cat "$template")
+
+  # user-install: symlink が残っていると merge が SSOT を書き換える恐れがあるため除去する
+  if [[ -L "$settings" ]]; then
+    rm -f "$settings"
+  fi
 
   if [[ ! -f "$settings" ]]; then
     # 新規: テンプレートをそのまま書き出し（permissions / marketplace / enabledPlugins）

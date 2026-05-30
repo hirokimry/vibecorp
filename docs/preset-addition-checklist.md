@@ -92,7 +92,7 @@ esac
 #### 🎯 判断基準
 
 - ➡️ ステップ 1 と同じプリセット区分に合わせる。
-- ➡️ settings.json.tpl にフックを登録した場合は必須。
+- ➡️ hooks/hooks.json にフックを登録した場合は必須。
 
 ### 3️⃣ install.sh — knowledge コピー制御
 
@@ -104,21 +104,24 @@ esac
 - ✅ minimal では自動的にスキップされる（既存ロジック）。
 - ⚙️ standard / full 固有の knowledge がある場合は個別制御を追加する。
 
-### 4️⃣ settings.json.tpl — フックエントリ追加
+### 4️⃣ hooks/hooks.json — フックエントリ追加
 
-📍 ファイル: `templates/settings.json.tpl`。
+📍 ファイル: `hooks/hooks.json`（plugin native 配布の唯一の登録元、#716/#720/#759）。
+
+> [!NOTE]
+> フックは settings.json には登録しない（#759 で settings.json は単一 SSOT 化され hooks ブロックを持たない）。登録は plugin マニフェスト経由の `hooks/hooks.json` に一元化されている。
 
 新しいフックを追加する場合の手順を以下に整理する。
 
-1. 適切な `matcher`（`Edit|Write`、`Bash` 等）のブロックに hook エントリを追加する。
-2. `command` パスを所定の形式で記述する。
-   - 形式: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/新しいフック.sh`。
+1. 適切な `matcher`（`Edit|Write|MultiEdit`、`Bash` 等）のブロックに hook エントリを追加する。
+2. `command` パスを plugin native 形式で記述する。
+   - 形式: `${CLAUDE_PLUGIN_ROOT}/hooks/新しいフック.sh`。
 3. 必要に応じて `timeout` を設定する。
 
 ```json
 {
   "type": "command",
-  "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/新しいフック.sh"
+  "command": "${CLAUDE_PLUGIN_ROOT}/hooks/新しいフック.sh"
 }
 ```
 
@@ -182,9 +185,9 @@ esac
 | # | ファイル | 更新内容 | 必須条件 |
 |---|---|---|---|
 | 1 | `install.sh`（case 文） | rm 行を追加 | フック / スキルが全プリセット対象でない場合 |
-| 2 | `install.sh`（jq フィルタ） | select 条件を追加 | フックを settings.json.tpl に登録した場合 |
+| 2 | `install.sh`（case 文の preset 別 rm） | rm 行を追加 | フックが全プリセット対象でない場合 |
 | 3 | `install.sh`（knowledge） | コピー制御を追加 | 新エージェントに knowledge がある場合 |
-| 4 | `settings.json.tpl` | フックエントリを追加 | フックの場合 |
+| 4 | `hooks/hooks.json` | フックエントリを追加 | フックの場合 |
 | 5a | `docs/specification.md` | スキル / フック詳細テーブル（SoT）を更新 | 常に必須 |
 | 5b | `README.md` | プリセット概要テーブル + 概要セクションを更新 | 常に必須 |
 | 6 | `tests/test_*.sh` | テストケースを追加 | 常に必須 |

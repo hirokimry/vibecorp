@@ -304,7 +304,7 @@ touch "${STAMP_DIR}/guide-ok"
 }
 ```
 
-上記は `settings.json.tpl` の主要な内容。
+上記は単一 SSOT `templates/claude/settings.json` の主要な内容。
 
 | 観点 | 内容 |
 |---|---|
