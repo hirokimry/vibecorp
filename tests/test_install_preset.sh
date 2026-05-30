@@ -1152,7 +1152,8 @@ if require_darwin "AJ7: full + Darwin で activate.sh が配置" ; then
       fail "AJ7: activate.sh が templates と同一内容"
     fi
     assert_file_executable "AJ8: activate.sh が実行権限付き" "$R/.claude/bin/activate.sh"
-    assert_file_exists "AJ9: vibecorp-base/bin/activate.sh が存在する" "$R/.claude/vibecorp-base/bin/activate.sh"
+    # AJ9 廃止 (Issue #760): bin は #748 同型で save_base_snapshot を使わなくなったため
+    # vibecorp-base/bin スナップショットは生成されない（user-install は常時上書き）。
   else
     fail "AJ7: activate.sh が配置されていない"
   fi
