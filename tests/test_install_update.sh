@@ -81,7 +81,7 @@ awk -v path="CLAUDE.md" -v newhash="$OLD_HASH" '
 ' "$R/.claude/vibecorp.lock" > "$R/.claude/vibecorp.lock.tmp" && mv "$R/.claude/vibecorp.lock.tmp" "$R/.claude/vibecorp.lock"
 
 bash "$INSTALL_SH" --update 2>/dev/null
-# 新テンプレート（= 最新の templates/CLAUDE.md.tpl 相当）で上書きされる
+# 新テンプレート（= 最新の templates/claude/CLAUDE.md.tpl 相当）で上書きされる
 assert_file_contains "O5: --update でテンプレート更新が CLAUDE.md に反映" "$R/.claude/CLAUDE.md" "test-proj"
 cleanup
 
@@ -170,7 +170,7 @@ echo "clean-clone-marker" >> "$R/.claude/CLAUDE.md"
 rm -f "$R/.claude/vibecorp-base/CLAUDE.md"
 
 # テンプレートに差分を作るため CLAUDE.md テンプレートを変更
-tpl_claude="$R/.claude/vibecorp-base/../../../templates/CLAUDE.md.tpl"
+tpl_claude="$R/.claude/vibecorp-base/../../../templates/claude/CLAUDE.md.tpl"
 if [[ ! -f "$tpl_claude" ]]; then
   # テンプレートが見つからない場合はテスト用に直接 lock を操作して差分を発生させる
   # base_hash を意図的に古い値に書き換えることで「テンプレートが変わった」状態を再現
