@@ -1,11 +1,15 @@
 #!/bin/bash
-# test_install_plugin_version.sh — Issue #540: plugin.json drift 防止
+# test_install_plugin_version.sh — Issue #764: plugin.json は利用者 repo に配布しない
 #
-# install.sh が consumer に配布する .claude-plugin/plugin.json の version が、
-# vibecorp 自身の .claude-plugin/plugin.json (Source of Truth) と完全一致することを検証する。
+# install.sh が利用者 (consumer) repo に .claude-plugin/plugin.json を配置しないことを検証する。
+# プラグイン消費側は ~/.claude/plugins/cache/ から読むため、利用者 repo にマニフェストは不要
+# (#700/#737/#744 の plugin native 化で利用者 repo にプラグイン実体が無くなったため)。
 #
-# 重複 SoT (templates/claude-plugin/plugin.json) によるダウングレード再発を防ぐ
-# 不変条件テスト。
+# vibecorp 自身の .claude-plugin/plugin.json (Source of Truth) は開発元の必須マニフェストとして
+# git 管理下で保持される — その version フィールド存在は前提として確認する。
+#
+# 旧不変条件 (Issue #540: consumer 側 version が SoT と一致) は #764 で廃止された
+# (そもそも consumer に配らなくなったため)。
 #
 # 使い方: bash tests/test_install_plugin_version.sh
 
@@ -17,7 +21,7 @@ source "${SCRIPT_DIR}/tests/lib/install_test_helpers.sh"
 
 SOT_PLUGIN="${SCRIPT_DIR}/.claude-plugin/plugin.json"
 
-# 前提: SoT が存在し、version フィールドを持つ
+# 前提: SoT が存在し、version フィールドを持つ (開発元の必須マニフェスト)
 if [[ ! -f "$SOT_PLUGIN" ]]; then
   fail "SoT (.claude-plugin/plugin.json) が存在しない"
   exit 1
@@ -34,73 +38,52 @@ if [[ -z "$SOT_VERSION" ]]; then
   exit 1
 fi
 
-extract_version() {
-  local file="$1"
-  jq -r '.version // ""' "$file"
-}
-
 # ============================================
 echo ""
-echo "=== Plugin version SoT 一致テスト (Issue #540) ==="
+echo "=== Plugin.json 利用者非配布テスト (Issue #764) ==="
 # ============================================
 
-# --- A. --name 初回 install: consumer 側 plugin.json が SoT version と一致 ---
+# --- A. --name 初回 install: consumer 側 plugin.json が配置されない ---
 
 echo ""
-echo "--- A. 初回 install で plugin.json version が SoT と一致 ---"
+echo "--- A. 初回 install で consumer に plugin.json が配置されない ---"
 
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
-CONSUMER_PLUGIN="${R}/.claude-plugin/plugin.json"
-assert_file_exists "consumer 側 .claude-plugin/plugin.json が配置される" "$CONSUMER_PLUGIN"
-
-CONSUMER_VERSION="$(extract_version "$CONSUMER_PLUGIN")"
-assert_eq "consumer plugin.json version が SoT と一致" "$SOT_VERSION" "$CONSUMER_VERSION"
+assert_file_not_exists "consumer 側 .claude-plugin/plugin.json が配置されない" "${R}/.claude-plugin/plugin.json"
 
 cleanup
 TMPDIR_ROOT=""
 
-# --- B. --update 再実行: consumer 側 plugin.json が SoT version と一致したまま ---
+# --- B. --update 再実行: consumer 側 plugin.json が配置されないまま ---
 
 echo ""
-echo "--- B. --update 再実行で plugin.json version が SoT と一致したまま ---"
+echo "--- B. --update 再実行でも consumer に plugin.json が配置されない ---"
 
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset minimal --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
-
-# consumer 側 plugin.json を意図的に古いバージョンに書き換え（drift 模擬）
-cat > "${R}/.claude-plugin/plugin.json" <<'EOF'
-{
-  "name": "vibecorp",
-  "version": "0.0.1",
-  "description": "drift simulation"
-}
-EOF
 
 # --update を実行
 bash "$INSTALL_SH" --update 2>/dev/null
 
-# SoT version に戻っていることを確認（ダウングレード/ドリフトが発生しない）
-CONSUMER_VERSION="$(extract_version "${R}/.claude-plugin/plugin.json")"
-assert_eq "--update で plugin.json version が SoT に再同期される" "$SOT_VERSION" "$CONSUMER_VERSION"
+assert_file_not_exists "--update 後も consumer に plugin.json が配置されない" "${R}/.claude-plugin/plugin.json"
 
 cleanup
 TMPDIR_ROOT=""
 
-# --- C. preset full でも同じ不変条件が保たれる ---
+# --- C. preset full でも consumer に plugin.json が配置されない ---
 
 echo ""
-echo "--- C. preset full でも plugin.json version が SoT と一致 ---"
+echo "--- C. preset full でも consumer に plugin.json が配置されない ---"
 
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --preset full --language ja 2>/dev/null
 R="$TMPDIR_ROOT"
 
-CONSUMER_VERSION="$(extract_version "${R}/.claude-plugin/plugin.json")"
-assert_eq "preset full の consumer plugin.json version が SoT と一致" "$SOT_VERSION" "$CONSUMER_VERSION"
+assert_file_not_exists "preset full でも consumer に plugin.json が配置されない" "${R}/.claude-plugin/plugin.json"
 
 cleanup
 TMPDIR_ROOT=""

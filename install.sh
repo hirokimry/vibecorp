@@ -907,12 +907,11 @@ copy_managed_files() {
   # agents は plugin native 配布 (#737 / #735) で plugin/agents/ に一元化されたため、
   # install.sh は配置しない。利用先プロジェクトの Claude Code が plugin cache 経由で自動検出する。
 
-  # .claude-plugin/plugin.json: vibecorp 自身の .claude-plugin/plugin.json が
-  # 唯一の Source-of-Truth。templates/ 経由の二重管理は drift の原因になるため廃止 (Issue #540)
-  if [[ -f "${SCRIPT_DIR}/.claude-plugin/plugin.json" ]]; then
-    mkdir -p "${REPO_ROOT}/.claude-plugin"
-    cp "${SCRIPT_DIR}/.claude-plugin/plugin.json" "${REPO_ROOT}/.claude-plugin/plugin.json"
-  fi
+  # .claude-plugin/plugin.json は利用者 repo に配布しない (Issue #764)。
+  # プラグイン消費側は ~/.claude/plugins/cache/ から読むため利用者 repo にマニフェストは不要。
+  # #700/#737/#744 の plugin native 化で利用者 repo にプラグイン実体が無くなったため、
+  # マニフェストだけ置いても指す相手がいない。vibecorp 自身の .claude-plugin/plugin.json は
+  # 開発元の必須マニフェスト (SoT) として git 管理下で保持される。
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
