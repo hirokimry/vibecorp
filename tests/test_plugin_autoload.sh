@@ -3,8 +3,8 @@
 #
 # 検証対象:
 #   - .claude-plugin/marketplace.json が vibecorp ルートに存在し、構造が正しい
-#   - templates/settings.json.tpl と templates/claude/settings.json に
-#     extraKnownMarketplaces / enabledPlugins が含まれる
+#   - 単一 SSOT templates/claude/settings.json に
+#     extraKnownMarketplaces / enabledPlugins が含まれる（#759 で settings.json.tpl 廃止）
 #   - install.sh の generate_settings_json() マージロジックで既存の
 #     extraKnownMarketplaces / enabledPlugins が壊れない
 #
@@ -22,7 +22,7 @@ source "${TESTS_DIR}/lib/test_helpers.sh"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MARKETPLACE="${REPO_ROOT}/.claude-plugin/marketplace.json"
-TPL="${REPO_ROOT}/templates/settings.json.tpl"
+# settings.json.tpl は #759 で廃止。単一 SSOT templates/claude/settings.json を参照する。
 CLAUDE_SETTINGS="${REPO_ROOT}/templates/claude/settings.json"
 INSTALL_SH="${REPO_ROOT}/install.sh"
 
@@ -114,18 +114,18 @@ else
   fail "skills 配列の件数（${skills_count}）が skills/ ディレクトリ数（${skills_dir_count}）と不一致"
 fi
 
-# --- B. templates/settings.json.tpl の extraKnownMarketplaces / enabledPlugins ---
+# --- B. templates/claude/settings.json（単一 SSOT）の extraKnownMarketplaces / enabledPlugins ---
 
-if jq -e '.extraKnownMarketplaces.vibecorp.source.source == "github" and .extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$TPL" >/dev/null 2>&1; then
-  pass "templates/settings.json.tpl に extraKnownMarketplaces.vibecorp が登録されている"
+if jq -e '.extraKnownMarketplaces.vibecorp.source.source == "github" and .extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+  pass "templates/claude/settings.json に extraKnownMarketplaces.vibecorp が登録されている"
 else
-  fail "templates/settings.json.tpl の extraKnownMarketplaces.vibecorp が期待値と異なる"
+  fail "templates/claude/settings.json の extraKnownMarketplaces.vibecorp が期待値と異なる"
 fi
 
-if jq -e '.enabledPlugins["vibecorp@vibecorp"] == true' "$TPL" >/dev/null 2>&1; then
-  pass "templates/settings.json.tpl に enabledPlugins[\"vibecorp@vibecorp\"] が true で登録されている"
+if jq -e '.enabledPlugins["vibecorp@vibecorp"] == true' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+  pass "templates/claude/settings.json に enabledPlugins[\"vibecorp@vibecorp\"] が true で登録されている"
 else
-  fail "templates/settings.json.tpl の enabledPlugins[\"vibecorp@vibecorp\"] が期待値と異なる"
+  fail "templates/claude/settings.json の enabledPlugins[\"vibecorp@vibecorp\"] が期待値と異なる"
 fi
 
 # --- C. templates/claude/settings.json も同等の設定を持つ ---

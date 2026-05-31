@@ -2,8 +2,9 @@
 # test_settings_json_hooks_exist.sh — settings.json が参照する hook スクリプトの実在性検証
 #
 # 検証対象:
-#   - .claude/settings.json: 参照する全 hook が .claude/hooks/ に実在する
-#   - templates/settings.json.tpl: 参照する全 hook が hooks/ に実在する
+#   - .claude/settings.json: hooks ブロック再混入による dead な .claude/hooks/ 参照が無い
+#     （#759 で symlink → templates/claude/settings.json 化、hooks は hooks/hooks.json へ一元化）
+#   - templates/claude/settings.json: 単一 SSOT（#759 で settings.json.tpl を統合）
 #   - 回帰防止: settings.json から削除済み team-auto-approve.sh への参照が復活していないこと
 #
 # 目的:
@@ -101,31 +102,36 @@ echo "=== settings.json hook 実在性検証 ==="
 # ============================================
 
 SETTINGS_JSON="${SCRIPT_DIR}/.claude/settings.json"
-SETTINGS_TPL="${SCRIPT_DIR}/templates/settings.json.tpl"
-HOOKS_DIR="${SCRIPT_DIR}/.claude/hooks"
+SSOT_SETTINGS="${SCRIPT_DIR}/templates/claude/settings.json"
+CLAUDE_HOOKS_DIR="${SCRIPT_DIR}/.claude/hooks"
 TEMPLATE_HOOKS_DIR="${SCRIPT_DIR}/hooks"
 
-# 前提ファイルの存在確認（不在なら後続テストが全て無意味なので即 exit 1）
-if [ ! -f "$SETTINGS_JSON" ]; then
-  fail ".claude/settings.json が存在しない"
+# 前提ファイルの存在確認（不在なら後続テストが全て無意味なので即 exit 1）。
+# .claude/settings.json は #759 で symlink 化されたため -e（symlink 解決）で確認する。
+# .claude/hooks/ は plugin native 化（hooks/hooks.json 一元化）で廃止済みのため存在を要求しない。
+if [ ! -e "$SETTINGS_JSON" ]; then
+  fail ".claude/settings.json が存在しない（symlink 解決不可を含む）"
   exit 1
 fi
 
-if [ ! -d "$HOOKS_DIR" ]; then
-  fail ".claude/hooks/ ディレクトリが存在しない"
+if [ ! -f "$SSOT_SETTINGS" ]; then
+  fail "単一 SSOT templates/claude/settings.json が存在しない"
   exit 1
 fi
 
-# --- .claude/settings.json ---
+# --- .claude/settings.json（symlink → 単一 SSOT） ---
 
 echo ""
 echo "--- .claude/settings.json ---"
 
 assert_json_valid ".claude/settings.json の JSON 構文が妥当" "$SETTINGS_JSON"
+# hooks は plugin native 配布（hooks/hooks.json）へ一元化済み。settings.json に hooks ブロックが
+# 再混入し dead な .claude/hooks/ 参照が生じていないことを検証する（#385 / #759）。
+# .claude/hooks/ は廃止済みのため、万一参照が復活した場合 fallback の hooks/ でも実在確認する。
 assert_all_hooks_exist \
-  ".claude/settings.json が参照する全 hook が .claude/hooks/ に実在する" \
+  ".claude/settings.json に dead な .claude/hooks/ 参照が無い（plugin native）" \
   "$SETTINGS_JSON" \
-  "$HOOKS_DIR" \
+  "$CLAUDE_HOOKS_DIR" \
   "$TEMPLATE_HOOKS_DIR"
 
 # Issue #385 固有の回帰防止: team-auto-approve.sh は PR #381 で削除済み
@@ -134,29 +140,21 @@ assert_no_reference \
   "$SETTINGS_JSON" \
   "team-auto-approve.sh"
 
-# --- templates/settings.json.tpl ---
+# --- templates/claude/settings.json（単一 SSOT、#759 で settings.json.tpl を統合） ---
 
-if [ -f "$SETTINGS_TPL" ]; then
-  echo ""
-  echo "--- templates/settings.json.tpl ---"
+echo ""
+echo "--- templates/claude/settings.json ---"
 
-  assert_json_valid "templates/settings.json.tpl の JSON 構文が妥当" "$SETTINGS_TPL"
+assert_json_valid "templates/claude/settings.json の JSON 構文が妥当" "$SSOT_SETTINGS"
+assert_all_hooks_exist \
+  "templates/claude/settings.json に dead な .claude/hooks/ 参照が無い（plugin native）" \
+  "$SSOT_SETTINGS" \
+  "$TEMPLATE_HOOKS_DIR"
 
-  if [ -d "$TEMPLATE_HOOKS_DIR" ]; then
-    assert_all_hooks_exist \
-      "templates/settings.json.tpl が参照する全 hook が hooks/ に実在する" \
-      "$SETTINGS_TPL" \
-      "$TEMPLATE_HOOKS_DIR"
-  else
-    fail "hooks/ ディレクトリが存在しない"
-    exit 1
-  fi
-
-  assert_no_reference \
-    "回帰防止: settings.json.tpl に team-auto-approve.sh 参照が残っていない" \
-    "$SETTINGS_TPL" \
-    "team-auto-approve.sh"
-fi
+assert_no_reference \
+  "回帰防止: SSOT settings.json に team-auto-approve.sh 参照が残っていない" \
+  "$SSOT_SETTINGS" \
+  "team-auto-approve.sh"
 
 # ============================================
 echo ""

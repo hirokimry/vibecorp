@@ -187,10 +187,10 @@ hooks:
 
 | 配信内容 | 配信元 |
 |---|---|
-| `permissions.allow` の事前登録（`.claude/knowledge/**` 等） | `settings.json.tpl` |
-| プリセット別フックエントリ | プリセットに応じて `install.sh` がフィルタ |
+| `permissions.allow` の事前登録（`.claude/knowledge/**` 等） | `templates/claude/settings.json`（単一 SSOT） |
+| フックの登録 | `hooks/hooks.json`（plugin native、`settings.json` には登録しない） |
 
-詳細な `settings.json` 構造とフック登録例は [`docs/specification.md#フック登録構造-settingsjson`](specification.md#フック登録構造-settingsjson) を参照。
+詳細な `settings.json` 構造は [`docs/specification.md#settingsjson-の構造`](specification.md#settingsjson-の構造) を参照。
 
 ## 🗄️ XDG 環境変数
 

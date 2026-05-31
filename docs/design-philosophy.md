@@ -814,7 +814,7 @@ gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有
 | 例 |
 |---|
 | `rules/`（プラグインルート SSOT、`.claude/rules/` は symlink で dogfooding）, `templates/claude/hooks/` |
-| `templates/claude/.gitignore.tpl` |
+| `templates/claude/.gitignore` |
 | `templates/claude/bin/activate.sh` |
 
 #### ✅ 利点
@@ -829,7 +829,7 @@ gate hook 失敗時はこのディレクトリ内の `<name>-ok` ファイル有
 
 | 例 |
 |---|
-| `templates/CLAUDE.md.tpl`, `templates/MVV.md.tpl`, `templates/docs/*.tpl` |
+| `templates/claude/CLAUDE.md.tpl`, `templates/MVV.md.tpl`, `templates/docs/*.tpl` |
 
 #### ✅ 利点
 

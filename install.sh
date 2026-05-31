@@ -739,7 +739,11 @@ migrate_legacy_layout() {
   # 3) settings.json から hooks ブロックを完全削除 (plugin native 統一)
   local settings_json="${REPO_ROOT}/.claude/settings.json"
   local settings_local_json="${REPO_ROOT}/.claude/settings.local.json"
-  if [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
+  # self-install で settings.json が SSOT (templates/claude/settings.json) への symlink の場合は
+  # migration を行わない (Issue #759)。SSOT は plugin native 配布で hooks ブロックを持たず、
+  # symlink 経由で del(.hooks) すると mv が symlink を実体に detach し SSOT 接続が切れるため、
+  # symlink を明示除外して暗黙依存を防御に格上げする（#748 の symlink 先書き換え防止と同型）。
+  if [[ ! -L "$settings_json" ]] && [[ -f "$settings_json" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks' "$settings_json" >/dev/null 2>&1; then
       local vibecorp_hooks_json
       vibecorp_hooks_json="$(printf '%s\n' "${vibecorp_hook_basenames[@]}" | jq -R . | jq -s .)"
@@ -907,12 +911,11 @@ copy_managed_files() {
   # agents は plugin native 配布 (#737 / #735) で plugin/agents/ に一元化されたため、
   # install.sh は配置しない。利用先プロジェクトの Claude Code が plugin cache 経由で自動検出する。
 
-  # .claude-plugin/plugin.json: vibecorp 自身の .claude-plugin/plugin.json が
-  # 唯一の Source-of-Truth。templates/ 経由の二重管理は drift の原因になるため廃止 (Issue #540)
-  if [[ -f "${SCRIPT_DIR}/.claude-plugin/plugin.json" ]]; then
-    mkdir -p "${REPO_ROOT}/.claude-plugin"
-    cp "${SCRIPT_DIR}/.claude-plugin/plugin.json" "${REPO_ROOT}/.claude-plugin/plugin.json"
-  fi
+  # .claude-plugin/plugin.json は利用者 repo に配布しない (Issue #764)。
+  # プラグイン消費側は ~/.claude/plugins/cache/ から読むため利用者 repo にマニフェストは不要。
+  # #700/#737/#744 の plugin native 化で利用者 repo にプラグイン実体が無くなったため、
+  # マニフェストだけ置いても指す相手がいない。vibecorp 自身の .claude-plugin/plugin.json は
+  # 開発元の必須マニフェスト (SoT) として git 管理下で保持される。
 
   # プレースホルダー置換
   # macOS 互換: sed ... > tmp && mv tmp original（sed -i の BSD/GNU 差異を回避）
@@ -1042,21 +1045,47 @@ copy_isolation_templates() {
   local sandbox_dir="${REPO_ROOT}/.claude/sandbox"
   mkdir -p "$bin_dir" "$sandbox_dir"
 
-  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）
+  # bin/ 配下は両 OS 共通（claude / vibecorp-sandbox / activate.sh）。
+  # bin/ は汎用機構で vibecorp 固有に成長しないため symlink SSOT 化する (Issue #760)。
+  # self-install（dogfooding）は templates/claude/bin/ へのファイル単位 symlink で SSOT を直結し、
+  # user-install（配布先）は実体コピーで上書きする（symlink は配布しない、#748 と同型）。
+  # claude-real（マシン固有 symlink）は setup_claude_real_symlink が別途実体配置するため本ループ対象外。
+  # self/user 判定は bin/ と sandbox/ の両方で共有する（Issue #760 / #761）。
+  local isolation_self_install=false
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    isolation_self_install=true
+  fi
+
   local src
   for src in "${SCRIPT_DIR}/templates/claude/bin/"*; do
     # symlink はサプライチェーン侵害時の任意ファイル配置経路になるため明示除外する
     [[ -f "$src" && ! -L "$src" ]] || continue
     local name
     name=$(basename "$src")
-    cp "$src" "${bin_dir}/${name}"
-    chmod +x "${bin_dir}/${name}"
-    # ベーススナップショットを記録し、--update 時の 3-way マージ判定を有効化する
-    save_base_snapshot "$src" "bin/${name}"
+    if [[ "$isolation_self_install" == true ]]; then
+      # self-install: .claude/bin/<name> → ../../templates/claude/bin/<name> の相対 symlink を貼り直す。
+      # ラッパー（claude / vibecorp-sandbox）は自己位置を cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
+      # （readlink -f を使わない）で解決するため、symlink 経由でも SCRIPT_DIR は .claude/bin に解決され、
+      # 隣接の vibecorp-sandbox や ../sandbox/claude.sb を正しく辿る（挙動不変の前提）。
+      ln -sfn "../../templates/claude/bin/${name}" "${bin_dir}/${name}"
+    else
+      # user-install: symlink 経由でリンク先実体を書き換えないよう除去してから実体コピー（#748）
+      if [[ -L "${bin_dir}/${name}" ]]; then
+        rm -f "${bin_dir}/${name}"
+      fi
+      cp "$src" "${bin_dir}/${name}"
+      chmod +x "${bin_dir}/${name}"
+    fi
     log_info "隔離レイヤを配置: .claude/bin/${name}"
   done
 
-  # sandbox/ 配下は OS 別ファイル名で明示コピー
+  # sandbox/ 配下は OS 別ファイル名（darwin=claude.sb / linux=bwrap-args.sh）で配置する (Issue #761)。
+  # symlink SSOT 化できるかは「ファイルがどう使われるか」で決まる:
+  #   - claude.sb（macOS）  : sandbox-exec が -f で読むだけのデータ → self-install で symlink SSOT 化できる
+  #   - bwrap-args.sh（Linux）: vibecorp-sandbox が source 実行するコード → symlink にすると
+  #       任意コード実行経路になり、vibecorp-sandbox の Link Following 拒否ガード（#310）が
+  #       fail-closed で隔離起動を拒否する。よって self-install でも必ず実体コピーで配置する。
+  # user-install は OS 該当ファイルを常に実体コピーする（symlink は配布しない、#748 と同型）。
   local sandbox_file=""
   case "$OS" in
     darwin) sandbox_file="claude.sb" ;;
@@ -1065,8 +1094,17 @@ copy_isolation_templates() {
 
   local sandbox_src="${SCRIPT_DIR}/templates/claude/sandbox/${sandbox_file}"
   if [[ -f "$sandbox_src" && ! -L "$sandbox_src" ]]; then
-    cp "$sandbox_src" "${sandbox_dir}/${sandbox_file}"
-    save_base_snapshot "$sandbox_src" "sandbox/${sandbox_file}"
+    if [[ "$isolation_self_install" == true && "$OS" == "darwin" ]]; then
+      # self-install + macOS: 読むだけのプロファイル claude.sb を SSOT への相対 symlink で直結
+      ln -sfn "../../templates/claude/sandbox/${sandbox_file}" "${sandbox_dir}/${sandbox_file}"
+    else
+      # user-install、または source 実行される bwrap-args.sh（Linux self-install 含む）: 実体コピー。
+      # symlink 経由でリンク先実体を書き換えないよう、コピー前に既存 symlink を除去する（#748）。
+      if [[ -L "${sandbox_dir}/${sandbox_file}" ]]; then
+        rm -f "${sandbox_dir}/${sandbox_file}"
+      fi
+      cp "$sandbox_src" "${sandbox_dir}/${sandbox_file}"
+    fi
     log_info "隔離レイヤを配置: .claude/sandbox/${sandbox_file}"
   else
     log_error "sandbox ファイルが見つかりません: ${sandbox_src}"
@@ -2050,11 +2088,28 @@ YAML
 generate_settings_json() {
   # hooks は plugin native 配布 (#716) に移行済のため settings.json には書き込まない。
   # ここでは permissions / extraKnownMarketplaces / enabledPlugins のみを扱う。
+  # 配布元は単一 SSOT templates/claude/settings.json (Issue #759、settings.json.tpl は廃止)。
   local settings="${REPO_ROOT}/.claude/settings.json"
-  local template="${SCRIPT_DIR}/templates/settings.json.tpl"
+  local template="${SCRIPT_DIR}/templates/claude/settings.json"
+
+  # self-install（dogfooding）は .claude/settings.json を SSOT への symlink で直結する (Issue #759)。
+  # 利用者設定を保全する必要がないため merge は行わない（symlink 経由で SSOT を書き換えないよう
+  # 既存実体/symlink を除去してから貼り直す）。user-install は実体コピー + merge（下記）で
+  # 既存 permissions を保全する（#748 と異なり settings は成長しうるため上書きせず併合）。
+  if [[ "$(_canonical_dir "$SCRIPT_DIR")" == "$(_canonical_dir "$REPO_ROOT")" ]]; then
+    rm -f "$settings"
+    ln -sfn "../templates/claude/settings.json" "$settings"
+    log_info "settings.json を symlink SSOT 化（self-install）"
+    return 0
+  fi
 
   local new_settings
   new_settings=$(cat "$template")
+
+  # user-install: symlink が残っていると merge が SSOT を書き換える恐れがあるため除去する
+  if [[ -L "$settings" ]]; then
+    rm -f "$settings"
+  fi
 
   if [[ ! -f "$settings" ]]; then
     # 新規: テンプレートをそのまま書き出し（permissions / marketplace / enabledPlugins）
@@ -2380,7 +2435,7 @@ _ensure_trailing_newline() {
   fi
 }
 
-# `.gitignore.tpl` の `# ---- machine-specific artifacts ----` セクション配下から
+# `.gitignore` の `# ---- machine-specific artifacts ----` セクション配下から
 # 相対パス行のみを stdout に出力する純粋関数。テストから source して直接呼び出せる。
 _extract_gitignore_artifacts() {
   local tpl="$1"
@@ -2396,8 +2451,8 @@ _extract_gitignore_artifacts() {
 
 migrate_tracked_artifacts() {
   # 旧バージョン install で誤って tracked 化された machine-specific artifact を untrack する
-  # untrack 対象は templates/claude/.gitignore.tpl の `# ---- machine-specific artifacts ----`
-  # マーカー配下の相対パスから自動抽出する（DRY: .gitignore.tpl が Source of Truth）。
+  # untrack 対象は templates/claude/.gitignore の `# ---- machine-specific artifacts ----`
+  # マーカー配下の相対パスから自動抽出する（DRY: .gitignore が Source of Truth）。
   #
   # --no-migrate は --name / --update の両モードで受け付けるが、通常は既存環境の移行時に意味を持つ。
   # 新規 --name モードでも legacy artifact を tracked 化した consumer には影響するため、
@@ -2413,7 +2468,7 @@ migrate_tracked_artifacts() {
     return 0
   fi
 
-  local tpl="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  local tpl="${SCRIPT_DIR}/templates/claude/.gitignore"
   if [[ ! -f "$tpl" ]]; then
     log_skip "${tpl} が見つからないため migrate をスキップ"
     return 0
@@ -2451,8 +2506,8 @@ migrate_tracked_artifacts() {
 }
 
 copy_claude_gitignore() {
-  # .claude/.gitignore を templates/ から配布する（Source of Truth: templates/claude/.gitignore.tpl）
-  local src="${SCRIPT_DIR}/templates/claude/.gitignore.tpl"
+  # .claude/.gitignore を templates/ から配布する（Source of Truth: templates/claude/.gitignore）
+  local src="${SCRIPT_DIR}/templates/claude/.gitignore"
   local dest="${REPO_ROOT}/.claude/.gitignore"
   mkdir -p "$(dirname "$dest")"
 
@@ -2522,7 +2577,9 @@ copy_claude_gitignore() {
 
 generate_claude_md() {
   local target="${REPO_ROOT}/.claude/CLAUDE.md"
-  local src_template="${SCRIPT_DIR}/templates/CLAUDE.md.tpl"
+  # 配布先 .claude/CLAUDE.md の階層をミラーする templates/claude/ 配下が SSOT (Issue #763)。
+  # placeholder ({{PROJECT_NAME}}/{{LANGUAGE}}) を持つため symlink せず .tpl render 配布を維持する。
+  local src_template="${SCRIPT_DIR}/templates/claude/CLAUDE.md.tpl"
   local rel_path="CLAUDE.md"
 
   local lang_display

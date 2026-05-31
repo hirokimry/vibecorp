@@ -66,6 +66,19 @@ assert_file_executable "A4: .claude/bin/vibecorp-sandbox に実行権限" "$R/.c
 assert_file_exists "A5: .claude/bin/activate.sh が生成される" "$R/.claude/bin/activate.sh"
 assert_file_executable "A6: .claude/bin/activate.sh に実行権限" "$R/.claude/bin/activate.sh"
 assert_file_exists "A7: .claude/sandbox/claude.sb が配置される" "$R/.claude/sandbox/claude.sb"
+# user-install（配布先）は symlink ではなく実体コピーで配置される（Issue #760 / #761 / #748）
+for name in claude vibecorp-sandbox activate.sh; do
+  if [[ -L "$R/.claude/bin/${name}" ]]; then
+    fail "A8: user-install で .claude/bin/${name} が symlink（実体コピーであるべき）"
+  else
+    pass "A8: user-install で .claude/bin/${name} は実体コピー（symlink でない）"
+  fi
+done
+if [[ -L "$R/.claude/sandbox/claude.sb" ]]; then
+  fail "A9: user-install で .claude/sandbox/claude.sb が symlink（実体コピーであるべき）"
+else
+  pass "A9: user-install で .claude/sandbox/claude.sb は実体コピー（symlink でない）"
+fi
 cleanup
 
 # ============================================
