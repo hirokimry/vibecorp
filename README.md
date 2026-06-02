@@ -1,22 +1,18 @@
 # vibecorp
 
-🤖 **AI エージェントを組織化してプロダクト開発を回すプラグイン**
+🤖 **AI エージェントに役職を与えて組織化する Claude Code プラグイン**
+
+Issue を渡すと、担当の専門役が実装から PR まで自動で回す。
+各役職の判断は「知識」として時系列で蓄積される。
+その知識を次の開発で読み戻し、チームとして成長していく。
+
+- 🛠️ **対象**: Claude Code を使う開発者・チーム
+- 🎯 **解く課題**: AI への指示が毎回その場限りで、知識が蓄積されない
+- ⚡ **最短導入**: どのリポジトリにも 2 コマンドで導入できる（`install.sh` → `/plugin install`）
 
 > [!IMPORTANT]
 > このドキュメントは **外部 OSS 読者・導入開発者** 向けの入口ガイドです。
-> どのリポジトリにも 2 コマンドで導入でき、Issue 駆動の開発ループを AI に委譲できます。
 > 詳細仕様は [`docs/specification.md`](docs/specification.md) を参照してください。
-
-どのリポジトリにも導入できる。
-Claude Code の skills / hooks / agents / rules を一括セットアップする。
-Issue 駆動の開発ループを AI に委譲する。
-ブランチ作成から PR の auto-merge まで一気通貫で実行する。
-
-| 何ができる？ | どう動く？ |
-|------------|----------|
-| 🚀 `/vibecorp:ship <Issue URL>` 1 行で Issue を実装・PR 化・auto-merge まで全自動 | スキル → エージェント → フック が連動して計画 → 実装 → レビュー → マージを進める |
-| 🎁 プリセット 3 段階（minimal / standard / full）で個人 → チーム → AI 企業まで段階導入 | 上位は下位の機能を全包含。`install.sh --preset full` で AI 企業組織モード |
-| 🔒 ガードレール（保護系・ゲート系・API バイパス防止系・ログ系）が常時稼働 | `vibecorp.yml` でも無効化できない必須 hook で品質ゲートを担保 |
 
 ---
 
@@ -63,6 +59,56 @@ path/to/vibecorp/install.sh --name your-project
 | `--update` | 既存インストールを更新（`vibecorp.yml` から設定を読む） |
 
 `--name` と `--update` は同時指定不可。全オプション一覧と詳細仕様は [`docs/configuration.md`](docs/configuration.md) を参照。
+
+---
+
+## 🎁 何ができる？
+
+| できること | 動線 |
+|------------|----------|
+| 🚀 Issue を実装・PR 化・auto-merge まで全自動 | `/vibecorp:ship <Issue URL>` の 1 行 |
+| 🎁 個人 → チーム → AI 企業まで段階導入 | プリセット 3 段階（minimal / standard / full） |
+| 🔒 品質ゲートが常時稼働 | `vibecorp.yml` でも無効化できない必須 hook |
+
+機能レベルで「〜できるようにしたい」と Issue を渡すだけでよい。
+COO が意図を解釈し、適切な担当へ割り振る。
+技術は CTO、コストは CFO、安全は CISO、法務は CLO。
+
+---
+
+## ✨ 何がユニークか
+
+標準的な AI コーディング支援との違いは一点。
+**判断が「知識」として組織に残り、次の判断に効く**、その一点にある。
+
+- 各役職は判断のたびに、結論・根拠・却下した代替案を記録する。
+- 次に呼ばれたとき、その知識を読み戻してから判断する。
+- 知識は役職別・時系列で蓄積される。
+- 標準メモリーの個人・上書き型の記憶とは別物。
+
+実際にこのリポジトリに蓄積されている知識の一部:
+
+| 役職 | 残っている判断（実物） |
+|---|---|
+| 🧑‍🔬 CTO | Docker 隔離を撤回し sandbox-exec / bwrap へ転換（却下案: Hyper-V / Firejail） |
+| 🔒 CISO | 「攻撃成立にはリポジトリ改ざんが前提」→ High を Minor に格下げ（Issue #318 と一貫） |
+| 💰 CFO | `max_issues_per_run` を「3 へ」→ 再判断で「7 へ」自己撤回（月 $840 試算付き） |
+| ⚖️ CLO | 「CodeRabbit 完全網羅」表現は廃棄を条件に可と裁定（著作権法 2 条・不正競争防止法 2 条 1 項 3 号） |
+| 📋 CPO | Pro プラン新設を No-Go（4 段目は「導入の手軽さ」バリューに反する） |
+| 🏃 SM | 7 件の同時並列は不可、最大 3 件並列が安全な上限（install.sh 競合を検出） |
+
+> 📖 仕組みの詳細（役職別 knowledge の構造・読み戻し動線）は [`docs/ai-organization.md`](docs/ai-organization.md) / [`docs/design-philosophy.md`](docs/design-philosophy.md) を参照。
+> vibecorp 自身の改善も vibecorp で回しており、上の知識はその過程で各役職が書き残したもの。
+
+---
+
+## 🛡️ 安全に手を離せる土台
+
+自律で動くからこそ、暴走を構造で封じている。詳細は各リンク先を参照。
+
+- ⚠️ **触れてはいけない領域は機械的に締め出す** — 認証 / 暗号 / 課金 / ガードレール / MVV / CI 権限の 6 領域は自律実行の対象外（[`docs/SECURITY.md`](docs/SECURITY.md)）
+- 🚦 **意志力に頼らないゲート** — レビュー前の PR 作成・未整合の push を必須 hook が自動で止める（[🪝 フック概要](#-フック概要)）
+- 💰 **コスト上限の明文化** — `max_issues_per_run` 等の上限を CFO が監査し証跡を残す（[`docs/cost-analysis.md`](docs/cost-analysis.md)）
 
 ---
 
