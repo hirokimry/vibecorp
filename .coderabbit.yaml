@@ -24,14 +24,18 @@ reviews:
         PRが対応するIssueの要件を全て満たしているかを必ずチェックすること。
         PRの説明やブランチ名からIssue番号を特定し、そのIssueの「やること」に記載された全項目が実装されているか確認する。
         未対応の要件がある場合は明確に指摘すること。
-    - path: "templates/claude/hooks/**"
+    # path 基準の観点チェックリスト（intent 非依存で全 PR に適用）。
+    # intent × severity の捌きは review-fix（pr-fix / review-loop）の責務（rules/review-handling.md）。
+    # path は vibecorp 自身の repo 構造（plugin 開発元）に対応する。配布元 templates/coderabbit.yaml.tpl は
+    # generic な "**" のみで、hooks/skills は plugin 配布のため利用者 repo root には存在しない（Issue #757）。
+    - path: "hooks/**"
       instructions: |
         シェルスクリプトのレビュー。以下をチェック:
         - set -euo pipefail が設定されているか
         - jq による JSON パースが正しいか
         - エッジケース（空入力、ファイル不在）が考慮されているか
         - セキュリティ上の問題（インジェクション等）がないか
-    - path: "templates/claude/skills/**"
+    - path: "skills/**"
       instructions: |
         スキル定義のレビュー。以下をチェック:
         - YAML frontmatter の name / description が内容と一致しているか
