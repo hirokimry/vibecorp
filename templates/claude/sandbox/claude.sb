@@ -13,6 +13,12 @@
 ;;              ~/.gitconfig, ~/.config/gh, ~/.npm, ~/.local/share/claude
 ;;   ioctl   : /dev 配下（TTY raw mode 切替に必須）
 ;;   拒否    : ~/.ssh, ~/.aws, ~/.gnupg, ~/Library/Keychains（deny default で自動）
+;;              ※ ~/Library/Keychains の deny は意図的（秘匿ファイル保護）。
+;;                この結果 `claude doctor` の Keychain 書込テストが拒否され
+;;                「Keychain is not writable (-60005)」警告が出るが実害はない。
+;;                認証は OAuth トークンを ~/.claude.json（書込許可済み）で扱い
+;;                Keychain を使わないため。詳細は docs/design-philosophy.md
+;;                「既知の挙動: 隔離時の Keychain 警告」/ #756 を参照。
 ;;   ネット  : 全許可（host allowlist は将来検討）
 ;;   プロセス : fork / exec は許可
 ;;

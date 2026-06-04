@@ -744,6 +744,31 @@ macOS sandbox-exec プロファイルの許可・拒否境界は `.claude/sandbo
 
 本セクションは設計思想の記述であり、個々のパス・ルールを逐次列挙するスコープではない。
 
+### 🩺 既知の挙動: 隔離時の Keychain 警告
+
+> [!NOTE]
+> 隔離を有効化すると `claude doctor` が「Keychain is not writable (-60005)」を出すようになる。
+> これは **意図的な deny の副作用** であり、環境は壊れていない。実害はない。
+
+隔離レイヤは `~/Library/Keychains` への書込を **意図的に拒否** する（秘匿ファイル保護のため、`~/.ssh` / `~/.aws` と同列の deny）。一方 `claude doctor` は自己診断で Keychain へテスト書込を試みる。両者が衝突して警告が出る。
+
+| 観点 | 内容 |
+|------|------|
+| 🔍 何が起きるか | `claude doctor` の Keychain 書込テストが deny され `-60005 authorization denied` が表示される |
+| ✅ 実害があるか | ない。認証は OAuth トークンを `~/.claude.json`（書込許可済み）で扱い、Keychain は使わない |
+| 🔒 なぜ deny を外さないか | Keychain 書込を許可すると秘匿ファイル保護という隔離の目的を自壊させるため |
+
+#### ⚙️ 再現条件
+
+| 設定 | 警告 |
+|------|------|
+| `VIBECORP_ISOLATION=1`（隔離有効） | ⚠️ 出る |
+| `VIBECORP_ISOLATION=0`（passthrough） | ✅ 出ない |
+
+警告を消したい場合は `VIBECORP_ISOLATION=0` で隔離を無効化できるが、隔離の保護を失うため **非推奨**。警告は無視してよい。
+
+📍 根拠: `.claude/sandbox/claude.sb` の deny コメント（#756）。
+
 ## 🗂️ ゲートスタンプ・一時ファイルの保存先
 
 ### 📂 `.claude/` 外への切り出し
