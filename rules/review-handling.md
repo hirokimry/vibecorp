@@ -5,7 +5,7 @@
 > 重視軸外の Minor 以下指摘は管轄外として扱う（必要なら別 Issue を立てる）。
 > 「後続 PR」表記は使わない（Minor 以下で出した時点で「Major ではない」を認めている）。
 
-本ルールは PR レビュー指摘（CodeRabbit / claude-code-action）の修正対象判定を扱う。
+本ルールは PR レビュー指摘（vibehawk / CodeRabbit）の修正対象判定を扱う。
 
 ## 🎯 設計原則
 
@@ -41,8 +41,9 @@
 
 severity の定義は `.claude/rules/severity/coderabbit.md`（CodeRabbit 公式仕様）と `.claude/rules/severity/claude-action.md`（vibecorp 実体版）を参照する。
 
-- 運用状況: Issue #532 以降、vibecorp 本体は `claude_action.enabled: false` で運用中（CodeRabbit Bot 単独）。
-- `severity/claude-action.md` の役割: claude-code-action 再有効化時 / 利用者が `enabled: true` で運用する場合の Source of Truth として保持する。
+- 運用状況（Issue #531）: レビューは vibehawk へ移譲され、レビュアーは `vibehawk` / `coderabbit` の独立トグルで選択する（デフォルト vibehawk-only）。
+- vibehawk の判断軸: severity 5 段階等は vibehawk ツール側に内蔵され、vibecorp 独自軸は `.vibehawk.yaml` の `reviews.path_instructions` に注入される。
+- `severity/claude-action.md` の役割: severity 定義を CodeRabbit と完全一致させて記録する（claude-code-action 配布廃止後も同期記録として保持）。
 
 ### 🔍 Info の扱い（severity 定義は同じ、判定で拡張）
 
@@ -79,7 +80,7 @@ severity の **定義** は CodeRabbit と完全一致させる（`severity/code
 ## 🔄 検証手順
 
 1. 指摘された箇所の実コードを読んで文脈を確認する。
-2. severity を確認する（CodeRabbit 出力 or claude-action 出力）。
+2. severity を確認する（vibehawk 出力 or CodeRabbit 出力）。
 3. PR の intent ラベルを確認する。
 4. 上記マトリクスに照らして「修正対象」「管轄外」を判定する。
 5. 判断に迷う場合は「修正対象」に分類する。

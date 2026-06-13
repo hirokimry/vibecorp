@@ -1222,9 +1222,10 @@ language: ${LANGUAGE}
 base_branch: main
 protected_files:
   - MVV.md
-coderabbit:
-  enabled: true
-claude_action:
+# レビュアーは vibehawk / CodeRabbit を独立トグルで選択する（Issue #531）。
+# デフォルトは vibehawk のみ（vibehawk=on / coderabbit=off）。
+# vibehawk 有効化には別途 `npx vibehawk setup`（App + 3 secrets + workflow 配布）が必要。
+vibehawk:
   enabled: true
   skip_paths:
     - "*.lock"
@@ -1234,6 +1235,8 @@ claude_action:
     - "build/**"
     - ".cache/**"
     - "vendor/**"
+coderabbit:
+  enabled: false
 branch_protection:
   required_approvals: 1
 diagnose:
@@ -1254,23 +1257,37 @@ YAML
   log_info "vibecorp.yml を生成"
 }
 
-ensure_claude_action_section() {
-  # 既存 vibecorp.yml に claude_action セクション（および未定義キー）を追加する。
-  # 既存値は絶対に上書きしない（利用者カスタマイズを尊重）。
-  #
-  # 仕様根拠: Issue #468 最終確定 3「既存 vibecorp.yml の設定値を保ち、未定義キーだけ追加」
+ensure_vibehawk_section() {
+  # 既存 vibecorp.yml を vibehawk トグルへ移行する（Issue #531）。
+  # - claude_action: があれば vibehawk: にリネーム（enabled 値・skip_paths を保持）
+  # - vibehawk: も claude_action: も無ければ vibehawk: を追加
+  # - vibehawk: があれば不足キー（enabled / skip_paths）を補完
+  # 既存値は絶対に上書きしない（利用者カスタマイズを尊重、Issue #468 踏襲）。
   # bash 3.2 互換、`sed -i` 禁止（mktemp + mv で原子的置換）。
   local yml="${REPO_ROOT}/.claude/vibecorp.yml"
   [[ -f "$yml" ]] || return 0
 
-  # claude_action: セクション全体の存在確認
-  if ! grep -q -e "^claude_action:" "$yml"; then
+  local has_vibehawk has_claude_action
+  has_vibehawk=$(grep -q -e "^vibehawk:" "$yml" && echo yes || echo no)
+  has_claude_action=$(grep -q -e "^claude_action:" "$yml" && echo yes || echo no)
+
+  # 移行: claude_action: → vibehawk:（vibehawk: 不在時のみ。enabled 値・skip_paths は本文ごと保持）
+  if [[ "$has_vibehawk" == "no" && "$has_claude_action" == "yes" ]]; then
+    local mtmp
+    mtmp="$(mktemp "$(dirname "$yml")/.${yml##*/}.XXXXXX")"
+    awk '/^claude_action:[[:space:]]*$/ { print "vibehawk:"; next } { print }' "$yml" > "$mtmp" && mv "$mtmp" "$yml"
+    log_info "vibecorp.yml の claude_action セクションを vibehawk へ移行"
+    has_vibehawk="yes"
+  fi
+
+  # vibehawk: セクション全体の不在 → 追加
+  if [[ "$has_vibehawk" == "no" ]]; then
     # ファイル末尾が改行で終わっていない場合は改行を補う（追記境界の壊れ防止）
     if [[ -s "$yml" ]] && [[ "$(tail -c 1 "$yml")" != $'\n' ]]; then
       printf '\n' >> "$yml"
     fi
     cat >> "$yml" <<'YAML'
-claude_action:
+vibehawk:
   enabled: true
   skip_paths:
     - "*.lock"
@@ -1281,19 +1298,19 @@ claude_action:
     - ".cache/**"
     - "vendor/**"
 YAML
-    log_info "vibecorp.yml に claude_action セクションを追加"
+    log_info "vibecorp.yml に vibehawk セクションを追加"
     return 0
   fi
 
-  # セクションは存在する。各キーの有無を確認（awk でブロック単位パース）
+  # vibehawk: は存在する。各キーの有無を確認（awk でブロック単位パース）
   local has_enabled has_skip_paths
   has_enabled=$(awk '
-    /^claude_action:/ { in_block = 1; next }
+    /^vibehawk:/ { in_block = 1; next }
     in_block && /^[^[:space:]#]/ { exit }
     in_block && /^[[:space:]]+enabled:/ { print "yes"; exit }
   ' "$yml")
   has_skip_paths=$(awk '
-    /^claude_action:/ { in_block = 1; next }
+    /^vibehawk:/ { in_block = 1; next }
     in_block && /^[^[:space:]#]/ { exit }
     in_block && /^[[:space:]]+skip_paths:/ { print "yes"; exit }
   ' "$yml")
@@ -1329,13 +1346,13 @@ YAML
         in_block = 0
       }
       print
-      if (/^claude_action:/) in_block = 1
+      if (/^vibehawk:/) in_block = 1
     }
     END {
       if (in_block && !appended) emit_missing()
     }
   ' "$yml" > "$tmp" && mv "$tmp" "$yml"
-  log_info "vibecorp.yml の claude_action セクションに不足キーを追加"
+  log_info "vibecorp.yml の vibehawk セクションに不足キーを追加"
 }
 
 generate_coderabbit_yaml() {
@@ -1366,7 +1383,7 @@ generate_coderabbit_yaml() {
   local lang_code
   lang_code=$(resolve_coderabbit_language "$LANGUAGE")
 
-  # vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters 形式に変換
+  # vibecorp.yml の vibehawk.skip_paths を CodeRabbit の path_filters 形式に変換
   # awk -v では改行を含む値を渡せないため、一時ファイル経由で getline する
   local path_filters_file
   path_filters_file="$(mktemp -t coderabbit_path_filters.XXXXXX)"
@@ -1388,8 +1405,110 @@ generate_coderabbit_yaml() {
   log_info ".coderabbit.yaml を生成"
 }
 
-# vibecorp.yml の claude_action.skip_paths を CodeRabbit の path_filters ブロックに変換する
+# vibecorp.yml の vibehawk.skip_paths を vibehawk の path_filters ブロックに変換する。
+# vibehawk の path_filters は `!` を付けない glob 配列（除外パターンそのもの、Issue #531）。
+# CodeRabbit（`- "!<path>"`）と異なるため _render_coderabbit_path_filters は流用しない。
+# 出力例:
+#   path_filters:
+#     - "*.lock"
+#     - ".git/**"
+_render_vibehawk_path_filters() {
+  local yml="$1"
+  local skip_paths
+  skip_paths=$(_read_skip_paths "$yml")
+
+  if [[ -z "$skip_paths" ]]; then
+    printf '  path_filters:\n    - "**/*.lock"\n'
+    return 0
+  fi
+
+  printf '  path_filters:\n'
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    printf '    - "%s"\n' "$path"
+  done <<<"$skip_paths"
+}
+
+generate_vibehawk_yaml() {
+  # vibehawk 用設定 .vibehawk.yaml の配布（Issue #531）。
+  # vibehawk.enabled: true のとき生成、false のとき管理下ファイルを削除する。
+  # workflow / App / secrets の配布は `npx vibehawk setup`（single source of truth）に委ねる。
+  local target="${REPO_ROOT}/.vibehawk.yaml"
+  local template="${SCRIPT_DIR}/templates/vibehawk.yaml.tpl"
+
+  # vibecorp.yml の vibehawk.enabled を確認（未定義時は true = デフォルト vibehawk-only）
+  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
+  local vh_enabled="true"
+  if [[ -f "$yml" ]]; then
+    local val
+    val=$(awk '/^vibehawk:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' "$yml")
+    if [[ "$val" == "false" ]]; then
+      vh_enabled="false"
+    fi
+  fi
+
+  if [[ "$vh_enabled" == "false" ]]; then
+    # 管理下（テンプレートと完全一致）の既存 .vibehawk.yaml のみ削除する（誤削除防止）。
+    if [[ -f "$target" ]] && [[ -f "$template" ]]; then
+      local target_hash template_rendered template_hash
+      target_hash=$(compute_hash "$target")
+      template_rendered="$(mktemp -t vibehawk_yaml_check.XXXXXX)"
+      _render_vibehawk_yaml "$template" "$yml" > "$template_rendered"
+      template_hash=$(compute_hash "$template_rendered")
+      rm -f "$template_rendered"
+      if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
+        rm -f "$target"
+        log_info ".vibehawk.yaml を削除（vibehawk.enabled: false）"
+      else
+        log_skip ".vibehawk.yaml は利用者編集済みのため残置（vibehawk.enabled: false）"
+      fi
+    else
+      log_skip ".vibehawk.yaml の生成をスキップ（vibehawk.enabled: false）"
+    fi
+    return 0
+  fi
+
+  if [[ -f "$target" ]]; then
+    log_skip ".vibehawk.yaml は既存のためスキップ"
+    return
+  fi
+
+  if [[ ! -f "$template" ]]; then
+    return 0
+  fi
+
+  _render_vibehawk_yaml "$template" "$yml" > "$target"
+  log_info ".vibehawk.yaml を生成"
+}
+
+# vibehawk.yaml.tpl のプレースホルダ（{{LANGUAGE}} / {{PATH_FILTERS_BLOCK}}）を展開して stdout に出す。
+# 生成と enabled:false 時の管理判定（ハッシュ照合）で同一の描画を共有する。
+_render_vibehawk_yaml() {
+  local template="$1"
+  local yml="$2"
+
+  local path_filters_file
+  path_filters_file="$(mktemp -t vibehawk_path_filters.XXXXXX)"
+  _render_vibehawk_path_filters "$yml" > "$path_filters_file"
+
+  awk -v lang="$LANGUAGE" -v paths_file="$path_filters_file" '
+    /\{\{PATH_FILTERS_BLOCK\}\}/ {
+      while ((getline line < paths_file) > 0) print line
+      close(paths_file)
+      next
+    }
+    {
+      gsub(/\{\{LANGUAGE\}\}/, lang)
+      print
+    }
+  ' "$template"
+
+  rm -f "$path_filters_file"
+}
+
+# vibecorp.yml の vibehawk.skip_paths を CodeRabbit の path_filters ブロックに変換する
 # vibecorp の各 skip_path に `!` プレフィックスを付け、CodeRabbit の除外指定形式にする。
+# 注: vibehawk 側 path_filters は `!` を付けない glob 配列（Issue #531、_render_vibehawk_path_filters 参照）。
 # 出力例:
 #   path_filters:
 #     - "!*.lock"
@@ -1412,14 +1531,15 @@ _render_coderabbit_path_filters() {
   done <<<"$skip_paths"
 }
 
-# vibecorp.yml の claude_action.skip_paths からパス文字列を 1 行ずつ取り出す
-# （前後ダブルクォートは除去）
+# vibecorp.yml の vibehawk.skip_paths からパス文字列を 1 行ずつ取り出す
+# （前後ダブルクォートは除去、Issue #531 で claude_action → vibehawk に変更）
+# 共有関数: _render_coderabbit_path_filters（CodeRabbit）と cleanup 後の review-impl 両経路で使う
 _read_skip_paths() {
   local yml="$1"
   [[ -f "$yml" ]] || return 0
 
   awk '
-    /^claude_action:[[:space:]]*$/ { in_action = 1; next }
+    /^vibehawk:[[:space:]]*$/ { in_action = 1; next }
     in_action && /^[^[:space:]#]/ { exit }
     in_action && /^[[:space:]]+skip_paths:[[:space:]]*$/ { in_paths = 1; next }
     # skip_paths ブロック内のコメント行・空行は読み飛ばす（途中終了させない）
@@ -1450,284 +1570,63 @@ generate_ci_workflow() {
   log_info ".github/workflows/test.yml を生成"
 }
 
-generate_review_md() {
-  # claude-code-action 用プロンプト REVIEW.md を生成する。
-  # 仕様根拠: Issue #465 最終確定（vibecorp.yml の language / claude_action.skip_paths を反映）
-  #
-  # - claude_action.enabled: false の場合は生成しない
-  # - 既存ファイルがあれば 3-way マージ（merge_or_overwrite）
-  local target="${REPO_ROOT}/REVIEW.md"
-  local template="${SCRIPT_DIR}/templates/REVIEW.md.tpl"
-  local rel_path="REVIEW.md"
-  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
-
-  [[ -f "$template" ]] || return 0
-  [[ -f "$yml" ]] || return 0
-
-  # claude_action.enabled の判定
-  local enabled="true"
-  local val
-  val=$(awk '
-    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
-    in_block && /^[^[:space:]#]/ { exit }
-    in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
-      sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
-      sub(/[[:space:]]*$/, "", $0)
-      print
-      exit
-    }
-  ' "$yml")
-  if [[ "$val" == "false" ]]; then
-    enabled="false"
-  fi
-
-  if [[ "$enabled" == "false" ]]; then
-    # generate_ai_review_workflow と同じパターンで snapshot/target を掃除する
-    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-    local was_managed="false"
-    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
-      was_managed="true"
-    fi
-    local base_snapshot
-    base_snapshot=$(get_base_snapshot "$rel_path")
-    if [[ -n "$base_snapshot" ]]; then
-      rm -f "$base_snapshot"
-    fi
-    if [[ -f "$target" ]]; then
-      if [[ "$was_managed" == "true" ]]; then
-        rm -f "$target"
-        log_info "REVIEW.md を削除（claude_action.enabled: false）"
-      else
-        log_skip "REVIEW.md は vibecorp 管理外のため残置（claude_action.enabled: false）"
-      fi
-    else
-      log_skip "REVIEW.md の生成をスキップ（claude_action.enabled: false）"
-    fi
-    return 0
-  fi
-
-  # 利用者が手動配置した REVIEW.md（管理外: lock に base_hash 記録なし）は上書きしない。
-  # merge_or_overwrite は base_hash 不在時にデフォルトで上書きする仕様だが、REVIEW.md は
-  # ユーザー編集を想定するため初回 install / 旧バージョンからの移行で既存ファイルを保護する。
-  if [[ -f "$target" ]]; then
-    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-    if [[ ! -f "$lock" ]] || [[ -z "$(read_base_hash "$lock" "$rel_path")" ]]; then
-      log_skip "REVIEW.md は vibecorp 管理外のため既存ファイルを保護"
-      return 0
-    fi
-  fi
-
-  # language / skip_paths を取得して REVIEW.md を生成
-  local language
-  language=$(awk '/^language:[[:space:]]*/ { sub(/^language:[[:space:]]*/, ""); print; exit }' "$yml")
-  language="${language:-ja}"
-
-  # skip_paths を `- "<path>"` 形式のブロックとして一時ファイルに書き出す
-  # awk -v では改行を含む値を渡せないため、getline で読み込む
-  local skip_paths_file
-  skip_paths_file="$(mktemp -t review_md_skip_paths.XXXXXX)"
-  local has_skip_paths=0
-  while IFS= read -r path; do
-    [[ -z "$path" ]] && continue
-    printf -- '- "%s"\n' "$path" >> "$skip_paths_file"
-    has_skip_paths=1
-  done < <(_read_skip_paths "$yml")
-  if [[ "$has_skip_paths" -eq 0 ]]; then
-    echo "（skip_paths は空です）" > "$skip_paths_file"
-  fi
-
-  # 一時ファイルにレンダリング → merge_or_overwrite で 3-way マージ
-  local rendered_tmp
-  rendered_tmp="$(mktemp -t REVIEW.md.XXXXXX)"
-  awk -v lang="$language" -v skip_file="$skip_paths_file" '
-    /\{\{SKIP_PATHS_BLOCK\}\}/ {
-      while ((getline line < skip_file) > 0) print line
-      close(skip_file)
-      next
-    }
-    {
-      gsub(/\{\{LANGUAGE\}\}/, lang)
-      print
-    }
-  ' "$template" > "$rendered_tmp"
-
-  merge_or_overwrite "$rendered_tmp" "$target" "$rel_path" || true
-  rm -f "$rendered_tmp" "$skip_paths_file"
-  log_info "REVIEW.md を生成"
+cleanup_review_md() {
+  # claude-code-action 用 REVIEW.md は vibehawk へ移譲済み（Issue #531）。
+  # 新規生成はせず、vibecorp 管理下（lock に base_hash 記録あり）の既存 REVIEW.md を削除する。
+  # 利用者が手動配置・編集したファイル（管理外）は保護する。
+  _cleanup_managed_review_artifact "REVIEW.md" "${SCRIPT_DIR}/templates/REVIEW.md.tpl"
 }
 
-generate_ai_review_workflow() {
-  # claude-code-action 用ワークフロー（ai-review.yml）の配布。
-  # 仕様根拠: Issue #461 最終確定（claude_action.enabled で制御 + 既存ファイルは 3-way マージ）
-  #
-  # 1. vibecorp.yml の claude_action.enabled を確認（未定義/false なら生成しない）
-  # 2. 既存ファイルがあれば merge_or_overwrite による 3-way マージ
-  # 3. 無ければテンプレートをコピー
-  local target="${REPO_ROOT}/.github/workflows/ai-review.yml"
-  local template="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
-  local rel_path=".github/workflows/ai-review.yml"
+# 移行 cleanup の共通処理（Issue #531）。
+# vibecorp 管理下（lock に base_hash 記録あり、または旧テンプレートと完全一致）の review-impl を削除する。
+# 利用者が編集したファイルは管理外として保護する。snapshot は常に掃除する（stale 残置防止）。
+# $1: rel_path（リポジトリルート相対）, $2: 旧テンプレートパス（削除済みなら不在でも可）
+_cleanup_managed_review_artifact() {
+  local rel_path="$1"
+  local template="$2"
+  local target="${REPO_ROOT}/${rel_path}"
+  local lock="${REPO_ROOT}/.claude/vibecorp.lock"
 
-  # claude_action.enabled の判定（awk でブロック単位パース）
-  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
-  local enabled="true"
-  if [[ -f "$yml" ]]; then
-    local val
-    val=$(awk '
-      /^claude_action:[[:space:]]*$/ { in_block = 1; next }
-      in_block && /^[^[:space:]#]/ { exit }
-      in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
-        sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
-        sub(/[[:space:]]*$/, "", $0)
-        print
-        exit
-      }
-    ' "$yml")
-    if [[ "$val" == "false" ]]; then
-      enabled="false"
-    fi
+  local was_managed="false"
+  if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+    was_managed="true"
   fi
 
-  if [[ "$enabled" == "false" ]]; then
-    # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review.yml は削除して
-    # AI レビューを実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
-    # 触らない（誤削除防止）。
-    #
-    # base snapshot は $target の有無に関係なく必ず削除する。snapshot だけが残っていると
-    # 次回 generate_vibecorp_lock() がそこから base_hash を再生成し、後で利用者が手動で
-    # 置いた ai-review.yml まで「管理下」と誤認されて削除される。
-    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-    local was_managed="false"
-    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
+  # Issue #532 互換: base_hash 未登録でも旧テンプレートと完全一致なら管理下とみなす。
+  # テンプレート削除後（Issue #531）は $template 不在のため本分岐は inert になり base_hash 判定に倒れる。
+  if [[ "$was_managed" == "false" ]] && [[ -f "$target" ]] && [[ -f "$template" ]]; then
+    local target_hash template_hash
+    target_hash=$(compute_hash "$target")
+    template_hash=$(compute_hash "$template")
+    if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
       was_managed="true"
     fi
-
-    # Issue #532: 旧版（〜0.33.6）で copy_workflows() 経由で配置された ai-review.yml は
-    # base_hash が未登録だが、テンプレートと完全一致するため vibecorp 管理下とみなす。
-    # ユーザーが内容を編集していればハッシュ不一致となり管理外残置となる（誤削除防止）。
-    if [[ "$was_managed" == "false" ]] && [[ -f "$target" ]] && [[ -f "$template" ]]; then
-      local target_hash template_hash
-      target_hash=$(compute_hash "$target")
-      template_hash=$(compute_hash "$template")
-      if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
-        was_managed="true"
-      fi
-    fi
-
-    # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
-    local base_snapshot
-    base_snapshot=$(get_base_snapshot "$rel_path")
-    if [[ -n "$base_snapshot" ]]; then
-      rm -f "$base_snapshot"
-    fi
-
-    if [[ -f "$target" ]]; then
-      if [[ "$was_managed" == "true" ]]; then
-        rm -f "$target"
-        log_info ".github/workflows/ai-review.yml を削除（claude_action.enabled: false）"
-      else
-        log_skip ".github/workflows/ai-review.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
-      fi
-    else
-      log_skip ".github/workflows/ai-review.yml の生成をスキップ（claude_action.enabled: false）"
-    fi
-    return 0
   fi
 
-  if [[ ! -f "$template" ]]; then
-    return 0
+  local base_snapshot
+  base_snapshot=$(get_base_snapshot "$rel_path")
+  if [[ -n "$base_snapshot" ]]; then
+    rm -f "$base_snapshot"
   fi
 
-  mkdir -p "${REPO_ROOT}/.github/workflows"
-
-  # 既存ファイルがあれば 3-way マージ、無ければ単純コピー
-  merge_or_overwrite "$template" "$target" "$rel_path" || true
-  log_info ".github/workflows/ai-review.yml を生成"
+  if [[ -f "$target" ]] && [[ "$was_managed" == "true" ]]; then
+    rm -f "$target"
+    log_info "${rel_path} を削除（vibehawk へ移譲、Issue #531）"
+  elif [[ -f "$target" ]]; then
+    log_skip "${rel_path} は vibecorp 管理外のため残置（Issue #531）"
+  fi
 }
 
-generate_ai_review_golden_test_workflow() {
-  # claude-code-action 用 golden test ワークフロー（ai-review-golden-test.yml）の配布。
-  # 仕様根拠: Issue #532（claude-code-action 一時無効化に追従して golden test も停止する）
-  #
-  # claude_action.enabled で制御する（claude-action 自体が無効化されたら golden test も停止）。
-  # 構造は generate_ai_review_workflow() と同じ（snapshot 掃除 + 管理下削除 + 管理外残置）。
-  # 共通ヘルパー化は intent/refactor 別 Issue で対応する方針。
-  local target="${REPO_ROOT}/.github/workflows/ai-review-golden-test.yml"
-  local template="${SCRIPT_DIR}/templates/.github/workflows/ai-review-golden-test.yml"
-  local rel_path=".github/workflows/ai-review-golden-test.yml"
+cleanup_ai_review_workflow() {
+  # claude-code-action 用 ai-review.yml は vibehawk へ移譲済み（Issue #531）。
+  # 新規生成はせず、vibecorp 管理下の既存 ai-review.yml を削除する（管理外は保護）。
+  _cleanup_managed_review_artifact ".github/workflows/ai-review.yml" "${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
+}
 
-  # claude_action.enabled の判定（awk でブロック単位パース）
-  local yml="${REPO_ROOT}/.claude/vibecorp.yml"
-  local enabled="true"
-  if [[ -f "$yml" ]]; then
-    local val
-    val=$(awk '
-      /^claude_action:[[:space:]]*$/ { in_block = 1; next }
-      in_block && /^[^[:space:]#]/ { exit }
-      in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
-        sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
-        sub(/[[:space:]]*$/, "", $0)
-        print
-        exit
-      }
-    ' "$yml")
-    if [[ "$val" == "false" ]]; then
-      enabled="false"
-    fi
-  fi
-
-  if [[ "$enabled" == "false" ]]; then
-    # vibecorp 管理下（lock に base_hash 記録あり）の既存 ai-review-golden-test.yml は削除して
-    # golden test を実質無効化する。利用者が手動で配置したファイル（base_hash 無し）は
-    # 触らない（誤削除防止）。
-    local lock="${REPO_ROOT}/.claude/vibecorp.lock"
-    local was_managed="false"
-    if [[ -f "$lock" ]] && [[ -n "$(read_base_hash "$lock" "$rel_path")" ]]; then
-      was_managed="true"
-    fi
-
-    # Issue #532: 旧版（〜0.33.6）で copy_workflows() 経由で配置された
-    # ai-review-golden-test.yml は base_hash が未登録だが、テンプレートと完全一致するため
-    # vibecorp 管理下とみなす。ユーザーが内容を編集していればハッシュ不一致となり管理外残置
-    # となる（誤削除防止）。これにより 0.33.6 から本版に更新したユーザーのリポジトリでも
-    # claude_action.enabled: false 切替で golden test ワークフローが綺麗に削除される。
-    if [[ "$was_managed" == "false" ]] && [[ -f "$target" ]] && [[ -f "$template" ]]; then
-      local target_hash template_hash
-      target_hash=$(compute_hash "$target")
-      template_hash=$(compute_hash "$template")
-      if [[ -n "$target_hash" ]] && [[ "$target_hash" == "$template_hash" ]]; then
-        was_managed="true"
-      fi
-    fi
-
-    # snapshot は管理状態に関わらず常に掃除する（stale snapshot 残置防止）
-    local base_snapshot
-    base_snapshot=$(get_base_snapshot "$rel_path")
-    if [[ -n "$base_snapshot" ]]; then
-      rm -f "$base_snapshot"
-    fi
-
-    if [[ -f "$target" ]]; then
-      if [[ "$was_managed" == "true" ]]; then
-        rm -f "$target"
-        log_info ".github/workflows/ai-review-golden-test.yml を削除（claude_action.enabled: false）"
-      else
-        log_skip ".github/workflows/ai-review-golden-test.yml は vibecorp 管理外のため残置（claude_action.enabled: false）"
-      fi
-    else
-      log_skip ".github/workflows/ai-review-golden-test.yml の生成をスキップ（claude_action.enabled: false）"
-    fi
-    return 0
-  fi
-
-  if [[ ! -f "$template" ]]; then
-    return 0
-  fi
-
-  mkdir -p "${REPO_ROOT}/.github/workflows"
-
-  # 既存ファイルがあれば 3-way マージ、無ければ単純コピー
-  merge_or_overwrite "$template" "$target" "$rel_path" || true
-  log_info ".github/workflows/ai-review-golden-test.yml を生成"
+cleanup_ai_review_golden_test_workflow() {
+  # claude-code-action 用 golden test（ai-review-golden-test.yml）は vibehawk 移譲で不要（Issue #531）。
+  # 新規生成はせず、vibecorp 管理下の既存ファイルを削除する（管理外は保護）。
+  _cleanup_managed_review_artifact ".github/workflows/ai-review-golden-test.yml" "${SCRIPT_DIR}/templates/.github/workflows/ai-review-golden-test.yml"
 }
 
 print_manual_guidance() {
@@ -1811,6 +1710,10 @@ configure_github_repo() {
 
   # Branch Protection の設定
   # vibecorp が必須とする contexts
+  # 注: vibehawk の required check（`vibehawk`）は install.sh では登録しない（Issue #531）。
+  # vibehawk の check は初回 PR で発火するまで branch protection の候補に出ず、未発火のまま
+  # required 登録すると全 PR が永久 pending で BLOCK される。vibehawk check の required 登録は
+  # `npx vibehawk setup` + 利用者の branch protection 操作（vibehawk 公式 3 ステップ）に委ねる。
   local vibecorp_checks='["test"]'
   if [[ -f "${REPO_ROOT}/.coderabbit.yaml" ]]; then
     vibecorp_checks='["test","CodeRabbit"]'
@@ -1901,23 +1804,21 @@ configure_github_repo() {
   fi
 }
 
-verify_claude_action_secrets() {
-  # claude_action.enabled: true のとき GitHub secrets に CLAUDE_CODE_OAUTH_TOKEN が
-  # 登録されているかを確認する。未登録なら WARN を出力して設定を促す（exit はしない）。
+verify_vibehawk_prereq() {
+  # vibehawk.enabled: true のとき、vibehawk 導入（App / 3 secrets / workflow 配布）が
+  # `npx vibehawk setup` 経由で必要であることを WARN で案内する（exit はしない、Issue #531）。
+  # workflow / App / secrets の配布は vibehawk の single source of truth に委ねるため、
+  # install.sh は導線案内のみ行い、secrets 登録や workflow 配布は行わない。
   #
-  # 仕様の Source of Truth: docs/ai-review-auth.md「install.sh の secrets 検証」
-  # 議論結果根拠: Issue #462 最終確定 5（install.sh の secrets 検証ロジック: 入れる）
-  #
-  # vibecorp.yml の claude_action セクション schema 自体は #468 で追加されるため、
-  # セクション不在時は no-op として安全にスキップする。
+  # vibecorp.yml の vibehawk セクション不在時は no-op として安全にスキップする。
   local yml="${REPO_ROOT}/.claude/vibecorp.yml"
   [[ -f "$yml" ]] || return 0
 
-  # claude_action.enabled をブロック単位でパース（次のトップレベルキーで停止）
+  # vibehawk.enabled をブロック単位でパース（次のトップレベルキーで停止）
   # shell.md「YAML パース」ルールに従い grep -A は使わず awk でブロック抽出する
   local enabled
   enabled=$(awk '
-    /^claude_action:[[:space:]]*$/ { in_block = 1; next }
+    /^vibehawk:[[:space:]]*$/ { in_block = 1; next }
     in_block && /^[^[:space:]#]/ { exit }
     in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
       sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
@@ -1931,35 +1832,13 @@ verify_claude_action_secrets() {
     return 0
   fi
 
-  # gh CLI が利用できない場合はスキップ
-  if ! command -v gh >/dev/null 2>&1; then
-    log_skip "gh CLI が見つかりません。CLAUDE_CODE_OAUTH_TOKEN の確認は手動で行ってください"
-    return 0
-  fi
-
-  # GitHub 認証済みか確認
-  if ! gh auth status >/dev/null 2>&1; then
-    log_skip "gh が未認証のため CLAUDE_CODE_OAUTH_TOKEN の確認をスキップします"
-    return 0
-  fi
-
-  # gh secret list の出力先頭カラムが secret 名（タブ区切り）
-  # awk で先頭フィールドだけ抜き出して完全一致で判定する（部分一致を防ぐ）
-  if gh secret list 2>/dev/null | awk '{print $1}' | grep -qx 'CLAUDE_CODE_OAUTH_TOKEN'; then
-    log_info "CLAUDE_CODE_OAUTH_TOKEN が登録されています"
-    return 0
-  fi
-
-  log_warn "CLAUDE_CODE_OAUTH_TOKEN が登録されていません"
+  log_warn "vibehawk が有効です。レビュー稼働には vibehawk のセットアップが必要です"
   cat >&2 <<'WARN_BODY'
-       claude-code-action を有効化するには以下を実行してください:
-         claude setup-token
-         gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
-       詳細: docs/ai-review-auth.md
-
-       なお secret 名が登録されていても値が空文字列の場合、
-       ai-review.yml の preflight ガードが PR にコメントを残して
-       claude-code-action 起動を明示的に止めます（Issue #509）。
+       vibehawk レビューを稼働させるには以下を実行してください:
+         npx vibehawk setup --owner <your-github-username> --repo <owner>/<repo>
+       ウィザードが GitHub App 作成・3 secrets 登録・workflow 配布 PR を案内します。
+       その後 branch protection で `vibehawk` を required status check に登録してください。
+       詳細: docs/ai-review-dependency.md / https://github.com/hirokimry/vibehawk
 WARN_BODY
 }
 
@@ -2184,9 +2063,10 @@ copy_workflows() {
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")
-    # ai-review.yml と ai-review-golden-test.yml は
-    # generate_ai_review_workflow() / generate_ai_review_golden_test_workflow() が
-    # claude_action.enabled の判定と 3-way マージを担うため、ここでは扱わない
+    # ai-review.yml / ai-review-golden-test.yml は vibehawk へ移譲済み（Issue #531）。
+    # 新規配布せず、cleanup_ai_review_workflow() / cleanup_ai_review_golden_test_workflow()
+    # が移行利用者の管理下既存ファイルを削除する。テンプレートは削除済みのため通常ここには
+    # 現れないが、防御として配布対象から除外する。
     if [[ "$name" == "ai-review.yml" ]] || [[ "$name" == "ai-review-golden-test.yml" ]]; then
       continue
     fi
@@ -2972,7 +2852,7 @@ main() {
   copy_isolation_templates
   setup_claude_real_symlink
   generate_vibecorp_yml
-  ensure_claude_action_section
+  ensure_vibehawk_section
 
   if [[ "$UPDATE_MODE" == true ]]; then
     update_vibecorp_yml
@@ -2980,12 +2860,15 @@ main() {
   fi
 
   generate_coderabbit_yaml
+  generate_vibehawk_yaml
   generate_ci_workflow
-  generate_review_md
-  generate_ai_review_workflow
-  generate_ai_review_golden_test_workflow
+  # review-impl（claude-code-action）は vibehawk へ移譲済み（Issue #531）。
+  # 以下 3 関数は新規生成せず、移行利用者の管理下 review-impl を削除する cleanup 専用。
+  cleanup_review_md
+  cleanup_ai_review_workflow
+  cleanup_ai_review_golden_test_workflow
   configure_github_repo
-  verify_claude_action_secrets
+  verify_vibehawk_prereq
   setup_git_config
 
   generate_settings_json

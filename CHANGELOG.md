@@ -8,7 +8,18 @@
 
 ## [Unreleased]
 
+### 変更
+
+- ⚠️ レビュー機能が独立 OSS の vibehawk へ移譲され、`vibecorp.yml` で vibehawk / CodeRabbit を独立トグル選択できるようになった。([Issue #531](https://github.com/hirokimry/vibecorp/issues/531))
+  - デフォルトが **vibehawk のみ**（`vibehawk.enabled: true` / `coderabbit.enabled: false`）になった。
+  - vibehawk を有効化したリポジトリでは別途 `npx vibehawk setup`（GitHub App 作成・3 secrets 登録・workflow 配布 PR）が必要。
+  - 既存設定 `claude_action` は `vibehawk` に自動移行される（`enabled` 値・`skip_paths` は保持）。
+
 ### 削除
+
+- ⚠️ claude-code-action ベースのレビュー実装（`REVIEW.md` / `.github/workflows/ai-review.yml` / `ai-review-golden-test.yml`）が配布されなくなった。([Issue #531](https://github.com/hirokimry/vibecorp/issues/531))
+  - `install.sh --update` 実行時、vibecorp が配置した上記ファイルは自動削除される（利用者が手動編集したファイルは保護される）。
+  - レビューは vibehawk（`.vibehawk.yaml` + `npx vibehawk setup`）へ移行する。
 
 - `VIBECORP_REFERENCE_DIR` 前提のデッドルールを除去した。([Issue #745](https://github.com/hirokimry/vibecorp/issues/745))
   - 同環境変数を設定する箇所が存在せず常時スキップ状態だった品質基準ルールを削除した。

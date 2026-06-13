@@ -28,7 +28,8 @@
 
 ### コードレビュー
 
-全 PR は CodeRabbit Bot レビューが必須。
+全 PR は vibehawk または CodeRabbit のレビューが必須。
+どのレビュアーを使うかは `vibecorp.yml` の独立トグル（`vibehawk.enabled` / `coderabbit.enabled`）で選ぶ（Issue #531、デフォルトは vibehawk のみ）。
 📍 細則: [`.claude/rules/review-handling.md`](../.claude/rules/review-handling.md)
 
 修正対象は **intent ラベル × severity** の掛け合わせで決定する。
@@ -48,7 +49,7 @@ severity 定義は CodeRabbit 公式仕様に準拠する。
 - 複数 intent にまたがる変更は Issue を分割する
 - PR には intent ラベルを付与しない（CC prefix が機械可読保険）
   📍 根拠: Issue #575 確定
-- 承認基準: 「CodeRabbit Bot の未解決指摘 0 件 + required CI パス」
+- 承認基準: 「vibehawk または CodeRabbit の未解決指摘 0 件 + required CI パス」
 - `/vibecorp:pr-review-loop` が PR をマージまで監視する
 - auto-merge が GitHub 側で自動実行する
 
@@ -178,6 +179,7 @@ vibecorp は以下の外部ツールをランタイムで利用する。
 | `jq` | MIT / (MIT OR CC0-1.0) 等 | JSON パース処理から exec | なし |
 | `git` | GPL-2.0-only | バージョン管理操作から exec | なし |
 | Claude Code | Anthropic 商用利用規約 | AI エージェントランタイム。ユーザーが個別契約 | なし |
+| vibehawk | MIT | PR 自動レビュー（任意トグル、Issue #531）。`npx vibehawk setup` で利用者が導入。PR 差分は利用者の OAuth 経由で Anthropic に送信される。**データ管理者＝利用者 / データ処理者＝Anthropic / vibehawk 開発者は処理者ではない**（vibehawk POLICY 準拠） | なし |
 
 ### MIT 本体と LGPL/GPL コンポーネントの法的両立根拠
 

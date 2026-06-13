@@ -66,7 +66,7 @@ assert_file_contains_fixed "B 契約の判定値（✅⚠️❌）"  "$SUMMARY_T
 # ============================================
 echo ""
 echo "--- 3. docs/ai-review-dependency.md の C*O 合議セクション ---"
-assert_file_contains_fixed "実機検証完了判定見出し"   "$DEPENDENCY" "## 実機検証完了判定（Issue #475 確定）"
+assert_file_contains_fixed "実機検証完了判定見出し"   "$DEPENDENCY" "## 実機検証完了判定（Issue #475 確定・歴史的記録）"
 assert_file_contains_fixed "完了判定基準 A + B"      "$DEPENDENCY" "### 完了判定基準（A + B）"
 assert_file_contains_fixed "C*O 合議"                "$DEPENDENCY" "C*O 合議による本番運用切替"
 assert_file_contains_fixed "CFO 評価観点"            "$DEPENDENCY" "| CFO |"

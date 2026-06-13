@@ -40,24 +40,17 @@ assert_file_contains \
   'if \[ "\$result" = "success" \]; then'
 
 # ============================================
-echo "=== Critical #1: ai-review-golden-test.yml がスクリプト不在時にスキップ ==="
+echo "=== Critical #1: ai-review-golden-test.yml テンプレートが撤去されている（Issue #531） ==="
 # ============================================
+# golden test は claude-code-action のレビュー回帰検証用だった。レビュー機能の
+# vibehawk 移譲（Issue #531）により ai-review-golden-test.yml テンプレートは撤去された。
 
 GOLDEN_YML="${ROOT}/templates/.github/workflows/ai-review-golden-test.yml"
-assert_file_exists "ai-review-golden-test.yml が存在する" "$GOLDEN_YML"
-assert_file_contains \
-  "ai-review-golden-test.yml にスクリプト不在チェックがある" \
-  "$GOLDEN_YML" \
-  'if \[\[ ! -f scripts/run-golden-test.sh \]\]; then'
-assert_file_contains \
-  "ai-review-golden-test.yml に vibecorp 本体専用スクリプトの注記がある" \
-  "$GOLDEN_YML" \
-  'vibecorp 本体専用スクリプト'
-# スクリプト不在チェック直下に exit 0 行が存在することを直接検証する（文字列一致だけでは exit 0 が消えても通ってしまうため）
-assert_file_contains \
-  "ai-review-golden-test.yml にスキップ exit 0 行が存在する" \
-  "$GOLDEN_YML" \
-  '^[[:space:]]*exit 0$'
+if [ -e "$GOLDEN_YML" ]; then
+  fail "ai-review-golden-test.yml テンプレートが残存（Issue #531 で撤去済みのはず）"
+else
+  pass "ai-review-golden-test.yml テンプレートが撤去されている（vibehawk 移譲）"
+fi
 
 # ============================================
 echo "=== Minor #11: intent-label-issue-check.yml が unlabeled を除外 ==="
@@ -168,26 +161,33 @@ assert_file_contains \
   'id-token: write'
 
 # ============================================
-echo "=== Minor #10: severity/claude-action.md の REVIEW.md 前提が条件付き ==="
+echo "=== Minor #10: severity/claude-action.md の注入先が vibehawk へ移譲済み（Issue #531） ==="
 # ============================================
+# レビュー移譲（Issue #531）で severity を含む判断軸の注入先が REVIEW.md から
+# .vibehawk.yaml の reviews.path_instructions に変わった。
 
 SEV_CA="${ROOT}/rules/severity/claude-action.md"
 assert_file_exists "severity/claude-action.md が存在する" "$SEV_CA"
 assert_file_contains \
-  "severity/claude-action.md が claude_action.enabled: true 前提を明記" \
+  "severity/claude-action.md が vibehawk.enabled: true 運用時の注入先を明記" \
   "$SEV_CA" \
-  'claude_action\.enabled: true'
+  'vibehawk\.enabled: true'
+assert_file_contains \
+  "severity/claude-action.md が .vibehawk.yaml への注入を明記" \
+  "$SEV_CA" \
+  '\.vibehawk\.yaml'
 
 # ============================================
-echo "=== Minor #12: ai-review-dependency.md が配布条件を明記 ==="
+echo "=== Minor #12: ai-review-dependency.md が vibehawk 配布条件を明記（Issue #531） ==="
 # ============================================
+# レビュー移譲（Issue #531）で .vibehawk.yaml の配布条件が vibehawk.enabled: true に変わった。
 
 AI_DEP="${ROOT}/docs/ai-review-dependency.md"
 assert_file_exists "ai-review-dependency.md が存在する" "$AI_DEP"
 assert_file_contains \
-  "ai-review-dependency.md の関連セクションに enabled: true 運用時のみ配布が明記" \
+  "ai-review-dependency.md が .vibehawk.yaml の vibehawk.enabled: true 配布条件を明記" \
   "$AI_DEP" \
-  '\*\*`claude_action\.enabled: true` 運用時のみ配布\*\*'
+  '\*\*`vibehawk\.enabled: true` 運用時に install\.sh が生成\*\*'
 
 # ============================================
 echo "=== Major #7: ai-review-dependency.md にスモークテスト assert 方針が追記 ==="

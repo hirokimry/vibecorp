@@ -101,17 +101,18 @@ assert_file_contains "挙動不変性の確認 必須"  "${SCRIPT_DIR}/.claude/r
 assert_file_contains "影響を与えない系適用"   "${SCRIPT_DIR}/.claude/rules/review-observations.md" "影響を与えない系"
 
 # ============================================
-# 5. REVIEW.md が新 4 ファイル参照に更新
+# 5. REVIEW.md.tpl が撤去されている（Issue #531）
+#    REVIEW.md は claude-code-action のレビュープロンプトだった。レビュー機能の
+#    vibehawk 移譲（Issue #531）により REVIEW.md.tpl テンプレートは撤去された。
+#    分割した 4 ファイル（severity / review-handling / review-observations）は
+#    rules/ SSOT に残り、ブロック 2・4 で検証済み。
 # ============================================
 echo ""
-echo "--- 5. REVIEW.md.tpl の参照更新 ---"
-assert_file_contains_fixed "review-handling.md 参照"     "${SCRIPT_DIR}/templates/REVIEW.md.tpl" "review-handling.md"
-assert_file_contains_fixed "review-observations.md 参照" "${SCRIPT_DIR}/templates/REVIEW.md.tpl" "review-observations.md"
-assert_file_contains_fixed "severity/claude-action.md 参照" "${SCRIPT_DIR}/templates/REVIEW.md.tpl" "severity/claude-action.md"
-if grep -q -F -- "review-criteria.md" "${SCRIPT_DIR}/templates/REVIEW.md.tpl"; then
-  fail "REVIEW.md.tpl に旧 review-criteria.md 参照が残っている"
+echo "--- 5. REVIEW.md.tpl が撤去されている（vibehawk 移譲） ---"
+if [ -e "${SCRIPT_DIR}/templates/REVIEW.md.tpl" ]; then
+  fail "REVIEW.md.tpl テンプレートが残存（Issue #531 で撤去済みのはず）"
 else
-  pass "REVIEW.md.tpl の旧参照が削除されている"
+  pass "REVIEW.md.tpl テンプレートが撤去されている（vibehawk 移譲）"
 fi
 
 # ============================================
