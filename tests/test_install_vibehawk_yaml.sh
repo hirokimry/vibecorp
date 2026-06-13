@@ -208,6 +208,24 @@ assert_file_not_exists "切替後: 管理下 .vibehawk.yaml が削除された" 
 cleanup
 
 # ============================================
+# 5c. vibehawk.enabled: false でもユーザー編集済み .vibehawk.yaml は残置される
+# 受け入れ条件「管理下（テンプレ完全一致）のみ削除、ユーザー編集済みは残置」の残置側を担保する。
+# ============================================
+echo ""
+echo "--- 5c. vibehawk.enabled: false でもユーザー編集済み .vibehawk.yaml は残置される ---"
+create_test_repo
+bash "$INSTALL_SH" --name test-proj --preset minimal 2>/dev/null
+R="$TMPDIR_ROOT"
+assert_file_exists "前提: .vibehawk.yaml が生成済み" "$R/.vibehawk.yaml"
+# ユーザー編集を模擬（テンプレとハッシュ不一致にする）
+echo "# user-customized" >> "$R/.vibehawk.yaml"
+set_reviewer_toggles "$R/.claude/vibecorp.yml" "false" "false"
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "切替後: ユーザー編集済み .vibehawk.yaml は残置される" "$R/.vibehawk.yaml"
+assert_file_contains "ユーザー追記が保持される" "$R/.vibehawk.yaml" "user-customized"
+cleanup
+
+# ============================================
 # 5b. enabled 判定がコメント行・skip_paths の "enabled:" を誤拾いしない（CISO 条件、Issue #531）
 # vibehawk ブロック内にコメントや skip_paths を置いても enabled: true 判定が崩れず
 # .vibehawk.yaml が生成されることを確認する（ブロック厳密パースの回帰検証）。
