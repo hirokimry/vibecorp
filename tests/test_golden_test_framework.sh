@@ -62,20 +62,20 @@ else
 fi
 
 # ============================================
-# 4. ワークフロー定義
+# 4. ワークフロー定義（Issue #531 で撤去済み）
+#    golden test は claude-code-action のレビュー回帰検証用だった。レビュー機能の
+#    vibehawk 移譲（Issue #531）により ai-review-golden-test.yml テンプレートは撤去された。
+#    フレームワーク本体（tests/golden/ / scripts/run-golden-test.sh）は残置されるため
+#    後続ブロックで検証を継続する。
 # ============================================
 echo ""
-echo "--- 4. ai-review-golden-test.yml ワークフロー ---"
+echo "--- 4. ai-review-golden-test.yml ワークフローが撤去されている（vibehawk 移譲） ---"
 WF="${SCRIPT_DIR}/templates/.github/workflows/ai-review-golden-test.yml"
-assert_file_exists "ai-review-golden-test.yml"     "$WF"
-assert_file_contains "REVIEW.md パスフィルタ"       "$WF" "REVIEW.md"
-assert_file_contains "severity/** パスフィルタ"     "$WF" "severity"
-assert_file_contains "review-handling.md パスフィルタ" "$WF" "review-handling.md"
-assert_file_contains "review-observations.md パスフィルタ" "$WF" "review-observations.md"
-assert_file_contains "tests/golden/** パスフィルタ" "$WF" "tests/golden"
-assert_file_contains "Fork PR 除外"                "$WF" "head.repo.full_name == github.repository"
-assert_file_contains "draft 除外"                  "$WF" "!github.event.pull_request.draft"
-assert_file_contains "scripts/run-golden-test.sh 呼び出し" "$WF" "scripts/run-golden-test.sh"
+if [ -e "$WF" ]; then
+  fail "ai-review-golden-test.yml テンプレートが残存（Issue #531 で撤去済みのはず）"
+else
+  pass "ai-review-golden-test.yml テンプレートが撤去されている（vibehawk 移譲）"
+fi
 
 # ============================================
 # 5. ランナースクリプト

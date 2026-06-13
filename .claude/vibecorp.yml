@@ -5,9 +5,12 @@ language: ja
 base_branch: main
 protected_files:
   - MVV.md
+# レビュアーは vibehawk / CodeRabbit を独立トグルで選択する（Issue #531）。
+# vibecorp 自身は own-repo への vibehawk 有効化（App/secrets/branch protection = CEO 操作）が
+# 別 Issue のため、当面 CodeRabbit 単独運用を維持する（vibehawk.enabled: false）。
 coderabbit:
   enabled: true
-claude_action:
+vibehawk:
   enabled: false
   skip_paths:
     - "*.lock"

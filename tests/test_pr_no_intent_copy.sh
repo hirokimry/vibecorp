@@ -112,16 +112,18 @@ fi
 cleanup
 
 # ============================================
-# 6. ai-review.yml から PR 側 intent-label-check ジョブが削除されている（Issue #575）
+# 6. ai-review.yml テンプレート自体が撤去されている（Issue #531）
+#    レビュー機能は vibehawk へ移譲され、claude-code-action 用 ai-review.yml は配布されない。
+#    PR 側 intent-label-check ジョブが「存在しない」ことは、テンプレ不在で自明に満たされる。
 # ============================================
 echo ""
-echo "--- 6. ai-review.yml から PR 側 intent-label-check ジョブが削除されている ---"
+echo "--- 6. ai-review.yml テンプレートが撤去されている（vibehawk 移譲） ---"
 AI_REVIEW="${SCRIPT_DIR}/templates/.github/workflows/ai-review.yml"
-assert_file_exists "ai-review.yml" "$AI_REVIEW"
-
-# PR 側 intent-label-check ジョブ自体が無いこと
-assert_file_not_contains_fixed "PR 側 intent-label-check ジョブが削除されている" "$AI_REVIEW" "  intent-label-check:"
-assert_file_not_contains_fixed "claude-review の needs: intent-label-check が削除されている" "$AI_REVIEW" "needs: intent-label-check"
+if [ -e "$AI_REVIEW" ]; then
+  fail "ai-review.yml テンプレートが残存（Issue #531 で撤去済みのはず）"
+else
+  pass "ai-review.yml テンプレートが撤去されている（vibehawk 移譲）"
+fi
 
 # ============================================
 # 7. intent ラベル 7 種は .claude/rules/intent-labels.md（SoT）で参照される

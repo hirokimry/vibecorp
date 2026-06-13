@@ -2,18 +2,20 @@
 
 > [!IMPORTANT]
 > 各 intent の重視軸に対応するレビュー観点（observation_points）を定義する。
-> **reviewer は intent によらず観点を surfacing する**。intent × severity の捌き（修正対象判定）は review-fix（`pr-fix` / `review-loop`）と claude-action の責務（`review-handling.md`）。
-> 本ファイルを Source of Truth として参照するのは `REVIEW.md`（claude-code-action のプロンプト）。`.coderabbit.yaml` は **path 基準の別軸**であり本ファイルを参照しない。
+> **reviewer は intent によらず観点を surfacing する**。intent × severity の捌き（修正対象判定）は review-fix（`pr-fix` / `review-loop`）の責務（`review-handling.md`）。
+> 本ファイルの判断軸は `.vibehawk.yaml` の `reviews.path_instructions` に注入される（Issue #531 でレビューは vibehawk へ移譲、注入先は旧 `REVIEW.md` から変更）。`.coderabbit.yaml` は **path 基準の別軸**であり本ファイルを参照しない。
 > `intent/refactor` / `intent/infra` / `intent/docs` は **挙動不変性の確認** を必ず行う。
 
 本ルールは PR レビューの観点リストを intent 別に整理して提供する。intent 別の見出しは **捌き側が参照する分類**であって、reviewer が surfacing 時に選ぶ軸ではない。
 
 ## 🎯 役割
 
-本ルールは CodeRabbit / claude-code-action による PR レビューの観点定義を担う。
+本ルールは vibehawk / CodeRabbit による PR レビューの観点定義を担う。
 
-- 適用対象: CodeRabbit / claude-code-action による PR レビュー（観点の surfacing は intent 非依存）。
-- 参照経路: `REVIEW.md`（claude-code-action のプロンプト）が本ファイルを Source of Truth として参照する。claude-action は自分で approve / request_changes を発行するため、intent 別の観点分類を捌きにも用いる。
+- 適用対象: vibehawk / CodeRabbit による PR レビュー（観点の surfacing は intent 非依存）。
+- 注入先（Issue #531）: 本ファイルの判断軸は `.vibehawk.yaml` の `reviews.path_instructions` に注入される。
+  - 旧構成では `REVIEW.md`（claude-code-action のプロンプト）が Source of Truth として参照していたが、レビュー移譲により注入先が変わった。
+  - 判断軸の内容（intent 別観点）そのものは不変。
 - 別軸: `.coderabbit.yaml` は **path 基準**の観点チェックリストを持つ（本ファイルとは別軸）。CodeRabbit は PR の intent ラベルを読めないため本ファイルを参照しない。CodeRabbit が出した指摘の intent × severity の捌きは review-fix（`pr-fix` / `review-loop`）が担う。
 - 関連: `.claude/rules/review-handling.md`（捌き基準、intent × severity の掛け合わせ）。
 
@@ -24,11 +26,11 @@
 
 | 役割 | 主体 | intent の扱い |
 |------|------|--------------|
-| surfacing（観点で指摘を出す） | CodeRabbit / claude-action | **intent 非依存**（観点を全適用） |
-| 捌き（修正対象を判定する） | `pr-fix` / `review-loop`、claude-action（自己発行時） | **intent × severity**（`review-handling.md`） |
+| surfacing（観点で指摘を出す） | vibehawk / CodeRabbit | **intent 非依存**（観点を全適用） |
+| 捌き（修正対象を判定する） | `pr-fix` / `review-loop` | **intent × severity**（`review-handling.md`） |
 
 - CodeRabbit は path 基準（`.coderabbit.yaml`）で観点を適用し、severity 付き指摘を出す。intent は読まない。
-- claude-action（`REVIEW.md`）は approve / request_changes を自分で発行するため、本ファイルの intent 別分類を捌きにも用いる。
+- vibehawk は `.vibehawk.yaml` の `reviews.path_instructions` で本ファイルの判断軸を受け取り、severity 付き指摘を出す。
 - 本ファイルの intent 別整理は **捌き側の参照用**。reviewer に「この intent だけ見ろ」と指示するものではない。
 
 ## 📋 intent 別レビュー観点

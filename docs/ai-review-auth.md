@@ -1,16 +1,38 @@
-# 🔒 claude-code-action OAuth 認証経路
+# 🔒 AI レビュー認証経路（vibehawk 移譲）
 
 > [!IMPORTANT]
-> 読者像は claude-code-action を運用する利用者・開発者。
-> 本ドキュメントは AI レビューの OAuth 認証経路の **Source of Truth**。
-> 基準: Issue #462（CEO 議論結果、2026-05-04 確定）。
+> 読者像は AI レビューを運用する利用者・開発者。
+> レビュー機能は Issue #531 で **vibehawk へ移譲** された。導入は `npx vibehawk setup`（App + 3 secrets + workflow 配布）で行う。
+> 本ドキュメントは AI レビューの認証経路の **Source of Truth**。
+> 基準: Issue #462（CEO 議論結果、2026-05-04 確定）+ Issue #531（vibehawk 移譲）。
 
-現在の運用状態を以下に補足する。
+## 🦅 vibehawk 導入の認証要件（Issue #531）
+
+vibehawk のレビューを稼働させるには `npx vibehawk setup` が必要な認証要素を揃える。
+
+```bash
+# GitHub App 作成・3 secrets 登録・workflow 配布 PR をウィザードが案内する
+npx vibehawk setup --owner <your-github-username> --repo <owner>/<repo>
+```
+
+| 要素 | 内容 | 登録経路 |
+|---|---|---|
+| 🔑 **VIBEHAWK_APP_ID** | vibehawk GitHub App の App ID | `npx vibehawk setup` |
+| 🔑 **VIBEHAWK_PRIVATE_KEY** | vibehawk GitHub App の秘密鍵 | `npx vibehawk setup` |
+| 🔑 **CLAUDE_CODE_OAUTH_TOKEN** | Claude Max OAuth トークン（`claude setup-token` で発行） | `npx vibehawk setup` |
+
+> [!IMPORTANT]
+> 3 secrets の登録・GitHub App 作成・workflow 配布は **`npx vibehawk setup` の責務**（single source of truth）。
+> `install.sh` は secrets 登録・workflow 配布を **行わない**。
+> install.sh の `verify_vibehawk_prereq` は `vibehawk.enabled: true` のとき導線を WARN 案内するだけ。
+> required check `vibehawk` の branch protection 登録は CEO の操作とする。
+
+## 📚 以下は claude-code-action 時代の認証設計（歴史的記録）
 
 > [!WARNING]
-> vibecorp 本体は現在 `claude_action.enabled: false` で運用中（Issue #532）。
-> CodeRabbit Bot 単独運用、vibehawk 完成までの暫定措置。
-> 本ドキュメントは再有効化時／利用者が `enabled: true` で運用する場合の SoT として保持する。
+> 以下の節は **claude-code-action を vibecorp 自前ワークフローで動かしていた時代の認証設計の記録**。
+> Issue #531 でレビューは vibehawk へ移譲され、`REVIEW.md` / `ai-review.yml` は配布されなくなった。
+> `CLAUDE_CODE_OAUTH_TOKEN` 自体は vibehawk でも引き続き使うため、トークン発行・更新・revocation 手順は有効な参考情報として保持する。
 
 ## 1️⃣ Bot 認証方式 — GitHub App
 
@@ -185,50 +207,48 @@ vibecorp は **revocation スクリプトを提供しない**。
 - 🧑 漏洩検知は人間判断を要する。
   - 復旧手順全体を人間が実行する設計が安全。
 
-## 5️⃣ install.sh の secrets 検証
+## 5️⃣ install.sh の vibehawk 前提案内（secrets 登録はしない）
 
-`install.sh` は `vibecorp.yml` の `claude_action.enabled: true` を検出した場合、secrets の登録有無を確認する。
+`install.sh` は `vibecorp.yml` の `vibehawk.enabled: true` を検出した場合、`verify_vibehawk_prereq` で導線を WARN 案内する。
 
-未登録なら警告を出力する。
+secrets 登録・workflow 配布は **行わない**（`npx vibehawk setup` の責務、Issue #531）。
+
+### 🔄 Before / After（install.sh の責務変更）
+
+| 観点 | 🔴 Before（claude-code-action） | 🟢 After（vibehawk 移譲） |
+|---|---|---|
+| secrets 登録有無の確認 | `CLAUDE_CODE_OAUTH_TOKEN` の登録を `gh secret list` で確認 | 確認しない（vibehawk setup の責務） |
+| workflow 配布 | `ai-review.yml` を配布 | 配布しない（vibehawk setup の責務） |
+| install.sh の役割 | secrets 未登録なら WARN | `npx vibehawk setup` 導線を WARN 案内するのみ |
 
 ### ⚙️ 検証ロジックの仕様
 
 | 条件 | install.sh の挙動 |
 |---|---|
 | `vibecorp.yml` 不在 | スキップ（return 0） |
-| `claude_action` セクション不在 | `ensure_claude_action_section` が `enabled: true` で自動追加 |
-| `claude_action.enabled: false` | スキップ（return 0） |
-| `gh` CLI 未導入 | スキップログ出力で return 0 |
-| `gh auth status` 失敗 | スキップログ出力で return 0 |
-| `enabled: true` + `CLAUDE_CODE_OAUTH_TOKEN` 登録あり | INFO ログ「登録済み」 |
-| `enabled: true` + `CLAUDE_CODE_OAUTH_TOKEN` 未登録 | WARN ログ + 設定方法案内 |
+| `vibehawk` セクション不在 | `ensure_vibehawk_section` が `enabled: true` で自動追加 |
+| `vibehawk.enabled: false` | スキップ（return 0） |
+| `vibehawk.enabled: true` | WARN ログで `npx vibehawk setup` 導線を案内 |
 
 > [!NOTE]
-> `ensure_claude_action_section` は **既存値を絶対に上書きしない**。
+> `ensure_vibehawk_section` は **既存値を絶対に上書きしない**。
+> 既存 `claude_action:` セクションは `vibehawk:` へ自動移行され、`enabled` 値・`skip_paths` は保持される。
 > 明示的に `enabled: false` を設定したリポジトリは `--update` 後も `false` のまま維持される。
 
-### ⚠️ 警告メッセージの内容
+### ⚠️ 案内メッセージの内容
 
-未登録時は以下のメッセージで設定を促す。
+`vibehawk.enabled: true` のとき以下のメッセージで導入を促す。
 
 ```text
-[WARN] CLAUDE_CODE_OAUTH_TOKEN が登録されていません
-       claude-code-action を有効化するには以下を実行してください:
-         claude setup-token
-         gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo <owner>/<repo>
-       詳細: docs/ai-review-auth.md
-
-       なお secret 名が登録されていても値が空文字列の場合、
-       ai-review.yml の preflight ガードが PR にコメントを残して
-       claude-code-action 起動を明示的に止めます（Issue #509）。
+[WARN] vibehawk が有効です。レビュー稼働には vibehawk のセットアップが必要です
+       vibehawk レビューを稼働させるには以下を実行してください:
+         npx vibehawk setup --owner <your-github-username> --repo <owner>/<repo>
+       ウィザードが GitHub App 作成・3 secrets 登録・workflow 配布 PR を案内します。
+       その後 branch protection で `vibehawk` を required status check に登録してください。
+       詳細: docs/ai-review-dependency.md / https://github.com/hirokimry/vibehawk
 ```
 
-警告のみで `install.sh` は失敗扱いにしない（`exit 0` 継続）。
-
-> [!WARNING]
-> `gh secret list` は secret 名のみを返し、値を取得できない。
-> secret 名が登録されていても値が空文字列のケースは install.sh では検出不可能。
-> このパターンは `ai-review.yml` の preflight ガード（後述「8️⃣ claude-review ジョブの preflight ガード」）が PR コメントで動的に通知する。
+案内のみで `install.sh` は失敗扱いにしない（`exit 0` 継続）。
 
 ## 6️⃣ 個人 Claude Max OAuth クォータ枯渇リスク
 
@@ -340,14 +360,11 @@ prefix: `⚠️ AI レビュー（claude-code-action）が起動できません`
 
 ### 🧪 テスト
 
-| ファイル | 種別 | 検証内容 |
-|---|---|---|
-| `tests/test_install_ai_review_workflow.sh` | 静的（yaml 構造） | preflight ステップ存在、env 受け取り、空判定、警告文言、`--repo` 明示 |
-| `tests/test_ai_review_preflight.sh` | 動的（bash 実行） | 3 ケース: 空 token + 既存なし / 空 token + 既存あり / 設定済み |
-
-> [!NOTE]
-> yaml 静的検証だけでは「ステップは存在するが空判定が壊れている」「重複防止が誤検知する」等の bash 実行時バグを検出できない。
-> 動的単体テストも必須として追加している。
+> [!WARNING]
+> 本節は claude-code-action 時代の歴史的記録である。
+> Issue #531 で claude-code-action ベースのレビュー実装が撤去されたため、
+> preflight 検証テスト（`test_install_ai_review_workflow.sh` / `test_ai_review_preflight.sh`）は削除済み。
+> 現行の vibehawk 導線検証は `tests/test_install_vibehawk_yaml.sh`（`verify_vibehawk_prereq` の WARN + exit 0 を含む）が担う。
 
 ## 9️⃣ PAT セットアップ（update-pr-branches ワークフロー用）
 
@@ -399,5 +416,6 @@ gh secret list
 - 後続: [#463](https://github.com/hirokimry/vibecorp/issues/463)（Branch Protection の Bot approve 経路）
 - 後続: [#464](https://github.com/hirokimry/vibecorp/issues/464)（claude-code-action の権限スコープ）
 - 後続: [#468](https://github.com/hirokimry/vibecorp/issues/468)（`claude_action.enabled` 独立フラグ）
+- vibehawk 移譲: [#531](https://github.com/hirokimry/vibecorp/issues/531)（vibehawk / coderabbit 独立トグル、`npx vibehawk setup` 導入）
 - セキュリティ方針: [docs/SECURITY.md](SECURITY.md)
 - コスト方針: [docs/cost-analysis.md](cost-analysis.md)

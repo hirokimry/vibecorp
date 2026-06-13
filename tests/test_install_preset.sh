@@ -66,20 +66,23 @@ assert_file_contains "CLAUDE.md に COO 説明あり" "$R/.claude/CLAUDE.md" 'CE
 assert_file_exists "MVV.md 存在" "$R/MVV.md"
 assert_file_not_contains "MVV.md にプレースホルダーなし" "$R/MVV.md" '{{.*}}'
 
-# E13. .coderabbit.yaml 存在
-assert_file_exists ".coderabbit.yaml 存在" "$R/.coderabbit.yaml"
+# E13. デフォルトは vibehawk-only（coderabbit off）。.vibehawk.yaml が生成され
+#      .coderabbit.yaml は生成されない（Issue #531）。
+assert_file_exists ".vibehawk.yaml 存在（デフォルト vibehawk-only）" "$R/.vibehawk.yaml"
+assert_file_not_exists ".coderabbit.yaml 不在（coderabbit off がデフォルト）" "$R/.coderabbit.yaml"
 
-# E14. .coderabbit.yaml に request_changes_workflow: true
-assert_file_contains ".coderabbit.yaml に request_changes_workflow" "$R/.coderabbit.yaml" "request_changes_workflow: true"
+# E14. .vibehawk.yaml に path_instructions（Issue 全要件チェック注入）
+assert_file_contains ".vibehawk.yaml に path_instructions" "$R/.vibehawk.yaml" "path_instructions:"
+assert_file_contains ".vibehawk.yaml に Issue 全要件チェック注入" "$R/.vibehawk.yaml" "must meet all requirements of the Issue"
 
-# E15. .coderabbit.yaml に auto_resolve が含まれない（Issue #533: 公式スキーマ非存在のため削除）
-assert_file_not_contains ".coderabbit.yaml に auto_resolve が含まれない" "$R/.coderabbit.yaml" "auto_resolve"
+# E15. .vibehawk.yaml に path_filters
+assert_file_contains ".vibehawk.yaml に path_filters" "$R/.vibehawk.yaml" "path_filters:"
 
-# E16. .coderabbit.yaml に language: ja-JP（ロケール変換確認）
-assert_file_contains ".coderabbit.yaml に language: ja-JP" "$R/.coderabbit.yaml" "language: ja-JP"
+# E16. .vibehawk.yaml に language: ja（--language ja のロケールそのまま）
+assert_file_contains ".vibehawk.yaml に language: ja" "$R/.vibehawk.yaml" "language: ja"
 
-# E17. .coderabbit.yaml にプレースホルダーなし
-assert_file_not_contains ".coderabbit.yaml にプレースホルダーなし" "$R/.coderabbit.yaml" '{{.*}}'
+# E17. .vibehawk.yaml にプレースホルダーなし
+assert_file_not_contains ".vibehawk.yaml にプレースホルダーなし" "$R/.vibehawk.yaml" '{{.*}}'
 
 # E18. .claude/vibecorp/ ディレクトリが存在しない
 if [ ! -d "$R/.claude/vibecorp" ]; then
@@ -124,7 +127,7 @@ R="$TMPDIR_ROOT"
 YML_CONTENT_BEFORE=$(cat "$R/.claude/vibecorp.yml")
 CLAUDE_MD_BEFORE=$(cat "$R/.claude/CLAUDE.md")
 MVV_MD_BEFORE=$(cat "$R/MVV.md")
-CODERABBIT_BEFORE=$(cat "$R/.coderabbit.yaml")
+VIBEHAWK_BEFORE=$(cat "$R/.vibehawk.yaml")
 CI_WORKFLOW_BEFORE=$(cat "$R/.github/workflows/test.yml")
 
 # 2回目実行
@@ -157,12 +160,12 @@ else
   fail "MVV.md スキップ（内容が変わった）"
 fi
 
-# G5. .coderabbit.yaml スキップ（内容保持）
-CODERABBIT_AFTER=$(cat "$R/.coderabbit.yaml")
-if [ "$CODERABBIT_BEFORE" = "$CODERABBIT_AFTER" ]; then
-  pass ".coderabbit.yaml スキップ（内容保持）"
+# G5. .vibehawk.yaml スキップ（内容保持）
+VIBEHAWK_AFTER=$(cat "$R/.vibehawk.yaml")
+if [ "$VIBEHAWK_BEFORE" = "$VIBEHAWK_AFTER" ]; then
+  pass ".vibehawk.yaml スキップ（内容保持）"
 else
-  fail ".coderabbit.yaml スキップ（内容が変わった）"
+  fail ".vibehawk.yaml スキップ（内容が変わった）"
 fi
 
 # G6. .github/workflows/test.yml スキップ（内容保持）
@@ -327,10 +330,11 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== R. .coderabbit.yaml スキップ動作 ==="
+echo "=== R. reviewer 設定ファイルの言語 / スキップ動作 ==="
 # ============================================
 
 # R1. 既存 .coderabbit.yaml はスキップ（ユーザー版保持）
+# coderabbit off がデフォルトでも、利用者配置の .coderabbit.yaml は削除せず残置する。
 create_test_repo
 echo "# ユーザーカスタム設定" > "$TMPDIR_ROOT/.coderabbit.yaml"
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
@@ -338,12 +342,24 @@ R="$TMPDIR_ROOT"
 
 assert_file_contains "既存 .coderabbit.yaml はスキップ（ユーザー版保持）" "$R/.coderabbit.yaml" "ユーザーカスタム設定"
 
-# R2. --language en で language: en-US になる
+# R2. --language en で .vibehawk.yaml の language: en になる（デフォルト vibehawk-only）
 cleanup
 create_test_repo
 bash "$INSTALL_SH" --name test-proj --language en 2>/dev/null
 R="$TMPDIR_ROOT"
 
+assert_file_contains ".vibehawk.yaml に language: en" "$R/.vibehawk.yaml" "language: en"
+
+# R3. coderabbit.enabled: true へ切替で .coderabbit.yaml が language: en-US で生成される
+tmp_yml="$(mktemp "$(dirname "$R/.claude/vibecorp.yml")/.vibecorp.yml.XXXXXX")"
+awk '
+  /^coderabbit:/ { in_c = 1; print; next }
+  /^[^[:space:]#]/ { in_c = 0 }
+  in_c && /^[[:space:]]+enabled:/ { print "  enabled: true"; next }
+  { print }
+' "$R/.claude/vibecorp.yml" > "$tmp_yml" && mv "$tmp_yml" "$R/.claude/vibecorp.yml"
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "coderabbit.enabled: true で .coderabbit.yaml 生成" "$R/.coderabbit.yaml"
 assert_file_contains ".coderabbit.yaml に language: en-US" "$R/.coderabbit.yaml" "language: en-US"
 
 cleanup
@@ -1176,42 +1192,51 @@ cleanup
 
 # ============================================
 echo ""
-echo "=== CR. CodeRabbit 無効設定テスト ==="
+echo "=== CR. CodeRabbit トグル設定テスト（Issue #531: デフォルト coderabbit off） ==="
 # ============================================
 
-# CR1. coderabbit.enabled: false で .coderabbit.yaml が生成されない
+# coderabbit ブロックの enabled を狙って書き換えるヘルパー。
+# 先頭の enabled は vibehawk なので、ブロック指定（awk）で coderabbit のみ変更する。
+# shell.md「sed -i 禁止」に従い awk + mktemp + mv で置換する。
+set_coderabbit_enabled() {
+  local yml="$1"
+  local val="$2"
+  local tmp
+  tmp="$(mktemp "$(dirname "$yml")/.$(basename "$yml").XXXXXX")"
+  awk -v val="$val" '
+    /^coderabbit:/ { in_c = 1; print; next }
+    /^[^[:space:]#]/ { in_c = 0 }
+    in_c && /^[[:space:]]+enabled:/ { print "  enabled: " val; next }
+    { print }
+  ' "$yml" > "$tmp" && mv "$tmp" "$yml"
+}
+
+# CR1. デフォルト（coderabbit off）で .coderabbit.yaml が生成されない
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-# vibecorp.yml の coderabbit.enabled を false に変更（macOS/Linux 互換）
-tmp_yml=$(mktemp)
-sed 's/  enabled: true/  enabled: false/' "$R/.claude/vibecorp.yml" > "$tmp_yml"
-mv "$tmp_yml" "$R/.claude/vibecorp.yml"
-# 既存の .coderabbit.yaml を削除して再インストール
-rm -f "$R/.coderabbit.yaml"
-bash "$INSTALL_SH" --update 2>/dev/null
 if [ ! -f "$R/.coderabbit.yaml" ]; then
-  pass "coderabbit.enabled: false で .coderabbit.yaml が生成されない"
+  pass "デフォルト（coderabbit off）で .coderabbit.yaml が生成されない"
 else
-  fail "coderabbit.enabled: false で .coderabbit.yaml が生成されない (ファイルが生成された)"
+  fail "デフォルト（coderabbit off）で .coderabbit.yaml が生成されない (ファイルが生成された)"
 fi
 
 cleanup
 
-# CR2. coderabbit キー未定義（デフォルト）で .coderabbit.yaml が生成される
+# CR2. デフォルトで .vibehawk.yaml が生成され .coderabbit.yaml は不在（vibehawk-only）
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-assert_file_exists "デフォルトで .coderabbit.yaml 生成" "$R/.coderabbit.yaml"
+assert_file_exists "デフォルトで .vibehawk.yaml 生成" "$R/.vibehawk.yaml"
+assert_file_not_exists "デフォルトで .coderabbit.yaml 不在" "$R/.coderabbit.yaml"
 
 cleanup
 
-# CR3. coderabbit.enabled: true（デフォルト生成値）で .coderabbit.yaml が生成される
+# CR3. coderabbit.enabled: true へ切替で .coderabbit.yaml が生成される
 create_test_repo
 bash "$INSTALL_SH" --name test-proj 2>/dev/null
 R="$TMPDIR_ROOT"
-# デフォルトで coderabbit.enabled: true が生成されているのでそのまま再インストール
-rm -f "$R/.coderabbit.yaml"
+set_coderabbit_enabled "$R/.claude/vibecorp.yml" "true"
 bash "$INSTALL_SH" --update 2>/dev/null
 assert_file_exists "coderabbit.enabled: true で .coderabbit.yaml 生成" "$R/.coderabbit.yaml"
 
