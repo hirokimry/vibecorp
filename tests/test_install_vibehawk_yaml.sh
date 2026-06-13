@@ -208,6 +208,32 @@ assert_file_not_exists "切替後: 管理下 .vibehawk.yaml が削除された" 
 cleanup
 
 # ============================================
+# 5b. enabled 判定がコメント行・skip_paths の "enabled:" を誤拾いしない（CISO 条件、Issue #531）
+# vibehawk ブロック内にコメントや skip_paths を置いても enabled: true 判定が崩れず
+# .vibehawk.yaml が生成されることを確認する（ブロック厳密パースの回帰検証）。
+# ============================================
+echo ""
+echo "--- 5b. enabled 判定がコメント行を誤拾いしない ---"
+create_test_repo
+R="$TMPDIR_ROOT"
+mkdir -p "$R/.claude"
+cat > "$R/.claude/vibecorp.yml" <<'YAML'
+name: test-proj
+preset: minimal
+language: ja
+vibehawk:
+  # このコメントは enabled: false と書いてあるが判定に影響しないこと
+  enabled: true
+  skip_paths:
+    - "*.lock"
+coderabbit:
+  enabled: false
+YAML
+bash "$INSTALL_SH" --update 2>/dev/null
+assert_file_exists "コメントに enabled: false があっても vibehawk 有効と判定され生成される" "$R/.vibehawk.yaml"
+cleanup
+
+# ============================================
 # 6. review-impl cleanup: REVIEW.md / ai-review.yml が新規生成されない
 # ============================================
 echo ""

@@ -1437,11 +1437,22 @@ generate_vibehawk_yaml() {
   local template="${SCRIPT_DIR}/templates/vibehawk.yaml.tpl"
 
   # vibecorp.yml の vibehawk.enabled を確認（未定義時は true = デフォルト vibehawk-only）
+  # ブロック単位パース（コメント除外 + 次トップレベルキーで停止）で coderabbit ブロックや
+  # コメント行の enabled を誤拾いしない（shell.md「YAML パース」、verify_vibehawk_prereq と統一）。
   local yml="${REPO_ROOT}/.claude/vibecorp.yml"
   local vh_enabled="true"
   if [[ -f "$yml" ]]; then
     local val
-    val=$(awk '/^vibehawk:/{found=1; next} found && /^[^ ]/{exit} found && /enabled:/{print $2}' "$yml")
+    val=$(awk '
+      /^vibehawk:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[^[:space:]#]/ { exit }
+      in_block && /^[[:space:]]+enabled:[[:space:]]*/ {
+        sub(/^[[:space:]]+enabled:[[:space:]]*/, "", $0)
+        sub(/[[:space:]]*$/, "", $0)
+        print
+        exit
+      }
+    ' "$yml")
     if [[ "$val" == "false" ]]; then
       vh_enabled="false"
     fi
