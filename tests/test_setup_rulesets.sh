@@ -303,6 +303,40 @@ fi
 
 # ============================================
 echo ""
+echo "=== D. build_ruleset_index 失敗パス（gh スタブ） ==="
+# ============================================
+# gh をシェル関数でスタブし、detail 取得失敗時に continue でスキップされること
+# （スキップされた ID が正規化結果＝adopt 候補に混入しないこと）を検証する。
+REPO_FULL="owner/repo"
+gh() {
+  # $2 = "repos/owner/repo/rulesets/<id>"。111 は成功 JSON、222 は失敗（return 1）。
+  case "$2" in
+    */rulesets/111) printf '%s' '{"id":111,"name":"x","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~ALL"],"exclude":[]}},"rules":[{"type":"required_status_checks"}]}' ;;
+    *) return 1 ;;
+  esac
+}
+
+out="$(build_ruleset_index '[{"id":111,"target":"branch"},{"id":222,"target":"branch"}]' 2>/dev/null)"
+ok111=$(printf '%s' "$out" | jq '[.[] | select(.id==111)] | length')
+no222=$(printf '%s' "$out" | jq '[.[] | select(.id==222)] | length')
+hs111=$(printf '%s' "$out" | jq -r '.[] | select(.id==111) | .has_status')
+if [ "$ok111" = "1" ] && [ "$no222" = "0" ] && [ "$hs111" = "true" ]; then
+  pass "D1 detail 取得失敗の ruleset は continue でスキップされ正規化結果に混入しない"
+else
+  fail "D1 build_ruleset_index 失敗パス (ok111=$ok111 no222=$no222 hs111=$hs111)"
+fi
+
+# D2: 成功した ruleset を select_managed_ruleset_id に通すと adopt 候補になる（端から端の整合）
+rc=0; sel="$(printf '%s' "$out" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ "$sel" = "111" ]; then
+  pass "D2 build_ruleset_index → select_managed_ruleset_id で成功 ruleset が adopt される"
+else
+  fail "D2 端から端の整合 (rc=$rc sel=$sel)"
+fi
+unset -f gh
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
