@@ -181,6 +181,31 @@ vibecorp は以下の外部ツールをランタイムで利用する。
 | Claude Code | Anthropic 商用利用規約 | AI エージェントランタイム。ユーザーが個別契約 | なし |
 | vibehawk | MIT | PR 自動レビュー（任意トグル、Issue #531）。`npx vibehawk setup` で利用者が導入。PR 差分は利用者の OAuth 経由で Anthropic に送信される。**データの取扱いは利用者の Anthropic 契約に基づき、利用者がデータ管理者となる。vibehawk・vibecorp は中継・代理を行わない**。📍 根拠: [vibehawk POLICY](https://github.com/hirokimry/vibehawk/blob/main/docs/POLICY.md)（2026-06 参照） | なし |
 
+### vibehawk 依存の法務評価（参照時点: 2026-06-20）
+
+vibehawk は独立 OSS であり、利用者が `npx vibehawk setup` で導入する。CLO が vibehawk の [POLICY](https://github.com/hirokimry/vibehawk/blob/main/docs/POLICY.md) / [SECURITY](https://github.com/hirokimry/vibehawk/blob/main/docs/SECURITY.md) を精査した結果、vibecorp が vibehawk に依存することは **法務上許容される**。
+
+| 観点 | vibehawk の記述 | 評価 |
+|------|----------------|------|
+| データ管理者 | データ管理者（GDPR Controller）は利用者。PR 差分・メタデータは利用者の OAuth 経由で Anthropic に送信される | ✅ 本ポリシーの既存記載（利用者がデータ管理者・中継なし）と整合 |
+| 中継・保存 | vibehawk 開発者は利用者リポジトリにアクセスせず、PR 内容のコピーを保持するサーバーを持たない | ✅ 中継・代理なしを確認 |
+| ライセンス | vibehawk 本体 MIT、依存 claude-code-action MIT | ✅ MIT 同士で両立し、波及義務なし |
+| PII | vibehawk は PII を保存・収集・第三者転送しない | ✅ 許容 |
+| GitHub App 権限 | `pull-requests:write` / `issues:write` / `contents:read` のみ。`administration:write` / `secrets:write` / `workflows:write` / `id-token:write` は要求しない | ✅ 最小権限。`autonomous-restrictions.md` §6 の禁止権限を要求しない |
+| Fork PR | `pull_request_target` を使用せず、Fork PR は実行対象外 | ✅ secrets 漏洩経路なし |
+| 供給経路（npx 動的取得） | npm 2FA + GitHub Actions OIDC publish + provenance 署名（CISO Critical 3 条件）。利用者は `npm audit signatures` で二次防御。独立 App 設計で影響を実行者本人に限定 | ✅ 供給経路リスクは対策済み・影響限定 |
+
+> [!NOTE]
+> 観察事項: vibehawk の SECURITY.md に脆弱性報告の連絡先が明記されていない（2026-06-20 参照時点）。法務上許容の結論は揺るがないが、追従時の確認項目として記録する。
+
+#### 🔄 追従運用（vibehawk POLICY 変更時）
+
+vibehawk の POLICY / SECURITY は将来変更されうるため、本評価は **参照時点とセットで** 維持する。
+
+- vibehawk の POLICY / SECURITY が変更された場合、CLO 経由で本サブセクションの 7 観点評価と参照時点を再精査・更新する。
+- 更新手順は本セクション冒頭「第三者ランタイム依存とライセンス」の CLO 更新手順に従う。
+- 参照時点（`参照時点: YYYY-MM-DD`）を必ず最新の精査日に書き換える。
+
 ### MIT 本体と LGPL/GPL コンポーネントの法的両立根拠
 
 上記ツールを利用しても MIT ライセンスに LGPL・GPL の義務が波及しない。
