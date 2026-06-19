@@ -159,7 +159,7 @@ intent 別の必須テスト:
 
 ### vibecorp 本体のライセンス
 
-vibecorp 本体は **MIT License** で配布される（Copyright (c) 2025 hirokimry）。
+vibecorp 本体は **MIT License** で配布される（Copyright (c) 2026 hirokimry）。
 
 - LICENSE ファイルはリポジトリルート直下に配置する
 - ライセンス変更は **CEO のみが決定できる**
