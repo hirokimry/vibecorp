@@ -167,6 +167,142 @@ fi
 
 # ============================================
 echo ""
+echo "=== C. 冪等性解決（純粋関数 select_managed_ruleset_id / select_ruleset_id_name_only） ==="
+# ============================================
+# setup-rulesets.sh を source して純粋関数を直接呼ぶ（main 実行ガードで main/gh は走らない）。
+# RULESET_NAME は source 後にデフォルト "vibecorp-protection" がセットされる。
+# shellcheck disable=SC1090
+source "$SETUP_SH"
+
+# C0. source ガード: 関数が定義され、main（gh API 呼び出し）が走っていない
+if declare -F select_managed_ruleset_id >/dev/null && declare -F select_ruleset_id_name_only >/dev/null; then
+  pass "source で純粋関数が定義される（main 実行ガードで main は走らない）"
+else
+  fail "source で純粋関数が定義されない"
+  exit 1
+fi
+
+# テスト用ヘルパ: 正規化済み ruleset 要素を組み立てる
+mk() {
+  # 引数: id name target enforcement include_json exclude_json has_status
+  jq -nc \
+    --argjson id "$1" --arg name "$2" --arg target "$3" --arg enf "$4" \
+    --argjson inc "$5" --argjson exc "$6" --argjson hs "$7" \
+    '{id: $id, name: $name, target: $target, enforcement: $enf, include: $inc, exclude: $exc, has_status: $hs}'
+}
+
+VP="vibecorp-protection"
+OTHER="全ブランチ保護"
+
+# C1. 名前一致 → その ID を返す
+JSON="[$(mk 999 "$VP" branch active '["~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ "$out" = "999" ]; then
+  pass "C1 名前一致 → ID 999 を返す"
+else
+  fail "C1 名前一致 (rc=$rc out=$out)"
+fi
+
+# C2. 名前不一致 + 単一の vibecorp gate 相当（~ALL/active/branch/status/exclude空）→ adopt
+JSON="[$(mk 14181995 "$OTHER" branch active '["~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ "$out" = "14181995" ]; then
+  pass "C2 名前不一致 + 単一適格 ~ALL → adopt (ID 14181995)"
+else
+  fail "C2 adopt (rc=$rc out=$out)"
+fi
+
+# C2b. include 多値 ["refs/heads/x","~ALL"] でも adopt（index 判定で取りこぼさない）
+JSON="[$(mk 222 "$OTHER" branch active '["refs/heads/x","~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ "$out" = "222" ]; then
+  pass "C2b include 多値に ~ALL を含む → adopt (ID 222)"
+else
+  fail "C2b include 多値 (rc=$rc out=$out)"
+fi
+
+# C3. 名前不一致 + ~ALL なし → 空（新規作成）
+JSON="[$(mk 333 "$OTHER" branch active '["refs/heads/main"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C3 ~ALL なし → 空（新規作成へ）"
+else
+  fail "C3 ~ALL なし (rc=$rc out=$out)"
+fi
+
+# C4. 名前不一致 + 適格 ~ALL ruleset 複数 → rc=3（曖昧・中断）
+JSON="[$(mk 401 "$OTHER" branch active '["~ALL"]' '[]' true),$(mk 402 "別ゲート" branch active '["~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 3 ]; then
+  pass "C4 適格 ~ALL 複数 → rc=3（中断）"
+else
+  fail "C4 複数中断 (rc=$rc out=$out)"
+fi
+
+# C5. ~ALL だが enforcement=disabled → adopt しない（空）
+JSON="[$(mk 501 "$OTHER" branch disabled '["~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C5 enforcement=disabled → adopt しない（空）"
+else
+  fail "C5 disabled 除外 (rc=$rc out=$out)"
+fi
+
+# C6. ~ALL だが target=tag → adopt しない（空）
+JSON="[$(mk 601 "$OTHER" tag active '["~ALL"]' '[]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C6 target=tag → adopt しない（空）"
+else
+  fail "C6 tag 除外 (rc=$rc out=$out)"
+fi
+
+# C7. ~ALL だが exclude 非空 → adopt しない（空）🔒 除外設定を消さない
+JSON="[$(mk 701 "$OTHER" branch active '["~ALL"]' '["refs/heads/release/*"]' true)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C7 exclude 非空 → adopt しない（空）"
+else
+  fail "C7 exclude 安全弁 (rc=$rc out=$out)"
+fi
+
+# C8. ~ALL active branch だが required_status_checks なし（has_status=false）→ adopt しない（空）🔒
+JSON="[$(mk 801 "$OTHER" branch active '["~ALL"]' '[]' false)]"
+rc=0; out="$(printf '%s' "$JSON" | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C8 required_status_checks なし → adopt しない（空）"
+else
+  fail "C8 has_status 安全弁 (rc=$rc out=$out)"
+fi
+
+# C9. 空入力 [] → 空（新規作成）
+rc=0; out="$(printf '%s' '[]' | select_managed_ruleset_id)" || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "C9 空入力 → 空（新規作成へ）"
+else
+  fail "C9 空入力 (rc=$rc out=$out)"
+fi
+
+# C-del1. delete 用 name-only: 名前不一致のみ → 空（adopt しないことを実証）
+JSON="[$(mk 14181995 "$OTHER" branch active '["~ALL"]' '[]' true)]"
+out="$(printf '%s' "$JSON" | select_ruleset_id_name_only)"
+if [ -z "$out" ]; then
+  pass "C-del1 name-only は名前不一致 ~ALL を拾わない（誤削除防止）"
+else
+  fail "C-del1 name-only 誤検出 (out=$out)"
+fi
+
+# C-del2. delete 用 name-only: 名前一致 → その ID
+JSON="[$(mk 909 "$VP" branch active '["~ALL"]' '[]' true)]"
+out="$(printf '%s' "$JSON" | select_ruleset_id_name_only)"
+if [ "$out" = "909" ]; then
+  pass "C-del2 name-only は名前一致 → ID 909"
+else
+  fail "C-del2 name-only 名前一致 (out=$out)"
+fi
+
+# ============================================
+echo ""
 echo "=== 結果: $PASSED/$TOTAL passed, $FAILED failed ==="
 
 if [ "$FAILED" -gt 0 ]; then
