@@ -86,14 +86,10 @@ assert_file_not_contains \
 echo "=== Major #5: auto_resolve キーが両ファイルから削除 ==="
 # ============================================
 
-CR_YAML="${ROOT}/.coderabbit.yaml"
+# Issue #783: vibecorp 自身は vibehawk-only に移行し自リポ .coderabbit.yaml は削除済み。
+# 配布テンプレート templates/coderabbit.yaml.tpl は利用者向けに残置するため検証を維持する。
 CR_TPL="${ROOT}/templates/coderabbit.yaml.tpl"
-assert_file_exists ".coderabbit.yaml が存在する" "$CR_YAML"
 assert_file_exists "templates/coderabbit.yaml.tpl が存在する" "$CR_TPL"
-assert_file_not_contains \
-  ".coderabbit.yaml に auto_resolve が含まれない" \
-  "$CR_YAML" \
-  '^[[:space:]]*auto_resolve:'
 assert_file_not_contains \
   "templates/coderabbit.yaml.tpl に auto_resolve が含まれない" \
   "$CR_TPL" \

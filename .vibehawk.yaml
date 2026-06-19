@@ -1,0 +1,34 @@
+# vibehawk Configuration
+# https://github.com/hirokimry/vibehawk
+#
+# vibecorp が配布する vibehawk 設定（Issue #531）。
+# vibehawk の判断軸（severity 5 段階等）はツール側に内蔵されており、
+# ここでは vibecorp 独自の判断軸を path_instructions で注入する。
+# vibehawk 有効化には別途 `npx vibehawk setup`（App + 3 secrets + workflow 配布）が必要。
+
+language: ja
+
+reviews:
+  # 段階的劣化のファイル数閾値（vibehawk デフォルト準拠）
+  size_limits:
+    full_review_files: 30
+    focused_review_files: 80
+    skip_inline_files: 3000
+
+  path_filters:
+    - "*.lock"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - ".cache/**"
+    - "vendor/**"
+
+  # vibecorp 独自の判断軸: PR は対応 Issue の全要件を満たすこと
+  path_instructions:
+    - path: "**"
+      instructions: |
+        PR that corresponds to an Issue must meet all requirements of the Issue.
+        Identify the Issue number from the PR description or branch name,
+        and verify that all items listed in the Issue are implemented.
+        If any requirements are not addressed, clearly point them out.

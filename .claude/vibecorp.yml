@@ -6,12 +6,12 @@ base_branch: main
 protected_files:
   - MVV.md
 # レビュアーは vibehawk / CodeRabbit を独立トグルで選択する（Issue #531）。
-# vibecorp 自身は own-repo への vibehawk 有効化（App/secrets/branch protection = CEO 操作）が
-# 別 Issue のため、当面 CodeRabbit 単独運用を維持する（vibehawk.enabled: false）。
+# vibecorp 自身も vibehawk-only 運用に移行済み（Issue #783、配布デフォルトと一致）。
+# 切替には npx vibehawk setup + branch protection（vibehawk required・approval 0）が必要。
 coderabbit:
-  enabled: true
-vibehawk:
   enabled: false
+vibehawk:
+  enabled: true
   skip_paths:
     - "*.lock"
     - ".git/**"

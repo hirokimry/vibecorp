@@ -118,12 +118,12 @@ else
   fail "rules に required_status_checks が含まれる (数: $SC_RULE)"
 fi
 
-# B9. pull_request の required_approving_review_count が 1
+# B9. pull_request の required_approving_review_count が 0（Issue #783: vibehawk status check を merge gate 主軸にし approval 0）
 REVIEW_COUNT=$(echo "$RULESET_JSON" | jq '.rules[] | select(.type == "pull_request") | .parameters.required_approving_review_count')
-if [ "$REVIEW_COUNT" = "1" ]; then
-  pass "required_approving_review_count が 1"
+if [ "$REVIEW_COUNT" = "0" ]; then
+  pass "required_approving_review_count が 0"
 else
-  fail "required_approving_review_count が 1 (実際: $REVIEW_COUNT)"
+  fail "required_approving_review_count が 0 (実際: $REVIEW_COUNT)"
 fi
 
 # B10. pull_request の dismiss_stale_reviews_on_push が true
@@ -142,12 +142,12 @@ else
   fail "required_status_checks に test が含まれる (数: $TEST_CHECK)"
 fi
 
-# B12. required_status_checks に CodeRabbit が含まれる
-CR_CHECK=$(echo "$RULESET_JSON" | jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[] | select(.context == "CodeRabbit")] | length')
-if [ "$CR_CHECK" = "1" ]; then
-  pass "required_status_checks に CodeRabbit が含まれる"
+# B12. required_status_checks に vibehawk が含まれる（Issue #783: vibehawk-only に移行）
+VH_CHECK=$(echo "$RULESET_JSON" | jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[] | select(.context == "vibehawk")] | length')
+if [ "$VH_CHECK" = "1" ]; then
+  pass "required_status_checks に vibehawk が含まれる"
 else
-  fail "required_status_checks に CodeRabbit が含まれる (数: $CR_CHECK)"
+  fail "required_status_checks に vibehawk が含まれる (数: $VH_CHECK)"
 fi
 
 # B13. strict_required_status_checks_policy が true

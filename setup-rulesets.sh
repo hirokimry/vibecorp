@@ -85,7 +85,7 @@ generate_ruleset_json() {
     {
       "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": false,
         "require_last_push_approval": false,
@@ -99,7 +99,7 @@ generate_ruleset_json() {
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           { "context": "test" },
-          { "context": "CodeRabbit" }
+          { "context": "vibehawk" }
         ]
       }
     }
