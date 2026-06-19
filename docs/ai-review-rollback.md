@@ -153,7 +153,9 @@ admin 権限を持つ CEO が classic protection と ruleset の両方を `[test
 | classic protection | `repos/<owner>/<repo>/branches/main/protection` の required_status_checks を `[test, CodeRabbit]`、required_approving_review_count を 1 に |
 | ruleset | 「全ブランチ保護」ruleset の required_status_checks を `[test, CodeRabbit]`、pull_request の required_approving_review_count を 1 に |
 
-`setup-rulesets.sh` を CodeRabbit 用に戻して再実行する経路でもよい（required_status_checks の context を `CodeRabbit`、approval を 1 に戻す）。
+> [!WARNING]
+> ロールバックで `setup-rulesets.sh` を再実行してはならない。スクリプトは ruleset 名 `vibecorp-protection` を検索対象とするが、本リポの稼働 ruleset は別名「全ブランチ保護」のため、再実行すると既存を更新せず **重複 ruleset を新規作成し、さらに classic protection を削除** する。緊急ロールバック時に gate 構成が壊れる。
+> 必ず稼働中の「全ブランチ保護」ruleset と classic protection を GitHub API / UI から **直接編集** して戻す（上表）。
 
 ### 8-3. CodeRabbit の発火を確認する
 
