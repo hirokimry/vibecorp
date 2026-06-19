@@ -64,18 +64,16 @@ npx vibehawk setup --owner <your-github-username> --repo <owner>/<repo>
 - 🛡️ workflow 配布後、CEO が branch protection で `vibehawk` を required status check に登録する。
 - 📖 認証経路の詳細は `docs/ai-review-auth.md` を参照。
 
-## ⚠️ デフォルト（vibehawk-only）と vibecorp 自身（CodeRabbit 単独）の不一致
+## ✅ デフォルト（vibehawk-only）と vibecorp 自身の一致（Issue #783 で解消）
 
-> [!WARNING]
-> 配布するデフォルトは **vibehawk-only** だが、vibecorp 本体は **CodeRabbit 単独** で運用している。
-> この不一致は意図的であり、別 Issue で own-repo の vibehawk 活性化を扱うまで継続する。
+> [!NOTE]
+> 配布するデフォルトは **vibehawk-only**。vibecorp 本体も **vibehawk-only に移行済み**（Issue #783）で、配布デフォルトと一致する。
 
-「なぜ配布元が新デフォルトを使っていないのか」という疑問に先回りして整理する。
+配布元自身がデフォルト構成をドッグフーディングしている。
 
-- 🏠 vibecorp 自身で vibehawk を有効化するには own-repo への App インストール・secrets 登録・branch protection 操作が要る。
-- 👤 これらは CEO の手動操作であり、別 Issue のスコープとなる。
-- 🟢 own-repo 活性化が完了するまで、vibecorp 本体は CodeRabbit 単独運用を維持する。
-- ✅ 利用者が `install.sh` で導入する場合のデフォルトは vibehawk-only で配布される（不一致は配布元の暫定状態に限られる）。
+- 🏠 vibecorp 自身の vibehawk 有効化（own-repo への App インストール・secrets 登録・branch protection: `vibehawk` required・approval 0）は Issue #783 で完了済み。
+- ✅ 利用者が `install.sh` で導入する場合のデフォルトも vibehawk-only で配布される（配布元と一致）。
+- 📦 過去（#531 マージ〜#783 完了まで）は配布元のみ暫定的に CodeRabbit 単独運用だったが、現在は解消済み。
 
 ## 並走運用の挙動（approve 2 個の AND ゲート）
 
@@ -178,7 +176,7 @@ vibecorp が生成する `.vibehawk.yaml` の主要設定値。
 > [!WARNING]
 > 本セクション以下は **claude-code-action 時代の検証基準の歴史的記録**。
 > レビュー機能は Issue #531 で vibehawk へ移譲され、claude-code-action は配布されなくなった。
-> vibecorp 本体は own-repo の vibehawk 活性化（別 Issue）まで CodeRabbit 単独運用を継続する。
+> vibecorp 本体は Issue #783 で vibehawk-only へ移行済み（CodeRabbit 単独運用は解消済み）。
 > 以下の `claude_action` 前提の記述は当時の判定設計として保持する（現行運用の指針ではない）。
 
 vibecorp 自身で `coderabbit.enabled: true` + `claude_action.enabled: true` の並走を 2 週間継続し、以下全てを充足した場合に検証完了とする。
