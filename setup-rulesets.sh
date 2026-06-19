@@ -148,7 +148,7 @@ select_managed_ruleset_id() {
   if [[ "$count" -gt 1 ]]; then
     return 3
   fi
-  printf '%s' "$(printf '%s' "$json" | jq -r "${filter}[0].id")"
+  printf '%s' "$json" | jq -r "${filter}[0].id"
   return 0
 }
 
@@ -170,7 +170,7 @@ build_ruleset_index() {
     # 取りこぼしによる重複作成を運用で検知できるよう warn を残す（silent にしない）。
     if ! detail=$(gh api "repos/${REPO_FULL}/rulesets/${id}" 2>/dev/null); then
       log_warn "ruleset 詳細の取得に失敗しました (ID: ${id})。冪等判定から除外します（重複作成の可能性）。"
-      detail='{}'
+      continue
     fi
     out=$(printf '%s' "$out" | jq --argjson d "$detail" '. + [{
       id: $d.id,
