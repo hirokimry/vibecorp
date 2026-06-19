@@ -166,7 +166,12 @@ build_ruleset_index() {
   ids=$(printf '%s' "$list" | jq -r '.[] | select(.target == "branch") | .id')
   while IFS= read -r id; do
     [[ -z "$id" ]] && continue
-    detail=$(gh api "repos/${REPO_FULL}/rulesets/${id}" 2>/dev/null || printf '{}')
+    # 詳細取得失敗時は安全側（has_status:false で adopt 除外）に倒すが、
+    # 取りこぼしによる重複作成を運用で検知できるよう warn を残す（silent にしない）。
+    if ! detail=$(gh api "repos/${REPO_FULL}/rulesets/${id}" 2>/dev/null); then
+      log_warn "ruleset 詳細の取得に失敗しました (ID: ${id})。冪等判定から除外します（重複作成の可能性）。"
+      detail='{}'
+    fi
     out=$(printf '%s' "$out" | jq --argjson d "$detail" '. + [{
       id: $d.id,
       name: $d.name,
