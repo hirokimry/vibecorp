@@ -9,6 +9,8 @@
 #   3. skills 不変 → exit 0
 #   4. marketplace.json が base に不在 → exit 0（graceful skip）
 #   5. skills 削除 + version 不変 → exit 1（警告）
+#   6. agents 追加 + version bump → exit 0（#790: agents も検知対象）
+#   7. agents 追加 + version 不変 → exit 1（警告、#790）
 
 set -euo pipefail
 
@@ -69,6 +71,25 @@ write_marketplace_json() {
     {
       "name": "vibecorp",
       "skills": ${skills_json}
+    }
+  ]
+}
+EOF
+}
+
+# skills は固定し agents のみ可変にした marketplace.json を書く（agents 検知ケース用、#790）
+write_marketplace_json_agents() {
+  local agents_json
+  agents_json=$(printf '"%s",' "$@")
+  agents_json="[${agents_json%,}]"
+  cat > .claude-plugin/marketplace.json <<EOF
+{
+  "name": "vibecorp",
+  "plugins": [
+    {
+      "name": "vibecorp",
+      "skills": ["./skills/a"],
+      "agents": ${agents_json}
     }
   ]
 }
@@ -185,6 +206,48 @@ git add -A
 git commit -q -m "remove skill c without bump"
 rc=$(run_check)
 assert_eq "Case 5: exit 1" "1" "$rc"
+cd "$SCRIPT_DIR"
+cleanup
+TMPDIR_ROOT=""
+
+# ============================================
+# Case 6: agents 追加 + version bump → exit 0
+# ============================================
+echo ""
+echo "--- Case 6: agents 追加 + version bump → exit 0 ---"
+setup_repo
+write_plugin_json "0.1.0"
+write_marketplace_json_agents "./agents/a.md"
+git add -A
+git commit -q -m "initial"
+git checkout -q -b pr
+write_plugin_json "0.2.0"
+write_marketplace_json_agents "./agents/a.md" "./agents/b.md"
+git add -A
+git commit -q -m "add agent b + bump"
+rc=$(run_check)
+assert_eq "Case 6: exit 0" "0" "$rc"
+cd "$SCRIPT_DIR"
+cleanup
+TMPDIR_ROOT=""
+
+# ============================================
+# Case 7: agents 追加 + version 不変 → exit 1
+# ============================================
+echo ""
+echo "--- Case 7: agents 追加 + version 不変 → exit 1 ---"
+setup_repo
+write_plugin_json "0.1.0"
+write_marketplace_json_agents "./agents/a.md"
+git add -A
+git commit -q -m "initial"
+git checkout -q -b pr
+write_plugin_json "0.1.0"
+write_marketplace_json_agents "./agents/a.md" "./agents/b.md"
+git add -A
+git commit -q -m "add agent b without bump"
+rc=$(run_check)
+assert_eq "Case 7: exit 1" "1" "$rc"
 cd "$SCRIPT_DIR"
 cleanup
 TMPDIR_ROOT=""

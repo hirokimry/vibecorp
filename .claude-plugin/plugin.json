@@ -1,6 +1,6 @@
 {
   "name": "vibecorp",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "AI エージェントチームによる再現可能なプロダクト開発フレームワーク",
   "hooks": "./hooks/hooks.json"
 }
