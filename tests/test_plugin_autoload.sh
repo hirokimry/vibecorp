@@ -114,6 +114,25 @@ else
   fail "skills 配列の件数（${skills_count}）が skills/ ディレクトリ数（${skills_dir_count}）と不一致"
 fi
 
+# agents 配列の存在と件数一致検証（#790: plugin native 配布移行時に agents 列挙が漏れ、
+# 導入先でエージェント全件がロードされなくなった。skills 同様に列挙必須なため回帰を検知する）
+agents_count=$(jq '.plugins[0].agents | length' "$MARKETPLACE")
+if [[ "$agents_count" -ge 1 ]]; then
+  pass "marketplace.json の plugin に agents 配列が存在する（${agents_count} 件）"
+else
+  fail "marketplace.json の plugin に agents 配列が存在しない、または空"
+  # agents 配列不在なら後続の件数一致検証は前提が崩れるため即終了（testing.md 準拠）
+  exit 1
+fi
+
+# agents/ 直下は .md ファイルが並ぶ構造のため、skills（ディレクトリ数）と異なり .md ファイル数で数える
+agents_dir_count=$(find "${REPO_ROOT}/agents" -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')
+if [[ "$agents_count" -eq "$agents_dir_count" ]]; then
+  pass "agents 配列の件数（${agents_count}）が agents/ ディレクトリの .md 数と一致"
+else
+  fail "agents 配列の件数（${agents_count}）が agents/ ディレクトリの .md 数（${agents_dir_count}）と不一致"
+fi
+
 # --- B. templates/claude/settings.json（単一 SSOT）の extraKnownMarketplaces / enabledPlugins ---
 
 if jq -e '.extraKnownMarketplaces.vibecorp.source.source == "github" and .extraKnownMarketplaces.vibecorp.source.repo == "hirokimry/vibecorp"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then

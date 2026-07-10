@@ -27,6 +27,9 @@
 
 ### 修正
 
+- プラグイン導入先で C\*O / SM などエージェント 16 件がロードされず `@` 呼び出しもスキル内召喚もできない不具合を修正した。([Issue #790](https://github.com/hirokimry/vibecorp/issues/790))
+  - `marketplace.json` に agents が列挙されておらず、導入先でエージェントが 0 件になっていた。skills 同様に明示列挙するようにした。
+  - agents 変更時の version bump 忘れも CI で検知するようになった。
 - 旧構造で作られた知見バッファが新構造へ自動移行されるようになった。([Issue #543](https://github.com/hirokimry/vibecorp/issues/543))
   - `/sync-edit` / `/review-harvest` / `/knowledge-pr` の次回実行時に自動回復する。
   - 未プッシュのコミットは移行中に保全される。

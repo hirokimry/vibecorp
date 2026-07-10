@@ -44,6 +44,24 @@
         "./skills/sync-check",
         "./skills/sync-edit",
         "./skills/worktree"
+      ],
+      "agents": [
+        "./agents/accounting-analyst.md",
+        "./agents/cfo.md",
+        "./agents/ciso.md",
+        "./agents/clo.md",
+        "./agents/cpo.md",
+        "./agents/cto.md",
+        "./agents/legal-analyst.md",
+        "./agents/plan-architect.md",
+        "./agents/plan-cost.md",
+        "./agents/plan-dx.md",
+        "./agents/plan-legal.md",
+        "./agents/plan-performance.md",
+        "./agents/plan-security.md",
+        "./agents/plan-testing.md",
+        "./agents/security-analyst.md",
+        "./agents/sm.md"
       ]
     }
   ]
