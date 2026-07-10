@@ -121,6 +121,8 @@ if [[ "$agents_count" -ge 1 ]]; then
   pass "marketplace.json の plugin に agents 配列が存在する（${agents_count} 件）"
 else
   fail "marketplace.json の plugin に agents 配列が存在しない、または空"
+  # agents 配列不在なら後続の件数一致検証は前提が崩れるため即終了（testing.md 準拠）
+  exit 1
 fi
 
 # agents/ 直下は .md ファイルが並ぶ構造のため、skills（ディレクトリ数）と異なり .md ファイル数で数える
